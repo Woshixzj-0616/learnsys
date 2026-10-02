@@ -1,0 +1,5 @@
+# 文本按行尾自动处理，但 .cmd 一律别动 —— 里面是 GBK 中文，转换会毁掉它
+* text=auto
+*.cmd -text
+*.ico binary
+*.png binary
