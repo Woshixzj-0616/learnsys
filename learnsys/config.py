@@ -106,6 +106,7 @@ ASR_VAD = True              # 静音切段；失败会自动退回 False
 ASK_HOTKEY = USER.get("hotkey") or "alt+q"   # 全局快捷键：修饰键(alt/ctrl/shift/win) + 主键
 ASK_TIMEOUT_SECONDS = 90.0      # 等 AI 回话的上限；超时就在横条里给中文提示，不装死
 ASK_KEEP_IMAGES = False         # False = 截图问完即删，不留盘
+ASK_HISTORY_TURNS = 3           # 追问时带给 AI 的前几轮问答（同一张图；换了图就清）
 
 # 问谁：默认打本机 Codex 的中转口（一次 HTTP 约 1~3 秒、不用 key、但要 Codex 开着）；
 # 在 设置.json 里填 api_base / api_key / api_model 就换成任何「OpenAI 兼容 + 能看图」的服务。

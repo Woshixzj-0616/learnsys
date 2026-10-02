@@ -64,6 +64,7 @@ class AskApp(QtCore.QObject):
         self.bar.pick_requested.connect(self.pick)
         self.bar.answered.connect(self._remember)
         self.bar.exited.connect(self._shot_done)
+        self.bar.history_provider = self._recent_asks
         self.caller = single.Server(self)      # 别人再点一次 → 把横栏叫回来（不再开第二个）
         self.caller.called.connect(self._called_back)
         self.tray = self._build_tray()
@@ -269,6 +270,14 @@ class AskApp(QtCore.QObject):
         except Exception as exc:
             print(f"写库失败：{exc}", file=sys.stderr)
         self.bar.refresh_usage()         # 答案落库 ⇒ 占用数字跟着变
+
+    def _recent_asks(self):
+        """给横栏「历史」按钮用：今天的问答（新→旧）。"""
+        try:
+            return store.recent_asks(self._conn(), limit=20)
+        except Exception as exc:
+            print(f"读历史失败：{exc}", file=sys.stderr)
+            return []
 
     def _shot_path(self) -> pathlib.Path:
         return config.ask_tmp_dir() / "shot.png"
