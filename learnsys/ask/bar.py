@@ -126,6 +126,8 @@ class AskBar(QtWidgets.QWidget):
         self._thread = uuid.uuid4().hex[:12]      # 同一轮对话一个号，方便复盘
         self._streaming = False
         self._fit_timer = None        # 流式重排的节流器（别每片都排）
+        self._answer_start = None     # 答案区里「答案」从第几个字符开始（None = 这一轮还没开始）
+        self._last_answer = ""        # 最近一次的**答案**原文（复制按钮只复制它，不带问题）
         self.history_provider = None              # app 塞进来的：() -> [(ts, question, answer, kind, image_path), ...]
         self._state = self._load_state()
         self._on_top = (config.ASK_BAR_ALWAYS_ON_TOP
@@ -508,6 +510,8 @@ class AskBar(QtWidgets.QWidget):
         self.answer.setFixedHeight(76)
         self.copy_btn.setVisible(False)
         self._streaming = False
+        self._answer_start = None
+        self._last_answer = ""
 
     def refresh_usage(self) -> None:
         """把「占了多少盘」更新到底部那一行 / 小条（鼠标悬停看明细）。"""
@@ -585,8 +589,28 @@ class AskBar(QtWidgets.QWidget):
 
     # ---- 问 ----
 
+    def _start_turn(self, question: str) -> None:
+        """把问题先上屏（「我：」那一行）—— 输入框接着清空，好打下一句。
+
+        新一轮（还没写过 / 刚清空 / 刚开新会话）就先清掉旧的；
+        追问就接在上一轮答案后面写，像聊天记录一样往下长。
+        """
+        if self._answer_start is None:
+            self.answer.clear()
+            self.answer.setFixedHeight(76)
+        else:
+            self.answer.append("")
+        self.answer.setVisible(True)
+        self.answer.moveCursor(QtGui.QTextCursor.End)
+        self.answer.insertPlainText(f"我：{question}")
+        self.answer.append("")        # 空一行，答案写在这一行
+        self.answer.moveCursor(QtGui.QTextCursor.End)
+        self._answer_start = self.answer.textCursor().position()
+
     def submit(self) -> None:
         if self._worker is not None:
+            # 别闷声不响地吞掉这一次回车 —— 不然用户只看到「按了没反应」
+            self.show_message("上一句还在写 —— 等它写完，或者点「新会话」重开一轮。")
             return
         question = self.ask.text().strip()
         if not question:
@@ -599,11 +623,10 @@ class AskBar(QtWidgets.QWidget):
         self._dots = 0
         self._streaming = False
         self.status.setVisible(True)
-        self.status.setText("正在问…")
+        self.status.setText("在想…")
         self.copy_btn.setVisible(False)
-        self.answer.setVisible(False)
-        self.answer.clear()
-        self.answer.setFixedHeight(76)
+        self._start_turn(question)
+        self.ask.clear()              # 问题已经上屏了 ⇒ 输入框清空，直接打下一句
         self._timer = QtCore.QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(400)
@@ -620,18 +643,31 @@ class AskBar(QtWidgets.QWidget):
                             + f"  {time.monotonic() - self._started_at:.0f} 秒")
 
     def _on_chunk(self, piece: str, replace: bool = False) -> None:
-        """流式：字一到就往答案区追加（已经洗过 Markdown 噪声了）。"""
+        """流式：字一到就往答案区追加（已经洗过 Markdown 噪声了）。
+
+        问题那一行是 `_start_turn` 写好的，这里**只动答案那一段**，不能整段清掉。
+        """
         if self.answer.isHidden():
             self.answer.setVisible(True)
-            self.answer.clear()
-            self._streaming = True
-            self.copy_btn.setVisible(True)
+        self._streaming = True
+        self.copy_btn.setVisible(True)
         if replace:
-            self.answer.setPlainText(piece)
+            self._set_answer_part(piece)
         else:
             self.answer.moveCursor(QtGui.QTextCursor.End)
             self.answer.insertPlainText(piece)
         self._schedule_fit()
+
+    def _set_answer_part(self, text: str) -> None:
+        """只替换「答案」那一段 —— 「我：」那一行留在上面不动。"""
+        if self._answer_start is None:
+            return
+        cursor = self.answer.textCursor()
+        cursor.setPosition(self._answer_start)
+        cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.KeepAnchor)
+        cursor.insertText(text)
+        self._last_answer = text
+        self.copy_btn.setVisible(bool(text.strip()))
 
     def _schedule_fit(self) -> None:
         """流式别每来一片就重排一遍答案区 —— 攒 80 毫秒再排，窗口不至于一路抖。"""
@@ -651,17 +687,18 @@ class AskBar(QtWidgets.QWidget):
         ms = int((time.monotonic() - self._started_at) * 1000)
         self.answer.setVisible(True)
         if error:
-            partial = self.answer.toPlainText().strip()
+            # 只看「答案那一段」有没有写出来的 —— 上面那行「我：」不算
+            partial = self._last_answer.strip()
             if partial:
                 # 流到一半断了：留着已写出的，底下标一句
                 self.status.setText(f"回答中断 —— {error}")
                 self.copy_btn.setVisible(True)
             else:
-                self._set_answer(error)
+                self._set_answer_part(error)
                 self.copy_btn.setVisible(False)
                 self.status.setText("没成功 —— 改一下再问")
         else:
-            self._set_answer(text)
+            self._set_answer_part(text)
             self.copy_btn.setVisible(True)
             self._turns.append((question, text))
             if self._image_path:
@@ -678,12 +715,13 @@ class AskBar(QtWidgets.QWidget):
                 "thread": self._thread,
             })
         self._fit_answer()
-        self.ask.selectAll()
+        self.ask.setFocus(QtCore.Qt.OtherFocusReason)
 
     # ---- 复制 / 历史 ----
 
     def _copy_answer(self) -> None:
-        text = self.answer.toPlainText().strip()
+        # 只复制答案，不带上面「我：」那一行
+        text = (self._last_answer or self.answer.toPlainText()).strip()
         if not text:
             return
         QtWidgets.QApplication.clipboard().setText(text)
