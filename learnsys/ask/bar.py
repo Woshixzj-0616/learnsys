@@ -48,6 +48,38 @@ MOVE_SLOP = 4                     # 拖动超过这么多像素才算「拖」�
 _LINE_HEIGHT_PROPORTIONAL = 1     # QTextBlockFormat.ProportionalHeight（PySide6 里 int(枚举) 会报错）
 
 
+def _ask_block() -> QtGui.QTextBlockFormat:
+    """「我」那一块：蓝底白字 —— 跟 AI 的回答一眼分得开。"""
+    fmt = QtGui.QTextBlockFormat()
+    fmt.setBackground(QtGui.QColor("#2d6cdf"))
+    fmt.setTopMargin(5)
+    fmt.setBottomMargin(5)
+    fmt.setLeftMargin(6)
+    fmt.setRightMargin(6)
+    return fmt
+
+
+def _ask_char() -> QtGui.QTextCharFormat:
+    fmt = QtGui.QTextCharFormat()
+    fmt.setForeground(QtGui.QColor("#ffffff"))
+    return fmt
+
+
+def _gap_block() -> QtGui.QTextBlockFormat:
+    """空行（你的话和 AI 的回答之间隔开一点）。"""
+    fmt = QtGui.QTextBlockFormat()
+    fmt.setTopMargin(3)
+    fmt.setBottomMargin(3)
+    return fmt
+
+
+def _answer_char() -> QtGui.QTextCharFormat:
+    """AI 的回答：正常颜色（别继承了「我」那块的白字）。"""
+    fmt = QtGui.QTextCharFormat()
+    fmt.setForeground(QtGui.QColor("#e2e5e9"))
+    return fmt
+
+
 def _thumb(pixmap: QtGui.QPixmap, width: int, height: int) -> QtGui.QPixmap:
     """把截的那块缩成圆角小图（按原比例，居中留白，不裁内容）。"""
     box_w, box_h = width * 2, height * 2
@@ -78,12 +110,19 @@ class _AskWorker(QtCore.QThread):
         self._image_path = image_path
         self._question = question
         self._history = history
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        """这一轮不要了（用户开了新会话 / 清空）—— 请求还在跑没关系，结果不往界面上写。"""
+        self._cancelled = True
 
     def run(self):
         parts: list[str] = []
         shown = ""                    # 已经显示出去的（清洗过之后的）累积文本
         try:
             for piece in backend.ask_stream(self._image_path, self._question, self._history):
+                if self._cancelled:
+                    return
                 parts.append(piece)
                 # 拿累积全文去洗：`**重点**` 常常被切成两片，洗单片是洗不掉的
                 full = backend.tidy_so_far("".join(parts))
@@ -94,6 +133,8 @@ class _AskWorker(QtCore.QThread):
                 else:
                     self.chunk.emit(full, True)                 # 清洗改了已显示的部分 ⇒ 整段重放
                 shown = full
+            if self._cancelled:
+                return
             text = backend.tidy_answer("".join(parts).strip())
             if not text:
                 raise backend.AskError("答案回来了但是空的，再问一次试试。")
@@ -465,11 +506,27 @@ class AskBar(QtWidgets.QWidget):
         self.drop_image()
         self._reset_answer()
 
-    def new_session(self) -> None:
-        """开新会话：清掉上一题上下文和答案，图留着接着问（不带上文）。"""
+    def _drop_running(self) -> None:
+        """把正在写的那一轮掐掉 —— 用户要开新会话 / 清空时，别让他干等。
+
+        请求还在跑没关系：worker 被标了 cancel，结果不会往界面上写（见 `_finish` 开头）。
+        """
         if self._worker is not None:
-            self.show_message("正在写答案 —— 等这轮结束再开新会话。")
-            return
+            self._worker.cancel()
+            self._worker = None
+        if self._timer is not None:
+            self._timer.stop()
+            self._timer = None
+        self.go.setEnabled(True)
+        self._streaming = False
+
+    def new_session(self) -> None:
+        """开新会话：清掉上一题上下文和答案，图留着接着问（不带上文）。
+
+        上一句还在写也照样开 —— 那一轮直接不要了（原来只是提示一句就 return，
+        结果旧答案写完又被写回界面，看着就像「点了没反应、还多出一份」）。
+        """
+        self._drop_running()
         self._turns = []
         self._thread = uuid.uuid4().hex[:12]
         self._reset_answer()
@@ -479,10 +536,8 @@ class AskBar(QtWidgets.QWidget):
             self.show_message("已开新会话 —— 直接打字问，或先框一块屏。")
 
     def clear_session(self) -> None:
-        """清空：答案、截图、上下文都不要了（对话收尾）。"""
-        if self._worker is not None:
-            self.show_message("正在写答案 —— 等这轮结束再清空。")
-            return
+        """清空：答案、截图、上下文都不要了（对话收尾）。还在写也照样清。"""
+        self._drop_running()
         self.set_idle()
         self.cleared.emit()
         self.show_message("已清空 —— 直接打字问，或框一块屏再问。")
@@ -602,7 +657,7 @@ class AskBar(QtWidgets.QWidget):
     # ---- 问 ----
 
     def _start_turn(self, question: str) -> None:
-        """把问题先上屏（「我：」那一行）—— 输入框接着清空，好打下一句。
+        """把问题先上屏 —— **蓝底白字那一块是你的话**，下面空一行才是 AI 的回答。
 
         新一轮（还没写过 / 刚清空 / 刚开新会话）就先清掉旧的；
         追问就接在上一轮答案后面写，像聊天记录一样往下长。
@@ -610,14 +665,23 @@ class AskBar(QtWidgets.QWidget):
         if self._answer_start is None:
             self.answer.clear()
             self.answer.setFixedHeight(76)
+        cursor = self.answer.textCursor()
+        cursor.movePosition(QtGui.QTextCursor.End)
+        if self.answer.toPlainText().strip():
+            cursor.insertBlock(_gap_block())                # 上一轮和这一轮之间空一行
+            cursor.insertBlock(_ask_block(), _ask_char())   # 你的话：蓝底白字
         else:
-            self.answer.append("")
+            # 空文档本来就有一个空块 —— 直接拿它来用，别再插一块（不然开头多一行空白）
+            cursor.movePosition(QtGui.QTextCursor.Start)
+            cursor.setBlockFormat(_ask_block())
+            cursor.setBlockCharFormat(_ask_char())
+        cursor.insertText(question, _ask_char())
+        cursor.insertBlock(_gap_block(), _answer_char())   # 空一行
+        cursor.insertBlock(_gap_block(), _answer_char())   # AI 的回答写在这一块
+        self._answer_start = cursor.position()
+        cursor.setCharFormat(_answer_char())     # 答案用正常颜色，别接着用蓝底那块的白字
         self.answer.setVisible(True)
-        self.answer.moveCursor(QtGui.QTextCursor.End)
-        self.answer.insertPlainText(f"我：{question}")
-        self.answer.append("")        # 空一行，答案写在这一行
-        self.answer.moveCursor(QtGui.QTextCursor.End)
-        self._answer_start = self.answer.textCursor().position()
+        self.answer.setTextCursor(cursor)
 
     def submit(self) -> None:
         if self._worker is not None:
@@ -677,7 +741,7 @@ class AskBar(QtWidgets.QWidget):
         cursor = self.answer.textCursor()
         cursor.setPosition(self._answer_start)
         cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.KeepAnchor)
-        cursor.insertText(text)
+        cursor.insertText(text, _answer_char())
         self._last_answer = text
         self.copy_btn.setVisible(bool(text.strip()))
 
@@ -690,6 +754,10 @@ class AskBar(QtWidgets.QWidget):
         self._fit_timer.start(80)
 
     def _finish(self, question: str, text: str, error) -> None:
+        # 被掐掉的旧那一轮（用户已经开了新会话 / 清空）完成后也会走到这儿 ——
+        # 不挡住的话，旧答案会写在新界面上，看起来就像「新会话没生效、还多出一份」
+        if self.sender() is not self._worker:
+            return
         if self._timer is not None:
             self._timer.stop()
             self._timer = None
