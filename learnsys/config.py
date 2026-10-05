@@ -39,6 +39,9 @@ SETTINGS_TEMPLATE = {
     "api_model": "",
     "api_style": "",
     "hotkey": "",
+    "system_prompt": "",
+    "_max_tokens": "答案最长多少 token（默认 1500，只防失控；调小会让答案写不完）",
+    "max_tokens": 1500,
 }
 
 
@@ -52,6 +55,14 @@ def load_settings() -> dict:
 
 
 USER = load_settings()
+
+
+def _user_int(key: str, default: int) -> int:
+    """设置里那几项数字 —— 填坏了（空 / 不是数字）就用默认，别让它拦住启动。"""
+    try:
+        return int(str(USER.get(key) or default).strip())
+    except Exception:
+        return default
 
 
 def ensure_settings_file() -> pathlib.Path:
@@ -83,6 +94,11 @@ def ask_tmp_dir() -> pathlib.Path:
     return day_dir() / "截图"
 
 
+def ask_image_dir() -> pathlib.Path:
+    """那天的「问答截图」归档目录 —— 有图提问的截图存这里，方便复盘"""
+    return day_dir() / "问答截图"
+
+
 SETTINGS_PATH = DATA_ROOT / "界面设置.json"   # 横栏的位置 / 收起状态
 ICON_PATH = ROOT / "问一问.ico"              # 托盘 / 窗口 / 任务栏的图标（首次启动自动生成）
 
@@ -105,6 +121,10 @@ ASR_VAD = True              # 静音切段；失败会自动退回 False
 # 下面带「设置.json」的几项都能在 D:/学习系统/设置.json 里改 —— 打包成 exe 后就靠它
 ASK_HOTKEY = USER.get("hotkey") or "alt+q"   # 全局快捷键：修饰键(alt/ctrl/shift/win) + 主键
 ASK_TIMEOUT_SECONDS = 90.0      # 等 AI 回话的上限；超时就在横条里给中文提示，不装死
+# 答案最长多少 token —— **只用来防失控，不能用来提速**：
+# 实测 deepseek-flash 是推理模型，思考过程也吃这份配额（一次回答 240 token 里 117 个是推理），
+# 设小了会「想完了没额度写正文」⇒ 答案直接是空的。默认 1500 够写一大段，**别往下调**。
+ASK_MAX_TOKENS = _user_int("max_tokens", 1500)
 ASK_KEEP_IMAGES = False         # False = 截图问完即删，不留盘
 ASK_HISTORY_TURNS = 3           # 追问时带给 AI 的前几轮问答（同一张图；换了图就清）
 
@@ -114,6 +134,22 @@ ASK_API_BASE = USER.get("api_base") or "http://127.0.0.1:57321/v1"
 ASK_API_MODEL = USER.get("api_model") or "deepseek-flash"
 ASK_API_KEY = USER.get("api_key") or ""
 ASK_API_STYLE = USER.get("api_style") or ""   # "" = 自动（本机走 responses，别处走 chat）
+
+# 让 AI 直接给答案、别倒思考过程、别堆 Markdown（负责人：「** 特别多、像整个思考过程」）
+ASK_SYSTEM_PROMPT = USER.get("system_prompt") or (
+    "你是屏幕问答助手。只根据用户提供的截图回答问题。"
+    "回答要求：直接给出结论，简洁；用纯文本，不要 Markdown（禁止 **加粗**、#标题、>引用、- 列表符号）；"
+    "不要输出思考过程、推理步骤、分析过程或「让我看看」这类铺垫；不要复述问题；"
+    "除非用户要求详细展开，否则控制在 200 字以内（模型要想很久，答案越长等得越久）；"
+    "如果截图里没有答案，就直说没看出来。"
+)
+# 没框图、纯文字问的时候用这条（框选是可选的）
+ASK_SYSTEM_PROMPT_TEXT = USER.get("system_prompt_text") or (
+    "你是学习问答助手，直接回答用户的问题。"
+    "回答要求：直接给出结论，简洁；用纯文本，不要 Markdown（禁止 **加粗**、#标题、>引用、- 列表符号）；"
+    "不要输出思考过程、推理步骤、分析过程或「让我看看」这类铺垫；不要复述问题；"
+    "除非用户要求详细展开，否则控制在 200 字以内。"
+)
 
 
 def api_style() -> str:
@@ -129,7 +165,7 @@ ASK_BAR_WIDTH_MAX = 1400          # 最宽不超过
 ASK_BAR_TOP_GAP = 10              # 离屏幕顶端多远
 ASK_BAR_ANSWER_MAX_RATIO = 0.62   # 答案区最高占屏幕高度的比例（再长就滚动）
 ASK_BAR_PILL_WIDTH = 250          # 收起成一条小条后有多宽
-ASK_BAR_ALWAYS_ON_TOP = True      # 横条常驻在屏幕最上方
+ASK_BAR_ALWAYS_ON_TOP = False     # 不再强制置顶（负责人：挡别的界面）；横栏上「置顶」开关随时改
 
 # 热词：当 initial_prompt 喂给模型，能显著压掉成体系的同音错
 HOTWORDS = (

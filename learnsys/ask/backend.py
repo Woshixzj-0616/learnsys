@@ -13,6 +13,7 @@ from __future__ import annotations
 import base64
 import json
 import pathlib
+import re
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
@@ -24,7 +25,7 @@ class AskError(Exception):
     """问 AI 失败 —— 里面带一句能直接给人看的中文原因。"""
 
 
-def _data_url(image_path: str) -> str:
+def _data_url(image_path: str | None) -> str:
     raw = pathlib.Path(image_path).read_bytes()
     return "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
 
@@ -64,12 +65,81 @@ def _trim_history(history: list | None) -> list[tuple[str, str]]:
     return turns[-config.ASK_HISTORY_TURNS:]
 
 
-def _messages(image_path: str, question: str, history: list | None, style: str) -> list:
-    """拼消息：图只挂在第一问上，后面的追问只带文字（省 token、够用）。"""
+_MARKDOWN_NOISE = (
+    (re.compile(r"\*\*(.+?)\*\*", re.S), r"\1"),
+    (re.compile(r"__(.+?)__", re.S), r"\1"),
+    (re.compile(r"(?m)^#{1,6}\s*"), ""),
+    (re.compile(r"(?m)^>\s?"), ""),
+    (re.compile(r"`{1,3}([^`\n]+)`{1,3}"), r"\1"),
+)
+_THINKING_HEADS = re.compile(
+    r"(?m)^\s*\**\s*(思考|思考过程|分析|推理|内部思考|让我(先)?(看看|想一想|分析)|"
+    r"Thought|Thinking|Reasoning)\s*\**\s*[:：]?\s*$"
+)
+_ANSWER_HEADS = re.compile(r"(?m)^\s*\**\s*(最终答案|答案|结论|回答)\s*\**\s*[:：]\s*")
+
+
+def tidy_answer(text: str) -> str:
+    """把模型答案收拾干净：去 Markdown 花样、掐掉思考过程。"""
+    if not text:
+        return text
+    out = text.replace("\r\n", "\n")
+    # 有明确「答案：」段落 ⇒ 只留答案（思考过程整段丢掉）
+    found = list(_ANSWER_HEADS.finditer(out))
+    if found:
+        out = out[found[-1].end():]
+    # 「思考：」这类小标题行直接删
+    out = _THINKING_HEADS.sub("", out)
+    # 开头像铺垫（「让我看看…」「首先…」）的段落丢掉，只留后面的正文
+    parts = [p.strip() for p in re.split(r"\n\s*\n", out) if p.strip()]
+    while len(parts) > 1 and _looks_like_thinking(parts[0]):
+        parts.pop(0)
+    out = "\n\n".join(parts)
+    for pattern, repl in _MARKDOWN_NOISE:
+        out = pattern.sub(repl, out)
+    out = re.sub(r"\n{3,}", "\n\n", out).strip()
+    return out
+
+
+def tidy_so_far(text: str) -> str:
+    """流式期间用：只做**不依赖整段语义**的清洗（加粗 / 标题 / 引用 / 反引号）。
+
+    「掐思考过程」那种要看完整段才敢下手的，留给最后的 `tidy_answer`，
+    免得把还没写完的正文当成铺垫删掉。对一个增量片单独做是没用的 ——
+    `**重点**` 的左右两半常被切成两片，所以调用方要拿**累积全文**来调这个。
+    """
+    if not text:
+        return text
+    out = text.replace("\r\n", "\n")
+    for pattern, repl in _MARKDOWN_NOISE:
+        out = pattern.sub(repl, out)
+    return out
+
+
+def _looks_like_thinking(paragraph: str) -> bool:
+    """开头像「思考铺垫」的段落（不是答案本身）。要狠一点只抓口吻，别误伤正常回答。"""
+    first = paragraph.lstrip()[:30]
+    return bool(re.match(
+        r"^(\*{0,2})\s*(让我|我来|我先|我需要|需要我|我们来|我试着|我打算|"
+        r"先看|先分析|先观察|来看|来看看|看看这张|观察这张|分析一下|思考一下|"
+        r"Looking at|Let me|First,? I|Thinking)", first))
+
+
+def _system_message(style: str, with_image: bool) -> dict:
+    text = config.ASK_SYSTEM_PROMPT if with_image else config.ASK_SYSTEM_PROMPT_TEXT
+    if style == "chat":
+        return {"role": "system", "content": text}
+    return {"role": "system", "content": [{"type": "input_text", "text": text}]}
+
+
+def _messages(image_path: str | None, question: str, history: list | None, style: str) -> list:
+    """拼消息：图只挂在第一问上，后面的追问只带文字（省 token、够用）。没图 = 纯文字问。"""
     hist = _trim_history(history)
-    image_url = _data_url(image_path)
+    image_url = _data_url(image_path) if image_path else None
 
     def user_first(text: str) -> dict:
+        if not image_url:
+            return user_text(text)
         if style == "chat":
             return {"role": "user", "content": [
                 {"type": "text", "text": text},
@@ -90,7 +160,7 @@ def _messages(image_path: str, question: str, history: list | None, style: str) 
             return {"role": "assistant", "content": text}
         return {"role": "assistant", "content": [{"type": "output_text", "text": text}]}
 
-    messages: list[dict] = []
+    messages: list[dict] = [_system_message(style, with_image=bool(image_url))]
     if hist:
         first_q, first_a = hist[0]
         messages.append(user_first(first_q))
@@ -104,21 +174,27 @@ def _messages(image_path: str, question: str, history: list | None, style: str) 
     return messages
 
 
-def _payload(image_path: str, question: str, history: list | None,
+def _payload(image_path: str | None, question: str, history: list | None,
              style: str, stream: bool) -> tuple[dict, str]:
     messages = _messages(image_path, question, history, style)
+    cap = int(getattr(config, "ASK_MAX_TOKENS", 0) or 0)
     if style == "chat":
         body = {"model": config.ASK_API_MODEL, "messages": messages}
+        if cap > 0:
+            body["max_tokens"] = cap
         if stream:
             body["stream"] = True
         return body, "/chat/completions"
     body = {"model": config.ASK_API_MODEL, "input": messages}
+    if cap > 0:
+        # 注意：推理模型的「思考过程」也吃这份配额 —— 设小了会想完没额度写正文
+        body["max_output_tokens"] = cap
     if stream:
         body["stream"] = True
     return body, "/responses"
 
 
-def _open(image_path: str, question: str, history: list | None,
+def _open(image_path: str | None, question: str, history: list | None,
           style: str, stream: bool, limit: float):
     body, path = _payload(image_path, question, history, style, stream)
     base = config.ASK_API_BASE.rstrip("/")
@@ -153,26 +229,34 @@ def _delta_from_chat(obj: dict) -> str:
     return ""
 
 
-def _delta_from_responses(obj: dict) -> str:
+def _delta_from_responses(obj: dict, want_whole: bool = False) -> str:
+    """want_whole = True 才认 `response.completed` 里那份**全文**。
+
+    实测本机中转是「先吐一堆 delta，最后再发一个 completed 带全文」——
+    一律认的话，答案会被拼两遍（真出现过：77 字的答案显示成 154 字）。
+    所以只有**前面一个 delta 都没吐过**时才拿它兜底。
+    """
     kind = obj.get("type") or ""
+    # 只要正文增量 —— reasoning / 工具调用的 delta 一律不往答案里塞（不然像「思考过程」）
     if kind in ("response.output_text.delta", "response.output_text.partial"):
         delta = obj.get("delta")
         if isinstance(delta, str):
             return delta
     if kind == "response.completed":
+        if not want_whole:
+            return ""
         output = obj.get("response") or obj
         text = _pick_text(output if isinstance(output, dict) else {})
         return text
-    # 有的中转不带 type，直接给 delta
-    delta = obj.get("delta")
-    if isinstance(delta, str):
-        return delta
+    # 有的中转不带 type，直接给 delta（这时才兜底认）
+    if not kind and isinstance(obj.get("delta"), str):
+        return obj["delta"]
     return ""
 
 
-def ask_stream(image_path: str, question: str, history: list | None = None,
+def ask_stream(image_path: str | None, question: str, history: list | None = None,
                timeout: float | None = None) -> Iterator[str]:
-    """流式问一次，边生成边 yield 文本片段。失败抛 AskError（可能已吐出一部分）。"""
+    """流式问一次，边生成边 yield 文本片段。image_path=None = 纯文字问。失败抛 AskError。"""
     limit = timeout or config.ASK_TIMEOUT_SECONDS
     style = config.api_style()
     response = _open(image_path, question, history, style, stream=True, limit=limit)
@@ -182,10 +266,11 @@ def ask_stream(image_path: str, question: str, history: list | None = None,
             # 有的中转无视 stream，直接回一整段 JSON —— 当成「一次性吐完」处理
             data = json.loads(response.read().decode("utf-8", "replace"))
             text = _pick_chat_text(data) if style == "chat" else _pick_text(data)
-            text = (text or "").strip()
+            text = tidy_answer((text or "").strip())
             if text:
                 yield text
             return
+        emitted = False                # 已经吐出去过正文没有（决定 completed 那份全文还要不要）
         for raw in response:
             line = raw.decode("utf-8", "replace").strip()
             if not line or line.startswith(":"):
@@ -202,8 +287,10 @@ def ask_stream(image_path: str, question: str, history: list | None = None,
                 obj = json.loads(payload)
             except json.JSONDecodeError:
                 continue
-            piece = _delta_from_chat(obj) if style == "chat" else _delta_from_responses(obj)
+            piece = (_delta_from_chat(obj) if style == "chat"
+                     else _delta_from_responses(obj, want_whole=not emitted))
             if piece:
+                emitted = True
                 yield piece
     except TimeoutError as exc:
         raise AskError(f"等了 {int(limit)} 秒还没回话，先算了 —— 可以再问一次。") from exc
@@ -216,9 +303,9 @@ def ask_stream(image_path: str, question: str, history: list | None = None,
             pass
 
 
-def ask(image_path: str, question: str, history: list | None = None,
+def ask(image_path: str | None, question: str, history: list | None = None,
         timeout: float | None = None) -> str:
-    """同步问一次，拿完整答案（调用方放后台线程，别卡界面）。失败抛 AskError。"""
+    """同步问一次，拿完整答案（调用方放后台线程，别卡界面）。image_path=None = 纯文字问。"""
     limit = timeout or config.ASK_TIMEOUT_SECONDS
     style = config.api_style()
     response = _open(image_path, question, history, style, stream=False, limit=limit)
@@ -233,8 +320,12 @@ def ask(image_path: str, question: str, history: list | None = None,
             response.close()
         except Exception:
             pass
+    # 被长度上限掐断：模型想完了没额度写正文（推理模型的思考也吃配额）
+    if isinstance(data, dict) and str(data.get("status") or "") == "incomplete":
+        raise AskError("AI 没写完就被长度上限掐断了 —— 把 D:/学习系统/设置.json 里的 "
+                       "max_tokens 调大（默认 1500），或者把问题问小一点。")
     text = _pick_chat_text(data) if style == "chat" else _pick_text(data)
-    text = (text or "").strip()
+    text = tidy_answer((text or "").strip())
     if not text:
         raise AskError("答案回来了但是空的，再问一次试试。")
     return text

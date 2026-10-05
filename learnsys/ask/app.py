@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import shutil
 import sys
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -64,6 +65,7 @@ class AskApp(QtCore.QObject):
         self.bar.pick_requested.connect(self.pick)
         self.bar.answered.connect(self._remember)
         self.bar.exited.connect(self._shot_done)
+        self.bar.cleared.connect(self._shot_done)     # 点「清空」⇒ 临时截图也删掉
         self.bar.history_provider = self._recent_asks
         self.caller = single.Server(self)      # 别人再点一次 → 把横栏叫回来（不再开第二个）
         self.caller.called.connect(self._called_back)
@@ -264,15 +266,52 @@ class AskApp(QtCore.QObject):
             self._conn_path = want
         return self.conn
 
-    def _remember(self, question: str, answer: str, ms: int) -> None:
+    def _remember(self, record: dict) -> None:
+        """答完记一笔：图问 / 文问分开，有图就先归档截图再落库（方便复盘）。"""
+        kind = "image" if record.get("kind") == "image" else "text"
+        archived = ""
+        if kind == "image":
+            archived = self._archive_image(record.get("image_path") or "")
         try:
-            store.add_ask(self._conn(), question, answer, ms, "codex")
+            store.add_ask(
+                self._conn(),
+                record.get("question", ""),
+                record.get("answer", ""),
+                int(record.get("ms") or 0),
+                "codex",
+                kind=kind,
+                image_path=archived,
+                thread=record.get("thread") or "",
+            )
         except Exception as exc:
             print(f"写库失败：{exc}", file=sys.stderr)
         self.bar.refresh_usage()         # 答案落库 ⇒ 占用数字跟着变
 
+    def _archive_image(self, src: str) -> str:
+        """把这轮用的截图拷进「问答截图」—— 原临时 shot.png 仍按需删，归档留下。"""
+        if not src:
+            return ""
+        source = pathlib.Path(src)
+        if not source.exists():
+            return ""
+        folder = config.ask_image_dir()
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+            stamp = source.stat().st_mtime_ns
+            dest = folder / f"ask_{stamp}.png"
+            # 同名就加序号，绝不覆盖以前的
+            n = 1
+            while dest.exists():
+                dest = folder / f"ask_{stamp}_{n}.png"
+                n += 1
+            shutil.copy2(source, dest)
+            return str(dest)
+        except Exception as exc:
+            print(f"归档截图失败：{exc}", file=sys.stderr)
+            return str(source)
+
     def _recent_asks(self):
-        """给横栏「历史」按钮用：今天的问答（新→旧）。"""
+        """给横栏「历史」按钮用：今天的问答（新→旧），带 kind / image_path。"""
         try:
             return store.recent_asks(self._conn(), limit=20)
         except Exception as exc:
@@ -283,14 +322,9 @@ class AskApp(QtCore.QObject):
         return config.ask_tmp_dir() / "shot.png"
 
     def _shot_done(self) -> None:
-        """临时截图收尾：问完即删（ASK_KEEP_IMAGES = True 时留着不动）。"""
-        if config.ASK_KEEP_IMAGES:
-            return
-        folder = config.ask_tmp_dir()
+        """临时截图收尾：只删「正在用的」shot.png；已归档进「问答截图」的不动（要复盘）。"""
         try:
-            for item in folder.glob("*"):
-                item.unlink()
-            folder.rmdir()
+            self._shot_path().unlink(missing_ok=True)
         except OSError:
             pass
 

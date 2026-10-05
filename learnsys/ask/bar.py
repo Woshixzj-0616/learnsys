@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -67,7 +68,7 @@ def _thumb(pixmap: QtGui.QPixmap, width: int, height: int) -> QtGui.QPixmap:
 
 
 class _AskWorker(QtCore.QThread):
-    chunk = QtCore.Signal(str)       # 流式：新到的一小段字
+    chunk = QtCore.Signal(str, bool)  # 流式：(新到的字, True = 整段替换/ False = 追加)
     done = QtCore.Signal(str)        # 完整答案（含已流出的部分）
     failed = QtCore.Signal(str)      # 失败原因（若已有部分文本，界面会留着）
 
@@ -79,11 +80,20 @@ class _AskWorker(QtCore.QThread):
 
     def run(self):
         parts: list[str] = []
+        shown = ""                    # 已经显示出去的（清洗过之后的）累积文本
         try:
             for piece in backend.ask_stream(self._image_path, self._question, self._history):
                 parts.append(piece)
-                self.chunk.emit(piece)
-            text = "".join(parts).strip()
+                # 拿累积全文去洗：`**重点**` 常常被切成两片，洗单片是洗不掉的
+                full = backend.tidy_so_far("".join(parts))
+                if full == shown:
+                    continue
+                if shown and full.startswith(shown):
+                    self.chunk.emit(full[len(shown):], False)   # 正常追加
+                else:
+                    self.chunk.emit(full, True)                 # 清洗改了已显示的部分 ⇒ 整段重放
+                shown = full
+            text = backend.tidy_answer("".join(parts).strip())
             if not text:
                 raise backend.AskError("答案回来了但是空的，再问一次试试。")
             self.done.emit(text)
@@ -94,9 +104,10 @@ class _AskWorker(QtCore.QThread):
 
 
 class AskBar(QtWidgets.QWidget):
-    answered = QtCore.Signal(str, str, int)    # 问题, 答案, 毫秒
+    answered = QtCore.Signal(object)            # {question, answer, ms, kind, image_path, thread}
     exited = QtCore.Signal()                   # 用户把横栏收进托盘（✕）
     pick_requested = QtCore.Signal()           # 用户点了「框选」
+    cleared = QtCore.Signal()                  # 用户点了「清空」—— app 去删临时截图
 
     def __init__(self, tip: str):
         super().__init__(None)
@@ -111,10 +122,15 @@ class AskBar(QtWidgets.QWidget):
         self._grab = None          # 拖动时：鼠标相对窗口左上角的偏移
         self._press = None
         self._moved = False
-        self._turns: list[tuple[str, str]] = []   # 当前这张图的问答史（旧→新），追问时带给 AI
+        self._turns: list[tuple[str, str]] = []   # 当前这轮的问答史（旧→新），追问时带给 AI
+        self._thread = uuid.uuid4().hex[:12]      # 同一轮对话一个号，方便复盘
         self._streaming = False
-        self.history_provider = None              # app 塞进来的：() -> [(ts, question, answer), ...]
+        self._fit_timer = None        # 流式重排的节流器（别每片都排）
+        self.history_provider = None              # app 塞进来的：() -> [(ts, question, answer, kind, image_path), ...]
         self._state = self._load_state()
+        self._on_top = (config.ASK_BAR_ALWAYS_ON_TOP
+                        if "always_on_top" not in self._state
+                        else bool(self._state.get("always_on_top")))
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
         self.setWindowTitle("问一问 · 框选屏幕问 AI")
         self.setWindowIcon(icon_mod.icon())
@@ -191,10 +207,22 @@ class AskBar(QtWidgets.QWidget):
     def _apply_flags(self) -> None:
         # 用 Window（不是 Tool）才有任务栏按钮 —— 这样才能「固定到任务栏」
         flags = QtCore.Qt.FramelessWindowHint | QtCore.Qt.Window
-        if config.ASK_BAR_ALWAYS_ON_TOP:
+        if self._on_top:
             flags |= QtCore.Qt.WindowStaysOnTopHint
         if int(self.windowFlags()) != int(flags):
             self.setWindowFlags(flags)
+
+    def toggle_always_on_top(self) -> None:
+        """「置顶」开关：开着才挡别的界面；默认关。"""
+        self._on_top = not self._on_top
+        self._state["always_on_top"] = self._on_top
+        self._apply_flags()
+        self.show()
+        self.raise_()
+        self._save_state()
+        self.show_message("已开置顶 —— 横栏会一直在别的窗口上面。" if self._on_top
+                          else "已关置顶 —— 别的窗口可以盖住横栏。")
+        self._sync_top_btn()
 
     def show(self) -> None:
         self._apply_flags()
@@ -302,12 +330,37 @@ class AskBar(QtWidgets.QWidget):
         self.history_btn.setToolTip("看看今天问过什么")
         self.history_btn.clicked.connect(self._show_history)
 
+        self.top_btn = QtWidgets.QToolButton(card)
+        self.top_btn.setObjectName("tiny")
+        self.top_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.top_btn.setToolTip("开着：横栏一直在别的窗口上面；关掉：别的窗口可以盖住它")
+        self.top_btn.clicked.connect(self.toggle_always_on_top)
+        self.top_btn.setCheckable(True)
+
+        self.session_btn = QtWidgets.QToolButton(card)
+        self.session_btn.setObjectName("tiny")
+        self.session_btn.setText("新会话")
+        self.session_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.session_btn.setToolTip("开一轮新对话：清掉上一题的上下文（图还在，不带上文）")
+        self.session_btn.clicked.connect(self.new_session)
+
+        self.clear_btn = QtWidgets.QToolButton(card)
+        self.clear_btn.setObjectName("tiny")
+        self.clear_btn.setText("清空")
+        self.clear_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.clear_btn.setToolTip("对话完了清干净：答案、截图、上下文都不要了")
+        self.clear_btn.clicked.connect(self.clear_session)
+
         bottom = QtWidgets.QHBoxLayout()
         bottom.setSpacing(6)
         bottom.addWidget(self.status, 1)
+        bottom.addWidget(self.top_btn)
+        bottom.addWidget(self.session_btn)
+        bottom.addWidget(self.clear_btn)
         bottom.addWidget(self.history_btn)
         bottom.addWidget(self.copy_btn)
         box.addLayout(bottom)
+        self._sync_top_btn()
 
         self.answer = QtWidgets.QTextBrowser(card)
         self.answer.setObjectName("answer")
@@ -389,25 +442,55 @@ class AskBar(QtWidgets.QWidget):
         self.answer.moveCursor(QtGui.QTextCursor.Start)
         self.copy_btn.setVisible(bool(text.strip()))
 
+    def _sync_top_btn(self) -> None:
+        if not hasattr(self, "top_btn"):
+            return
+        self.top_btn.setText("置顶" if self._on_top else "不置顶")
+        self.top_btn.setChecked(self._on_top)
+
     # ---- 状态切换 ----
 
     def set_idle(self) -> None:
-        """回到「还没框东西」的样子。"""
+        """回到「还没问东西」的样子。框选可选，不框也能直接打字问。"""
         self._turns = []
+        self._thread = uuid.uuid4().hex[:12]
         self.drop_image()
         self._reset_answer()
 
+    def new_session(self) -> None:
+        """开新会话：清掉上一题上下文和答案，图留着接着问（不带上文）。"""
+        if self._worker is not None:
+            self.show_message("正在写答案 —— 等这轮结束再开新会话。")
+            return
+        self._turns = []
+        self._thread = uuid.uuid4().hex[:12]
+        self._reset_answer()
+        if self._image_path:
+            self.show_message("已开新会话 —— 不带上一题，看的还是这张图。")
+        else:
+            self.show_message("已开新会话 —— 直接打字问，或先框一块屏。")
+
+    def clear_session(self) -> None:
+        """清空：答案、截图、上下文都不要了（对话收尾）。"""
+        if self._worker is not None:
+            self.show_message("正在写答案 —— 等这轮结束再清空。")
+            return
+        self.set_idle()
+        self.cleared.emit()
+        self.show_message("已清空 —— 直接打字问，或框一块屏再问。")
+
     def drop_image(self) -> None:
-        """图不要了（收起 / 换一张）—— 剩下的答案文字留着。"""
+        """图不要了（收起 / 换一张）—— 纯文字照样能问，已有的答案文字留着。"""
         self._image_path = None
         self.thumb.setVisible(False)
-        self.go.setEnabled(False)
-        self.ask.setPlaceholderText(f"先点「框选」或按 {self._tip} 框一块屏幕，再打字问它")
+        self.go.setEnabled(True)
+        self.ask.setPlaceholderText(f"直接打字问就行；想问屏幕上的东西就先点「框选」或按 {self._tip}")
 
     def set_shot(self, image_path: str, shot: QtGui.QPixmap) -> None:
-        """刚框好一块屏 —— 缩略图挂上，可以问了。换了图 ⇒ 旧对话史清掉。"""
+        """刚框好一块屏 —— 缩略图挂上，可以问了。换了图 ⇒ 旧对话史清掉、开新轮。"""
         self._image_path = image_path
         self._turns = []
+        self._thread = uuid.uuid4().hex[:12]
         self.thumb.setPixmap(_thumb(shot, THUMB_W, THUMB_H))
         self.thumb.setVisible(True)
         self.go.setEnabled(True)
@@ -505,12 +588,11 @@ class AskBar(QtWidgets.QWidget):
     def submit(self) -> None:
         if self._worker is not None:
             return
-        if not self._image_path:
-            self.show_message(f"还没框东西 —— 先点「框选」或按 {self._tip} 框一块屏幕。")
-            return
         question = self.ask.text().strip()
         if not question:
             self.ask.setFocus()
+            if not self._image_path:
+                self.show_message("先打个问题（框不框选都行 —— 框了就问那块屏，不框就是纯文字问）。")
             return
         self.go.setEnabled(False)
         self._started_at = time.monotonic()
@@ -533,20 +615,31 @@ class AskBar(QtWidgets.QWidget):
 
     def _tick(self) -> None:
         self._dots = (self._dots + 1) % 4
-        label = "正在写" if self._streaming else "正在问"
+        label = "正在写" if self._streaming else "在想"   # 推理模型先想后写，前几秒没字是正常的
         self.status.setText(label + "·" * self._dots
                             + f"  {time.monotonic() - self._started_at:.0f} 秒")
 
-    def _on_chunk(self, piece: str) -> None:
-        """流式：字一到就往答案区追加。"""
+    def _on_chunk(self, piece: str, replace: bool = False) -> None:
+        """流式：字一到就往答案区追加（已经洗过 Markdown 噪声了）。"""
         if self.answer.isHidden():
             self.answer.setVisible(True)
             self.answer.clear()
             self._streaming = True
             self.copy_btn.setVisible(True)
-        self.answer.moveCursor(QtGui.QTextCursor.End)
-        self.answer.insertPlainText(piece)
-        self._fit_answer()
+        if replace:
+            self.answer.setPlainText(piece)
+        else:
+            self.answer.moveCursor(QtGui.QTextCursor.End)
+            self.answer.insertPlainText(piece)
+        self._schedule_fit()
+
+    def _schedule_fit(self) -> None:
+        """流式别每来一片就重排一遍答案区 —— 攒 80 毫秒再排，窗口不至于一路抖。"""
+        if self._fit_timer is None:
+            self._fit_timer = QtCore.QTimer(self)
+            self._fit_timer.setSingleShot(True)
+            self._fit_timer.timeout.connect(self._fit_answer)
+        self._fit_timer.start(80)
 
     def _finish(self, question: str, text: str, error) -> None:
         if self._timer is not None:
@@ -575,8 +668,15 @@ class AskBar(QtWidgets.QWidget):
                 self.status.setText(
                     f"用了 {ms / 1000:.1f} 秒 · 还想追问就直接再打字（看的还是这张图）")
             else:
-                self.status.setText(f"用了 {ms / 1000:.1f} 秒")
-            self.answered.emit(question, text, ms)
+                self.status.setText(f"用了 {ms / 1000:.1f} 秒 · 还想追问就直接再打字")
+            self.answered.emit({
+                "question": question,
+                "answer": text,
+                "ms": ms,
+                "kind": "image" if self._image_path else "text",
+                "image_path": self._image_path or "",
+                "thread": self._thread,
+            })
         self._fit_answer()
         self.ask.selectAll()
 
@@ -598,31 +698,46 @@ class AskBar(QtWidgets.QWidget):
             self.status.setText("还想追问就直接再打字（看的还是这张图）")
         elif self._image_path:
             self.status.setText("想问这块屏的什么？（回车发送 · 答完还能接着追问）")
+        elif self._turns:
+            self.status.setText("还想追问就直接再打字")
         elif self.answer.toPlainText().strip():
-            self.status.setText("这是历史记录 —— 要继续问，先框一块屏")
+            self.status.setText("这是历史记录 —— 要继续问，直接打字或先框一块屏")
 
     def _show_history(self) -> None:
         rows = self.history_provider() if self.history_provider else None
         menu = QtWidgets.QMenu(self)
-        menu.addAction("今天的问答").setEnabled(False)
+        menu.addAction("今天的问答（[图]=带截图 · [文]=纯文字）").setEnabled(False)
         menu.addSeparator()
         if not rows:
             menu.addAction("今天还没问过").setEnabled(False)
-        for ts, question, answer in rows or []:
+        for row in rows or []:
+            ts, question, answer = row[0], row[1], row[2]
+            kind = row[3] if len(row) > 3 else "text"
+            image_path = row[4] if len(row) > 4 else ""
             stamp = str(ts)[11:16] if len(str(ts)) >= 16 else str(ts)
             short = question if len(question) <= 22 else question[:22] + "…"
-            action = menu.addAction(f"{stamp}  {short}")
-            action.setToolTip((answer or "")[:180])
+            tag = "图" if kind == "image" else "文"
+            action = menu.addAction(f"{stamp}  [{tag}]  {short}")
+            tip = (answer or "")[:180]
+            if image_path:
+                tip = f"截图：{image_path}\n{tip}"
+            action.setToolTip(tip)
             action.triggered.connect(
-                lambda checked=False, q=question, a=answer: self._show_past(q, a))
+                lambda checked=False, q=question, a=answer, k=kind, p=image_path:
+                    self._show_past(q, a, k, p))
         menu.exec(QtGui.QCursor.pos())
 
-    def _show_past(self, question: str, answer: str) -> None:
+    def _show_past(self, question: str, answer: str, kind: str = "text",
+                   image_path: str = "") -> None:
         """把一条历史问答塞进答案区看全文（不进当前对话上下文）。"""
         self._reset_answer()
-        self._set_answer(f"【问】{question}\n\n【答】{answer}")
+        tag = "【图问】" if kind == "image" else "【文问】"
+        head = f"{tag}{question}"
+        if image_path:
+            head += f"\n截图：{image_path}"
+        self._set_answer(f"{head}\n\n【答】{answer}")
         self.answer.setVisible(True)
         self.copy_btn.setVisible(True)
-        self.status.setText("这是历史记录 —— 要继续问，先框一块屏")
+        self.status.setText("这是历史记录 —— 要继续问，直接打字或先框一块屏")
         self._fit_answer()
         self.ask.setFocus()

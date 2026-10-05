@@ -36,9 +36,24 @@ CREATE TABLE IF NOT EXISTS asks (
     question TEXT NOT NULL,
     answer   TEXT NOT NULL,
     ms       INTEGER,
-    backend  TEXT
+    backend  TEXT,
+    kind     TEXT,          -- 'image' = 框了图再问 | 'text' = 纯文字问
+    image_path TEXT,        -- 有图时 = 归档截图的路径；纯文字为空
+    thread   TEXT           -- 同一轮对话（同一张图的追问）共用一个号，方便复盘
 );
 """
+
+_KIND_COLS = ("kind", "image_path", "thread")
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """老库补列（CREATE IF NOT EXISTS 不会给已存在的表加字段）。"""
+    rows = conn.execute("PRAGMA table_info(asks)").fetchall()
+    have = {row[1] for row in rows}
+    for col in _KIND_COLS:
+        if col not in have:
+            conn.execute(f"ALTER TABLE asks ADD COLUMN {col} TEXT")
+    conn.commit()
 
 _LOCK = threading.Lock()
 
@@ -50,6 +65,7 @@ def connect(path=None) -> sqlite3.Connection:
     conn = sqlite3.connect(target, check_same_thread=False, timeout=15)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
 
 
@@ -161,19 +177,23 @@ def window_titles(conn: sqlite3.Connection, ts_from: str = "", ts_to: str = "", 
         return conn.execute(sql, args).fetchall()
 
 
-def add_ask(conn: sqlite3.Connection, question: str, answer: str, ms: int, backend: str) -> None:
-    """记一次「框选提问」—— 只留问答文字，图本身不留盘。"""
+def add_ask(conn: sqlite3.Connection, question: str, answer: str, ms: int, backend: str,
+            kind: str = "text", image_path: str = "", thread: str = "") -> None:
+    """记一次问答。kind='image' 带框选图（image_path=归档截图）| 'text' 纯文字；thread 分组同轮对话。"""
+    kind = "image" if kind == "image" else "text"
     with _LOCK:
         conn.execute(
-            "INSERT INTO asks (ts, question, answer, ms, backend) VALUES (?, ?, ?, ?, ?)",
-            (now(), question, answer, ms, backend),
+            "INSERT INTO asks (ts, question, answer, ms, backend, kind, image_path, thread) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (now(), question, answer, ms, backend, kind, image_path or "", thread or ""),
         )
         conn.commit()
 
 
 def recent_asks(conn: sqlite3.Connection, limit: int = 8):
-    """最近问过的几条（新→旧），给主窗列表用。"""
+    """最近问过的几条（新→旧）—— 带 kind/image_path，界面好区分「图问 / 文问」。"""
     with _LOCK:
         return conn.execute(
-            "SELECT ts, question, answer FROM asks ORDER BY id DESC LIMIT ?", (limit,)
+            "SELECT ts, question, answer, kind, image_path FROM asks ORDER BY id DESC LIMIT ?",
+            (limit,),
         ).fetchall()
