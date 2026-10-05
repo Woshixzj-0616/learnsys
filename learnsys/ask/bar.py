@@ -48,19 +48,13 @@ MOVE_SLOP = 4                     # 拖动超过这么多像素才算「拖」�
 _LINE_HEIGHT_PROPORTIONAL = 1     # QTextBlockFormat.ProportionalHeight（PySide6 里 int(枚举) 会报错）
 
 
-def _ask_block() -> QtGui.QTextBlockFormat:
-    """「我」那一块：蓝底白字 —— 跟 AI 的回答一眼分得开。"""
-    fmt = QtGui.QTextBlockFormat()
-    fmt.setBackground(QtGui.QColor("#2d6cdf"))
-    fmt.setTopMargin(5)
-    fmt.setBottomMargin(5)
-    fmt.setLeftMargin(6)
-    fmt.setRightMargin(6)
-    return fmt
-
-
 def _ask_char() -> QtGui.QTextCharFormat:
+    """「我」那句话：蓝底白字 —— **只包住文字**（不是整行一条）。
+
+    用的是字符级背景，包多大取决于文字有多长；前后各塞一个空格当内边距。
+    """
     fmt = QtGui.QTextCharFormat()
+    fmt.setBackground(QtGui.QColor("#2d6cdf"))
     fmt.setForeground(QtGui.QColor("#ffffff"))
     return fmt
 
@@ -169,6 +163,7 @@ class AskBar(QtWidgets.QWidget):
         self._streaming = False
         self._fit_timer = None        # 流式重排的节流器（别每片都排）
         self._answer_start = None     # 答案区里「答案」从第几个字符开始（None = 这一轮还没开始）
+        self._turn_seq = 0            # 第几轮（被掐掉的旧那一轮回来时靠它认出来，别写回界面）
         self._last_answer = ""        # 最近一次的**答案**原文（复制按钮只复制它，不带问题）
         self.history_provider = None              # app 塞进来的：() -> [(ts, question, answer, kind, image_path), ...]
         self._state = self._load_state()
@@ -256,13 +251,28 @@ class AskBar(QtWidgets.QWidget):
         if int(self.windowFlags()) != int(flags):
             self.setWindowFlags(flags)
 
+    def _topmost(self, on: bool) -> None:
+        """置顶 / 取消置顶 —— **不改窗口标志**，直接跟 Windows 说。
+
+        改用 `setWindowFlags` 会怎样：Qt 会先把窗口**藏掉再重建**，真机上就是闪一下，
+        看着像冒出两个。用 `SetWindowPos` 只动层级，窗口本身不动。
+        """
+        try:
+            import ctypes
+            ctypes.windll.user32.SetWindowPos(
+                int(self.winId()),
+                -1 if on else -2,          # HWND_TOPMOST / HWND_NOTOPMOST
+                0, 0, 0, 0,
+                0x0001 | 0x0002 | 0x0010,  # 不改大小、不改位置、不抢焦点
+            )
+        except Exception:
+            pass
+
     def toggle_always_on_top(self) -> None:
         """「置顶」开关：开着才挡别的界面；默认关。"""
         self._on_top = not self._on_top
         self._state["always_on_top"] = self._on_top
-        self._apply_flags()
-        self.show()
-        self.raise_()
+        self._topmost(self._on_top)
         self._save_state()
         self.show_message("已开置顶 —— 横栏会一直在别的窗口上面。" if self._on_top
                           else "已关置顶 —— 别的窗口可以盖住横栏。")
@@ -607,6 +617,7 @@ class AskBar(QtWidgets.QWidget):
         if not self._collapsed:
             self.activateWindow()
             self.ask.setFocus(QtCore.Qt.OtherFocusReason)
+        self._topmost(self._on_top)      # 每次露出来都重申一遍层级（别的窗口可能盖过它）
         QtCore.QTimer.singleShot(0, self._fit_answer)
 
     def keyPressEvent(self, event):
@@ -657,7 +668,7 @@ class AskBar(QtWidgets.QWidget):
     # ---- 问 ----
 
     def _start_turn(self, question: str) -> None:
-        """把问题先上屏 —— **蓝底白字那一块是你的话**，下面空一行才是 AI 的回答。
+        """把问题先上屏 —— **蓝底白字、只包住文字的那一块是你的话**，下面空一行才是 AI 的回答。
 
         新一轮（还没写过 / 刚清空 / 刚开新会话）就先清掉旧的；
         追问就接在上一轮答案后面写，像聊天记录一样往下长。
@@ -666,16 +677,13 @@ class AskBar(QtWidgets.QWidget):
             self.answer.clear()
             self.answer.setFixedHeight(76)
         cursor = self.answer.textCursor()
-        cursor.movePosition(QtGui.QTextCursor.End)
         if self.answer.toPlainText().strip():
-            cursor.insertBlock(_gap_block())                # 上一轮和这一轮之间空一行
-            cursor.insertBlock(_ask_block(), _ask_char())   # 你的话：蓝底白字
+            cursor.movePosition(QtGui.QTextCursor.End)
+            cursor.insertBlock(_gap_block())      # 上一轮和这一轮之间空一行
         else:
-            # 空文档本来就有一个空块 —— 直接拿它来用，别再插一块（不然开头多一行空白）
             cursor.movePosition(QtGui.QTextCursor.Start)
-            cursor.setBlockFormat(_ask_block())
-            cursor.setBlockCharFormat(_ask_char())
-        cursor.insertText(question, _ask_char())
+        # 前后各一个空格 = 色块的内边距（Qt 富文本没有 padding，只能这样）
+        cursor.insertText(f" {question} ", _ask_char())
         cursor.insertBlock(_gap_block(), _answer_char())   # 空一行
         cursor.insertBlock(_gap_block(), _answer_char())   # AI 的回答写在这一块
         self._answer_start = cursor.position()
@@ -706,10 +714,12 @@ class AskBar(QtWidgets.QWidget):
         self._timer = QtCore.QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(400)
+        self._turn_seq += 1           # 开新的一轮：旧的（被掐掉的）回来时靠这个号认出来
+        seq = self._turn_seq
         self._worker = _AskWorker(self._image_path, question, list(self._turns), self)
         self._worker.chunk.connect(self._on_chunk)
-        self._worker.done.connect(lambda text: self._finish(question, text, None))
-        self._worker.failed.connect(lambda message: self._finish(question, "", message))
+        self._worker.done.connect(lambda text, s=seq: self._finish(question, text, None, s))
+        self._worker.failed.connect(lambda message, s=seq: self._finish(question, "", message, s))
         self._worker.start()
 
     def _tick(self) -> None:
@@ -753,10 +763,12 @@ class AskBar(QtWidgets.QWidget):
             self._fit_timer.timeout.connect(self._fit_answer)
         self._fit_timer.start(80)
 
-    def _finish(self, question: str, text: str, error) -> None:
-        # 被掐掉的旧那一轮（用户已经开了新会话 / 清空）完成后也会走到这儿 ——
-        # 不挡住的话，旧答案会写在新界面上，看起来就像「新会话没生效、还多出一份」
-        if self.sender() is not self._worker:
+    def _finish(self, question: str, text: str, error, seq: int = 0) -> None:
+        # 被掐掉的旧那一轮（用户已经开了新会话 / 清空）跑完也会走到这儿 ——
+        # 不挡住的话，旧答案会写在新界面上，看起来就像「新会话没生效、还多出一份」。
+        # ⚠️ 别用 sender() 判断：信号是经 lambda 连的，PySide6 里拿不到发送者，
+        # 判断会一直失败 ⇒ `_finish` 整个被跳过 ⇒ 计时器不停、按钮不恢复（真踩过）。
+        if seq != self._turn_seq:
             return
         if self._timer is not None:
             self._timer.stop()
