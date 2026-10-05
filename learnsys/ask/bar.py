@@ -35,6 +35,7 @@ QPushButton#go:disabled { background: #33383f; color: #7e848c; }
 QToolButton#tiny { color: #9aa0a6; background: transparent; border: none;
                    font-size: 15px; padding: 4px 9px; }
 QToolButton#tiny:hover { color: #ffffff; background: #2c3037; border-radius: 8px; }
+QToolButton#tiny:disabled { color: #454a51; background: transparent; }
 QLabel#status { color: #868c95; font-size: 12px; }
 QLabel#rec { color: #ffb454; font-size: 11px; }
 QLabel#usage { color: #6f757e; font-size: 11px; }
@@ -44,6 +45,7 @@ QTextBrowser#answer { background: #16181b; border: 1px solid #2c3036; border-rad
 """
 
 THUMB_W, THUMB_H = 64, 40
+BUTTON_W = 68                # 底部那排按钮统一宽度 —— 文字在「置顶 / 不置顶」之间变也不挪位
 MOVE_SLOP = 4                     # 拖动超过这么多像素才算「拖」，否则算「点」
 _LINE_HEIGHT_PROPORTIONAL = 1     # QTextBlockFormat.ProportionalHeight（PySide6 里 int(枚举) 会报错）
 
@@ -375,7 +377,7 @@ class AskBar(QtWidgets.QWidget):
         self.copy_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.copy_btn.setToolTip("把答案全文复制到剪贴板")
         self.copy_btn.clicked.connect(self._copy_answer)
-        self.copy_btn.setVisible(False)
+        self._set_copy_enabled(False)
 
         self.history_btn = QtWidgets.QToolButton(card)
         self.history_btn.setObjectName("tiny")
@@ -405,16 +407,21 @@ class AskBar(QtWidgets.QWidget):
         self.clear_btn.setToolTip("对话完了清干净：答案、截图、上下文都不要了")
         self.clear_btn.clicked.connect(self.clear_session)
 
+        # 按钮行：**位置必须恒定**。
+        # 以前状态文字和按钮挤在同一行，状态一显示（「用了 0.8 秒…」）就把整排按钮往右推
+        # 两百像素 ⇒ 用户按记忆中的位置点「新会话」，实际点到了「置顶」。
+        # 现在：按钮各占固定宽度、整体靠右；状态文字单独一行放在下面（它会换行，但推不动按钮）。
         bottom = QtWidgets.QHBoxLayout()
         bottom.setSpacing(6)
-        bottom.addWidget(self.status, 1)
-        bottom.addWidget(self.top_btn)
-        bottom.addWidget(self.session_btn)
-        bottom.addWidget(self.clear_btn)
-        bottom.addWidget(self.history_btn)
-        bottom.addWidget(self.copy_btn)
+        bottom.addStretch(1)
+        for btn in (self.top_btn, self.session_btn, self.clear_btn,
+                    self.history_btn, self.copy_btn):
+            btn.setFixedWidth(BUTTON_W)
+            bottom.addWidget(btn)
         box.addLayout(bottom)
         self._sync_top_btn()
+
+        box.addWidget(self.status)      # 单独一行：长短变化不影响上面那排按钮
 
         self.answer = QtWidgets.QTextBrowser(card)
         self.answer.setObjectName("answer")
@@ -499,7 +506,14 @@ class AskBar(QtWidgets.QWidget):
         cursor.select(QtGui.QTextCursor.Document)
         cursor.mergeBlockFormat(fmt)
         self.answer.moveCursor(QtGui.QTextCursor.Start)
-        self.copy_btn.setVisible(bool(text.strip()))
+        self._set_copy_enabled(bool(text.strip()))
+
+    def _set_copy_enabled(self, on: bool) -> None:
+        """「复制」**永远占着位置**，只切换能不能点。
+
+        它一显隐，整排按钮就会跟着挪一格 ⇒ 用户按记忆中的位置点，就会点到旁边那个。
+        """
+        self.copy_btn.setEnabled(on)
 
     def _sync_top_btn(self) -> None:
         if not hasattr(self, "top_btn"):
@@ -579,7 +593,7 @@ class AskBar(QtWidgets.QWidget):
         self.answer.setVisible(False)
         self.answer.clear()
         self.answer.setFixedHeight(76)
-        self.copy_btn.setVisible(False)
+        self._set_copy_enabled(False)
         self._streaming = False
         self._answer_start = None
         self._last_answer = ""
@@ -708,7 +722,7 @@ class AskBar(QtWidgets.QWidget):
         self._streaming = False
         self.status.setVisible(True)
         self.status.setText("在想…")
-        self.copy_btn.setVisible(False)
+        self._set_copy_enabled(False)
         self._start_turn(question)
         self.ask.clear()              # 问题已经上屏了 ⇒ 输入框清空，直接打下一句
         self._timer = QtCore.QTimer(self)
@@ -736,7 +750,7 @@ class AskBar(QtWidgets.QWidget):
         if self.answer.isHidden():
             self.answer.setVisible(True)
         self._streaming = True
-        self.copy_btn.setVisible(True)
+        self._set_copy_enabled(True)
         if replace:
             self._set_answer_part(piece)
         else:
@@ -753,7 +767,7 @@ class AskBar(QtWidgets.QWidget):
         cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.KeepAnchor)
         cursor.insertText(text, _answer_char())
         self._last_answer = text
-        self.copy_btn.setVisible(bool(text.strip()))
+        self._set_copy_enabled(bool(text.strip()))
 
     def _schedule_fit(self) -> None:
         """流式别每来一片就重排一遍答案区 —— 攒 80 毫秒再排，窗口不至于一路抖。"""
@@ -784,14 +798,14 @@ class AskBar(QtWidgets.QWidget):
             if partial:
                 # 流到一半断了：留着已写出的，底下标一句
                 self.status.setText(f"回答中断 —— {error}")
-                self.copy_btn.setVisible(True)
+                self._set_copy_enabled(True)
             else:
                 self._set_answer_part(error)
-                self.copy_btn.setVisible(False)
+                self._set_copy_enabled(False)
                 self.status.setText("没成功 —— 改一下再问")
         else:
             self._set_answer_part(text)
-            self.copy_btn.setVisible(True)
+            self._set_copy_enabled(True)
             self._turns.append((question, text))
             if self._image_path:
                 self.status.setText(
@@ -867,7 +881,7 @@ class AskBar(QtWidgets.QWidget):
             head += f"\n截图：{image_path}"
         self._set_answer(f"{head}\n\n【答】{answer}")
         self.answer.setVisible(True)
-        self.copy_btn.setVisible(True)
+        self._set_copy_enabled(True)
         self.status.setText("这是历史记录 —— 要继续问，直接打字或先框一块屏")
         self._fit_answer()
         self.ask.setFocus()
