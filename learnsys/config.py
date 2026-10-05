@@ -42,6 +42,9 @@ SETTINGS_TEMPLATE = {
     "system_prompt": "",
     "_max_tokens": "答案最长多少 token（默认 1500，只防失控；调小会让答案写不完）",
     "max_tokens": 1500,
+    "_记录": "点托盘里的「开始记录」，它会记下你在看哪个窗口 —— **只在你开始之后记，不全天**，"
+             "数据只在本地。关掉下面这项就只记程序名、不记窗口标题（标题里可能有聊天对象、私人信息）",
+    "record_window_title": True,
 }
 
 
@@ -63,6 +66,14 @@ def _user_int(key: str, default: int) -> int:
         return int(str(USER.get(key) or default).strip())
     except Exception:
         return default
+
+
+def _user_bool(key: str, default: bool) -> bool:
+    """设置里那几项开关 —— 没填就用默认。"""
+    raw = USER.get(key)
+    if raw is None or str(raw).strip() == "":
+        return default
+    return str(raw).strip().lower() not in ("0", "false", "no", "off", "关", "否")
 
 
 def ensure_settings_file() -> pathlib.Path:
@@ -104,6 +115,9 @@ ICON_PATH = ROOT / "问一问.ico"              # 托盘 / 窗口 / 任务栏的
 
 # ---- 前台窗口 ----
 WINDOW_SAMPLE_SECONDS = 1.0
+# 「开始记录」之后要不要连窗口标题一起记。标题能认出「这节课在讲什么」，
+# 但也可能带私人信息（聊天对象、银行页面）⇒ 介意就在 设置.json 里设成 false，只记程序名。
+RECORD_WINDOW_TITLE = _user_bool("record_window_title", True)
 
 # ---- 声音（系统回环）→ 本地转写 ----
 CHUNK_SECONDS = 45.0        # 每攒多少秒的录音转一次

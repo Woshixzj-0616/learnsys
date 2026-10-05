@@ -13,7 +13,7 @@ import sys
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from learnsys import config, store
+from learnsys import config, record, store
 from learnsys.ask import bar, hotkey as hotkey_mod, icon as icon_mod, identity, overlay, single
 
 LAUNCHER_NAME = "问一问.cmd"      # 源码运行时那个启动器：开机自启、开始菜单快捷方式都指向它
@@ -67,6 +67,8 @@ class AskApp(QtCore.QObject):
         self.bar.exited.connect(self._shot_done)
         self.bar.cleared.connect(self._shot_done)     # 点「清空」⇒ 临时截图也删掉
         self.bar.history_provider = self._recent_asks
+        self.recorder = record.WindowRecorder(self._conn)   # 采集层：记「你在看哪个窗口」
+        self.recorder.ticked.connect(self._record_tick)
         self.caller = single.Server(self)      # 别人再点一次 → 把横栏叫回来（不再开第二个）
         self.caller.called.connect(self._called_back)
         self.tray = self._build_tray()
@@ -77,6 +79,10 @@ class AskApp(QtCore.QObject):
         tray = QtWidgets.QSystemTrayIcon(_tray_icon(), self)
         menu = QtWidgets.QMenu()
         menu.addAction(f"框选提问（{self.hotkey.pretty}）", self.pick)
+        menu.addSeparator()
+        self.record_action = menu.addAction("开始记录（记我在看什么）")
+        self.record_action.setCheckable(True)
+        self.record_action.triggered.connect(self._toggle_record)
         menu.addAction("展开横栏", self.show_bar)
         menu.addAction("收起成小条", lambda: self.bar.set_collapsed(True))
         menu.addAction("回到屏幕上方居中", self.bar.center_top)
@@ -154,7 +160,50 @@ class AskApp(QtCore.QObject):
         self.show_bar()
         self.bar.show_message("问一问已经在跑了 —— 把横栏给你叫回来了。")
 
+    # ---- 采集层：开始 / 结束记录 ----
+
+    def _toggle_record(self, checked: bool) -> None:
+        if checked:
+            self.recorder.start()
+            self.tray.showMessage(
+                "问一问", "开始记录了 —— 你在看哪个窗口会被记下来，**只记到你喊停为止**，不全天。",
+                QtWidgets.QSystemTrayIcon.Information, 6000)
+        else:
+            done = self.recorder.stop()
+            self.tray.showMessage("问一问", self._record_summary(done),
+                                  QtWidgets.QSystemTrayIcon.Information, 10000)
+        self._sync_record_ui()
+
+    def _record_summary(self, done: dict) -> str:
+        """结束时那句话：记了多久、切了几次、最久停在哪个程序。"""
+        if not done:
+            return "这段没记下东西。"
+        top_name, top_min = done.get("最久") or ("", 0)
+        text = f"记完了：{done.get('分钟', 0)} 分钟 · 切了 {done.get('切换', 0)} 次窗口"
+        if top_name and top_min:
+            text += f" · 最久停在「{top_name}」约 {top_min} 分钟"
+        text += f"。\n在 {config.day_dir()} 里。"
+        return text
+
+    def _sync_record_ui(self) -> None:
+        """托盘那条菜单 + 横栏那行字，跟着记录状态走。"""
+        on = self.recorder.running
+        self.record_action.setChecked(on)
+        self._record_tick()
+
+    def _record_tick(self) -> None:
+        """每秒：菜单上显示记了多久，横栏上显示「记录中」。"""
+        on = self.recorder.running
+        if on:
+            self.record_action.setText(
+                f"结束记录（已记 {self.recorder.elapsed:.0f} 分钟 · 切 {self.recorder.switches} 次）")
+        else:
+            self.record_action.setText("开始记录（记我在看什么）")
+        self.bar.set_recording(on, self.recorder.elapsed, self.recorder.switches)
+
     def quit(self) -> None:
+        if self.recorder is not None and self.recorder.running:
+            self.recorder.stop()      # 退出前把这段记录收尾，别留个没结束的 session
         self.caller.close()
         self._shot_done()
         if self.conn is not None:

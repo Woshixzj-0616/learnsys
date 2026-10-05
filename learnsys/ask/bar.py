@@ -36,6 +36,7 @@ QToolButton#tiny { color: #9aa0a6; background: transparent; border: none;
                    font-size: 15px; padding: 4px 9px; }
 QToolButton#tiny:hover { color: #ffffff; background: #2c3037; border-radius: 8px; }
 QLabel#status { color: #868c95; font-size: 12px; }
+QLabel#rec { color: #ffb454; font-size: 11px; }
 QLabel#usage { color: #6f757e; font-size: 11px; }
 QLabel#thumb { border: 1px solid #3a3f46; border-radius: 8px; }
 QTextBrowser#answer { background: #16181b; border: 1px solid #2c3036; border-radius: 10px;
@@ -370,6 +371,11 @@ class AskBar(QtWidgets.QWidget):
         self.answer.setVisible(False)
         box.addWidget(self.answer)
 
+        self.rec_line = QtWidgets.QLabel(card)      # 「● 记录中 …」—— 只在记录的时候露出来
+        self.rec_line.setObjectName("rec")
+        self.rec_line.setVisible(False)
+        box.addWidget(self.rec_line)
+
         self.usage_line = QtWidgets.QLabel(card)
         self.usage_line.setObjectName("usage")
         box.addWidget(self.usage_line)
@@ -512,6 +518,12 @@ class AskBar(QtWidgets.QWidget):
         self._streaming = False
         self._answer_start = None
         self._last_answer = ""
+
+    def set_recording(self, on: bool, minutes: float = 0.0, switches: int = 0) -> None:
+        """采集层开着的时候，横栏上给一行「● 记录中 …」—— 让人知道它在记。"""
+        self.rec_line.setVisible(on)
+        if on:
+            self.rec_line.setText(f"● 记录中 {minutes:.0f} 分 · 切了 {switches} 次窗口")
 
     def refresh_usage(self) -> None:
         """把「占了多少盘」更新到底部那一行 / 小条（鼠标悬停看明细）。"""

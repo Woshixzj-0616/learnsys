@@ -126,6 +126,51 @@ def session_stats(conn: sqlite3.Connection, session_id: int) -> dict:
     }
 
 
+def session_windows(conn: sqlite3.Connection, session_id: int):
+    """这段记录里记下的窗口（按时间升序）—— 变了才记一条，所以**一行 = 一次切换**。"""
+    with _LOCK:
+        return conn.execute(
+            "SELECT ts, process, title FROM window_events WHERE session_id = ? ORDER BY ts, id",
+            (session_id,),
+        ).fetchall()
+
+
+def minutes(start: str, end: str) -> float:
+    """两个 'YYYY-MM-DD HH:MM:SS' 之间差了多少分钟（算不出来就当 0）。"""
+    try:
+        return (dt.datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
+                - dt.datetime.strptime(start, "%Y-%m-%d %H:%M:%S")).total_seconds() / 60.0
+    except Exception:
+        return 0.0
+
+
+def session_summary(conn: sqlite3.Connection, session_id: int, ended_at: str = "") -> dict:
+    """这段记录的一句话总结：记了多久、切了几次窗口、最久停在哪个程序。
+
+    停留时长 = 「下一条的时间 − 这条的时间」，最后一条算到结束时刻。
+    总时长看的是 session 的开始/结束，不是把每段加起来（中间程序没跑也算在内）。
+    """
+    with _LOCK:
+        head = conn.execute(
+            "SELECT started_at, ended_at FROM sessions WHERE id = ?", (session_id,)).fetchone()
+        rows = conn.execute(
+            "SELECT ts, process FROM window_events WHERE session_id = ? ORDER BY ts, id",
+            (session_id,)).fetchall()
+    if not head:
+        return {"分钟": 0.0, "切换": 0, "最久": ("", 0.0)}
+    end = ended_at or head[1] or now()
+    total = minutes(head[0], end)
+    per: dict[str, float] = {}
+    for i, (ts, process) in enumerate(rows):
+        stop = rows[i + 1][0] if i + 1 < len(rows) else end
+        name = (process or "未知")
+        if name.lower().endswith(".exe"):
+            name = name[:-4]
+        per[name] = per.get(name, 0.0) + max(0.0, minutes(ts, stop))
+    top = max(per.items(), key=lambda kv: kv[1]) if per else ("", 0.0)
+    return {"分钟": round(total, 1), "切换": len(rows), "最久": (top[0], round(top[1], 1))}
+
+
 def last_transcript(conn: sqlite3.Connection, session_id: int):
     with _LOCK:
         return conn.execute(
