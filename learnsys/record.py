@@ -82,6 +82,7 @@ class WindowRecorder(QtCore.QObject):
             self._session_id = store.start_session(self._conn)
             self._started_at = store.now()
             self._last = None
+            self._switches = 0           # 新的一段从头计 —— 原来这里漏了，数字会跨天累加
 
         process, title = capture.sample()
         title = title if config.RECORD_WINDOW_TITLE else ""
@@ -91,7 +92,9 @@ class WindowRecorder(QtCore.QObject):
         if (process, title) == self._last:
             self.ticked.emit()               # 还看着同一个窗口，不重复记
             return
+        first = self._last is None           # 第一条是「开始看的窗口」，不算切换
         self._last = (process, title)
         store.add_window_event(self._conn, self._session_id, process, title)
-        self._switches += 1
+        if not first:
+            self._switches += 1
         self.ticked.emit()

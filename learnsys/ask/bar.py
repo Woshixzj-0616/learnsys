@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 import uuid
 
@@ -96,6 +97,18 @@ def _thumb(pixmap: QtGui.QPixmap, width: int, height: int) -> QtGui.QPixmap:
     return out
 
 
+class _UsageWorker(QtCore.QThread):
+    """占用数字在后台算 —— `usage.report()` 要整树 walk 盘，放主线程会卡界面。"""
+
+    done = QtCore.Signal(object)     # Usage 实例，或 Exception
+
+    def run(self):
+        try:
+            self.done.emit(usage.summary())
+        except Exception as exc:                 # 后台线程里的异常别吞
+            self.done.emit(exc)
+
+
 class _AskWorker(QtCore.QThread):
     chunk = QtCore.Signal(str, bool)  # 流式：(新到的字, True = 整段替换/ False = 追加)
     done = QtCore.Signal(str)        # 完整答案（含已流出的部分）
@@ -107,16 +120,28 @@ class _AskWorker(QtCore.QThread):
         self._question = question
         self._history = history
         self._cancelled = False
+        self._abort = threading.Event()       # 传给 ask_stream：一置位就收摊
+        self._sink: list = []                 # 底层响应，cancel 时 close 掐断连接
 
     def cancel(self) -> None:
-        """这一轮不要了（用户开了新会话 / 清空）—— 请求还在跑没关系，结果不往界面上写。"""
+        """这一轮不要了（用户开了新会话 / 清空）—— **连连接一起掐**，
+        不然 HTTP 会一直挂到 90 秒超时才释放。
+        """
         self._cancelled = True
+        self._abort.set()
+        for resp in self._sink:
+            try:
+                resp.close()
+            except Exception:
+                pass
 
     def run(self):
         parts: list[str] = []
         shown = ""                    # 已经显示出去的（清洗过之后的）累积文本
         try:
-            for piece in backend.ask_stream(self._image_path, self._question, self._history):
+            for piece in backend.ask_stream(
+                    self._image_path, self._question, self._history,
+                    abort=self._abort, response_sink=self._sink):
                 if self._cancelled:
                     return
                 parts.append(piece)
@@ -155,7 +180,7 @@ class AskBar(QtWidgets.QWidget):
         self._timer = None
         self._dots = 0
         self._started_at = 0.0
-        self._answer_cap = 420
+        self._answer_cap = self._calc_answer_cap()   # 答案区高度上限（按屏幕比例，见 _calc_answer_cap）
         self._collapsed = False
         self._grab = None          # 拖动时：鼠标相对窗口左上角的偏移
         self._press = None
@@ -163,6 +188,7 @@ class AskBar(QtWidgets.QWidget):
         self._turns: list[tuple[str, str]] = []   # 当前这轮的问答史（旧→新），追问时带给 AI
         self._thread = uuid.uuid4().hex[:12]      # 同一轮对话一个号，方便复盘
         self._workers: list[_AskWorker] = []      # 后台问答线程（退出时要 wait，见 shutdown）
+        self._usage_worker = None                 # 后台算占用的那个线程
         self._streaming = False
         self._fit_timer = None        # 流式重排的节流器（别每片都排）
         self._answer_start = None     # 答案区里「答案」从第几个字符开始（None = 这一轮还没开始）
@@ -217,6 +243,11 @@ class AskBar(QtWidgets.QWidget):
         wanted = int(screen.availableGeometry().width() * config.ASK_BAR_WIDTH_RATIO)
         return max(760, min(wanted, config.ASK_BAR_WIDTH_MAX))
 
+    def _calc_answer_cap(self) -> int:
+        """答案区高度上限 = 屏幕可用高度 × `ASK_BAR_ANSWER_MAX_RATIO`（再长就滚动）。"""
+        area = self._usable()
+        return max(200, int(area.height() * config.ASK_BAR_ANSWER_MAX_RATIO))
+
     def _clamp(self) -> None:
         area = self._usable()
         x = max(area.left() - self.width() + 90, min(self.x(), area.right() - 90))
@@ -247,7 +278,9 @@ class AskBar(QtWidgets.QWidget):
     # ---- 置顶 / 任务栏 ----
 
     def _apply_flags(self) -> None:
-        # 用 Window（不是 Tool）才有任务栏按钮 —— 这样才能「固定到任务栏」
+        # 用 Window（不是 Tool）才有任务栏按钮 —— 这样才能「固定到任务栏」。
+        # ⚠️ 只在建窗时调一次：`setWindowFlags` 会把窗口藏掉再重建（闪一下），
+        # 置顶与否后面一律走 `_topmost`（SetWindowPos 只动层级、窗口本身不动）。
         flags = QtCore.Qt.FramelessWindowHint | QtCore.Qt.Window
         if self._on_top:
             flags |= QtCore.Qt.WindowStaysOnTopHint
@@ -275,14 +308,15 @@ class AskBar(QtWidgets.QWidget):
         """「置顶」开关：开着才挡别的界面；默认关。"""
         self._on_top = not self._on_top
         self._state["always_on_top"] = self._on_top
-        self._topmost(self._on_top)
+        self._topmost(self._on_top)     # 层级只走这一条 —— 别再 setWindowFlags（会闪）
         self._save_state()
         self.show_message("已开置顶 —— 横栏会一直在别的窗口上面。" if self._on_top
                           else "已关置顶 —— 别的窗口可以盖住横栏。")
         self._sync_top_btn()
 
     def show(self) -> None:
-        self._apply_flags()
+        # 不在这儿 `_apply_flags()`：那会 `setWindowFlags` 重建窗口（闪一下）。
+        # 窗口标志建窗时已定，置顶与否由 `showEvent` 里的 `_topmost` 维持。
         super().show()
 
     # ---- 界面 ----
@@ -554,7 +588,7 @@ class AskBar(QtWidgets.QWidget):
         self._workers = [w for w in self._workers if w.isRunning()]
 
     def shutdown(self) -> None:
-        """退出前把后台问答线程收干净 —— QThread 还在跑就被销毁会崩（Destroyed while running）。"""
+        """退出前把后台线程收干净 —— QThread 还在跑就被销毁会崩（Destroyed while running）。"""
         self._drop_running()
         for worker in self._workers:
             worker.cancel()
@@ -562,6 +596,11 @@ class AskBar(QtWidgets.QWidget):
                 worker.terminate()
                 worker.wait(1000)
         self._workers.clear()
+        if self._usage_worker is not None:
+            if not self._usage_worker.wait(5000):
+                self._usage_worker.terminate()
+                self._usage_worker.wait(1000)
+            self._usage_worker = None
 
     def new_session(self) -> None:
         """开新会话：清掉上一题上下文和答案，图留着接着问（不带上文）。
@@ -625,11 +664,17 @@ class AskBar(QtWidgets.QWidget):
             self.rec_line.setText(f"● 记录中 {minutes:.0f} 分 · 切了 {switches} 次窗口")
 
     def refresh_usage(self) -> None:
-        """把「占了多少盘」更新到底部那一行 / 小条（鼠标悬停看明细）。"""
-        try:
-            info = usage.summary()
-        except Exception as exc:
-            self.usage_line.setText(f"占用没算出来：{exc}")
+        """占用数字在后台线程里算 —— walk 整个数据盘会卡界面，别放主线程。"""
+        if self._usage_worker is not None and self._usage_worker.isRunning():
+            return                             # 上一次还在算，别叠着起
+        worker = _UsageWorker(self)
+        worker.done.connect(self._apply_usage)
+        self._usage_worker = worker
+        worker.start()
+
+    def _apply_usage(self, info) -> None:
+        if isinstance(info, Exception):
+            self.usage_line.setText(f"占用没算出来：{info}")
             self.pill_usage.setText("")
             return
         self.usage_line.setText(info.line)

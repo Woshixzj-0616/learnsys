@@ -40,6 +40,8 @@ SETTINGS_TEMPLATE = {
     "api_style": "",
     "hotkey": "",
     "system_prompt": "",
+    "_system_prompt_text": "没框图、纯文字问的时候用的提示词（不填 = 用内置的）",
+    "system_prompt_text": "",
     "_max_tokens": "答案最长多少 token（默认 1500，只防失控；调小会让答案写不完）",
     "max_tokens": 1500,
     "_记录": "点托盘里的「开始记录」，它会记下你在看哪个窗口 —— **只在你开始之后记，不全天**，"
@@ -61,9 +63,16 @@ USER = load_settings()
 
 
 def _user_int(key: str, default: int) -> int:
-    """设置里那几项数字 —— 填坏了（空 / 不是数字）就用默认，别让它拦住启动。"""
+    """设置里那几项数字 —— 填坏了（空 / 不是数字）就用默认，别让它拦住启动。
+
+    ⚠️ 填 **0 是有效值**（max_tokens 填 0 = 不设上限），不能拿 `or default` 兜 ——
+    那会把 0 吃掉变默认。只认「没填 / 空串」才走默认。
+    """
+    raw = USER.get(key)
+    if raw is None or str(raw).strip() == "":
+        return default
     try:
-        return int(str(USER.get(key) or default).strip())
+        return int(str(raw).strip())
     except Exception:
         return default
 
@@ -139,7 +148,6 @@ ASK_TIMEOUT_SECONDS = 90.0      # 等 AI 回话的上限；超时就在横条里
 # 实测 deepseek-flash 是推理模型，思考过程也吃这份配额（一次回答 240 token 里 117 个是推理），
 # 设小了会「想完了没额度写正文」⇒ 答案直接是空的。默认 1500 够写一大段，**别往下调**。
 ASK_MAX_TOKENS = _user_int("max_tokens", 1500)
-ASK_KEEP_IMAGES = False         # False = 截图问完即删，不留盘
 ASK_HISTORY_TURNS = 3           # 追问时带给 AI 的前几轮问答（同一张图；换了图就清）
 
 # 问谁：默认打本机 Codex 的中转口（一次 HTTP 约 1~3 秒、不用 key、但要 Codex 开着）；

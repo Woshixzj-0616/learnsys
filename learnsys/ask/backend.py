@@ -14,6 +14,7 @@ import base64
 import json
 import pathlib
 import re
+import threading
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
@@ -26,7 +27,13 @@ class AskError(Exception):
 
 
 def _data_url(image_path: str | None) -> str:
-    raw = pathlib.Path(image_path).read_bytes()
+    if not image_path:
+        raise AskError("没拿到截图路径 —— 再框一次试试。")
+    try:
+        raw = pathlib.Path(image_path).read_bytes()
+    except OSError as exc:
+        # 截图文件可能已被「清空 / 换一张」删掉 —— 报人话，别把裸异常抛给用户
+        raise AskError(f"截图读不到（{exc.strerror or exc}）—— 再框一次试试。") from exc
     return "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
 
 
@@ -58,11 +65,17 @@ def _pick_chat_text(data: dict) -> str:
 
 
 def _trim_history(history: list | None) -> list[tuple[str, str]]:
-    """只带最近几轮（旧→新），别把 token 撑爆。"""
+    """只带最近几轮（旧→新），别把 token 撑爆。
+
+    **第一轮永远保留** —— 图就挂在第一问上；把它裁掉的话，图会被错挂到后面的
+    追问上（那几问本来没图），模型看到的上下文就串了。
+    """
     if not history:
         return []
     turns = [(str(q), str(a)) for q, a in history if q]
-    return turns[-config.ASK_HISTORY_TURNS:]
+    if len(turns) <= config.ASK_HISTORY_TURNS:
+        return turns
+    return [turns[0]] + turns[-(config.ASK_HISTORY_TURNS - 1):]
 
 
 _MARKDOWN_NOISE = (
@@ -140,8 +153,15 @@ def tidy_so_far(text: str) -> str:
 
 
 def _looks_like_thinking(paragraph: str) -> bool:
-    """开头像「思考铺垫」的段落（不是答案本身）。要狠一点只抓口吻，别误伤正常回答。"""
-    first = paragraph.lstrip()[:30]
+    """开头像「思考铺垫」的段落（不是答案本身）。
+
+    要狠一点只抓口吻，**别误伤正常回答** —— 「先看题干：…答案是 42」这种就不是铺垫。
+    两条都过才算：① 开头口吻对 ② 整段短（真铺垫就是一两句，正文段落通常更长）。
+    """
+    text = paragraph.lstrip()
+    if len(text) > 40:                      # 一两句铺垫不会拖这么长 ⇒ 当正文
+        return False
+    first = text[:30]
     return bool(re.match(
         r"^(\*{0,2})\s*(让我|我来|我先|我需要|需要我|我们来|我试着|我打算|"
         r"先看|先分析|先观察|来看|来看看|看看这张|观察这张|分析一下|思考一下|"
@@ -278,11 +298,26 @@ def _delta_from_responses(obj: dict, want_whole: bool = False) -> str:
 
 
 def ask_stream(image_path: str | None, question: str, history: list | None = None,
-               timeout: float | None = None) -> Iterator[str]:
-    """流式问一次，边生成边 yield 文本片段。image_path=None = 纯文字问。失败抛 AskError。"""
+               timeout: float | None = None,
+               abort: threading.Event | None = None,
+               response_sink: list | None = None) -> Iterator[str]:
+    """流式问一次，边生成边 yield 文本片段。image_path=None = 纯文字问。失败抛 AskError。
+
+    `abort`：置位后立刻收摊（不再吐字）。
+    `response_sink`：把底层响应塞进去（长度为 1 的 list）—— 调用方 cancel 时可以
+    `sink[0].close()` 掐断连接，不然请求会一直挂到 90 秒超时。
+    """
     limit = timeout or config.ASK_TIMEOUT_SECONDS
     style = config.api_style()
     response = _open(image_path, question, history, style, stream=True, limit=limit)
+    if response_sink is not None:
+        response_sink.append(response)
+    if abort is not None and abort.is_set():
+        try:
+            response.close()
+        except Exception:
+            pass
+        return
     try:
         ctype = (response.headers.get("Content-Type") or "").lower()
         if "event-stream" not in ctype and "stream" not in ctype:
@@ -298,6 +333,8 @@ def ask_stream(image_path: str | None, question: str, history: list | None = Non
         emitted = False                # 已经吐出去过正文没有（决定 completed 那份全文还要不要）
         truncated = False              # 流里有没有「被掐断」的记号
         for raw in response:
+            if abort is not None and abort.is_set():
+                return                 # 用户掐了：已流出的字留在界面上，不再往下吐
             line = raw.decode("utf-8", "replace").strip()
             if not line or line.startswith(":"):
                 continue

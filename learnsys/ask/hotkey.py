@@ -106,7 +106,7 @@ class GlobalHotkey(QtCore.QObject):
         if not user32.RegisterHotKey(None, self._id, self._mods, self._vk):
             code = kernel32.GetLastError()
             if code == ERROR_HOTKEY_ALREADY_REGISTERED:
-                reason = "这个组合被别的程序占了 —— 去 config.py 换一个"
+                reason = "这个组合被别的程序占了 —— 去 D:/学习系统/设置.json 里的 hotkey 换一个"
             else:
                 reason = f"系统错误码 {code}"
             self.failed.emit(f"注册快捷键 {self.pretty} 失败：{reason}")

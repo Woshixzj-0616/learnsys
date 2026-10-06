@@ -269,7 +269,12 @@ class AskApp(QtCore.QObject):
     # ---- 框选 → 截图 → 横栏 ----
 
     def pick(self) -> None:
-        if self.snip is not None or self.bar.busy:
+        if self.snip is not None:
+            return
+        if self.bar.busy:
+            # 别闷声不响地吞掉 Alt+Q —— 用户只看到「按了没反应」
+            self.bar.show_message("上一句还在写 —— 等它写完，或者点「新会话」重开一轮。")
+            self.show_bar()
             return
         self.bar.hide()                  # 别把自己框进去
         self.snip = overlay.Overlay()
@@ -286,10 +291,29 @@ class AskApp(QtCore.QObject):
         QtCore.QTimer.singleShot(140, lambda: self._capture(rect))
 
     def _capture(self, rect: QtCore.QRect) -> None:
-        screen = QtGui.QGuiApplication.screenAt(rect.center()) or QtGui.QGuiApplication.primaryScreen()
-        geo = screen.geometry()
-        shot = screen.grabWindow(0, rect.x() - geo.x(), rect.y() - geo.y(),
-                                 rect.width(), rect.height())
+        # 跨屏框选时 `screenAt(center)` 只会取一块屏 ⇒ 按屏裁剪再拼起来，
+        # 以前选区横跨两屏时只能抓到半边。
+        canvas = QtGui.QImage(rect.width(), rect.height(),
+                              QtGui.QImage.Format.Format_ARGB32)
+        canvas.fill(QtCore.Qt.GlobalColor.transparent)
+        painter = QtGui.QPainter(canvas)
+        grabbed = 0
+        for screen in QtGui.QGuiApplication.screens():
+            part = rect.intersected(screen.geometry())
+            if part.isEmpty():
+                continue
+            geo = screen.geometry()
+            one = screen.grabWindow(0, part.x() - geo.x(), part.y() - geo.y(),
+                                    part.width(), part.height())
+            if one.isNull() or one.width() == 0:
+                continue
+            painter.drawImage(part.x() - rect.x(), part.y() - rect.y(), one.toImage())
+            grabbed += 1
+        painter.end()
+        if not grabbed:
+            self._warn("这块没抓到东西，再框一次试试。")
+            return
+        shot = QtGui.QPixmap.fromImage(canvas)
         if shot.isNull() or shot.width() == 0 or shot.height() == 0:
             self._warn("这块没抓到东西，再框一次试试。")
             return
@@ -337,7 +361,7 @@ class AskApp(QtCore.QObject):
                 record.get("question", ""),
                 record.get("answer", ""),
                 int(record.get("ms") or 0),
-                "codex",
+                config.ASK_API_MODEL or "codex",   # 真正答话的那个模型，别写死
                 kind=kind,
                 image_path=archived,
                 thread=record.get("thread") or "",

@@ -168,7 +168,9 @@ def session_summary(conn: sqlite3.Connection, session_id: int, ended_at: str = "
             name = name[:-4]
         per[name] = per.get(name, 0.0) + max(0.0, minutes(ts, stop))
     top = max(per.items(), key=lambda kv: kv[1]) if per else ("", 0.0)
-    return {"分钟": round(total, 1), "切换": len(rows), "最久": (top[0], round(top[1], 1))}
+    # 第一行是「开始时在看的那个窗口」，不是切换 ⇒ 切换次数 = 行数 − 1
+    switches = max(0, len(rows) - 1)
+    return {"分钟": round(total, 1), "切换": switches, "最久": (top[0], round(top[1], 1))}
 
 
 def last_transcript(conn: sqlite3.Connection, session_id: int):
