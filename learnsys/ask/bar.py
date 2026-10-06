@@ -162,6 +162,7 @@ class AskBar(QtWidgets.QWidget):
         self._moved = False
         self._turns: list[tuple[str, str]] = []   # 当前这轮的问答史（旧→新），追问时带给 AI
         self._thread = uuid.uuid4().hex[:12]      # 同一轮对话一个号，方便复盘
+        self._workers: list[_AskWorker] = []      # 后台问答线程（退出时要 wait，见 shutdown）
         self._streaming = False
         self._fit_timer = None        # 流式重排的节流器（别每片都排）
         self._answer_start = None     # 答案区里「答案」从第几个字符开始（None = 这一轮还没开始）
@@ -533,8 +534,12 @@ class AskBar(QtWidgets.QWidget):
     def _drop_running(self) -> None:
         """把正在写的那一轮掐掉 —— 用户要开新会话 / 清空时，别让他干等。
 
-        请求还在跑没关系：worker 被标了 cancel，结果不会往界面上写（见 `_finish` 开头）。
+        ① **轮次号 +1**：旧那一轮的 chunk/done 回调拿的是旧号，一律不再往界面上写
+        （否则「清空」后旧答案又冒出来，看着像没生效还多出一份）。
+        ② 请求还在跑没关系：worker 被标了 cancel，结果不进界面；线程本体留给
+        `shutdown()` 统一 wait，别在这儿丢引用。
         """
+        self._turn_seq += 1
         if self._worker is not None:
             self._worker.cancel()
             self._worker = None
@@ -543,6 +548,20 @@ class AskBar(QtWidgets.QWidget):
             self._timer = None
         self.go.setEnabled(True)
         self._streaming = False
+
+    def _reap_workers(self) -> None:
+        """跑完的后台线程从清单里摘掉 —— 清单只留「还活着的」，shutdown 才好逐个 wait。"""
+        self._workers = [w for w in self._workers if w.isRunning()]
+
+    def shutdown(self) -> None:
+        """退出前把后台问答线程收干净 —— QThread 还在跑就被销毁会崩（Destroyed while running）。"""
+        self._drop_running()
+        for worker in self._workers:
+            worker.cancel()
+            if not worker.wait(5000):          # 等它退出；等不到就硬停，别卡死退出
+                worker.terminate()
+                worker.wait(1000)
+        self._workers.clear()
 
     def new_session(self) -> None:
         """开新会话：清掉上一题上下文和答案，图留着接着问（不带上文）。
@@ -575,6 +594,7 @@ class AskBar(QtWidgets.QWidget):
 
     def set_shot(self, image_path: str, shot: QtGui.QPixmap) -> None:
         """刚框好一块屏 —— 缩略图挂上，可以问了。换了图 ⇒ 旧对话史清掉、开新轮。"""
+        self._drop_running()          # 旧那一轮（若有）别再往新图的界面上写
         self._image_path = image_path
         self._turns = []
         self._thread = uuid.uuid4().hex[:12]
@@ -673,8 +693,12 @@ class AskBar(QtWidgets.QWidget):
         event.accept()
 
     def hide_bar(self) -> None:
-        """✕：收进托盘 —— 程序不退。"""
-        self.drop_image()
+        """✕：收进托盘 —— 程序不退。**只收界面**，图、答案、上下文都留着，叫回来接着用。
+
+        原来这里顺手 `drop_image()` + 发 `exited` 让 app 删临时截图 —— 那是把
+        「收起」当成了「清空」，正在问的那轮会被记成纯文字、截图也没了。
+        删截图只归「清空 / 换一张 / 退出」管。
+        """
         self._save_state()
         self.hide()
         self.exited.emit()
@@ -730,10 +754,18 @@ class AskBar(QtWidgets.QWidget):
         self._timer.start(400)
         self._turn_seq += 1           # 开新的一轮：旧的（被掐掉的）回来时靠这个号认出来
         seq = self._turn_seq
+        # 这一轮的图/文身份**当场拍死**：答案回来时界面可能已经换过图、甚至清过空，
+        # 再读 self._image_path 会把图问答错记成纯文字、连归档截图都丢掉。
+        kind = "image" if self._image_path else "text"
+        image_path = self._image_path or ""
         self._worker = _AskWorker(self._image_path, question, list(self._turns), self)
-        self._worker.chunk.connect(self._on_chunk)
-        self._worker.done.connect(lambda text, s=seq: self._finish(question, text, None, s))
-        self._worker.failed.connect(lambda message, s=seq: self._finish(question, "", message, s))
+        self._workers.append(self._worker)       # 留着，退出时要 wait（shutdown）
+        self._worker.finished.connect(self._reap_workers)
+        self._worker.chunk.connect(lambda piece, replace, s=seq: self._on_chunk(piece, replace, s))
+        self._worker.done.connect(
+            lambda text, s=seq, k=kind, p=image_path: self._finish(question, text, None, s, k, p))
+        self._worker.failed.connect(
+            lambda message, s=seq, k=kind, p=image_path: self._finish(question, "", message, s, k, p))
         self._worker.start()
 
     def _tick(self) -> None:
@@ -742,11 +774,14 @@ class AskBar(QtWidgets.QWidget):
         self.status.setText(label + "·" * self._dots
                             + f"  {time.monotonic() - self._started_at:.0f} 秒")
 
-    def _on_chunk(self, piece: str, replace: bool = False) -> None:
+    def _on_chunk(self, piece: str, replace: bool = False, seq: int = 0) -> None:
         """流式：字一到就往答案区追加（已经洗过 Markdown 噪声了）。
 
         问题那一行是 `_start_turn` 写好的，这里**只动答案那一段**，不能整段清掉。
+        `seq` 是这一轮的号 —— 被掐掉的旧轮（清空/新会话/换图）流回来的碎片一律不进界面。
         """
+        if seq != self._turn_seq:
+            return
         if self.answer.isHidden():
             self.answer.setVisible(True)
         self._streaming = True
@@ -756,6 +791,8 @@ class AskBar(QtWidgets.QWidget):
         else:
             self.answer.moveCursor(QtGui.QTextCursor.End)
             self.answer.insertPlainText(piece)
+            # 追加也要记进 _last_answer：复制按钮只认它，不认整篇文档（不然连「我：」那行一起拷）
+            self._last_answer += piece
         self._schedule_fit()
 
     def _set_answer_part(self, text: str) -> None:
@@ -777,11 +814,14 @@ class AskBar(QtWidgets.QWidget):
             self._fit_timer.timeout.connect(self._fit_answer)
         self._fit_timer.start(80)
 
-    def _finish(self, question: str, text: str, error, seq: int = 0) -> None:
+    def _finish(self, question: str, text: str, error, seq: int = 0,
+                kind: str = "text", image_path: str = "") -> None:
         # 被掐掉的旧那一轮（用户已经开了新会话 / 清空）跑完也会走到这儿 ——
         # 不挡住的话，旧答案会写在新界面上，看起来就像「新会话没生效、还多出一份」。
         # ⚠️ 别用 sender() 判断：信号是经 lambda 连的，PySide6 里拿不到发送者，
         # 判断会一直失败 ⇒ `_finish` 整个被跳过 ⇒ 计时器不停、按钮不恢复（真踩过）。
+        # `kind` / `image_path` 是 submit 当场拍死的，不看现在的 self._image_path ——
+        # 中途点 ✕ / 清空会把图丢掉，再读就会把图问答错记成纯文字。
         if seq != self._turn_seq:
             return
         if self._timer is not None:
@@ -807,7 +847,7 @@ class AskBar(QtWidgets.QWidget):
             self._set_answer_part(text)
             self._set_copy_enabled(True)
             self._turns.append((question, text))
-            if self._image_path:
+            if kind == "image":
                 self.status.setText(
                     f"用了 {ms / 1000:.1f} 秒 · 还想追问就直接再打字（看的还是这张图）")
             else:
@@ -816,8 +856,8 @@ class AskBar(QtWidgets.QWidget):
                 "question": question,
                 "answer": text,
                 "ms": ms,
-                "kind": "image" if self._image_path else "text",
-                "image_path": self._image_path or "",
+                "kind": kind,
+                "image_path": image_path,
                 "thread": self._thread,
             })
         self._fit_answer()
@@ -873,15 +913,24 @@ class AskBar(QtWidgets.QWidget):
 
     def _show_past(self, question: str, answer: str, kind: str = "text",
                    image_path: str = "") -> None:
-        """把一条历史问答塞进答案区看全文（不进当前对话上下文）。"""
+        """把一条历史问答塞进答案区看全文（不进当前对话上下文）。
+
+        看完历史再打字 = **开一轮新对话**（上下文清掉）—— 界面已经被历史占满，
+        再接着带旧 `_turns` 会让 AI 听到一串用户看不见的对话。
+        """
+        self._drop_running()
+        self._turns = []                       # 看历史 ⇒ 后面那问不带旧上下文
+        self._thread = uuid.uuid4().hex[:12]
         self._reset_answer()
         tag = "【图问】" if kind == "image" else "【文问】"
         head = f"{tag}{question}"
         if image_path:
             head += f"\n截图：{image_path}"
-        self._set_answer(f"{head}\n\n【答】{answer}")
+        body = answer or ""
+        self._set_answer(f"{head}\n\n【答】{body}")
+        self._last_answer = body               # 复制按钮只复制答案本身
+        self._set_copy_enabled(bool(body.strip()))
         self.answer.setVisible(True)
-        self._set_copy_enabled(True)
         self.status.setText("这是历史记录 —— 要继续问，直接打字或先框一块屏")
         self._fit_answer()
         self.ask.setFocus()

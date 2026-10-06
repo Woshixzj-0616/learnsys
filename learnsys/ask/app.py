@@ -64,7 +64,8 @@ class AskApp(QtCore.QObject):
         self.bar = bar.AskBar(self.hotkey.pretty)     # 全程序唯一一条横栏
         self.bar.pick_requested.connect(self.pick)
         self.bar.answered.connect(self._remember)
-        self.bar.exited.connect(self._shot_done)
+        # ✕ 只是把界面收进托盘 —— 图和答案都还在，**别在这儿删截图**（删截图只归
+        # 「清空 / 换一张 / 退出」管）。以前接在 exited 上，正在问的那轮会被连累。
         self.bar.cleared.connect(self._shot_done)     # 点「清空」⇒ 临时截图也删掉
         self.bar.history_provider = self._recent_asks
         self.recorder = record.WindowRecorder(self._conn)   # 采集层：记「你在看哪个窗口」
@@ -202,6 +203,7 @@ class AskApp(QtCore.QObject):
         self.bar.set_recording(on, self.recorder.elapsed, self.recorder.switches)
 
     def quit(self) -> None:
+        self.bar.shutdown()      # 先把问答线程收干净 —— 还在跑就销毁会崩（QThread）
         if self.recorder is not None and self.recorder.running:
             self.recorder.stop()      # 退出前把这段记录收尾，别留个没结束的 session
         self.caller.close()
@@ -291,11 +293,19 @@ class AskApp(QtCore.QObject):
         if shot.isNull() or shot.width() == 0 or shot.height() == 0:
             self._warn("这块没抓到东西，再框一次试试。")
             return
-        self._shot_done()                # 上一张先清掉：盘上任何时候只有一张
         image_path = self._shot_path()
         image_path.parent.mkdir(parents=True, exist_ok=True)
-        if not shot.save(str(image_path), "PNG"):
+        # 先存新的、成功了再盖掉旧的 —— 以前是先删后存，存失败就连上一张都没了，
+        # 界面还挂着旧缩略图、`_image_path` 指向一个已经不存在的文件。
+        # `Path.replace` 是原子覆盖，盘上任何时候都只有一张 shot.png。
+        tmp_path = image_path.with_name("shot_new.png")
+        if not shot.save(str(tmp_path), "PNG"):
             self._warn("截图存不下来，再框一次试试。")
+            return
+        try:
+            tmp_path.replace(image_path)
+        except OSError as exc:
+            self._warn(f"截图存不下来：{exc}，再框一次试试。")
             return
         self.bar.set_shot(str(image_path), shot)
         self.show_bar()
@@ -393,6 +403,7 @@ def main() -> int:
     app.setQuitOnLastWindowClosed(False)
     ask_app = AskApp(app)
     app.aboutToQuit.connect(ask_app.hotkey.unregister)
+    app.aboutToQuit.connect(ask_app.bar.shutdown)   # 兜底：走别的路径退出也先收线程
     QtCore.QTimer.singleShot(0, ask_app.start)
     return app.exec()
 

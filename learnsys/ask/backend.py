@@ -78,6 +78,29 @@ _THINKING_HEADS = re.compile(
 )
 _ANSWER_HEADS = re.compile(r"(?m)^\s*\**\s*(最终答案|答案|结论|回答)\s*\**\s*[:：]\s*")
 
+_TRUNCATED_MSG = (
+    "AI 没写完就被长度上限掐断了 —— 把 D:/学习系统/设置.json 里的 "
+    "max_tokens 调大（默认 1500），或者把问题问小一点。")
+
+
+def _is_truncated(data, style: str) -> bool:
+    """这一份返回是不是**被长度上限掐断的**（两种协议都查）。
+
+    推理模型的思考也吃 max_output_tokens —— 想完了没额度写正文，就走这儿。
+    流式 Responses 的 status 在 `response` 里，非流式在顶层 —— 两处都看。
+    """
+    if not isinstance(data, dict):
+        return False
+    if style == "chat":
+        try:
+            return data["choices"][0].get("finish_reason") == "length"
+        except (KeyError, IndexError, TypeError):
+            return False
+    if str(data.get("status") or "") == "incomplete":
+        return True
+    inner = data.get("response")
+    return isinstance(inner, dict) and str(inner.get("status") or "") == "incomplete"
+
 
 def tidy_answer(text: str) -> str:
     """把模型答案收拾干净：去 Markdown 花样、掐掉思考过程。"""
@@ -265,12 +288,15 @@ def ask_stream(image_path: str | None, question: str, history: list | None = Non
         if "event-stream" not in ctype and "stream" not in ctype:
             # 有的中转无视 stream，直接回一整段 JSON —— 当成「一次性吐完」处理
             data = json.loads(response.read().decode("utf-8", "replace"))
+            if _is_truncated(data, style):
+                raise AskError(_TRUNCATED_MSG)
             text = _pick_chat_text(data) if style == "chat" else _pick_text(data)
             text = tidy_answer((text or "").strip())
             if text:
                 yield text
             return
         emitted = False                # 已经吐出去过正文没有（决定 completed 那份全文还要不要）
+        truncated = False              # 流里有没有「被掐断」的记号
         for raw in response:
             line = raw.decode("utf-8", "replace").strip()
             if not line or line.startswith(":"):
@@ -287,11 +313,15 @@ def ask_stream(image_path: str | None, question: str, history: list | None = Non
                 obj = json.loads(payload)
             except json.JSONDecodeError:
                 continue
+            if isinstance(obj, dict) and _is_truncated(obj, style):
+                truncated = True       # 先记下，等流里已经写出来的字都吐完再报
             piece = (_delta_from_chat(obj) if style == "chat"
                      else _delta_from_responses(obj, want_whole=not emitted))
             if piece:
                 emitted = True
                 yield piece
+        if truncated:
+            raise AskError(_TRUNCATED_MSG)   # 已流出的字还在，界面会留着 + 标一句「回答中断」
     except TimeoutError as exc:
         raise AskError(f"等了 {int(limit)} 秒还没回话，先算了 —— 可以再问一次。") from exc
     except urllib.error.URLError as exc:
@@ -321,9 +351,8 @@ def ask(image_path: str | None, question: str, history: list | None = None,
         except Exception:
             pass
     # 被长度上限掐断：模型想完了没额度写正文（推理模型的思考也吃配额）
-    if isinstance(data, dict) and str(data.get("status") or "") == "incomplete":
-        raise AskError("AI 没写完就被长度上限掐断了 —— 把 D:/学习系统/设置.json 里的 "
-                       "max_tokens 调大（默认 1500），或者把问题问小一点。")
+    if _is_truncated(data, style):
+        raise AskError(_TRUNCATED_MSG)
     text = _pick_chat_text(data) if style == "chat" else _pick_text(data)
     text = tidy_answer((text or "").strip())
     if not text:
