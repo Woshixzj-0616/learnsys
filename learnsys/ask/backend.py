@@ -75,7 +75,11 @@ def _trim_history(history: list | None) -> list[tuple[str, str]]:
     turns = [(str(q), str(a)) for q, a in history if q]
     if len(turns) <= config.ASK_HISTORY_TURNS:
         return turns
-    return [turns[0]] + turns[-(config.ASK_HISTORY_TURNS - 1):]
+    # `[turns[0]] + turns[-(N-1):]` —— N=1 时 `[-0:]` 是**全表**（Python 的坑）⇒ 单独兜
+    keep_tail = config.ASK_HISTORY_TURNS - 1
+    if keep_tail <= 0:
+        return turns[:1]
+    return [turns[0]] + turns[-keep_tail:]
 
 
 _MARKDOWN_NOISE = (
@@ -160,6 +164,8 @@ def _looks_like_thinking(paragraph: str) -> bool:
     """
     text = paragraph.lstrip()
     if len(text) > 40:                      # 一两句铺垫不会拖这么长 ⇒ 当正文
+        return False
+    if re.search(r"\d", text):              # 带数字的基本是真答案（「先看答案：42。」别删）
         return False
     first = text[:30]
     return bool(re.match(

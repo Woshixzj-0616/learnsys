@@ -194,6 +194,7 @@ class AskBar(QtWidgets.QWidget):
         self._answer_start = None     # 答案区里「答案」从第几个字符开始（None = 这一轮还没开始）
         self._turn_seq = 0            # 第几轮（被掐掉的旧那一轮回来时靠它认出来，别写回界面）
         self._last_answer = ""        # 最近一次的**答案**原文（复制按钮只复制它，不带问题）
+        self._showing_history = False # 答案区现在显示的是历史记录（不是当前对话）
         self.history_provider = None              # app 塞进来的：() -> [(ts, question, answer, kind, image_path), ...]
         self._state = self._load_state()
         self._on_top = (config.ASK_BAR_ALWAYS_ON_TOP
@@ -584,8 +585,14 @@ class AskBar(QtWidgets.QWidget):
         self._streaming = False
 
     def _reap_workers(self) -> None:
-        """跑完的后台线程从清单里摘掉 —— 清单只留「还活着的」，shutdown 才好逐个 wait。"""
-        self._workers = [w for w in self._workers if w.isRunning()]
+        """跑完的后台线程从清单里摘掉并销毁 —— 不摘会在 bar 底下越积越多。"""
+        keep = []
+        for w in self._workers:
+            if w.isRunning():
+                keep.append(w)
+            else:
+                w.deleteLater()
+        self._workers = keep
 
     def shutdown(self) -> None:
         """退出前把后台线程收干净 —— QThread 还在跑就被销毁会崩（Destroyed while running）。"""
@@ -656,6 +663,7 @@ class AskBar(QtWidgets.QWidget):
         self._streaming = False
         self._answer_start = None
         self._last_answer = ""
+        self._showing_history = False
 
     def set_recording(self, on: bool, minutes: float = 0.0, switches: int = 0) -> None:
         """采集层开着的时候，横栏上给一行「● 记录中 …」—— 让人知道它在记。"""
@@ -759,6 +767,7 @@ class AskBar(QtWidgets.QWidget):
         if self._answer_start is None:
             self.answer.clear()
             self.answer.setFixedHeight(76)
+            self._showing_history = False     # 新问起手，历史视图已经不在了
         cursor = self.answer.textCursor()
         if self.answer.toPlainText().strip():
             cursor.movePosition(QtGui.QTextCursor.End)
@@ -782,8 +791,7 @@ class AskBar(QtWidgets.QWidget):
         question = self.ask.text().strip()
         if not question:
             self.ask.setFocus()
-            if not self._image_path:
-                self.show_message("先打个问题（框不框选都行 —— 框了就问那块屏，不框就是纯文字问）。")
+            self.show_message("先打个问题（框不框选都行 —— 框了就问那块屏，不框就是纯文字问）。")
             return
         self.go.setEnabled(False)
         self._started_at = time.monotonic()
@@ -884,6 +892,8 @@ class AskBar(QtWidgets.QWidget):
                 # 流到一半断了：留着已写出的，底下标一句
                 self.status.setText(f"回答中断 —— {error}")
                 self._set_copy_enabled(True)
+                # 已写出的那段也算上下文 —— 不然追问「继续」时 AI 记不得自己说过啥
+                self._turns.append((question, partial))
             else:
                 self._set_answer_part(error)
                 self._set_copy_enabled(False)
@@ -923,7 +933,9 @@ class AskBar(QtWidgets.QWidget):
     def _restore_status_hint(self) -> None:
         if self._worker is not None or self._streaming:
             return
-        if self._image_path and self._turns:
+        if self._showing_history:
+            self.status.setText("这是历史记录 —— 要继续问，直接打字或先框一块屏")
+        elif self._image_path and self._turns:
             self.status.setText("还想追问就直接再打字（看的还是这张图）")
         elif self._image_path:
             self.status.setText("想问这块屏的什么？（回车发送 · 答完还能接着追问）")
@@ -974,6 +986,7 @@ class AskBar(QtWidgets.QWidget):
         body = answer or ""
         self._set_answer(f"{head}\n\n【答】{body}")
         self._last_answer = body               # 复制按钮只复制答案本身
+        self._showing_history = True           # 这是历史记录，别把状态提示当成当前对话
         self._set_copy_enabled(bool(body.strip()))
         self.answer.setVisible(True)
         self.status.setText("这是历史记录 —— 要继续问，直接打字或先框一块屏")

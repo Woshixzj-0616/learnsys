@@ -11,7 +11,8 @@ from dataclasses import dataclass
 
 from learnsys import config
 
-SKIP = {".git", "__pycache__", ".venv", "venv", "node_modules", ".idea"}
+SKIP = {".git", "__pycache__", ".venv", "venv", "node_modules", ".idea",
+        "dist", "build"}          # 打包产物不算「代码占的盘」，否则打完包数字凭空涨 50MB
 
 
 @dataclass
