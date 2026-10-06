@@ -51,6 +51,13 @@ MOVE_SLOP = 4                     # 拖动超过这么多像素才算「拖」�
 _LINE_HEIGHT_PROPORTIONAL = 1     # QTextBlockFormat.ProportionalHeight（PySide6 里 int(枚举) 会报错）
 
 
+def _as_bool(value, default: bool) -> bool:
+    """把设置文件里的值当开关读 —— `"false"` / `"0"` / `"关"` 是 False，不是 `bool(str)` 的 True。"""
+    if value is None or str(value).strip() == "":
+        return default
+    return str(value).strip().lower() not in ("0", "false", "no", "off", "关", "否")
+
+
 def _ask_char() -> QtGui.QTextCharFormat:
     """「我」那句话：蓝底白字 —— **只包住文字**（不是整行一条）。
 
@@ -79,6 +86,8 @@ def _answer_char() -> QtGui.QTextCharFormat:
 
 def _thumb(pixmap: QtGui.QPixmap, width: int, height: int) -> QtGui.QPixmap:
     """把截的那块缩成圆角小图（按原比例，居中留白，不裁内容）。"""
+    if pixmap is None or pixmap.isNull():
+        return QtGui.QPixmap(width, height)          # 空图给空白，别炸在 toImage()
     box_w, box_h = width * 2, height * 2
     image = pixmap.toImage()
     image.setDevicePixelRatio(1.0)
@@ -197,9 +206,10 @@ class AskBar(QtWidgets.QWidget):
         self._showing_history = False # 答案区现在显示的是历史记录（不是当前对话）
         self.history_provider = None              # app 塞进来的：() -> [(ts, question, answer, kind, image_path), ...]
         self._state = self._load_state()
-        self._on_top = (config.ASK_BAR_ALWAYS_ON_TOP
-                        if "always_on_top" not in self._state
-                        else bool(self._state.get("always_on_top")))
+        # 界面设置里的 always_on_top 可能被手改成字符串 "false" —— `bool("false")` 是 True！
+        # 走和 `config._user_bool` 同一套判法，别自己 bool()。
+        self._on_top = _as_bool(self._state.get("always_on_top", config.ASK_BAR_ALWAYS_ON_TOP),
+                                config.ASK_BAR_ALWAYS_ON_TOP)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
         self.setWindowTitle("问一问 · 框选屏幕问 AI")
         self.setWindowIcon(icon_mod.icon())
@@ -698,6 +708,7 @@ class AskBar(QtWidgets.QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
+        self._answer_cap = self._calc_answer_cap()   # 分辨率/屏幕可能变了，重算
         self.refresh_usage()
         self._clamp()
         self.raise_()
@@ -953,6 +964,7 @@ class AskBar(QtWidgets.QWidget):
             menu.addAction("今天还没问过").setEnabled(False)
         for row in rows or []:
             ts, question, answer = row[0], row[1], row[2]
+            question = question or ""
             kind = row[3] if len(row) > 3 else "text"
             image_path = row[4] if len(row) > 4 else ""
             stamp = str(ts)[11:16] if len(str(ts)) >= 16 else str(ts)

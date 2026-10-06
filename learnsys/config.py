@@ -175,9 +175,14 @@ ASK_SYSTEM_PROMPT_TEXT = USER.get("system_prompt_text") or (
 
 
 def api_style() -> str:
-    """按哪种协议说话：本机中转 = Responses；自己填的 = OpenAI 兼容 /chat/completions。"""
-    if ASK_API_STYLE:
-        return str(ASK_API_STYLE).strip().lower()
+    """按哪种协议说话：本机中转 = Responses；自己填的 = OpenAI 兼容 /chat/completions。
+
+    填 `api_style` 只认 `chat` / `responses`（其它值当没填，自动判）——
+    免得拼错一个字母就整个走错协议、报一堆看不懂的错。
+    """
+    style = str(ASK_API_STYLE or "").strip().lower()
+    if style in ("chat", "responses"):
+        return style
     host = (urllib.parse.urlsplit(ASK_API_BASE).hostname or "").lower()
     return "responses" if host in ("127.0.0.1", "localhost", "::1") else "chat"
 

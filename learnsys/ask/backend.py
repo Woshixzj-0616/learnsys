@@ -328,6 +328,8 @@ def ask_stream(image_path: str | None, question: str, history: list | None = Non
         ctype = (response.headers.get("Content-Type") or "").lower()
         if "event-stream" not in ctype and "stream" not in ctype:
             # 有的中转无视 stream，直接回一整段 JSON —— 当成「一次性吐完」处理
+            if abort is not None and abort.is_set():
+                return
             data = json.loads(response.read().decode("utf-8", "replace"))
             if _is_truncated(data, style):
                 raise AskError(_TRUNCATED_MSG)
