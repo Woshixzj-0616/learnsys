@@ -337,14 +337,13 @@ class AskApp(QtCore.QObject):
     # ---- 收尾 ----
 
     def _conn(self):
-        """今天的库 —— 跨天了（过了零点）自动换到新一天那个文件夹。"""
+        """今天的库 —— 跨天了（过了零点）自动换到新一天那个文件夹。
+
+        ⚠️ 别 close 旧连接：`record` 那边还握着同一个对象，跨零点时它要先
+        `end_session(旧连接)` 收尾。这里只换引用，旧连接随 GC 自然收掉。
+        """
         want = config.db_path()
         if self.conn is None or self._conn_path != want:
-            if self.conn is not None:
-                try:
-                    self.conn.close()
-                except Exception:
-                    pass
             self.conn = store.connect(want)
             self._conn_path = want
         return self.conn

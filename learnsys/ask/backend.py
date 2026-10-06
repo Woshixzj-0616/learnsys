@@ -314,6 +314,8 @@ def ask_stream(image_path: str | None, question: str, history: list | None = Non
     `sink[0].close()` 掐断连接，不然请求会一直挂到 90 秒超时。
     """
     limit = timeout or config.ASK_TIMEOUT_SECONDS
+    if abort is not None and abort.is_set():
+        return                      # 连都别连
     style = config.api_style()
     response = _open(image_path, question, history, style, stream=True, limit=limit)
     if response_sink is not None:

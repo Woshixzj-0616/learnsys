@@ -66,8 +66,11 @@ class WindowRecorder(QtCore.QObject):
         if not self.running:
             return {}
         self._timer.stop()
-        store.end_session(self._conn, self._session_id)
-        summary = store.session_summary(self._conn, self._session_id)
+        try:
+            store.end_session(self._conn, self._session_id)
+            summary = store.session_summary(self._conn, self._session_id)
+        except Exception:
+            summary = {}          # 连接万一被换掉过，别让「结束记录」整个崩掉
         self._session_id = None
         self._last = None
         return summary
@@ -76,7 +79,10 @@ class WindowRecorder(QtCore.QObject):
         want = config.db_path()
         if want != self._db_path:
             # 过了零点换了库 ⇒ 先在昨天那段收尾，再在新的一天接着开一段
-            store.end_session(self._conn, self._session_id)
+            try:
+                store.end_session(self._conn, self._session_id)
+            except Exception:
+                pass              # 旧连接万一已不可用，新一天照样开
             self._conn = self._conn_getter()
             self._db_path = want
             self._session_id = store.start_session(self._conn)
