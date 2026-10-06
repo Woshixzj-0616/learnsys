@@ -26,15 +26,31 @@ class AskError(Exception):
     """问 AI 失败 —— 里面带一句能直接给人看的中文原因。"""
 
 
+_data_url_cache: dict[str, tuple[tuple[int, int], str]] = {}
+
+
 def _data_url(image_path: str | None) -> str:
     if not image_path:
         raise AskError("没拿到截图路径 —— 再框一次试试。")
+    path = pathlib.Path(image_path)
     try:
-        raw = pathlib.Path(image_path).read_bytes()
+        stat = path.stat()               # 只摸元数据 —— 缓存命中就不用真读盘
+        key = (stat.st_mtime_ns, stat.st_size)
+    except OSError as exc:
+        raise AskError(f"截图读不到（{exc.strerror or exc}）—— 再框一次试试。") from exc
+    # 追问每次都带同一张图 —— 不缓存的话每次都重读 + base64 一遍（跨屏大图能到几 MB）
+    cached = _data_url_cache.get(str(path))
+    if cached is not None and cached[0] == key:
+        return cached[1]
+    try:
+        raw = path.read_bytes()
     except OSError as exc:
         # 截图文件可能已被「清空 / 换一张」删掉 —— 报人话，别把裸异常抛给用户
         raise AskError(f"截图读不到（{exc.strerror or exc}）—— 再框一次试试。") from exc
-    return "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
+    url = "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
+    _data_url_cache.clear()          # 同一时刻只有一张正在用的截图，留一条就够
+    _data_url_cache[str(path)] = (key, url)
+    return url
 
 
 def _pick_text(data: dict) -> str:

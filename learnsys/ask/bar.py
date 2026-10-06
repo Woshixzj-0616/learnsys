@@ -49,6 +49,8 @@ THUMB_W, THUMB_H = 64, 40
 BUTTON_W = 68                # 底部那排按钮统一宽度 —— 文字在「置顶 / 不置顶」之间变也不挪位
 MOVE_SLOP = 4                     # 拖动超过这么多像素才算「拖」，否则算「点」
 _LINE_HEIGHT_PROPORTIONAL = 1     # QTextBlockFormat.ProportionalHeight（PySide6 里 int(枚举) 会报错）
+_USAGE_TTL_SECONDS = 300.0        # 占用数字缓存多久：横栏每次露出来都触发，不缓存就是每次全盘 walk
+_SCROLL_SLACK = 8                 # 滚动条离底部不足这么多像素 = 「正跟着看最新」
 
 
 def _as_bool(value, default: bool) -> bool:
@@ -204,6 +206,9 @@ class AskBar(QtWidgets.QWidget):
         self._turn_seq = 0            # 第几轮（被掐掉的旧那一轮回来时靠它认出来，别写回界面）
         self._last_answer = ""        # 最近一次的**答案**原文（复制按钮只复制它，不带问题）
         self._showing_history = False # 答案区现在显示的是历史记录（不是当前对话）
+        self._follow = True           # 流式时视图跟着最新内容走；用户往上翻了就停（见 _on_chunk）
+        self._usage_cache = None      # 最近一次算好的占用（Usage）—— 5 分钟内直接用，别反复 walk 盘
+        self._usage_at = 0.0
         self.history_provider = None              # app 塞进来的：() -> [(ts, question, answer, kind, image_path), ...]
         self._state = self._load_state()
         # 界面设置里的 always_on_top 可能被手改成字符串 "false" —— `bool("false")` 是 True！
@@ -514,7 +519,7 @@ class AskBar(QtWidgets.QWidget):
             self.pill.setVisible(False)
             self.card.setVisible(True)
             self.setFixedWidth(self._full_width() + 28)
-        self.adjustSize()
+        self._relayout()
 
     def set_collapsed(self, flag: bool) -> None:
         if flag == self._collapsed:
@@ -533,6 +538,26 @@ class AskBar(QtWidgets.QWidget):
     def _place(self) -> None:                      # 兼容旧调用
         self._place_default()
 
+    def _relayout(self) -> None:
+        """内容显隐 / 高度变了之后，**当场**把窗口尺寸同步好 —— 光 adjustSize() 缩不回去。
+
+        根因：setVisible / setFixedHeight 只把**直接父布局**标脏、再发一个异步的
+        LayoutRequest；事件循环没转过之前，外层布局的 sizeHint 和**窗口的最小尺寸都
+        还钉着旧值**，adjustSize 的 resize 会被旧的最小尺寸顶回去（真踩过：清空 /
+        新会话后窗口留着旧答案那一截高度，看着就是「画面叠加」）。所以两层布局都要
+        invalidate + activate（先内层再外层 —— 只标外层，读到的还是内层的旧缓存），
+        窗口 min/max 更新到位后再 adjustSize 才真正缩得回去。
+        """
+        inner = self.card.layout()
+        if inner is not None:
+            inner.invalidate()
+            inner.activate()
+        lay = self.layout()
+        if lay is not None:
+            lay.invalidate()
+            lay.activate()
+        self.adjustSize()
+
     def _fit_answer(self) -> None:
         """答案区按内容长高（到上限就滚动），这样答案不用挤在小框里。"""
         if not self.answer.isVisible():
@@ -542,7 +567,10 @@ class AskBar(QtWidgets.QWidget):
         document.setTextWidth(width)
         needed = int(document.size().height()) + 24
         self.answer.setFixedHeight(max(76, min(needed, self._answer_cap)))
-        self.adjustSize()
+        self._relayout()
+        if self._follow:               # 流式跟随：正看最新就滚到最新；用户上翻过就别拽
+            bar_sb = self.answer.verticalScrollBar()
+            bar_sb.setValue(bar_sb.maximum())
 
     def _set_answer(self, text: str) -> None:
         self.answer.setPlainText(text)
@@ -666,35 +694,80 @@ class AskBar(QtWidgets.QWidget):
     def _reset_answer(self) -> None:
         self.status.setVisible(False)
         self.status.clear()
-        self.answer.setVisible(False)
         self.answer.clear()
+        self.answer.setPlainText("")        # clear() 再补一道 —— 文档/缓存都归零
+        self.answer.setVisible(False)
         self.answer.setFixedHeight(76)
         self._set_copy_enabled(False)
         self._streaming = False
         self._answer_start = None
         self._last_answer = ""
         self._showing_history = False
+        self._follow = False       # 内容都清了，没什么可跟随的
+        self._relayout()                    # ⚠️ 窗口高度必须当场缩回去 —— 光 adjustSize
+                                            # 会被布局钉着的旧最小尺寸顶住（残影的根子）
+        self._force_repaint()               # 保险丝：半透明+阴影的像素残影再兜一道
+
+    def _force_repaint(self) -> None:
+        """清完内容**必须**强制重画 —— 不然半透明窗口会留旧内容的像素残影。
+
+        「画面叠加」有两层根因，这里兜的是第二层（第一层「窗口缩不回去」归
+        `_relayout` 管）—— Windows 合成层的缓存：
+        ① `QGraphicsDropShadowEffect` 会缓存整张卡片的位图，内容变了不作废就照着旧图叠；
+        ② `WA_TranslucentBackground`（半透明窗口）用的是分层窗口，不逼一下不重合成。
+        """
+        # ① 作废阴影效果的位图缓存（关了再开 = 强制重建）
+        eff = self.card.graphicsEffect()
+        if eff is not None:
+            eff.setEnabled(False)
+            eff.setEnabled(True)
+        # ② 同步重画各个部件
+        self.answer.viewport().repaint()
+        self.card.repaint()
+        self.pill.repaint()
+        self.repaint()
+        # ③ 逼 Windows 分层窗口重新合成（0.99→1.0 是经典做法，肉眼看不出闪）
+        self.setWindowOpacity(0.99)
+        self.setWindowOpacity(1.0)
 
     def set_recording(self, on: bool, minutes: float = 0.0, switches: int = 0) -> None:
         """采集层开着的时候，横栏上给一行「● 记录中 …」—— 让人知道它在记。"""
+        was = self.rec_line.isVisible()
         self.rec_line.setVisible(on)
         if on:
             self.rec_line.setText(f"● 记录中 {minutes:.0f} 分 · 切了 {switches} 次窗口")
+        if on != was:
+            self._relayout()     # 那行字一显一隐窗口高度跟着变 —— 当场同步好
 
     def refresh_usage(self) -> None:
-        """占用数字在后台线程里算 —— walk 整个数据盘会卡界面，别放主线程。"""
+        """占用数字在后台线程里算 —— walk 整个数据盘会卡界面，别放主线程。
+
+        结果缓存 5 分钟：横栏每次露出来都会走到这儿，不缓存的话数据一多，
+        每次 show 都是一次全盘 walk。
+        """
+        if (self._usage_cache is not None
+                and time.monotonic() - self._usage_at < _USAGE_TTL_SECONDS):
+            self._apply_usage(self._usage_cache)     # 缓存新鲜：直接上屏，不起线程
+            return
         if self._usage_worker is not None and self._usage_worker.isRunning():
             return                             # 上一次还在算，别叠着起
         worker = _UsageWorker(self)
         worker.done.connect(self._apply_usage)
+        worker.finished.connect(self._usage_done)
+        worker.finished.connect(worker.deleteLater)   # 跑完销毁，别在 bar 底下越攒越多
         self._usage_worker = worker
         worker.start()
+
+    def _usage_done(self) -> None:
+        self._usage_worker = None              # 先摘引用再 deleteLater，isRunning 别摸已销毁的
 
     def _apply_usage(self, info) -> None:
         if isinstance(info, Exception):
             self.usage_line.setText(f"占用没算出来：{info}")
             self.pill_usage.setText("")
-            return
+            return                             # 失败不缓存 —— 下次显示时再算一次
+        self._usage_cache = info
+        self._usage_at = time.monotonic()
         self.usage_line.setText(info.line)
         self.usage_line.setToolTip(info.detail)
         self.pill_usage.setText(info.short)
@@ -703,6 +776,8 @@ class AskBar(QtWidgets.QWidget):
     def show_message(self, text: str) -> None:
         self.status.setVisible(True)
         self.status.setText(text)
+        self._relayout()            # 状态行显隐/换行都牵动窗口高度 —— 当场同步
+        self._force_repaint()       # 半透明窗口不重画会留残影
 
     # ---- 交互 ----
 
@@ -790,6 +865,9 @@ class AskBar(QtWidgets.QWidget):
         cursor.insertBlock(_gap_block(), _answer_char())   # 空一行
         cursor.insertBlock(_gap_block(), _answer_char())   # AI 的回答写在这一块
         self._answer_start = cursor.position()
+        self._last_answer = ""     # 每一轮的答案区都是从头算的 —— 不清的话，流式期间
+                                   # 复制会把上一轮答案拼进来，中断时上下文也会被污染
+        self._follow = True        # 新一轮从跟随最新内容开始（用户上翻就停，见 _on_chunk）
         cursor.setCharFormat(_answer_char())     # 答案用正常颜色，别接着用蓝底那块的白字
         self.answer.setVisible(True)
         self.answer.setTextCursor(cursor)
@@ -848,13 +926,20 @@ class AskBar(QtWidgets.QWidget):
             return
         if self.answer.isHidden():
             self.answer.setVisible(True)
+        # 插入**之前**看一眼滚动条：用户在底部 = 还在跟着看 ⇒ 长高/滚到底继续跟；
+        # 用户自己往上翻了 ⇒ 别拽人（这个判断写在此处，翻页动作本身不会被打断）
+        sb = self.answer.verticalScrollBar()
+        self._follow = sb.value() >= sb.maximum() - _SCROLL_SLACK
         self._streaming = True
         self._set_copy_enabled(True)
         if replace:
             self._set_answer_part(piece)
         else:
-            self.answer.moveCursor(QtGui.QTextCursor.End)
-            self.answer.insertPlainText(piece)
+            # 用文档光标插入，**不走** moveCursor —— 那个会顺带把视图拽到底，
+            # 用户上翻看旧内容时就被打断（跟随与否完全交给 _fit_answer 的 _follow）
+            cursor = self.answer.textCursor()
+            cursor.movePosition(QtGui.QTextCursor.End)
+            cursor.insertText(piece)
             # 追加也要记进 _last_answer：复制按钮只认它，不认整篇文档（不然连「我：」那行一起拷）
             self._last_answer += piece
         self._schedule_fit()
@@ -999,8 +1084,10 @@ class AskBar(QtWidgets.QWidget):
         self._set_answer(f"{head}\n\n【答】{body}")
         self._last_answer = body               # 复制按钮只复制答案本身
         self._showing_history = True           # 这是历史记录，别把状态提示当成当前对话
+        self._follow = False                   # 历史从头看 —— 之后 _fit_answer 别把视图拽到底
         self._set_copy_enabled(bool(body.strip()))
         self.answer.setVisible(True)
+        self.status.setVisible(True)           # _reset_answer 刚把它藏了 —— 不亮出来这句提示看不见
         self.status.setText("这是历史记录 —— 要继续问，直接打字或先框一块屏")
         self._fit_answer()
         self.ask.setFocus()

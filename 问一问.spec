@@ -5,6 +5,55 @@
 产物：`dist\\问一问\\问一问.exe`（整个 `dist\\问一问\\` 文件夹一起拷走就能用）。
 """
 import os
+import sys
+
+SPECPATH_ROOT = SPECPATH
+sys.path.insert(0, SPECPATH_ROOT)
+
+# 版本号**只写一处**：learnsys/ask/__init__.py 的 VERSION。
+# 这里把它变成 exe 的版本资源（任务管理器 / 文件属性里看到的那个），不用再手改 版本信息.txt。
+from learnsys.ask import VERSION  # noqa: E402
+from PyInstaller.utils.win32.versioninfo import (  # noqa: E402
+    FixedFileInfo,
+    StringFileInfo,
+    StringStruct,
+    StringTable,
+    VarFileInfo,
+    VarStruct,
+    VSVersionInfo,
+)
+
+_parts = [int(p) for p in VERSION.split(".")]
+_parts = (_parts + [0, 0, 0, 0])[:4]
+_vstr = ".".join(str(p) for p in _parts)
+
+version = VSVersionInfo(
+    ffi=FixedFileInfo(
+        filevers=_parts,
+        prodvers=_parts,
+        mask=0x3F,
+        flags=0x0,
+        OS=0x40004,
+        fileType=0x1,
+        subtype=0x0,
+        date=(0, 0),
+    ),
+    kids=[
+        StringFileInfo([
+            StringTable("080404b0", [
+                StringStruct("CompanyName", "学习系统"),
+                StringStruct("FileDescription", "问一问"),
+                StringStruct("FileVersion", _vstr),
+                StringStruct("InternalName", "问一问"),
+                StringStruct("LegalCopyright", "MIT License"),
+                StringStruct("OriginalFilename", "问一问.exe"),
+                StringStruct("ProductName", "问一问"),
+                StringStruct("ProductVersion", _vstr),
+            ])
+        ]),
+        VarFileInfo([VarStruct("Translation", [2052, 1200])]),
+    ],
+)
 
 a = Analysis(
     [os.path.join(SPECPATH, '问一问.py')],
@@ -95,7 +144,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=os.path.join(SPECPATH, '问一问.ico'),
-    version=os.path.join(SPECPATH, '版本信息.txt'),
+    version=version,
 )
 
 coll = COLLECT(

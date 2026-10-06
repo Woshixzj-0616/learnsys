@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import datetime
 import os
 import pathlib
 import shutil
@@ -15,8 +16,35 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from learnsys import config, record, store
 from learnsys.ask import bar, hotkey as hotkey_mod, icon as icon_mod, identity, overlay, single
+from learnsys.ask import VERSION
 
 LAUNCHER_NAME = "问一问.cmd"      # 源码运行时那个启动器：开机自启、开始菜单快捷方式都指向它
+
+
+def version_line() -> str:
+    """给托盘 / 启动提示用的一行版本：打包后带打包日期，源码跑就标「源码」。"""
+    if config.FROZEN:
+        try:
+            day = datetime.date.fromtimestamp(pathlib.Path(sys.executable).stat().st_mtime)
+            return f"v{VERSION}（{day.year}-{day.month:02d}-{day.day:02d} 打包）"
+        except OSError:
+            return f"v{VERSION}"
+    return f"v{VERSION}（源码运行）"
+
+
+def newest_source_mtime(src_dir: pathlib.Path) -> float | None:
+    """目录里 *.py 的最新修改时间；目录不存在（exe 被拷去别处了）返回 None。"""
+    if not src_dir.is_dir():
+        return None
+    newest = 0.0
+    for p in src_dir.rglob("*.py"):
+        if "__pycache__" in p.parts:
+            continue
+        try:
+            newest = max(newest, p.stat().st_mtime)
+        except OSError:
+            pass
+    return newest or None
 
 
 def launcher_target() -> pathlib.Path:
@@ -52,6 +80,10 @@ def _tray_icon() -> QtGui.QIcon:
 
 
 class AskApp(QtCore.QObject):
+    # 框选松手后有 140ms 的截图延迟 —— 这期间再按快捷键不许框出第二个。
+    # 放类上：谁都有默认值，别依赖 __init__ 跑过（测试里有 __new__ 裸构造的用法）
+    _capture_scheduled = False
+
     def __init__(self, app: QtWidgets.QApplication):
         super().__init__()
         self.app = app
@@ -98,7 +130,7 @@ class AskApp(QtCore.QObject):
         menu.addSeparator()
         menu.addAction("退出", self.quit)
         tray.setContextMenu(menu)
-        tray.setToolTip(f"问一问 · 按 {self.hotkey.pretty} 框选屏幕")
+        tray.setToolTip(f"问一问 {version_line()}\n按 {self.hotkey.pretty} 框选屏幕；横栏能拖着挪、也能收成小条。")
         tray.activated.connect(self._tray_clicked)
         tray.show()
         return tray
@@ -120,12 +152,31 @@ class AskApp(QtCore.QObject):
         self._install_identity()            # 给自己的任务栏身份收尾（别再被 Windows 当成 IDLE）
         ready = self.hotkey.register()      # 快捷键被占了也别把界面藏起来
         self.show_bar()
-        self.bar.show_message(f"今天的数据放这儿：{day}")
+        message = f"问一问 {version_line()} ｜ 今天的数据放这儿：{day}"
+        if self._exe_is_stale():
+            # 「问一问.cmd」优先启动 dist 里的 exe —— 源码改了没重新打包时，
+            # 跑的还是旧版，测试结果会让人怀疑人生（真踩过）
+            message += "\n⚠️ 源码比 exe 新 —— 现在跑的还是旧版，双击 打包.cmd 重新打包再测。"
+        self.bar.show_message(message)
         if ready:
             self.tray.showMessage(
                 "问一问",
                 f"已就绪 —— 按 {self.hotkey.pretty} 框一块屏幕；横栏能拖着挪、也能收成小条。",
                 QtWidgets.QSystemTrayIcon.Information, 5000)
+
+    def _exe_is_stale(self) -> bool:
+        """打包出的 exe 是不是比仓库源码旧（只在「exe 就在仓库 dist 里」时才比得出）。"""
+        if not config.FROZEN:
+            return False
+        src_dir = config.ROOT.parent.parent / "learnsys"   # exe 在 dist/问一问/ 下
+        newest = newest_source_mtime(src_dir)
+        if newest is None:
+            return False
+        try:
+            exe_mtime = pathlib.Path(sys.executable).stat().st_mtime
+        except OSError:
+            return False
+        return newest > exe_mtime + 60      # 放 60 秒余量，打包尾动不动几秒
 
     def _install_identity(self) -> None:
         """任务栏身份收尾：自己的图标 + HKCU 注册 + 开始菜单快捷方式。"""
@@ -271,6 +322,8 @@ class AskApp(QtCore.QObject):
     def pick(self) -> None:
         if self.snip is not None:
             return
+        if self._capture_scheduled:      # 上一块刚松手、截图还没落 —— 再按会框出第二个
+            return
         if self.bar.busy:
             # 别闷声不响地吞掉 Alt+Q —— 用户只看到「按了没反应」
             self.bar.show_message("上一句还在写 —— 等它写完，或者点「新会话」重开一轮。")
@@ -288,9 +341,11 @@ class AskApp(QtCore.QObject):
 
     def _region_chosen(self, rect: QtCore.QRect) -> None:
         self.snip = None
+        self._capture_scheduled = True
         QtCore.QTimer.singleShot(140, lambda: self._capture(rect))
 
     def _capture(self, rect: QtCore.QRect) -> None:
+        self._capture_scheduled = False
         # 跨屏框选时 `screenAt(center)` 只会取一块屏 ⇒ 按屏裁剪再拼起来，
         # 以前选区横跨两屏时只能抓到半边。
         canvas = QtGui.QImage(rect.width(), rect.height(),
