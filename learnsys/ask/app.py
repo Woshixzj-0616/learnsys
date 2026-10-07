@@ -15,8 +15,8 @@ import sys
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from learnsys import config, record, store
-from learnsys.ask import bar, hotkey as hotkey_mod, icon as icon_mod, identity, overlay, single
-from learnsys.ask import VERSION
+from learnsys.ask import VERSION, backup, bar, hotkey as hotkey_mod, icon as icon_mod, study
+from learnsys.ask import identity, overlay, single
 
 LAUNCHER_NAME = "问一问.cmd"      # 源码运行时那个启动器：开机自启、开始菜单快捷方式都指向它
 
@@ -79,6 +79,23 @@ def _tray_icon() -> QtGui.QIcon:
     return icon_mod.icon()
 
 
+class _BackupWorker(QtCore.QThread):
+    """备份在后台打包（数据上百 MB 时不能卡界面）。done 发 zip 路径或 Exception。"""
+
+    done = QtCore.Signal(object)
+
+    def __init__(self, data_root: pathlib.Path, backup_dir: pathlib.Path, parent=None):
+        super().__init__(parent)
+        self._data_root = data_root
+        self._backup_dir = backup_dir
+
+    def run(self):
+        try:
+            self.done.emit(backup.do_backup(self._data_root, self._backup_dir))
+        except Exception as exc:                 # 后台线程的异常别吞
+            self.done.emit(exc)
+
+
 class AskApp(QtCore.QObject):
     # 框选松手后有 140ms 的截图延迟 —— 这期间再按快捷键不许框出第二个。
     # 放类上：谁都有默认值，别依赖 __init__ 跑过（测试里有 __new__ 裸构造的用法）
@@ -99,7 +116,16 @@ class AskApp(QtCore.QObject):
         # ✕ 只是把界面收进托盘 —— 图和答案都还在，**别在这儿删截图**（删截图只归
         # 「清空 / 换一张 / 退出」管）。以前接在 exited 上，正在问的那轮会被连累。
         self.bar.cleared.connect(self._shot_done)     # 点「清空」⇒ 临时截图也删掉
+        self.bar.review_requested.connect(self._review_today)
+        self.bar.star_toggled.connect(self._toggle_star)
+        self.bar.extra_context_provider = self._transcript_context
         self.bar.history_provider = self._recent_asks
+        self.bar.history_days_provider = self._history_days
+        self.bar.history_db_path_provider = lambda: str(self._conn_path or config.db_path())
+        self._backup_worker = None
+        self._backup_dir = (pathlib.Path(config.USER.get("backup_dir"))
+                            if config.USER.get("backup_dir")
+                            else config.DATA_ROOT.parent / "学习系统备份")
         self.recorder = record.WindowRecorder(self._conn)   # 采集层：记「你在看哪个窗口」
         self.recorder.ticked.connect(self._record_tick)
         self.caller = single.Server(self)      # 别人再点一次 → 把横栏叫回来（不再开第二个）
@@ -120,6 +146,9 @@ class AskApp(QtCore.QObject):
         menu.addAction("收起成小条", lambda: self.bar.set_collapsed(True))
         menu.addAction("回到屏幕上方居中", self.bar.center_top)
         menu.addAction("打开今天的数据文件夹", self.open_today)
+        menu.addAction("今天学了多久（专注统计）", self._show_focus)
+        menu.addAction("导出错题本（Anki CSV）", self._export_anki)
+        menu.addAction("立即备份数据", self._backup_now)
         menu.addAction("怎么固定到任务栏…", self._pin_help)
         menu.addAction("修复任务栏固定（指回问一问）", self._fix_pin)
         menu.addSeparator()
@@ -158,6 +187,7 @@ class AskApp(QtCore.QObject):
             # 跑的还是旧版，测试结果会让人怀疑人生（真踩过）
             message += "\n⚠️ 源码比 exe 新 —— 现在跑的还是旧版，双击 打包.cmd 重新打包再测。"
         self.bar.show_message(message)
+        self._maybe_auto_backup()           # 距上次备份超一周就在后台打一份
         if ready:
             self.tray.showMessage(
                 "问一问",
@@ -255,6 +285,8 @@ class AskApp(QtCore.QObject):
 
     def quit(self) -> None:
         self.bar.shutdown()      # 先把问答线程收干净 —— 还在跑就销毁会崩（QThread）
+        if self._backup_worker is not None and self._backup_worker.isRunning():
+            self._backup_worker.wait(30000)     # 打包到一半别留半个 zip（数据不大，等得起）
         if self.recorder is not None and self.recorder.running:
             self.recorder.stop()      # 退出前把这段记录收尾，别留个没结束的 session
         self.caller.close()
@@ -410,7 +442,7 @@ class AskApp(QtCore.QObject):
         if kind == "image":
             archived = self._archive_image(record.get("image_path") or "")
         try:
-            store.add_ask(
+            ask_id = store.add_ask(
                 self._conn(),
                 record.get("question", ""),
                 record.get("answer", ""),
@@ -422,6 +454,9 @@ class AskApp(QtCore.QObject):
             )
         except Exception as exc:
             print(f"写库失败：{exc}", file=sys.stderr)
+            ask_id = 0
+        if ask_id:
+            self.bar.set_starrable(str(self._conn_path or config.db_path()), ask_id)
         self.bar.refresh_usage()         # 答案落库 ⇒ 占用数字跟着变
 
     def _archive_image(self, src: str) -> str:
@@ -448,12 +483,169 @@ class AskApp(QtCore.QObject):
             return str(source)
 
     def _recent_asks(self):
-        """给横栏「历史」按钮用：今天的问答（新→旧），带 kind / image_path。"""
+        """给横栏「历史」按钮用：今天的问答（新→旧），带 kind / image_path / id。"""
         try:
             return store.recent_asks(self._conn(), limit=20)
         except Exception as exc:
             print(f"读历史失败：{exc}", file=sys.stderr)
             return []
+
+    def _history_days(self):
+        """更早有问答的日子（新→旧，最多 7 天）—— 历史菜单里「更早的日子」用。"""
+        out = []
+        today = config.day_dir()
+        try:
+            for day, db_path in study.day_dbs(config.DATA_ROOT):
+                if db_path.parent == today:
+                    continue                       # 今天那份走「历史」的主菜单
+                conn = store.connect(db_path)
+                try:
+                    rows = store.recent_asks(conn, limit=20)
+                finally:
+                    conn.close()
+                if rows:
+                    out.append((f"{day.month}月{day.day}日", str(db_path), rows))
+                if len(out) >= 7:
+                    break
+        except Exception as exc:
+            print(f"读历史日子失败：{exc}", file=sys.stderr)
+        return out
+
+    # ---- 学习功能：复盘 / 上下文 / 收藏 / 专注统计 ----
+
+    def _review_today(self) -> None:
+        """「复盘」按钮：把今天的窗口记录 + 课堂转写交给 AI 总结。"""
+        try:
+            conn = self._conn()
+            sessions = conn.execute(
+                "SELECT id, started_at, COALESCE(ended_at, '') FROM sessions ORDER BY id"
+            ).fetchall()
+            transcript_rows = store.search_transcripts(conn, limit=500)
+        except Exception as exc:
+            self._warn(f"读今天的记录失败：{exc}")
+            return
+        if not sessions and not transcript_rows:
+            self._warn("今天还没有可复盘的记录 —— 先点托盘里的「开始记录」，下课再来点复盘。")
+            return
+        summary_lines = []
+        for sid, started, ended in sessions:
+            info = store.session_summary(conn, sid)
+            line = f"{str(started)[11:16]} 起记了 {info.get('分钟', 0)} 分钟，切了 {info.get('切换', 0)} 次窗口"
+            # 窗口标题是「在学什么」的最强信号 —— 把这次记录里看到的标题（去重，最多 8 个）带上
+            seen: list[str] = []
+            for _ts, _process, title in store.session_windows(conn, sid):
+                t = (title or "").strip()
+                if t and t not in seen:
+                    seen.append(t)
+                if len(seen) >= 8:
+                    break
+            if seen:
+                line += "。看过：" + "；".join(seen)
+            summary_lines.append(line)
+        question = study.build_review_question(summary_lines,
+                                               study.transcripts_digest(transcript_rows))
+        self.bar.ask_with_context(question, study.REVIEW_DISPLAY)
+
+    def _transcript_context(self) -> str:
+        """追问时捎带的课堂转写片段（最近这些年，cap 在 study 里控）。"""
+        if self.recorder is None or not self.recorder.running:
+            return ""
+        try:
+            since = (datetime.datetime.now()
+                     - datetime.timedelta(minutes=study._CONTEXT_MINUTES + 2)
+                     ).strftime("%Y-%m-%d %H:%M:%S")
+            rows = store.search_transcripts(self._conn(), ts_from=since, limit=100)
+            return study.transcript_context(rows)
+        except Exception:
+            return ""                            # 上下文是锦上添花，坏了就纯问
+
+    def _toggle_star(self, payload) -> None:
+        """收藏 / 取消收藏：落回那条问答所在的库，然后让按钮文字跟真实状态走。"""
+        try:
+            db_path, ask_id = payload
+            if self.conn is not None and str(db_path) == str(self._conn_path):
+                conn = self.conn
+                one_off = False
+            else:
+                conn = store.connect(db_path)    # 老日子的一次性连接
+                one_off = True
+            try:
+                state = store.toggle_star(conn, int(ask_id))
+            finally:
+                if one_off:
+                    conn.close()
+            self.bar.set_star_label(state)
+        except Exception as exc:
+            self._warn(f"收藏没成功：{exc}")
+
+    def _show_focus(self) -> None:
+        """托盘「今天学了多久」：窗口记录算专注统计。"""
+        try:
+            line = study.focus_line(store.focus_stats(self._conn()))
+        except Exception as exc:
+            self._warn(f"统计没算出来：{exc}")
+            return
+        self.tray.showMessage("问一问 · 专注统计", line,
+                              QtWidgets.QSystemTrayIcon.Information, 12000)
+        self.bar.show_message(line)
+        self.show_bar()
+
+    def _export_anki(self) -> None:
+        """托盘「导出错题本」：把所有日子里收藏的问答导成 Anki 能导入的 CSV。"""
+        collected = []
+        try:
+            for day, db_path in study.day_dbs(config.DATA_ROOT):
+                conn = store.connect(db_path)
+                try:
+                    collected.extend(store.starred_asks(conn))
+                finally:
+                    conn.close()
+        except Exception as exc:
+            self._warn(f"读收藏失败：{exc}")
+            return
+        if not collected:
+            self._warn("错题本还是空的 —— 看历史时点「收藏」，想复习的题就攒下来了。")
+            return
+        dest = config.DATA_ROOT / f"错题本_{datetime.date.today():%Y%m%d}.csv"
+        try:
+            count = study.export_anki_csv(collected, dest)
+        except Exception as exc:
+            self._warn(f"导出失败：{exc}")
+            return
+        self._warn(f"导出 {count} 题到 {dest} —— Anki 里「文件→导入」选它就行。")
+
+    # ---- 数据备份 ----
+
+    def _backup_now(self) -> None:
+        self._run_backup(manual=True)
+
+    def _maybe_auto_backup(self) -> None:
+        if backup.needs_backup(self._backup_dir):
+            self._run_backup(manual=False)
+
+    def _run_backup(self, manual: bool) -> None:
+        if self._backup_worker is not None and self._backup_worker.isRunning():
+            self._warn("上一次备份还在打包 —— 等它一下。")
+            return
+        worker = _BackupWorker(config.DATA_ROOT, self._backup_dir, self)
+        worker.done.connect(lambda result, m=manual: self._backup_done(result, m))
+        worker.finished.connect(worker.deleteLater)
+        self._backup_worker = worker
+        worker.start()
+        if manual:
+            self.bar.show_message("正在打包备份 …… 打完会告诉你放哪儿了。")
+
+    def _backup_done(self, result, manual: bool) -> None:
+        self._backup_worker = None
+        if isinstance(result, Exception):
+            self._warn(f"备份没成功：{result}")
+            return
+        if manual:
+            self._warn(f"备份好了：{result}")
+        else:
+            self.tray.showMessage(
+                "问一问", f"自动备份完成：{result}（每周一次，可在 设置.json 里改 backup_dir 换地方）",
+                QtWidgets.QSystemTrayIcon.Information, 8000)
 
     def _shot_path(self) -> pathlib.Path:
         return config.ask_tmp_dir() / "shot.png"

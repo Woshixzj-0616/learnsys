@@ -39,7 +39,8 @@ CREATE TABLE IF NOT EXISTS asks (
     backend  TEXT,
     kind     TEXT,          -- 'image' = 框了图再问 | 'text' = 纯文字问
     image_path TEXT,        -- 有图时 = 归档截图的路径；纯文字为空
-    thread   TEXT           -- 同一轮对话（同一张图的追问）共用一个号，方便复盘
+    thread   TEXT,          -- 同一轮对话（同一张图的追问）共用一个号，方便复盘
+    starred  INTEGER DEFAULT 0  -- 1 = 错题本里收藏了（导 Anki 用）
 );
 """
 
@@ -53,6 +54,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     for col in _KIND_COLS:
         if col not in have:
             conn.execute(f"ALTER TABLE asks ADD COLUMN {col} TEXT")
+    if "starred" not in have:
+        conn.execute("ALTER TABLE asks ADD COLUMN starred INTEGER DEFAULT 0")
     conn.commit()
 
 _LOCK = threading.Lock()
@@ -95,6 +98,17 @@ def add_window_event(conn: sqlite3.Connection, session_id: int, process: str, ti
         conn.execute(
             "INSERT INTO window_events (session_id, ts, process, title) VALUES (?, ?, ?, ?)",
             (session_id, now(), process, title),
+        )
+        conn.commit()
+
+
+def add_window_event_at(conn: sqlite3.Connection, session_id: int, ts: str,
+                        process: str, title: str) -> None:
+    """指定时刻的窗口事件（测试/补录用 —— 正常采集走 add_window_event）。"""
+    with _LOCK:
+        conn.execute(
+            "INSERT INTO window_events (session_id, ts, process, title) VALUES (?, ?, ?, ?)",
+            (session_id, ts, process, title),
         )
         conn.commit()
 
@@ -225,22 +239,81 @@ def window_titles(conn: sqlite3.Connection, ts_from: str = "", ts_to: str = "", 
 
 
 def add_ask(conn: sqlite3.Connection, question: str, answer: str, ms: int, backend: str,
-            kind: str = "text", image_path: str = "", thread: str = "") -> None:
-    """记一次问答。kind='image' 带框选图（image_path=归档截图）| 'text' 纯文字；thread 分组同轮对话。"""
+            kind: str = "text", image_path: str = "", thread: str = "",
+            starred: bool = False) -> int:
+    """记一次问答，返回这条的 id（收藏要用）。kind='image' 带框选图 | 'text' 纯文字；thread 分组同轮对话。"""
     kind = "image" if kind == "image" else "text"
     with _LOCK:
-        conn.execute(
-            "INSERT INTO asks (ts, question, answer, ms, backend, kind, image_path, thread) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (now(), question, answer, ms, backend, kind, image_path or "", thread or ""),
+        cur = conn.execute(
+            "INSERT INTO asks (ts, question, answer, ms, backend, kind, image_path, thread, starred) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (now(), question, answer, ms, backend, kind, image_path or "", thread or "",
+             1 if starred else 0),
         )
         conn.commit()
+        return int(cur.lastrowid or 0)
 
 
 def recent_asks(conn: sqlite3.Connection, limit: int = 8):
-    """最近问过的几条（新→旧）—— 带 kind/image_path，界面好区分「图问 / 文问」。"""
+    """最近问过的几条（新→旧）—— 带 kind/image_path/id，界面好区分图问/文问、好收藏。"""
     with _LOCK:
         return conn.execute(
-            "SELECT ts, question, answer, kind, image_path FROM asks ORDER BY id DESC LIMIT ?",
+            "SELECT ts, question, answer, kind, image_path, id FROM asks ORDER BY id DESC LIMIT ?",
             (limit,),
         ).fetchall()
+
+
+def toggle_star(conn: sqlite3.Connection, ask_id: int) -> bool:
+    """收藏 / 取消收藏一条问答，返回新状态（True = 已收藏）。"""
+    with _LOCK:
+        row = conn.execute("SELECT starred FROM asks WHERE id = ?", (ask_id,)).fetchone()
+        if row is None:
+            return False
+        new = 0 if row[0] else 1
+        conn.execute("UPDATE asks SET starred = ? WHERE id = ?", (new, ask_id))
+        conn.commit()
+        return bool(new)
+
+
+def starred_asks(conn: sqlite3.Connection):
+    """收藏了的问答（新→旧）—— 错题本导出用。"""
+    with _LOCK:
+        return conn.execute(
+            "SELECT ts, question, answer, kind, image_path, id FROM asks "
+            "WHERE starred = 1 ORDER BY id DESC",
+        ).fetchall()
+
+
+def focus_stats(conn: sqlite3.Connection, until: str = "") -> dict:
+    """这一天的专注统计：记了多久、切了几次、各程序停留多久（前 5）。
+
+    停留口径和 session_summary 一致：下一条事件的时间 − 这条的时间，末条算到结束时刻。
+    未结束的 session 算到 until（缺省 = 现在）。
+    """
+    with _LOCK:
+        sessions = conn.execute(
+            "SELECT id, started_at, COALESCE(ended_at, '') FROM sessions ORDER BY id",
+        ).fetchall()
+        events = conn.execute(
+            "SELECT session_id, ts, process FROM window_events ORDER BY session_id, ts, id",
+        ).fetchall()
+    end_at = until or now()
+    total = 0.0
+    switches = 0
+    per: dict[str, float] = {}
+    by_session: dict[int, list[tuple[str, str]]] = {}
+    for sid, ts, process in events:
+        by_session.setdefault(sid, []).append((ts, process))
+    for sid, started, ended in sessions:
+        ended = ended or end_at
+        total += max(0.0, minutes(started, ended))
+        rows = by_session.get(sid, [])
+        switches += max(0, len(rows) - 1)
+        for i, (ts, process) in enumerate(rows):
+            stop = rows[i + 1][0] if i + 1 < len(rows) else ended
+            name = (process or "未知")
+            if name.lower().endswith(".exe"):
+                name = name[:-4]
+            per[name] = per.get(name, 0.0) + max(0.0, minutes(ts, stop))
+    top = sorted(per.items(), key=lambda kv: kv[1], reverse=True)[:5]
+    return {"分钟": round(total, 1), "切换": switches, "程序": top}

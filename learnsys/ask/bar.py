@@ -125,11 +125,12 @@ class _AskWorker(QtCore.QThread):
     done = QtCore.Signal(str)        # 完整答案（含已流出的部分）
     failed = QtCore.Signal(str)      # 失败原因（若已有部分文本，界面会留着）
 
-    def __init__(self, image_path: str, question: str, history, parent=None):
+    def __init__(self, image_path: str, question: str, history, parent=None, context: str = ""):
         super().__init__(parent)
         self._image_path = image_path
         self._question = question
         self._history = history
+        self._context = context      # 课上转写片段（追问时捎给 AI，界面不显示）
         self._cancelled = False
         self._abort = threading.Event()       # 传给 ask_stream：一置位就收摊
         self._sink: list = []                 # 底层响应，cancel 时 close 掐断连接
@@ -149,9 +150,12 @@ class _AskWorker(QtCore.QThread):
     def run(self):
         parts: list[str] = []
         shown = ""                    # 已经显示出去的（清洗过之后的）累积文本
+        question = self._question
+        if self._context:
+            question = f"{self._question}\n\n{self._context}"
         try:
             for piece in backend.ask_stream(
-                    self._image_path, self._question, self._history,
+                    self._image_path, question, self._history,
                     abort=self._abort, response_sink=self._sink):
                 if self._cancelled:
                     return
@@ -182,6 +186,8 @@ class AskBar(QtWidgets.QWidget):
     exited = QtCore.Signal()                   # 用户把横栏收进托盘（✕）
     pick_requested = QtCore.Signal()           # 用户点了「框选」
     cleared = QtCore.Signal()                  # 用户点了「清空」—— app 去删临时截图
+    review_requested = QtCore.Signal()         # 用户点了「复盘」—— app 拿今天的记录去问 AI
+    star_toggled = QtCore.Signal(object)       # 用户点了「收藏」—— (db_path, ask_id)，app 改库
 
     def __init__(self, tip: str):
         super().__init__(None)
@@ -209,7 +215,11 @@ class AskBar(QtWidgets.QWidget):
         self._follow = True           # 流式时视图跟着最新内容走；用户往上翻了就停（见 _on_chunk）
         self._usage_cache = None      # 最近一次算好的占用（Usage）—— 5 分钟内直接用，别反复 walk 盘
         self._usage_at = 0.0
-        self.history_provider = None              # app 塞进来的：() -> [(ts, question, answer, kind, image_path), ...]
+        self._starrable = None        # 当前内容能收藏的那条问答：(db_path, ask_id)；None = 没得收藏
+        self.extra_context_provider = None   # app 塞的：() -> str，追问时附带的课上转写片段
+        self.history_provider = None         # app 塞的：() -> [(ts, question, answer, kind, image_path, id), ...]
+        self.history_days_provider = None    # app 塞的：() -> [(label, db_path, rows), ...] 更早的日子
+        self.history_db_path_provider = None  # app 塞的：() -> str，今天那个库的路径（收藏要落对库）
         self._state = self._load_state()
         # 界面设置里的 always_on_top 可能被手改成字符串 "false" —— `bool("false")` 是 True！
         # 走和 `config._user_bool` 同一套判法，别自己 bool()。
@@ -458,15 +468,31 @@ class AskBar(QtWidgets.QWidget):
         self.clear_btn.setToolTip("对话完了清干净：答案、截图、上下文都不要了")
         self.clear_btn.clicked.connect(self.clear_session)
 
+        self.star_btn = QtWidgets.QToolButton(card)
+        self.star_btn.setObjectName("tiny")
+        self.star_btn.setText("收藏")
+        self.star_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.star_btn.setToolTip("把这条问答收进错题本 —— 托盘里能一键导出成 Anki 的 CSV")
+        self.star_btn.clicked.connect(self._toggle_star)
+        self.star_btn.setEnabled(False)      # 有「当前这条」（历史/刚答完）才亮
+
+        self.review_btn = QtWidgets.QToolButton(card)
+        self.review_btn.setObjectName("tiny")
+        self.review_btn.setText("复盘")
+        self.review_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.review_btn.setToolTip("拿今天记录的窗口和课堂转写问 AI：我刚才学了什么？（要先在托盘「开始记录」）")
+        self.review_btn.clicked.connect(self.review_requested.emit)
+
         # 按钮行：**位置必须恒定**。
         # 以前状态文字和按钮挤在同一行，状态一显示（「用了 0.8 秒…」）就把整排按钮往右推
         # 两百像素 ⇒ 用户按记忆中的位置点「新会话」，实际点到了「置顶」。
         # 现在：按钮各占固定宽度、整体靠右；状态文字单独一行放在下面（它会换行，但推不动按钮）。
+        # 新按钮一律往**尾部**加 —— 别动前面几个的位置，肌肉记忆值钱。
         bottom = QtWidgets.QHBoxLayout()
         bottom.setSpacing(6)
         bottom.addStretch(1)
         for btn in (self.top_btn, self.session_btn, self.clear_btn,
-                    self.history_btn, self.copy_btn):
+                    self.history_btn, self.copy_btn, self.star_btn, self.review_btn):
             btn.setFixedWidth(BUTTON_W)
             bottom.addWidget(btn)
         box.addLayout(bottom)
@@ -704,6 +730,9 @@ class AskBar(QtWidgets.QWidget):
         self._last_answer = ""
         self._showing_history = False
         self._follow = False       # 内容都清了，没什么可跟随的
+        self._starrable = None     # 当前内容没了，「收藏」跟着灭
+        self.star_btn.setEnabled(False)
+        self.star_btn.setText("收藏")
         self._relayout()                    # ⚠️ 窗口高度必须当场缩回去 —— 光 adjustSize
                                             # 会被布局钉着的旧最小尺寸顶住（残影的根子）
         self._force_repaint()               # 保险丝：半透明+阴影的像素残影再兜一道
@@ -882,6 +911,27 @@ class AskBar(QtWidgets.QWidget):
             self.ask.setFocus()
             self.show_message("先打个问题（框不框选都行 —— 框了就问那块屏，不框就是纯文字问）。")
             return
+        # 记录开着的时候，把最近几分钟的课堂转写捎给 AI ——「这题老师怎么讲的来着」才答得上
+        context = ""
+        if self.extra_context_provider is not None:
+            try:
+                context = self.extra_context_provider() or ""
+            except Exception:
+                context = ""                 # 上下文拿不到就纯问，别拦着用户
+        self._begin_turn(question, question, context)
+        self.ask.clear()              # 问题已经上屏了 ⇒ 输入框清空，直接打下一句
+
+    def ask_with_context(self, send_text: str, display_text: str, context: str = "") -> None:
+        """「程序替用户问」的入口（复盘用）：界面显示 display_text，发给 AI 的是 send_text。"""
+        if self._worker is not None:
+            self.show_message("上一句还在写 —— 等它写完再点。")
+            return
+        if not send_text.strip():
+            return
+        self._begin_turn(send_text, display_text, "")
+
+    def _begin_turn(self, send_text: str, display_text: str, context: str) -> None:
+        """开一轮问答：显示 display_text，问 AI 的是 send_text（可带转写上下文）。"""
         self.go.setEnabled(False)
         self._started_at = time.monotonic()
         self._dots = 0
@@ -889,8 +939,7 @@ class AskBar(QtWidgets.QWidget):
         self.status.setVisible(True)
         self.status.setText("在想…")
         self._set_copy_enabled(False)
-        self._start_turn(question)
-        self.ask.clear()              # 问题已经上屏了 ⇒ 输入框清空，直接打下一句
+        self._start_turn(display_text)
         self._timer = QtCore.QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(400)
@@ -900,14 +949,15 @@ class AskBar(QtWidgets.QWidget):
         # 再读 self._image_path 会把图问答错记成纯文字、连归档截图都丢掉。
         kind = "image" if self._image_path else "text"
         image_path = self._image_path or ""
-        self._worker = _AskWorker(self._image_path, question, list(self._turns), self)
+        self._worker = _AskWorker(self._image_path, send_text, list(self._turns), self,
+                                  context=context)
         self._workers.append(self._worker)       # 留着，退出时要 wait（shutdown）
         self._worker.finished.connect(self._reap_workers)
         self._worker.chunk.connect(lambda piece, replace, s=seq: self._on_chunk(piece, replace, s))
         self._worker.done.connect(
-            lambda text, s=seq, k=kind, p=image_path: self._finish(question, text, None, s, k, p))
+            lambda text, s=seq, k=kind, p=image_path: self._finish(display_text, text, None, s, k, p))
         self._worker.failed.connect(
-            lambda message, s=seq, k=kind, p=image_path: self._finish(question, "", message, s, k, p))
+            lambda message, s=seq, k=kind, p=image_path: self._finish(display_text, "", message, s, k, p))
         self._worker.start()
 
     def _tick(self) -> None:
@@ -1014,7 +1064,23 @@ class AskBar(QtWidgets.QWidget):
         self._fit_answer()
         self.ask.setFocus(QtCore.Qt.OtherFocusReason)
 
-    # ---- 复制 / 历史 ----
+    # ---- 复制 / 收藏 / 历史 ----
+
+    def set_starrable(self, db_path: str, ask_id: int) -> None:
+        """刚答完的一轮落库了 —— 「收藏」亮起来，指到今天库里那条。"""
+        self._starrable = (str(db_path), int(ask_id))
+        self.star_btn.setEnabled(True)
+        self.star_btn.setText("收藏")
+
+    def set_star_label(self, starred: bool) -> None:
+        """app 改完库回调：按钮文字跟真实状态走。"""
+        self.star_btn.setText("已收藏★" if starred else "收藏")
+
+    def _toggle_star(self) -> None:
+        if self._starrable is None:
+            return
+        db_path, ask_id = self._starrable
+        self.star_toggled.emit((db_path, ask_id))     # 改库归 app —— 改完回 set_star_label
 
     def _copy_answer(self) -> None:
         # 只复制答案，不带上面「我：」那一行
@@ -1043,15 +1109,38 @@ class AskBar(QtWidgets.QWidget):
     def _show_history(self) -> None:
         rows = self.history_provider() if self.history_provider else None
         menu = QtWidgets.QMenu(self)
-        menu.addAction("今天的问答（[图]=带截图 · [文]=纯文字）").setEnabled(False)
+        menu.addAction("今天的问答（[图]=带截图 · [文]=纯文字 · 点开可收藏）").setEnabled(False)
         menu.addSeparator()
         if not rows:
             menu.addAction("今天还没问过").setEnabled(False)
-        for row in rows or []:
+        today_db = ""
+        if self.history_db_path_provider is not None:
+            try:
+                today_db = self.history_db_path_provider() or ""
+            except Exception:
+                today_db = ""
+        self._add_ask_rows(menu, rows or [], today_db)
+        days = []
+        if self.history_days_provider is not None:
+            try:
+                days = self.history_days_provider() or []
+            except Exception:
+                days = []                      # provider 坏了别拦着今天的菜单
+        if days:
+            menu.addSeparator()
+            older = menu.addMenu("更早的日子 ▸")
+            for label, db_path, day_rows in days:
+                self._add_ask_rows(older.addMenu(label), day_rows, db_path)
+        menu.exec(QtGui.QCursor.pos())
+
+    def _add_ask_rows(self, menu, rows, db_path: str) -> None:
+        """往菜单里铺一列问答行；点开 = 塞进答案区看全文（带着收藏信息）。"""
+        for row in rows:
             ts, question, answer = row[0], row[1], row[2]
             question = question or ""
             kind = row[3] if len(row) > 3 else "text"
             image_path = row[4] if len(row) > 4 else ""
+            ask_id = row[5] if len(row) > 5 else None
             stamp = str(ts)[11:16] if len(str(ts)) >= 16 else str(ts)
             short = question if len(question) <= 22 else question[:22] + "…"
             tag = "图" if kind == "image" else "文"
@@ -1060,13 +1149,13 @@ class AskBar(QtWidgets.QWidget):
             if image_path:
                 tip = f"截图：{image_path}\n{tip}"
             action.setToolTip(tip)
+            star_info = (db_path, ask_id) if (db_path and ask_id) else None
             action.triggered.connect(
-                lambda checked=False, q=question, a=answer, k=kind, p=image_path:
-                    self._show_past(q, a, k, p))
-        menu.exec(QtGui.QCursor.pos())
+                lambda checked=False, q=question, a=answer, k=kind, p=image_path, s=star_info:
+                    self._show_past(q, a, k, p, s))
 
     def _show_past(self, question: str, answer: str, kind: str = "text",
-                   image_path: str = "") -> None:
+                   image_path: str = "", star_info=None) -> None:
         """把一条历史问答塞进答案区看全文（不进当前对话上下文）。
 
         看完历史再打字 = **开一轮新对话**（上下文清掉）—— 界面已经被历史占满，
@@ -1085,6 +1174,9 @@ class AskBar(QtWidgets.QWidget):
         self._last_answer = body               # 复制按钮只复制答案本身
         self._showing_history = True           # 这是历史记录，别把状态提示当成当前对话
         self._follow = False                   # 历史从头看 —— 之后 _fit_answer 别把视图拽到底
+        self._starrable = star_info            # 带着库路径和 id ⇒ 这条能收藏
+        self.star_btn.setEnabled(star_info is not None)
+        self.star_btn.setText("收藏")
         self._set_copy_enabled(bool(body.strip()))
         self.answer.setVisible(True)
         self.status.setVisible(True)           # _reset_answer 刚把它藏了 —— 不亮出来这句提示看不见
