@@ -29,6 +29,7 @@ class WindowRecorder(QtCore.QObject):
         self._started_at = ""
         self._switches = 0        # 这段记了多少条 = 切了多少次窗口
         self._last = None         # 上一次看到的 (程序名, 标题)，没变就不记
+        self.paused = False      # 问一问「暂停录制」用：暂停期间不落窗口事件
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(max(200, int(config.WINDOW_SAMPLE_SECONDS * 1000)))
         self._timer.timeout.connect(self._tick)
@@ -92,6 +93,9 @@ class WindowRecorder(QtCore.QObject):
             self._last = None
             self._switches = 0           # 新的一段从头计 —— 原来这里漏了，数字会跨天累加
 
+        if self.paused:          # 暂停中：只发心跳，不记事件
+            self.ticked.emit()
+            return
         process, title = capture.sample()
         title = title if config.RECORD_WINDOW_TITLE else ""
         if not (process or title):

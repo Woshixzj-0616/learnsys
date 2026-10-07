@@ -1,7 +1,5 @@
 @echo off
-chcp 65001 >nul
-cd /d "%~dp0"
-set "PY=%~dp0.venv\Scripts\pythonw.exe"
-if not exist "%PY%" set "PY=D:\Desktop\bilinote\asr-venv\Scripts\pythonw.exe"
-if not exist "%PY%" set "PY=D:\python\pythonw.exe"
-start "" "%PY%" main.py
+chcp 936 >nul
+echo 学习记录器已经并入「问一问」了 —— 录制 / 声音转写 / 屏幕快照 / 复盘都在那边。
+echo 请双击「问一问.cmd」启动。
+pause

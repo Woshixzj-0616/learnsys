@@ -27,6 +27,7 @@ class AskError(Exception):
 
 
 _data_url_cache: dict[str, tuple[tuple[int, int], str]] = {}
+_DATA_URL_CACHE_MAX = 8
 
 
 def _data_url(image_path: str | None) -> str:
@@ -48,7 +49,8 @@ def _data_url(image_path: str | None) -> str:
         # 截图文件可能已被「清空 / 换一张」删掉 —— 报人话，别把裸异常抛给用户
         raise AskError(f"截图读不到（{exc.strerror or exc}）—— 再框一次试试。") from exc
     url = "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
-    _data_url_cache.clear()          # 同一时刻只有一张正在用的截图，留一条就够
+    if len(_data_url_cache) >= _DATA_URL_CACHE_MAX:   # 简单 FIFO：腾一个位置
+        _data_url_cache.pop(next(iter(_data_url_cache)))
     _data_url_cache[str(path)] = (key, url)
     return url
 
@@ -197,23 +199,26 @@ def _system_message(style: str, with_image: bool) -> dict:
     return {"role": "system", "content": [{"type": "input_text", "text": text}]}
 
 
-def _messages(image_path: str | None, question: str, history: list | None, style: str) -> list:
-    """拼消息：图只挂在第一问上，后面的追问只带文字（省 token、够用）。没图 = 纯文字问。"""
+def _messages(image_path: str | None, question: str, history: list | None, style: str,
+              extra_images: list[str] | None = None) -> list:
+    """拼消息：图只挂在第一问上，后面的追问只带文字（省 token、够用）。没图 = 纯文字问。
+
+    extra_images = 附加图（复盘会带几张屏幕快照），和主图一起最多 4 张。
+    """
     hist = _trim_history(history)
-    image_url = _data_url(image_path) if image_path else None
+    paths = ([image_path] if image_path else []) + list(extra_images or [])
+    image_urls = [_data_url(p) for p in paths[:4]]
 
     def user_first(text: str) -> dict:
-        if not image_url:
+        if not image_urls:
             return user_text(text)
         if style == "chat":
-            return {"role": "user", "content": [
-                {"type": "text", "text": text},
-                {"type": "image_url", "image_url": {"url": image_url}},
-            ]}
-        return {"role": "user", "content": [
-            {"type": "input_text", "text": text},
-            {"type": "input_image", "image_url": image_url},
-        ]}
+            content = [{"type": "text", "text": text}]
+            content += [{"type": "image_url", "image_url": {"url": u}} for u in image_urls]
+            return {"role": "user", "content": content}
+        content = [{"type": "input_text", "text": text}]
+        content += [{"type": "input_image", "image_url": u} for u in image_urls]
+        return {"role": "user", "content": content}
 
     def user_text(text: str) -> dict:
         if style == "chat":
@@ -225,7 +230,7 @@ def _messages(image_path: str | None, question: str, history: list | None, style
             return {"role": "assistant", "content": text}
         return {"role": "assistant", "content": [{"type": "output_text", "text": text}]}
 
-    messages: list[dict] = [_system_message(style, with_image=bool(image_url))]
+    messages: list[dict] = [_system_message(style, with_image=bool(image_urls))]
     if hist:
         first_q, first_a = hist[0]
         messages.append(user_first(first_q))
@@ -240,8 +245,8 @@ def _messages(image_path: str | None, question: str, history: list | None, style
 
 
 def _payload(image_path: str | None, question: str, history: list | None,
-             style: str, stream: bool) -> tuple[dict, str]:
-    messages = _messages(image_path, question, history, style)
+             style: str, stream: bool, extra_images: list[str] | None = None) -> tuple[dict, str]:
+    messages = _messages(image_path, question, history, style, extra_images)
     cap = int(getattr(config, "ASK_MAX_TOKENS", 0) or 0)
     if style == "chat":
         body = {"model": config.ASK_API_MODEL, "messages": messages}
@@ -260,8 +265,9 @@ def _payload(image_path: str | None, question: str, history: list | None,
 
 
 def _open(image_path: str | None, question: str, history: list | None,
-          style: str, stream: bool, limit: float):
-    body, path = _payload(image_path, question, history, style, stream)
+          style: str, stream: bool, limit: float,
+          extra_images: list[str] | None = None):
+    body, path = _payload(image_path, question, history, style, stream, extra_images)
     base = config.ASK_API_BASE.rstrip("/")
     headers = {"Content-Type": "application/json"}
     if config.ASK_API_KEY:
@@ -322,7 +328,8 @@ def _delta_from_responses(obj: dict, want_whole: bool = False) -> str:
 def ask_stream(image_path: str | None, question: str, history: list | None = None,
                timeout: float | None = None,
                abort: threading.Event | None = None,
-               response_sink: list | None = None) -> Iterator[str]:
+               response_sink: list | None = None,
+               extra_images: list[str] | None = None) -> Iterator[str]:
     """流式问一次，边生成边 yield 文本片段。image_path=None = 纯文字问。失败抛 AskError。
 
     `abort`：置位后立刻收摊（不再吐字）。
@@ -333,7 +340,8 @@ def ask_stream(image_path: str | None, question: str, history: list | None = Non
     if abort is not None and abort.is_set():
         return                      # 连都别连
     style = config.api_style()
-    response = _open(image_path, question, history, style, stream=True, limit=limit)
+    response = _open(image_path, question, history, style, stream=True, limit=limit,
+                     extra_images=extra_images)
     if response_sink is not None:
         response_sink.append(response)
     if abort is not None and abort.is_set():
@@ -397,11 +405,12 @@ def ask_stream(image_path: str | None, question: str, history: list | None = Non
 
 
 def ask(image_path: str | None, question: str, history: list | None = None,
-        timeout: float | None = None) -> str:
+        timeout: float | None = None, extra_images: list[str] | None = None) -> str:
     """同步问一次，拿完整答案（调用方放后台线程，别卡界面）。image_path=None = 纯文字问。"""
     limit = timeout or config.ASK_TIMEOUT_SECONDS
     style = config.api_style()
-    response = _open(image_path, question, history, style, stream=False, limit=limit)
+    response = _open(image_path, question, history, style, stream=False, limit=limit,
+                     extra_images=extra_images)
     try:
         data = json.loads(response.read().decode("utf-8", "replace"))
     except TimeoutError as exc:

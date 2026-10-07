@@ -72,3 +72,31 @@ def needs_backup(backup_dir: pathlib.Path, every_days: int = AUTO_EVERY_DAYS) ->
     except OSError:
         return True
     return age.total_seconds() > every_days * 86400
+
+
+def prune_old_days(data_root: pathlib.Path, keep_days: int) -> list[str]:
+    """删除超过 keep_days 天的旧日子文件夹（设置.json keep_days 开启，默认 0=永不删）。
+
+    只动名字长得像「年.月.日」的数据文件夹，别的（设置.json 等）不碰。返回删掉的名字。
+    """
+    import shutil
+    data_root = pathlib.Path(data_root)
+    removed = []
+    if keep_days <= 0 or not data_root.is_dir():
+        return removed
+    cutoff = datetime.date.today() - datetime.timedelta(days=keep_days)
+    for child in sorted(data_root.iterdir()):
+        parts = child.name.split(".")
+        if not child.is_dir() or len(parts) != 3:
+            continue
+        try:
+            day = datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
+        except ValueError:
+            continue
+        if day < cutoff:
+            try:
+                shutil.rmtree(child)
+                removed.append(child.name)
+            except OSError:
+                pass
+    return removed

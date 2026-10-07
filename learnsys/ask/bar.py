@@ -172,12 +172,14 @@ class _AskWorker(QtCore.QThread):
     done = QtCore.Signal(str)        # 完整答案（含已流出的部分）
     failed = QtCore.Signal(str)      # 失败原因（若已有部分文本，界面会留着）
 
-    def __init__(self, image_path: str, question: str, history, parent=None, context: str = ""):
+    def __init__(self, image_path: str, question: str, history, parent=None, context: str = "",
+                 extra_images: list[str] | None = None):
         super().__init__(parent)
         self._image_path = image_path
         self._question = question
         self._history = history
         self._context = context      # 课上转写片段（追问时捎给 AI，界面不显示）
+        self._extra_images = list(extra_images or [])  # 复盘附带的屏幕快照
         self._cancelled = False
         self._abort = threading.Event()       # 传给 ask_stream：一置位就收摊
         self._sink: list = []                 # 底层响应，cancel 时 close 掐断连接
@@ -203,7 +205,8 @@ class _AskWorker(QtCore.QThread):
         try:
             for piece in backend.ask_stream(
                     self._image_path, question, self._history,
-                    abort=self._abort, response_sink=self._sink):
+                    abort=self._abort, response_sink=self._sink,
+                    extra_images=self._extra_images):
                 if self._cancelled:
                     return
                 parts.append(piece)
@@ -236,6 +239,9 @@ class AskBar(QtWidgets.QWidget):
     review_requested = QtCore.Signal()         # 用户点了「复盘」—— app 拿今天的记录去问 AI
     star_toggled = QtCore.Signal(object)       # 用户点了「收藏」—— (db_path, ask_id)，app 改库
     record_toggled = QtCore.Signal()           # 用户点了「录制」—— app 开/停三路录制
+    quiz_requested = QtCore.Signal()           # 用户点了「测验」—— app 出 5 道题
+    rec_pause_toggled = QtCore.Signal()        # 右键录制按钮 → 暂停/继续
+    rec_timer_set = QtCore.Signal(int)         # 右键录制按钮 → 定时停止（分钟，0=取消）
 
     def __init__(self, tip: str):
         super().__init__(None)
@@ -555,8 +561,18 @@ class AskBar(QtWidgets.QWidget):
         self.rec_btn.setObjectName("tiny")
         self.rec_btn.setText("录制")
         self.rec_btn.setCursor(QtCore.Qt.PointingHandCursor)
-        self.rec_btn.setToolTip("录系统声音（不录麦克风）+ 每半分钟一张全屏快照 + 看过哪些窗口 —— 全落今天的库，复盘直接吃")
+        self.rec_btn.setToolTip("录系统声音（不录麦克风）+ 每半分钟一张全屏快照 + 看过哪些窗口，全落今天的库，复盘直接吃；右键：暂停 / 定时停止")
         self.rec_btn.clicked.connect(self.record_toggled.emit)
+        self.rec_btn.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.rec_btn.customContextMenuRequested.connect(self._rec_menu)
+        self.rec_paused = False
+
+        self.quiz_btn = QtWidgets.QToolButton(card)
+        self.quiz_btn.setObjectName("tiny")
+        self.quiz_btn.setText("测验")
+        self.quiz_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.quiz_btn.setToolTip("AI 根据今天的学习记录出 5 道题考你 —— 在下面输入框里答，它逐题批改")
+        self.quiz_btn.clicked.connect(self.quiz_requested.emit)
 
         # 按钮行：**位置必须恒定**。
         # 以前状态文字和按钮挤在同一行，状态一显示（「用了 0.8 秒…」）就把整排按钮往右推
@@ -568,7 +584,7 @@ class AskBar(QtWidgets.QWidget):
         bottom.addStretch(1)
         for btn in (self.top_btn, self.session_btn, self.clear_btn,
                     self.history_btn, self.copy_btn, self.star_btn, self.review_btn,
-                    self.rec_btn):
+                    self.rec_btn, self.quiz_btn):
             btn.setFixedWidth(BUTTON_W)
             bottom.addWidget(btn)
         box.addLayout(bottom)
@@ -1010,16 +1026,21 @@ class AskBar(QtWidgets.QWidget):
         self._begin_turn(question, question, context)
         self.ask.clear()              # 问题已经上屏了 ⇒ 输入框清空，直接打下一句
 
-    def ask_with_context(self, send_text: str, display_text: str, context: str = "") -> None:
-        """「程序替用户问」的入口（复盘用）：界面显示 display_text，发给 AI 的是 send_text。"""
+    def ask_with_context(self, send_text: str, display_text: str, context: str = "",
+                         images: list[str] | None = None) -> None:
+        """「程序替用户问」的入口（复盘/测验用）：界面显示 display_text，发给 AI 的是 send_text。
+
+        images = 附加截图（多图），主 image_path 之外最多再带 4 张。
+        """
         if self._worker is not None:
             self.show_message("上一句还在写 —— 等它写完再点。")
             return
         if not send_text.strip():
             return
-        self._begin_turn(send_text, display_text, "")
+        self._begin_turn(send_text, display_text, context, images)
 
-    def _begin_turn(self, send_text: str, display_text: str, context: str) -> None:
+    def _begin_turn(self, send_text: str, display_text: str, context: str,
+                    images: list[str] | None = None) -> None:
         """开一轮问答：显示 display_text，问 AI 的是 send_text（可带转写上下文）。"""
         self.go.setEnabled(False)
         self._started_at = time.monotonic()
@@ -1039,7 +1060,7 @@ class AskBar(QtWidgets.QWidget):
         kind = "image" if self._image_path else "text"
         image_path = self._image_path or ""
         self._worker = _AskWorker(self._image_path, send_text, list(self._turns), self,
-                                  context=context)
+                                  context=context, extra_images=images)
         self._workers.append(self._worker)       # 留着，退出时要 wait（shutdown）
         self._worker.finished.connect(self._reap_workers)
         self._worker.chunk.connect(lambda piece, replace, s=seq: self._on_chunk(piece, replace, s))
@@ -1152,6 +1173,26 @@ class AskBar(QtWidgets.QWidget):
             })
         self._fit_answer()
         self.ask.setFocus(QtCore.Qt.OtherFocusReason)
+
+    def _rec_menu(self, pos) -> None:
+        """录制按钮右键：暂停/继续 + 定时停止（不用再加按钮占位置）。"""
+        menu = QtWidgets.QMenu(self)
+        menu.setStyleSheet(QSS)
+        menu.addAction("继续录制" if self.rec_paused else "暂停录制",
+                       self.rec_pause_toggled.emit)
+        timer_menu = menu.addMenu("定时停止")
+        for minutes in (30, 45, 60, 90):
+            timer_menu.addAction(f"{minutes} 分钟后",
+                                 lambda m=minutes: self.rec_timer_set.emit(m))
+        timer_menu.addAction("取消定时", lambda: self.rec_timer_set.emit(0))
+        menu.exec(self.rec_btn.mapToGlobal(pos))
+
+    def set_rec_paused(self, paused: bool) -> None:
+        self.rec_paused = paused
+        if paused:
+            self.rec_line.setText("⏸ 已暂停 —— 右键「录制」继续")
+        elif self.rec_line.isVisible():
+            self.rec_line.setText("● 继续录制")
 
     # ---- 复制 / 收藏 / 历史 ----
 

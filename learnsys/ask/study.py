@@ -121,3 +121,66 @@ def export_anki_csv(rows, path: pathlib.Path) -> int:
             writer.writerow([question, answer, str(row[0])[:16]])
             count += 1
     return count
+
+
+# ---- 每日报告 / 测验 / 笔记导出 ----
+
+def build_daily_report(day_name: str, summary_lines: list[str], asks: list,
+                       transcript_text: str, starred: int, frames: int,
+                       ai_summary: str = "") -> str:
+    """把一天的数据拼成 Markdown 报告。ai_summary 是 AI 总结那段（可能为空）。"""
+    lines = [f"# 学习报告 · {day_name}", ""]
+    if ai_summary:
+        lines += ["## 要点", "", ai_summary, ""]
+    lines += ["## 记录概览", ""]
+    lines += (summary_lines or ["（今天没有开过录制）"])
+    lines += ["", f"问答 {len(asks)} 条 ｜ 错题本新增 {starred} 条 ｜ 屏幕快照 {frames} 张", ""]
+    if asks:
+        lines += ["## 今天问过的", ""]
+        for row in asks:
+            q = (row[1] or "").strip().replace("\n", " ")
+            a = (row[2] or "").strip().replace("\n", " ")
+            stamp = str(row[0])[11:16]
+            lines.append(f"- **{stamp}** {q} —— {a[:120]}{'…' if len(a) > 120 else ''}")
+        lines.append("")
+    if transcript_text:
+        lines += ["## 课堂转写", "", transcript_text[-_TRANSCRIPT_CAP:], ""]
+    return "\n".join(lines)
+
+
+def build_quiz_question(summary_lines: list[str], asks_preview: list[str],
+                        transcript_text: str) -> str:
+    """测验按钮发给 AI 的题：基于今天的内容出 5 道自测题，逐题批改。"""
+    parts = [
+        "以下是我今天学习的记录（窗口摘要 + 问过的问题 + 课堂转写）。",
+        "请基于这些内容出 **5 道自测题** 考我，要求：",
+        "1. 只出题，先不要给答案；2. 题目从记录里的知识点来，别超纲；",
+        "3. 有简答也有选择；4. 我答一题你批一题，答错讲清楚错在哪。",
+        "",
+        "【窗口摘要】",
+    ]
+    parts += summary_lines or ["（今天没有开过录制）"]
+    if asks_preview:
+        parts += ["", "【今天问过的】"]
+        parts += asks_preview
+    if transcript_text:
+        parts += ["", "【课堂转写】", transcript_text[-_TRANSCRIPT_CAP:]]
+    return "\n".join(parts)
+
+
+def export_day_notes_md(asks: list, path: pathlib.Path, title: str) -> int:
+    """问答行 → Markdown 笔记（一问一段）。返回写入条数。"""
+    count = 0
+    out = [f"# {title}", ""]
+    for row in asks:
+        q = (row[1] or "").strip()
+        a = (row[2] or "").strip()
+        if not q:
+            continue
+        stamp = str(row[0])[:16]
+        kind = row[3] if len(row) > 3 else "text"
+        tag = "【图问】" if kind == "image" else "【文问】"
+        out += [f"## {stamp} {tag}{q}", "", a or "（无答案）", ""]
+        count += 1
+    pathlib.Path(path).write_text("\n".join(out), encoding="utf-8")
+    return count

@@ -49,6 +49,10 @@ SETTINGS_TEMPLATE = {
     "record_window_title": True,
     "_backup_dir": "数据自动备份放哪儿（留空 = D:/学习系统备份）。每周自动备一次，托盘里也能「立即备份数据」",
     "backup_dir": "",
+    "_keep_days": "数据保留天数：超过这么多天的旧数据文件夹自动删除（0 = 永不删，默认）",
+    "keep_days": 0,
+    "_frame_seconds": "录制时每隔多少秒截一张全屏快照（最小 5）",
+    "frame_seconds": 30,
 }
 
 

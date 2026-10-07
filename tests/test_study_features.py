@@ -267,9 +267,11 @@ class TestBarStudyUI(unittest.TestCase):
             done = mock.MagicMock()
             failed = mock.MagicMock()
 
-            def __init__(self, image_path, question, history, parent=None, context=""):
+            def __init__(self, image_path, question, history, parent=None, context="",
+                         extra_images=None):
                 captured.update(image_path=image_path, question=question,
-                                history=history, context=context)
+                                history=history, context=context,
+                                extra_images=extra_images)
 
             def start(self):
                 pass
@@ -295,8 +297,10 @@ class TestBarStudyUI(unittest.TestCase):
             done = mock.MagicMock()
             failed = mock.MagicMock()
 
-            def __init__(self, image_path, question, history, parent=None, context=""):
-                captured.update(question=question, context=context)
+            def __init__(self, image_path, question, history, parent=None, context="",
+                         extra_images=None):
+                captured.update(question=question, context=context,
+                                extra_images=extra_images)
 
             def start(self):
                 pass
@@ -344,3 +348,31 @@ class TestBarStudyUI(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestBackendMultiImage(unittest.TestCase):
+    """复盘快照喂 AI：backend 支持主图之外再带最多 4 张附加图。"""
+
+    def test_messages_carry_extra_images(self):
+        from learnsys.ask import backend as be
+        with mock.patch.object(be, "_data_url", side_effect=lambda p: f"data:{p}"):
+            msgs = be._messages("main.png", "复盘一下", None, "chat",
+                                extra_images=["a.jpg", "b.jpg", "c.jpg", "d.jpg", "e.jpg"])
+        first = msgs[1]["content"]
+        imgs = [c for c in first if c["type"] == "image_url"]
+        self.assertEqual(len(imgs), 4, "最多带 4 张（主图 + 3 张附加）")
+        self.assertEqual(msgs[0]["content"], be.config.ASK_SYSTEM_PROMPT)
+
+    def test_responses_style_extra_images(self):
+        from learnsys.ask import backend as be
+        with mock.patch.object(be, "_data_url", side_effect=lambda p: f"data:{p}"):
+            msgs = be._messages(None, "复盘一下", None, "responses",
+                                extra_images=["a.jpg", "b.jpg"])
+        first = msgs[1]["content"]
+        imgs = [c for c in first if c["type"] == "input_image"]
+        self.assertEqual(len(imgs), 2)
+
+    def test_no_images_stays_text(self):
+        from learnsys.ask import backend as be
+        msgs = be._messages(None, "纯文字", None, "chat")
+        self.assertEqual(msgs[1]["content"], [{"type": "text", "text": "纯文字"}])

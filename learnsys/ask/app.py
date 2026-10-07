@@ -79,6 +79,54 @@ def _tray_icon() -> QtGui.QIcon:
     return icon_mod.icon()
 
 
+def check_new_version(timeout: float = 4.0) -> str | None:
+    """查 GitHub 最新 release，比当前新就返回版本号；网络/解析失败一律静默。"""
+    import json as _json
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            "https://api.github.com/repos/Woshixzj-0616/learnsys/releases/latest",
+            headers={"Accept": "application/vnd.github+json"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            tag = str(_json.loads(resp.read().decode("utf-8")).get("tag_name") or "")
+    except Exception:
+        return None
+    def nums(t: str) -> tuple:
+        parts = [p for p in t.lower().lstrip("v").split(".") if p.isdigit()]
+        return tuple(int(x) for x in parts) or (0,)
+    return tag if nums(tag) > nums(VERSION) else None
+
+
+class _StartupWorker(QtCore.QThread):
+    """启动时后台干的杂活：该备份就备份、keep_days 清理、查新版本。message 逐条发。"""
+
+    message = QtCore.Signal(str)
+
+    def __init__(self, data_root: pathlib.Path, backup_dir: pathlib.Path, parent=None):
+        super().__init__(parent)
+        self._data_root = data_root
+        self._backup_dir = backup_dir
+
+    def run(self):
+        keep_days = config._user_int("keep_days", 0)
+        if keep_days > 0:
+            try:
+                removed = backup.prune_old_days(self._data_root, keep_days)
+                if removed:
+                    self.message.emit(f"已按设置清理 {keep_days} 天前的数据：" + "、".join(removed))
+            except Exception:
+                pass
+        if backup.needs_backup(self._backup_dir):
+            try:
+                zip_path = backup.do_backup(self._data_root, self._backup_dir)
+                self.message.emit(f"自动备份完成：{zip_path}")
+            except Exception as exc:
+                self.message.emit(f"自动备份没成功：{exc}")
+        newer = check_new_version()
+        if newer:
+            self.message.emit(f"发现新版本 {newer} —— 到 GitHub 的 Releases 页下载更新。")
+
+
 class _BackupWorker(QtCore.QThread):
     """备份在后台打包（数据上百 MB 时不能卡界面）。done 发 zip 路径或 Exception。"""
 
@@ -119,6 +167,9 @@ class AskApp(QtCore.QObject):
         self.bar.review_requested.connect(self._review_today)
         self.bar.star_toggled.connect(self._toggle_star)
         self.bar.record_toggled.connect(self._toggle_record)
+        self.bar.quiz_requested.connect(self._quiz_today)
+        self.bar.rec_pause_toggled.connect(self._toggle_pause)
+        self.bar.rec_timer_set.connect(lambda m: self.live.set_stop_timer(m))
         self.bar.extra_context_provider = self._transcript_context
         self.bar.history_provider = self._recent_asks
         self.bar.history_days_provider = self._history_days
@@ -151,6 +202,8 @@ class AskApp(QtCore.QObject):
         menu.addAction("打开今天的数据文件夹", self.open_today)
         menu.addAction("今天学了多久（专注统计）", self._show_focus)
         menu.addAction("导出错题本（Anki CSV）", self._export_anki)
+        menu.addAction("生成今天的学习报告（Markdown）", self._generate_report)
+        menu.addAction("导出今天的对话笔记（Markdown）", self._export_notes)
         menu.addAction("立即备份数据", self._backup_now)
         menu.addAction("怎么固定到任务栏…", self._pin_help)
         menu.addAction("修复任务栏固定（指回问一问）", self._fix_pin)
@@ -191,7 +244,11 @@ class AskApp(QtCore.QObject):
             # 跑的还是旧版，测试结果会让人怀疑人生（真踩过）
             message += "\n⚠️ 源码比 exe 新 —— 现在跑的还是旧版，双击 打包.cmd 重新打包再测。"
         self.bar.show_message(message)
-        self._maybe_auto_backup()           # 距上次备份超一周就在后台打一份
+        self._startup_worker = _StartupWorker(config.DATA_ROOT, self._backup_dir, self)
+        self._startup_worker.message.connect(
+            lambda m: self.tray.showMessage("问一问", m,
+                                            QtWidgets.QSystemTrayIcon.Information, 10000))
+        self._startup_worker.start()        # 备份/清理/查新版本都在后台
         if ready:
             self.tray.showMessage(
                 "问一问",
@@ -632,14 +689,94 @@ class AskApp(QtCore.QObject):
             return
         self._warn(f"导出 {count} 题到 {dest} —— Anki 里「文件→导入」选它就行。")
 
+    # ---- 学习产出：测验 / 报告 / 笔记 ----
+
+    def _today_data(self):
+        """把今天的录制/问答数据凑齐（给复盘/测验/报告共用）。"""
+        conn = self._conn()
+        sessions = conn.execute(
+            "SELECT id, started_at, COALESCE(ended_at, '') FROM sessions ORDER BY id").fetchall()
+        transcript_rows = store.search_transcripts(conn, limit=500)
+        asks = store.recent_asks(conn, limit=30)
+        return sessions, transcript_rows, asks
+
+    def _quiz_today(self) -> None:
+        """「测验」：基于今天的记录出 5 道题，对话里逐题批改。"""
+        sessions, transcript_rows, asks = self._today_data()
+        if not sessions and not transcript_rows and not asks:
+            self._warn("今天还没有可出题的素材 —— 先录一段课或问几个问题。")
+            return
+        summary_lines = []
+        for sid, started, _ended in sessions:
+            info = store.session_summary(conn, sid)
+            summary_lines.append(
+                f"{str(started)[11:16]} 起记了 {info.get('分钟', 0)} 分钟，切了 {info.get('切换', 0)} 次窗口")
+        asks_preview = [f"问：{(r[1] or '')[:60]}" for r in asks[:10] if (r[1] or '').strip()]
+        question = study.build_quiz_question(summary_lines, asks_preview,
+                                             study.transcripts_digest(transcript_rows))
+        self.bar.ask_with_context(question, "测验：来 5 道题考考我")
+
+    def _generate_report(self) -> None:
+        """生成今天的学习报告（Markdown，落当天文件夹）。AI 总结在后台线程补一段。"""
+        import threading
+        day = config.day_dir()
+        sessions, transcript_rows, asks = self._today_data()
+        starred = len(store.starred_asks(conn)) if (conn := self._conn()) else 0
+        frames = len(list(liverec.frame_dir().glob("*.jpg")))
+        summary_lines = []
+        for sid, started, _ended in sessions:
+            info = store.session_summary(conn, sid)
+            line = f"- {str(started)[11:16]} 起记了 {info.get('分钟', 0)} 分钟，切了 {info.get('切换', 0)} 次窗口"
+            top_name, top_min = info.get("最久") or ("", 0)
+            if top_name and top_min:
+                line += f"，最久停在「{top_name}」（{top_min} 分钟）"
+            summary_lines.append(line)
+        digest = study.transcripts_digest(transcript_rows)
+        dest = day / f"学习报告_{day.name}.md"
+        if not dest.exists():
+            dest.write_text(study.build_daily_report(day.name, summary_lines, asks,
+                                                     digest, starred, frames), encoding="utf-8")
+        if not digest and not sessions:
+            self._warn("今天还没有记录可写进报告。")
+            return
+
+        def ai_part() -> None:
+            question = study.build_review_question(summary_lines, digest)
+            try:
+                ai = backend.ask(None, question, timeout=90)
+                body = study.build_daily_report(day.name, summary_lines, asks,
+                                                digest, starred, frames, ai_summary=ai)
+                dest.write_text(body, encoding="utf-8")
+            except Exception:
+                return                  # AI 不在就保留纯数据版报告
+            self.tray.showMessage("问一问", f"报告写好了（含 AI 要点）：{dest}",
+                                  QtWidgets.QSystemTrayIcon.Information, 10000)
+
+        threading.Thread(target=ai_part, name="report", daemon=True).start()
+        self._warn(f"报告已生成：{dest}（AI 要点写完会自动补进去）")
+
+    def _export_notes(self) -> None:
+        """导出今天的对话为 Markdown 笔记。"""
+        asks = self._recent_asks()
+        if not asks:
+            self._warn("今天还没有问答可导出。")
+            return
+        day = config.day_dir()
+        dest = day / f"对话笔记_{day.name}.md"
+        count = study.export_day_notes_md(asks, dest, f"问一问对话笔记 · {day.name}")
+        self._warn(f"导出 {count} 条问答到 {dest}")
+
+    def _toggle_pause(self) -> None:
+        if not self.live.recording:
+            self._warn("现在没有在录制。")
+            return
+        self.live.set_paused(not self.live.paused)
+        self.bar.set_rec_paused(self.live.paused)
+
     # ---- 数据备份 ----
 
     def _backup_now(self) -> None:
         self._run_backup(manual=True)
-
-    def _maybe_auto_backup(self) -> None:
-        if backup.needs_backup(self._backup_dir):
-            self._run_backup(manual=False)
 
     def _run_backup(self, manual: bool) -> None:
         if self._backup_worker is not None and self._backup_worker.isRunning():

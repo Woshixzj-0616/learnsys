@@ -79,9 +79,14 @@ class LiveRecorder(QtCore.QObject):
         self._asr_thread: threading.Thread | None = None
         self._session_id: int | None = None
         self._finishing = False
+        self.paused = False
         self._frames = 0
         self._chars = 0
         self._transcripts = 0
+        self.frame_paths: list[str] = []   # 本次录制存的快照（复盘挑几张喂 AI 用）
+        self._stop_timer = QtCore.QTimer(self)
+        self._stop_timer.setSingleShot(True)
+        self._stop_timer.timeout.connect(self._on_stop_timer)
         self._frame_timer = QtCore.QTimer(self)
         self._frame_timer.setInterval(max(5000, int(config.ASK_FRAME_SECONDS * 1000)))
         self._frame_timer.timeout.connect(self._grab_frame)
@@ -113,6 +118,26 @@ class LiveRecorder(QtCore.QObject):
         """最近半秒有没有听到声音（电平表）。"""
         return self.audio.level >= config.SILENCE_RMS
 
+    def set_paused(self, paused: bool) -> None:
+        """暂停 = 三路都停手但不结束会话：声音块直接丢弃、不抓快照、不记窗口。"""
+        self.paused = paused
+        self.window_rec.paused = paused
+        self.info.emit("已暂停录制 —— 右键「录制」继续。" if paused else "继续录制。")
+
+    def set_stop_timer(self, minutes: int) -> None:
+        """定时停止：minutes=0 取消。"""
+        if minutes <= 0:
+            self._stop_timer.stop()
+            self.info.emit("已取消定时停止。")
+            return
+        self._stop_timer.start(int(minutes * 60 * 1000))
+        self.info.emit(f"将在 {minutes} 分钟后自动停止录制。")
+
+    def _on_stop_timer(self) -> None:
+        if self.recording:
+            self.info.emit("定时时间到 —— 自动停止录制。")
+            self.stop()
+
     # ---- 开 / 停 ----
 
     def start(self) -> None:
@@ -120,6 +145,7 @@ class LiveRecorder(QtCore.QObject):
             return
         conn = self._conn_getter()
         self._session_id = store.start_session(conn)
+        self.frame_paths = []
         self._frames = 0
         self._chars = 0
         self._transcripts = 0
@@ -183,6 +209,8 @@ class LiveRecorder(QtCore.QObject):
             started, samples = item
             if samples.size < config.MIN_CHUNK_SECONDS * 16000:
                 continue
+            if self.paused:               # 暂停中：块直接丢，不花转写算力
+                continue
             rms = float(np.sqrt(np.mean(samples ** 2))) if samples.size else 0.0
             if rms < config.SILENCE_RMS:
                 continue
@@ -200,6 +228,8 @@ class LiveRecorder(QtCore.QObject):
 
     def _grab_frame(self) -> None:
         """全屏快照：JPEG 落「录屏」文件夹。"""
+        if self.paused:
+            return
         canvas = grab_all_screens_image()
         if canvas is None:
             return
@@ -208,4 +238,5 @@ class LiveRecorder(QtCore.QObject):
         name = f"frame_{datetime.datetime.now():%H%M%S}_{self._frames:04d}.jpg"
         if canvas.save(str(folder / name), "JPEG", 80):
             self._frames += 1
+            self.frame_paths.append(str(folder / name))
             self.ticked.emit()
