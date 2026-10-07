@@ -17,7 +17,7 @@ from unittest import mock
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PySide6 import QtWidgets  # noqa: E402
+from PySide6 import QtCore, QtWidgets  # noqa: E402
 
 from learnsys.ask import VERSION, app as app_mod, backend, bar, usage  # noqa: E402
 
@@ -66,28 +66,27 @@ class TestStreamingFollowScroll(unittest.TestCase):
         self.seq = self.b._turn_seq
         self.b._start_turn("问题")
         self.piece = "很长的内容用来把答案区撑到上限出现内部滚动条。" * 20
+        # 喂到出内部滚动条为止 —— 字体度量各环境不同，别写死轮数
+        for _ in range(40):
+            if self.b.answer.verticalScrollBar().maximum() > 0:
+                break
+            self._feed()
 
     def _feed(self):
         self.b._on_chunk(self.piece, replace=False, seq=self.seq)
         self.b._fit_answer()          # 直接排，不等 80ms 节流器
 
     def test_answer_reaches_cap_with_scrollbar(self):
-        for _ in range(4):
-            self._feed()
         self.assertGreater(self.b.answer.verticalScrollBar().maximum(), 0,
                            "测试前提：答案长到出现内部滚动条")
 
     def test_follows_bottom_when_pinned(self):
-        for _ in range(4):
-            self._feed()
         sb = self.b.answer.verticalScrollBar()
         sb.setValue(sb.maximum())
         self._feed()
         self.assertEqual(sb.value(), sb.maximum(), "在底部时应继续跟随最新内容")
 
     def test_does_not_yank_when_user_scrolled_up(self):
-        for _ in range(4):
-            self._feed()
         sb = self.b.answer.verticalScrollBar()
         sb.setValue(0)                # 用户翻到顶
         self._feed()
@@ -185,6 +184,60 @@ class TestVersionRegexHelper(unittest.TestCase):
     def test_version_used_in_bar_imports(self):
         import learnsys.ask as pkg
         self.assertTrue(re.fullmatch(r"\d+\.\d+\.\d+", pkg.VERSION))
+
+
+
+class TestTopmostToggle(unittest.TestCase):
+    """置顶开关：SetWindowPos 靠不住时（Qt 把 TOPMOST 顶回去）必须落到 setWindowFlags 兜底。
+
+    真机踩过：窗口标志带 WindowStaysOnTopHint 时点「不置顶」，SetWindowPos 降了也白降，
+    横栏照样盖着一切 —— 这组测试钉死「验证 + 兜底」两步。
+    """
+
+    def setUp(self):
+        _app()
+        self.b = bar.AskBar("Alt+Q")
+        self.addCleanup(self.b.shutdown)
+        self.addCleanup(self.b.deleteLater)
+
+    def _fake_user32(self, style_after):
+        fake = mock.MagicMock()
+        fake.SetWindowPos.return_value = 1
+        fake.GetWindowLongW.return_value = style_after
+        return fake
+
+    def test_falls_back_when_demote_ineffective(self):
+        """降级没生效（EXSTYLE 还带 TOPMOST）⇒ hint 必须从窗口标志里摘掉。"""
+        import ctypes
+        self.b.setWindowFlags(self.b.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+        fake = self._fake_user32(0x8)          # 永远"还是置顶"
+        with mock.patch.object(ctypes, "windll") as W:
+            W.user32 = fake
+            self.b._topmost(False)
+        self.assertEqual(
+            int(self.b.windowFlags()) & int(QtCore.Qt.WindowStaysOnTopHint), 0,
+            "SetWindowPos 靠不住时必须走 setWindowFlags 兜底")
+
+    def test_no_fallback_when_verify_passes(self):
+        """SetWindowPos 生效（EXSTYLE 达标）⇒ 不重建窗口。"""
+        import ctypes
+        fake = self._fake_user32(0x0)          # 已降级成功
+        with mock.patch.object(ctypes, "windll") as W:
+            W.user32 = fake
+            with mock.patch.object(self.b, "setWindowFlags") as sf:
+                self.b._topmost(False)
+        sf.assert_not_called()
+
+    def test_promote_via_fallback_adds_hint(self):
+        """置顶方向同理：没生效时兜底把 hint 加回窗口标志。"""
+        import ctypes
+        fake = self._fake_user32(0x0)          # 加不上，一直没 TOPMOST
+        with mock.patch.object(ctypes, "windll") as W:
+            W.user32 = fake
+            self.b._topmost(True)
+        self.assertNotEqual(
+            int(self.b.windowFlags()) & int(QtCore.Qt.WindowStaysOnTopHint), 0,
+            "置顶失败时兜底必须带 WindowStaysOnTopHint")
 
 
 if __name__ == "__main__":

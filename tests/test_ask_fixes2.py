@@ -7,14 +7,16 @@
 from __future__ import annotations
 
 import os
+import pathlib
 import sys
+import tempfile
 import unittest
 from unittest import mock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PySide6 import QtGui, QtWidgets  # noqa: E402
+from PySide6 import QtCore, QtGui, QtWidgets  # noqa: E402
 
 from learnsys import config, record, store  # noqa: E402
 from learnsys.ask import backend, bar, hotkey  # noqa: E402
@@ -41,15 +43,48 @@ class Test8TopmostSinglePath(unittest.TestCase):
         b.show()
         self.assertEqual(int(b.windowFlags()), before, "show() 不该改窗口标志")
 
-    def test_toggle_does_not_change_flags(self):
+    def test_toggle_updates_state_and_text(self):
+        """置顶开关：状态和按钮文字必须跟着翻。
+
+        原来这条测试钉的是「不许走 setWindowFlags（会闪）」—— 那条设计本身就是
+        置顶失效的根因（SetWindowPos 在 Qt 6.11 上靠不住，降级被 Qt 顶回去）。
+        新不变式：**结果正确优先**；快路径生效时不重建窗口，不生效走兜底。
+        """
         _app()
         b = bar.AskBar("Alt+Q")
         self.addCleanup(b.shutdown)
         self.addCleanup(b.deleteLater)
-        before = int(b.windowFlags())
-        b.toggle_always_on_top()
-        self.assertEqual(int(b.windowFlags()), before,
-                         "置顶开关不该走 setWindowFlags（会闪）")
+        import ctypes as ctypes_mod
+        fake = mock.MagicMock()
+        fake.SetWindowPos.return_value = 1
+        fake.GetWindowLongW.return_value = 0x8     # 汇报「已是置顶」⇒ 快路径验证通过
+        with tempfile.TemporaryDirectory() as tmp:
+            # ⚠️ 必须把设置文件指到临时目录 —— toggle 会写盘，别把真机的界面设置翻来翻去（真踩过）
+            fake_settings = pathlib.Path(tmp) / "界面设置.json"
+            fake_settings.write_text("{}", encoding="utf-8")
+            with mock.patch.object(config, "SETTINGS_PATH", fake_settings),                  mock.patch.object(ctypes_mod, "windll") as W:
+                W.user32 = fake
+                before = b._on_top
+                b.toggle_always_on_top()
+        self.assertEqual(b._on_top, not before)
+        self.assertEqual(b.top_btn.text(), "置顶" if b._on_top else "不置顶")
+
+    def test_toggle_demote_corrects_flags_when_ineffective(self):
+        """真机踩过的场景：启动带 hint，点「不置顶」降不下去 ⇒ 兜底必须摘 hint。"""
+        _app()
+        b = bar.AskBar("Alt+Q")
+        self.addCleanup(b.shutdown)
+        self.addCleanup(b.deleteLater)
+        b.setWindowFlags(b.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+        b._on_top = False
+        import ctypes as ctypes_mod
+        fake = mock.MagicMock()
+        fake.SetWindowPos.return_value = 1
+        fake.GetWindowLongW.return_value = 0x8     # 永远「还是置顶」（被 Qt 顶回去）
+        with mock.patch.object(ctypes_mod, "windll") as W:
+            W.user32 = fake
+            b._topmost(False)
+        self.assertEqual(int(b.windowFlags()) & int(QtCore.Qt.WindowStaysOnTopHint), 0)
 
 
 class Test9ConfigWired(unittest.TestCase):

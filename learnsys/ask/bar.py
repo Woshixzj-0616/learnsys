@@ -65,9 +65,9 @@ QLabel#rec { color: #ffb454; font-size: 11px; }
 QLabel#usage { color: #6f757e; font-size: 11px; }
 QLabel#thumb { border: 1px solid #3a3f46; border-radius: 8px; }
 
-QTextBrowser#answer { background: #15171a; border: 1px solid #2c3036; border-radius: 10px;
-                      color: #dfe3e8; padding: 12px 14px; font-size: 15px;
-                      selection-background-color: #2f6bed; }
+QTextBrowser#answer { background: #171c23; border: 1px solid #283039; border-radius: 10px;
+                      color: #dfe6ee; padding: 13px 16px; font-size: 15px;
+                      selection-background-color: #35618f; }
 
 QScrollBar:vertical { background: transparent; width: 8px; margin: 4px 2px 4px 0; }
 QScrollBar::handle:vertical { background: #3a4048; border-radius: 4px; min-height: 30px; }
@@ -102,29 +102,33 @@ def _as_bool(value, default: bool) -> bool:
 
 
 def _ask_char() -> QtGui.QTextCharFormat:
-    """「我」那句话：蓝底白字 —— **只包住文字**（不是整行一条）。
+    """「我」那句话：雾蓝底、近白的字 —— 只包住文字（不是整行一条）。
 
     用的是字符级背景，包多大取决于文字有多长；前后各塞一个空格当内边距。
+    颜色特意比按钮的强调蓝灰一档：控件要醒目，对话要柔和（「自然清新」的出处）。
     """
     fmt = QtGui.QTextCharFormat()
-    fmt.setBackground(QtGui.QColor("#2f6bed"))
-    fmt.setForeground(QtGui.QColor("#ffffff"))
+    fmt.setBackground(QtGui.QColor("#35618f"))
+    fmt.setForeground(QtGui.QColor("#f0f5fc"))
     return fmt
 
 
 def _gap_block() -> QtGui.QTextBlockFormat:
-    """空行（你的话和 AI 的回答之间隔开一点），顺带定 165% 行高 —— 对话区排版统一。"""
+    """空行（你的话和 AI 的回答之间隔开一点），顺带定 165% 行高 —— 对话区排版统一。
+
+    上下留白 4px：对话内容要「呼吸感」，宁可窗口高一点也别挤成一团。
+    """
     fmt = QtGui.QTextBlockFormat()
-    fmt.setTopMargin(3)
-    fmt.setBottomMargin(3)
+    fmt.setTopMargin(4)
+    fmt.setBottomMargin(4)
     fmt.setLineHeight(165.0, _LINE_HEIGHT_PROPORTIONAL)
     return fmt
 
 
 def _answer_char() -> QtGui.QTextCharFormat:
-    """AI 的回答：正常颜色（别继承了「我」那块的白字）。"""
+    """AI 的回答：柔和的冷白（别继承「我」那块的字色，也别纯白刺眼）。"""
     fmt = QtGui.QTextCharFormat()
-    fmt.setForeground(QtGui.QColor("#e2e5e9"))
+    fmt.setForeground(QtGui.QColor("#dce4ee"))
     return fmt
 
 
@@ -356,21 +360,39 @@ class AskBar(QtWidgets.QWidget):
             self.setWindowFlags(flags)
 
     def _topmost(self, on: bool) -> None:
-        """置顶 / 取消置顶 —— **不改窗口标志**，直接跟 Windows 说。
+        """置顶 / 取消置顶。
 
-        改用 `setWindowFlags` 会怎样：Qt 会先把窗口**藏掉再重建**，真机上就是闪一下，
-        看着像冒出两个。用 `SetWindowPos` 只动层级，窗口本身不动。
+        原本只调 SetWindowPos(HWND_TOPMOST/NOTOPMOST)，想免掉 setWindowFlags 的闪动 ——
+        真机实测这条路在 Qt 6.11 上**不可靠**：窗口标志里带着 WindowStaysOnTopHint 时，
+        Qt 按缓存的标志反复把 WS_EX_TOPMOST 顶回去，SetWindowPos 降了也白降
+        （真踩过：点「不置顶」横栏照样盖着一切）。所以改成：
+        ① 先试无闪动的 SetWindowPos（参数补齐 argtypes）；
+        ② 用 GetWindowLongW 验证实际状态，达标就收工；
+        ③ 不达标老实走 setWindowFlags 重建窗口（闪一下 —— 罕见操作，对 > 快）。
         """
         try:
             import ctypes
-            ctypes.windll.user32.SetWindowPos(
-                int(self.winId()),
-                -1 if on else -2,          # HWND_TOPMOST / HWND_NOTOPMOST
-                0, 0, 0, 0,
-                0x0001 | 0x0002 | 0x0010,  # 不改大小、不改位置、不抢焦点
-            )
+            import ctypes.wintypes as wt
+            user32 = ctypes.windll.user32
+            user32.SetWindowPos.argtypes = [wt.HWND, wt.HWND, ctypes.c_int, ctypes.c_int,
+                                            ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+            hwnd = wt.HWND(int(self.winId()))
+            user32.SetWindowPos(hwnd, wt.HWND(-1 if on else -2), 0, 0, 0, 0,
+                                0x0001 | 0x0002 | 0x0010)   # 不改大小/位置、不抢焦点
+            style = user32.GetWindowLongW(hwnd, -20)         # GWL_EXSTYLE
+            if bool(style & 0x8) == on:                      # WS_EX_TOPMOST 与目标一致 ⇒ 成功
+                return
         except Exception:
             pass
+        # 兜底：改 Qt 窗口标志（窗口会重建、闪一下），位置先记下来再还原
+        flags = QtCore.Qt.FramelessWindowHint | QtCore.Qt.Window
+        if on:
+            flags |= QtCore.Qt.WindowStaysOnTopHint
+        if int(self.windowFlags()) != int(flags):
+            pos = self.pos()
+            self.setWindowFlags(flags)
+            self.show()
+            self.move(pos)
 
     def toggle_always_on_top(self) -> None:
         """「置顶」开关：开着才挡别的界面；默认关。"""
