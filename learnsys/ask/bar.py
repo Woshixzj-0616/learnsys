@@ -16,33 +16,74 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from learnsys import config
 from learnsys.ask import backend, icon as icon_mod, usage
 
+# 设计规范（改样式先看这里，别一处一处试）：
+#   底色  卡片 #1b1e23 ｜ 输入 #23262b ｜ 答案区 #15171a（一层比一层深，视线自然往下走）
+#   强调  蓝 #4d8bff（问 / 复盘 / 输入焦点 / 菜单选中）
+#   语义  清空=危险（悬停泛红）｜ 收藏=金色（已收藏★）｜ 置顶开=蓝字
+#   圆角  卡片 14 ｜ 输入/按钮/答案 10 ｜ 小按钮 8 ｜ 菜单 10
+#   字号  答案 15 ｜ 输入/主按钮 14 ｜ 小按钮 13 ｜ 状态 12 ｜ 占用/记录 11
+#   ⚠️ 按钮宽度 BUTTON_W 恒定、位置不动 —— 美化不许破坏肌肉记忆（见按钮行注释）
 QSS = """
-#bar { background: #1c1e22; border: 1px solid #34383f; border-radius: 14px; }
-#pill { background: #1c1e22; border: 1px solid #34383f; border-radius: 16px; }
+QFrame#bar { background: #1b1e23; border: 1px solid #33383f; border-radius: 14px;
+             font-family: "Microsoft YaHei UI"; }
+QFrame#pill { background: #1b1e23; border: 1px solid #33383f; border-radius: 16px;
+              font-family: "Microsoft YaHei UI"; }
 QLabel#handle { color: #6f757e; font-size: 15px; }
 QLabel#pillTitle { color: #e6e9ec; font-size: 13px; font-weight: 600; }
 QLabel#pillUsage { color: #868c95; font-size: 12px; }
 QLabel#pillHint { color: #5aaaff; font-size: 12px; }
-QPushButton#pick { background: #2b2f36; color: #d7dbe0; border: 1px solid #3a3f46;
-                   border-radius: 10px; padding: 10px 16px; font-size: 14px; }
-QPushButton#pick:hover { background: #363b44; border: 1px solid #5aaaff; color: #ffffff; }
-QLineEdit#ask { background: #26292e; border: 1px solid #3a3f46; border-radius: 10px;
-                color: #f1f3f4; padding: 10px 13px; font-size: 14px; }
-QLineEdit#ask:focus { border: 1px solid #5aaaff; }
-QPushButton#go { background: #2d6cdf; color: #ffffff; border: none; border-radius: 10px;
-                 padding: 10px 22px; font-size: 14px; font-weight: 600; }
-QPushButton#go:hover { background: #3b7bee; }
+
+QPushButton#pick { background: #262b31; color: #d7dbe0; border: 1px solid #3a3f46;
+                   border-radius: 10px; padding: 9px 16px; font-size: 14px; }
+QPushButton#pick:hover { background: #303743; border-color: #4d8bff; color: #ffffff; }
+QPushButton#pick:pressed { background: #242a31; }
+
+QLineEdit#ask { background: #23262b; border: 1px solid #3a3f46; border-radius: 10px;
+                color: #f1f3f4; padding: 9px 13px; font-size: 14px;
+                selection-background-color: #2f6bed; }
+QLineEdit#ask:focus { border: 1px solid #4d8bff; background: #25282d; }
+
+QPushButton#go { background: #2f6bed; color: #ffffff; border: none; border-radius: 10px;
+                 padding: 9px 24px; font-size: 14px; font-weight: 600; }
+QPushButton#go:hover { background: #3d78f2; }
+QPushButton#go:pressed { background: #2a5fd0; }
 QPushButton#go:disabled { background: #33383f; color: #7e848c; }
-QToolButton#tiny { color: #9aa0a6; background: transparent; border: none;
-                   font-size: 15px; padding: 4px 9px; }
-QToolButton#tiny:hover { color: #ffffff; background: #2c3037; border-radius: 8px; }
-QToolButton#tiny:disabled { color: #454a51; background: transparent; }
-QLabel#status { color: #868c95; font-size: 12px; }
+
+QToolButton#tiny { color: #9aa0a6; background: transparent; border: 1px solid transparent;
+                   font-size: 13px; padding: 5px 8px; border-radius: 8px; }
+QToolButton#tiny:hover { color: #ffffff; background: #2c3037; }
+QToolButton#tiny:pressed { background: #262a30; }
+QToolButton#tiny:disabled { color: #474c53; background: transparent; }
+QToolButton#tiny:checked { color: #5aaaff; }          /* 置顶开着时亮蓝 */
+QToolButton[role="accent"] { color: #6ea8ff; }         /* 复盘：主操作，蓝字 */
+QToolButton[role="accent"]:hover { color: #a8ccff; background: #243043; }
+QToolButton[role="danger"]:hover { color: #ff8177; background: #34262a; }  /* 清空：悬停泛红 */
+QToolButton[starred="true"] { color: #f5b74e; }        /* 已收藏：金字 */
+
+QLabel#status { color: #98a1ab; font-size: 12px; }
 QLabel#rec { color: #ffb454; font-size: 11px; }
 QLabel#usage { color: #6f757e; font-size: 11px; }
 QLabel#thumb { border: 1px solid #3a3f46; border-radius: 8px; }
-QTextBrowser#answer { background: #16181b; border: 1px solid #2c3036; border-radius: 10px;
-                      color: #e2e5e9; padding: 12px 14px; font-size: 15px; }
+
+QTextBrowser#answer { background: #15171a; border: 1px solid #2c3036; border-radius: 10px;
+                      color: #dfe3e8; padding: 12px 14px; font-size: 15px;
+                      selection-background-color: #2f6bed; }
+
+QScrollBar:vertical { background: transparent; width: 8px; margin: 4px 2px 4px 0; }
+QScrollBar::handle:vertical { background: #3a4048; border-radius: 4px; min-height: 30px; }
+QScrollBar::handle:vertical:hover { background: #4a525c; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
+
+QMenu { background: #202329; border: 1px solid #33383f; border-radius: 10px; padding: 6px; }
+QMenu::item { color: #d7dbe0; background: transparent; padding: 7px 24px 7px 14px;
+              border-radius: 6px; font-size: 13px; }
+QMenu::item:selected { background: #2f6bed; color: #ffffff; }
+QMenu::item:disabled { color: #6b7178; }
+QMenu::separator { height: 1px; background: #33383f; margin: 5px 8px; }
+
+QToolTip { background: #202329; color: #d7dbe0; border: 1px solid #33383f;
+           padding: 4px 6px; font-size: 12px; }
 """
 
 THUMB_W, THUMB_H = 64, 40
@@ -66,16 +107,17 @@ def _ask_char() -> QtGui.QTextCharFormat:
     用的是字符级背景，包多大取决于文字有多长；前后各塞一个空格当内边距。
     """
     fmt = QtGui.QTextCharFormat()
-    fmt.setBackground(QtGui.QColor("#2d6cdf"))
+    fmt.setBackground(QtGui.QColor("#2f6bed"))
     fmt.setForeground(QtGui.QColor("#ffffff"))
     return fmt
 
 
 def _gap_block() -> QtGui.QTextBlockFormat:
-    """空行（你的话和 AI 的回答之间隔开一点）。"""
+    """空行（你的话和 AI 的回答之间隔开一点），顺带定 165% 行高 —— 对话区排版统一。"""
     fmt = QtGui.QTextBlockFormat()
     fmt.setTopMargin(3)
     fmt.setBottomMargin(3)
+    fmt.setLineHeight(165.0, _LINE_HEIGHT_PROPORTIONAL)
     return fmt
 
 
@@ -463,6 +505,7 @@ class AskBar(QtWidgets.QWidget):
 
         self.clear_btn = QtWidgets.QToolButton(card)
         self.clear_btn.setObjectName("tiny")
+        self.clear_btn.setProperty("role", "danger")   # 清空是危险动作：悬停泛红（见 QSS）
         self.clear_btn.setText("清空")
         self.clear_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.clear_btn.setToolTip("对话完了清干净：答案、截图、上下文都不要了")
@@ -478,6 +521,7 @@ class AskBar(QtWidgets.QWidget):
 
         self.review_btn = QtWidgets.QToolButton(card)
         self.review_btn.setObjectName("tiny")
+        self.review_btn.setProperty("role", "accent")  # 复盘是主操作：常亮蓝字（见 QSS）
         self.review_btn.setText("复盘")
         self.review_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.review_btn.setToolTip("拿今天记录的窗口和课堂转写问 AI：我刚才学了什么？（要先在托盘「开始记录」）")
@@ -1073,8 +1117,12 @@ class AskBar(QtWidgets.QWidget):
         self.star_btn.setText("收藏")
 
     def set_star_label(self, starred: bool) -> None:
-        """app 改完库回调：按钮文字跟真实状态走。"""
+        """app 改完库回调：按钮文字跟真实状态走，金色「已收藏★」靠 starred 属性点亮。"""
         self.star_btn.setText("已收藏★" if starred else "收藏")
+        self.star_btn.setProperty("starred", bool(starred))
+        style = self.star_btn.style()
+        style.unpolish(self.star_btn)        # 动态属性变了要重抛光，QSS 才会重算
+        style.polish(self.star_btn)
 
     def _toggle_star(self) -> None:
         if self._starrable is None:
