@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import pathlib
 import threading
 import time
 import uuid
@@ -245,6 +246,9 @@ class AskBar(QtWidgets.QWidget):
     report_requested = QtCore.Signal()         # 「⋯」菜单 → 生成学习报告
     notes_requested = QtCore.Signal()          # 「⋯」菜单 → 导出对话笔记
     anki_requested = QtCore.Signal()           # 「⋯」菜单 → 导出错题本
+    computer_request = QtCore.Signal(str)      # 输入 > 开头 = 电脑助手（AI 出操作计划）
+    ops_result = QtCore.Signal(str)            # 电脑助手每步执行结果（后台线程发）
+    remind_scheduled = QtCore.Signal(int, str)  # 计划里出现 remind → app 挂定时器
 
     def __init__(self, tip: str):
         super().__init__(None)
@@ -273,6 +277,10 @@ class AskBar(QtWidgets.QWidget):
         self._usage_cache = None      # 最近一次算好的占用（Usage）—— 5 分钟内直接用，别反复 walk 盘
         self._usage_at = 0.0
         self._starrable = None        # 当前内容能收藏的那条问答：(db_path, ask_id)；None = 没得收藏
+        self.doc_path: str | None = None   # 挂载的课件文档（提问时正文一起带上）
+        self.doc_name = ""
+        self.doc_text = ""
+        self.ops_result.connect(self.append_text)
         self.extra_context_provider = None   # app 塞的：() -> str，追问时附带的课上转写片段
         self.history_provider = None         # app 塞的：() -> [(ts, question, answer, kind, image_path, id), ...]
         self.history_days_provider = None    # app 塞的：() -> [(label, db_path, rows), ...] 更早的日子
@@ -732,6 +740,7 @@ class AskBar(QtWidgets.QWidget):
         self._turns = []
         self._thread = uuid.uuid4().hex[:12]
         self.drop_image()
+        self.clear_doc()
         self._reset_answer()
 
     def _drop_running(self) -> None:
@@ -812,6 +821,7 @@ class AskBar(QtWidgets.QWidget):
         self._image_path = image_path
         self._turns = []
         self._thread = uuid.uuid4().hex[:12]
+        self.clear_doc()               # 换了新截图，挂着的文档先摘掉（两者会互相干扰）
         self.thumb.setPixmap(_thumb(shot, THUMB_W, THUMB_H))
         self.thumb.setVisible(True)
         self.go.setEnabled(True)
@@ -1028,6 +1038,13 @@ class AskBar(QtWidgets.QWidget):
             self.ask.setFocus()
             self.show_message("先打个问题（框不框选都行 —— 框了就问那块屏，不框就是纯文字问）。")
             return
+        if question.startswith(">"):  # 电脑助手：> 后面是要 AI 帮忙操作电脑的事
+            self.computer_request.emit(question[1:].strip())
+            self.ask.clear()
+            return
+        send_text = question
+        if self.doc_path:             # 挂了课件：正文随问题一起发
+            send_text = f"【参考文档：{self.doc_name}】\n{self.doc_text}\n\n【问题】{question}"
         # 记录开着的时候，把最近几分钟的课堂转写捎给 AI ——「这题老师怎么讲的来着」才答得上
         context = ""
         if self.extra_context_provider is not None:
@@ -1035,7 +1052,7 @@ class AskBar(QtWidgets.QWidget):
                 context = self.extra_context_provider() or ""
             except Exception:
                 context = ""                 # 上下文拿不到就纯问，别拦着用户
-        self._begin_turn(question, question, context)
+        self._begin_turn(send_text, question, context)
         self.ask.clear()              # 问题已经上屏了 ⇒ 输入框清空，直接打下一句
 
     def ask_with_context(self, send_text: str, display_text: str, context: str = "",
@@ -1236,6 +1253,33 @@ class AskBar(QtWidgets.QWidget):
         box.setDefaultButton(cancel)
         box.exec()
         return box.clickedButton() is yes
+
+    def set_doc(self, path: str, text: str) -> None:
+        """挂载课件文档：之后每次提问都把文档正文一起发给 AI（最多带 6000 字）。"""
+        self.doc_path = str(path)
+        self.doc_name = pathlib.Path(path).name
+        self.doc_text = text[:6000]
+        self.ask.setPlaceholderText(f"📄 {self.doc_name} 已挂 —— 直接问它；「清空」摘掉")
+        self.show_message(f"已挂文档 {self.doc_name}（截取 {len(self.doc_text)} 字）—— 直接提问就行。")
+
+    def clear_doc(self) -> None:
+        had = self.doc_path is not None
+        self.doc_path = None
+        self.doc_name = ""
+        self.doc_text = ""
+        if had:
+            self.ask.setPlaceholderText(f"直接打字问就行；想问屏幕上的东西就先点「框选」或按 {self._tip}")
+            self.show_message("已摘掉文档。")
+
+    def append_text(self, text: str) -> None:
+        """往答案区末尾追加一段（电脑助手逐步汇报执行结果用）。"""
+        if self.answer.isHidden():
+            self.answer.setVisible(True)
+        cursor = self.answer.textCursor()
+        cursor.movePosition(QtGui.QTextCursor.End)
+        cursor.insertBlock(_gap_block())
+        cursor.insertText(text, _answer_char())
+        self._schedule_fit()
 
     def set_rec_paused(self, paused: bool) -> None:
         self.rec_paused = paused

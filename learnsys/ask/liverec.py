@@ -238,5 +238,9 @@ class LiveRecorder(QtCore.QObject):
         name = f"frame_{datetime.datetime.now():%H%M%S}_{self._frames:04d}.jpg"
         if canvas.save(str(folder / name), "JPEG", 80):
             self._frames += 1
-            self.frame_paths.append(str(folder / name))
+            path = str(folder / name)
+            self.frame_paths.append(path)
+            saved = getattr(self, "frame_saved", None)
+            if saved is not None:
+                saved(path, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             self.ticked.emit()

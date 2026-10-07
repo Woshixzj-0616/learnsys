@@ -51,7 +51,8 @@ def transcripts_digest(rows) -> str:
     return "\n".join(pieces)
 
 
-def build_review_question(summary_lines: list[str], transcript_text: str) -> str:
+def build_review_question(summary_lines: list[str], transcript_text: str,
+                          frame_text: str = "") -> str:
     """复盘按钮发给 AI 的题：窗口摘要 + 转写正文 + 明确的输出要求。"""
     transcript_text = (transcript_text or "").strip()[-_TRANSCRIPT_CAP:]
     parts = [
@@ -184,3 +185,53 @@ def export_day_notes_md(asks: list, path: pathlib.Path, title: str) -> int:
         count += 1
     pathlib.Path(path).write_text("\n".join(out), encoding="utf-8")
     return count
+
+
+# ---- 文档问答 / 术语表 ----
+
+def extract_doc_text(path: str) -> str:
+    """课件/文档 → 纯文本（PDF 用 PyMuPDF；docx/pptx 用对应库；txt/md 直接读）。"""
+    p = pathlib.Path(path)
+    suffix = p.suffix.lower()
+    if suffix == ".pdf":
+        import pymupdf
+        pages = []
+        with pymupdf.open(str(p)) as doc:
+            for page in doc:
+                pages.append(page.get_text())
+        return chr(10).join(pages)
+    if suffix == ".docx":
+        import docx
+        doc = docx.Document(str(p))
+        return chr(10).join(par.text for par in doc.paragraphs if par.text.strip())
+    if suffix == ".pptx":
+        from pptx import Presentation
+        prs = Presentation(str(p))
+        parts = []
+        for slide in prs.slides:
+            texts = []
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    t = shape.text_frame.text.strip()
+                    if t:
+                        texts.append(t)
+            if texts:
+                parts.append(chr(10).join(texts))
+        return (chr(10) * 2).join(parts)
+    if suffix in (".txt", ".md"):
+        return p.read_text(encoding="utf-8", errors="replace")
+    raise ValueError(f"还不支持 {suffix} 文档（先支持 PDF/DOCX/PPTX/TXT/MD）")
+
+def build_glossary_question(transcript_text: str, asks_preview: list[str]) -> str:
+    """术语表：AI 从今天的转写+问答里提取学科术语。"""
+    parts = [
+        "以下是我今天学习的记录。请从中提取 **学科术语/关键词**，整理成一张术语表：",
+        "每行一条，格式：术语 —— 一句话解释（解释要通俗，20 字以内）；",
+        "只收学科相关的词，别收日常用语；按出现顺序排。",
+        "",
+    ]
+    if asks_preview:
+        parts += ["【问过的问题】"] + asks_preview + [""]
+    if transcript_text:
+        parts += ["【课堂转写】", transcript_text[-_TRANSCRIPT_CAP:]]
+    return chr(10).join(parts)

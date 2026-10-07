@@ -6,3 +6,8 @@ numpy
 faster-whisper
 pyaudiowpatch
 pycaw
+# 电脑助手 / 文档问答 / 快照 OCR（2026.10 v1.4 起）
+PyMuPDF
+python-docx
+python-pptx
+rapidocr-onnxruntime

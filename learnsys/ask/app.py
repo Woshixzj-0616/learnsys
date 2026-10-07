@@ -16,9 +16,10 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from learnsys import config, record, store
 from learnsys.ask import VERSION, backup, bar, hotkey as hotkey_mod, icon as icon_mod, study
-from learnsys.ask import identity, liverec, overlay, single
+from learnsys.ask import backend, identity, liverec, ocr, ops, overlay, single, scheduler
 
 LAUNCHER_NAME = "问一问.cmd"      # 源码运行时那个启动器：开机自启、开始菜单快捷方式都指向它
+NL = chr(92) + "n"               # 写进文件/字符串字面量里的「反斜杠+n」（换行转义）
 
 
 def version_line() -> str:
@@ -125,6 +126,23 @@ class _StartupWorker(QtCore.QThread):
         newer = check_new_version()
         if newer:
             self.message.emit(f"发现新版本 {newer} —— 到 GitHub 的 Releases 页下载更新。")
+        # 错题本复习提醒（1/3/7 天节奏，跨所有日子查）
+        import datetime as _dt
+        due_total = 0
+        try:
+            for _day, db_path in study.day_dbs(self._data_root):
+                conn = store.connect(db_path)
+                try:
+                    due = store.due_starred(conn, _dt.date.today())
+                    if due:
+                        due_total += len(due)
+                    store.bump_review_stage(conn, due)
+                finally:
+                    conn.close()
+        except Exception:
+            pass
+        if due_total:
+            self.message.emit(f"错题本有 {due_total} 题到复习期了 —— 点开历史或来一场测验吧。")
 
 
 class _BackupWorker(QtCore.QThread):
@@ -182,6 +200,12 @@ class AskApp(QtCore.QObject):
                             if config.USER.get("backup_dir")
                             else config.DATA_ROOT.parent / "学习系统备份")
         self.live = liverec.LiveRecorder(self._conn, self)   # 三路录制：声音+屏幕+窗口
+        self.scheduler = scheduler.Scheduler(self)           # 提醒/番茄钟/定时都挂这里
+        self.scheduler.fired.connect(self._scheduler_fired)
+        self.bar.computer_request.connect(self._computer_request)
+        self.bar.remind_scheduled.connect(self._schedule_remind)
+        self._ocr = ocr.OcrQueue(self._conn, self)           # 快照 OCR 后台队列
+        self.live.frame_saved = self._ocr.enqueue            # 快照落盘即进队
         self.live.ticked.connect(self._live_tick)
         self.live.info.connect(self._live_info)
         self.live.stopped.connect(self._live_stopped)
@@ -203,6 +227,9 @@ class AskApp(QtCore.QObject):
         menu.addAction("收起成小条", lambda: self.bar.set_collapsed(True))
         menu.addAction("回到屏幕上方居中", self.bar.center_top)
         menu.addAction("打开今天的数据文件夹", self.open_today)
+        menu.addAction("番茄钟（25 分钟专注）", self._start_pomodoro)
+        menu.addAction("挂载课件来问（PDF/DOCX/PPTX/TXT）", self._attach_doc)
+        menu.addAction("生成今天的术语表", self._generate_glossary)
         menu.addAction("今天学了多久（专注统计）", self._show_focus)
         menu.addAction("导出错题本（Anki CSV）", self._export_anki)
         menu.addAction("生成今天的学习报告（Markdown）", self._generate_report)
@@ -517,6 +544,28 @@ class AskApp(QtCore.QObject):
 
     def _remember(self, record: dict) -> None:
         """答完记一笔：图问 / 文问分开，有图就先归档截图再落库（方便复盘）。"""
+        if record.get("question", "").startswith("电脑助手："):
+            steps = ops.parse_plan(record.get("answer") or "")
+            if not steps:
+                self.bar.append_text("（这没法变成具体操作 —— 上面的回复当普通回答看吧。"
+                                     "试试更具体的说法，比如「把 D:/下载 里上周的 pdf 移到 D:/课件」）")
+                return
+            plan_text = NL.join(
+                f"{i}. {ops.describe(step)}" for i, step in enumerate(steps, 1))
+            self.bar.append_text("---- 计划预览 ----" + NL + plan_text + NL + "---- 等你确认 ----")
+            box = QtWidgets.QMessageBox(self.bar)
+            box.setWindowTitle("电脑助手 · 确认执行")
+            box.setText(f"共 {len(steps)} 步，确认执行？" + NL + NL + plan_text + NL + NL
+                        + "删除会进回收站；可反悔。")
+            run_btn = box.addButton("执行", QtWidgets.QMessageBox.AcceptRole)
+            box.addButton("取消", QtWidgets.QMessageBox.RejectRole)
+            box.setDefaultButton(run_btn)
+            box.exec()
+            if box.clickedButton() is run_btn:
+                self._execute_ops(steps)
+            else:
+                self.bar.append_text("（已取消，没有执行。）")
+            return
         kind = "image" if record.get("kind") == "image" else "text"
         archived = ""
         if kind == "image":
@@ -622,8 +671,14 @@ class AskApp(QtCore.QObject):
             if seen:
                 line += "。看过：" + "；".join(seen)
             summary_lines.append(line)
+        day = config.day_dir()
+        frame_rows = store.frame_text_between(
+            conn, f"{day.year:04d}-{day.month:02d}-{day.day:02d} 00:00:00",
+            f"{day.year:04d}-{day.month:02d}-{day.day:02d} 23:59:59", limit=40)
+        frame_text = chr(10).join(f"[{t[11:16]}] {x}" for _p, t, x in frame_rows)
         question = study.build_review_question(summary_lines,
-                                               study.transcripts_digest(transcript_rows))
+                                               study.transcripts_digest(transcript_rows),
+                                               frame_text)
         self.bar.ask_with_context(question, study.REVIEW_DISPLAY)
 
     def _transcript_context(self) -> str:
@@ -692,6 +747,63 @@ class AskApp(QtCore.QObject):
             return
         self._warn(f"导出 {count} 题到 {dest} —— Anki 里「文件→导入」选它就行。")
 
+    # ---- 电脑助手：> 请求 → AI 出计划 → 预览确认 → 执行 ----
+
+    def _computer_request(self, request: str) -> None:
+        if not request:
+            return
+        if self.bar._worker is not None:
+            self.bar.show_message("上一句还在写 —— 等它写完再叫电脑助手。")
+            return
+        plan_question = ops.plan_question(request)
+        self.bar.ask_with_context(plan_question, f"电脑助手：{request}")
+
+    def _execute_ops(self, steps: list[dict]) -> None:
+        """后台线程逐步执行计划，结果一条条回流到答案区；全量写日志。"""
+        import threading
+        app_index = ops.start_menu_apps()
+        log_lines = [f"--- {store.now()} ---"]
+
+        def run() -> None:
+            for i, step in enumerate(steps, 1):
+                try:
+                    if step.get("op") == "remind":
+                        minutes = max(1, int(step.get("minutes") or 1))
+                        msg = str(step.get("message") or "提醒")
+                        self.bar.remind_scheduled.emit(minutes, msg)
+                        result = f"✓ 已设提醒：{minutes} 分钟后 —— {msg}"
+                    else:
+                        result = "✓ " + ops.execute(step, app_index)
+                except Exception as exc:
+                    result = f"✗ 第 {i} 步失败：{exc}"
+                log_lines.append(f"{i}. [{store.now()}] {ops.describe(step)} → {result}")
+                self.bar.ops_result.emit(result)
+            log_lines.append("")
+            try:
+                with open(config.day_dir() / "操作日志.txt", "a", encoding="utf-8") as f:
+                    f.write("\n".join(log_lines) + "\n")
+            except OSError:
+                pass
+
+        threading.Thread(target=run, name="ops-run", daemon=True).start()
+
+    def _schedule_remind(self, minutes: int, message: str) -> None:
+        self.scheduler.after(f"remind-{store.now()}", minutes * 60, message)
+
+    def _scheduler_fired(self, name: str, payload) -> None:
+        text = str(payload or "时间到。")
+        if name.startswith("pomodoro"):
+            text = "专注 25 分钟结束 —— 起来走两步，休息 5 分钟。"
+            self.scheduler.after("pomodoro_break", 5 * 60, "休息结束 —— 继续加油！")
+        self.tray.showMessage("问一问 · 提醒", text,
+                              QtWidgets.QSystemTrayIcon.Information, 12000)
+        self.bar.show_message("⏰ " + text)
+        self.show_bar()
+
+    def _start_pomodoro(self) -> None:
+        self.scheduler.after("pomodoro", 25 * 60)
+        self._warn("番茄钟开始了 —— 25 分钟后提醒你休息（这段时间适合开个录制）。")
+
     # ---- 学习产出：测验 / 报告 / 笔记 ----
 
     def _today_data(self):
@@ -757,6 +869,48 @@ class AskApp(QtCore.QObject):
 
         threading.Thread(target=ai_part, name="report", daemon=True).start()
         self._warn(f"报告已生成：{dest}（AI 要点写完会自动补进去）")
+
+    def _attach_doc(self) -> None:
+        path, _filter = QtWidgets.QFileDialog.getOpenFileName(
+            self.bar, "选择要问的文档", "",
+            "文档 (*.pdf *.docx *.pptx *.txt *.md);;所有文件 (*.*)")
+        if not path:
+            return
+        try:
+            text = study.extract_doc_text(path)
+        except Exception as exc:
+            self._warn(f"读文档失败：{exc}")
+            return
+        if len(text.strip()) < 20:
+            self._warn("这份文档几乎没读到文字（扫描版 PDF 需要OCR，还不支持）。")
+            return
+        self.bar.set_doc(path, text)
+
+    def _generate_glossary(self) -> None:
+        """AI 从今天的转写+问答里提取学科术语，攒成术语表 Markdown。"""
+        import threading
+        _sessions, transcript_rows, asks = self._today_data()
+        digest = study.transcripts_digest(transcript_rows)
+        if not digest and not asks:
+            self._warn("今天还没有转写和问答，攒不出术语表。")
+            return
+        asks_preview = [f"问：{(r[1] or '')[:60]}" for r in asks[:10] if (r[1] or '').strip()]
+        question = study.build_glossary_question(digest, asks_preview)
+
+        def run() -> None:
+            try:
+                terms = backend.ask(None, question, timeout=90)
+            except Exception as exc:
+                self.tray.showMessage("问一问", f"术语表没成：{exc}",
+                                      QtWidgets.QSystemTrayIcon.Warning, 8000)
+                return
+            dest = config.day_dir() / "术语表.md"
+            dest.write_text(f"# 术语表 · {config.day_dir().name}" + NL + NL + terms,
+                            encoding="utf-8")
+            self.tray.showMessage("问一问", f"术语表写好了：{dest}",
+                                  QtWidgets.QSystemTrayIcon.Information, 10000)
+
+        threading.Thread(target=run, name="glossary", daemon=True).start()
 
     def _export_notes(self) -> None:
         """导出今天的对话为 Markdown 笔记。"""

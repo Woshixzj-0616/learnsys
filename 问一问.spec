@@ -81,6 +81,11 @@ a = Analysis(
         'pycaw',
         'pycaw.pycaw',
         'pycaw.utils',
+        # 文档问答 / 快照 OCR —— 都是函数内懒加载，PyInstaller 扫不到
+        'pymupdf',
+        'docx',
+        'pptx',
+        'rapidocr_onnxruntime',
     ],
     hookspath=[],
     hooksconfig={},

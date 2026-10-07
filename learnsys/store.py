@@ -40,8 +40,16 @@ CREATE TABLE IF NOT EXISTS asks (
     kind     TEXT,          -- 'image' = 框了图再问 | 'text' = 纯文字问
     image_path TEXT,        -- 有图时 = 归档截图的路径；纯文字为空
     thread   TEXT,          -- 同一轮对话（同一张图的追问）共用一个号，方便复盘
-    starred  INTEGER DEFAULT 0  -- 1 = 错题本里收藏了（导 Anki 用）
+    starred  INTEGER DEFAULT 0,  -- 1 = 错题本里收藏了（导 Anki 用）
+    review_stage INTEGER DEFAULT 0,  -- 复习提醒次数（0~3，到 3 就不再提醒）
+    last_remind TEXT                 -- 上次提醒日期（1/3/7 天间隔按它算）
 );
+CREATE TABLE IF NOT EXISTS frame_text (
+    path TEXT PRIMARY KEY,      -- 快照文件路径
+    ts   TEXT NOT NULL,         -- 快照拍摄时刻
+    text TEXT NOT NULL          -- OCR 出来的文字
+);
+CREATE INDEX IF NOT EXISTS idx_frame_text_ts ON frame_text (ts);
 """
 
 _KIND_COLS = ("kind", "image_path", "thread")
@@ -56,6 +64,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE asks ADD COLUMN {col} TEXT")
     if "starred" not in have:
         conn.execute("ALTER TABLE asks ADD COLUMN starred INTEGER DEFAULT 0")
+    if "review_stage" not in have:
+        conn.execute("ALTER TABLE asks ADD COLUMN review_stage INTEGER DEFAULT 0")
+    if "last_remind" not in have:
+        conn.execute("ALTER TABLE asks ADD COLUMN last_remind TEXT")
     conn.commit()
 
 _LOCK = threading.Lock()
@@ -317,3 +329,57 @@ def focus_stats(conn: sqlite3.Connection, until: str = "") -> dict:
             per[name] = per.get(name, 0.0) + max(0.0, minutes(ts, stop))
     top = sorted(per.items(), key=lambda kv: kv[1], reverse=True)[:5]
     return {"分钟": round(total, 1), "切换": switches, "程序": top}
+
+
+# ---- 快照 OCR 文字 / 复习提醒 ----
+
+def add_frame_text(conn: sqlite3.Connection, path: str, ts: str, text: str) -> None:
+    with _LOCK:
+        conn.execute(
+            "INSERT INTO frame_text (path, ts, text) VALUES (?, ?, ?) "
+            "ON CONFLICT(path) DO UPDATE SET text = excluded.text",
+            (path, ts, text),
+        )
+        conn.commit()
+
+
+def frame_text_between(conn: sqlite3.Connection, ts_from: str, ts_to: str, limit: int = 60):
+    """时间窗内的快照文字（按时间升序）—— 复盘拼「屏幕上的文字」用。"""
+    with _LOCK:
+        return conn.execute(
+            "SELECT path, ts, text FROM frame_text "
+            "WHERE ts >= ? AND ts <= ? ORDER BY ts LIMIT ?",
+            (ts_from, ts_to, limit),
+        ).fetchall()
+
+
+REVIEW_INTERVALS = (1, 3, 7)   # 收藏后第 1 / 3 / 7 天各提醒一次
+
+
+def due_starred(conn: sqlite3.Connection, today) -> list[int]:
+    """错题本里「到该复习的日子」的问答 id（第 1/3/7 天各提醒一次，提醒过就推进度）。"""
+    rows = conn.execute(
+        "SELECT id, ts, review_stage, COALESCE(last_remind, '') FROM asks "
+        "WHERE starred = 1 ORDER BY id").fetchall()
+    due = []
+    for ask_id, ts, stage, last in rows:
+        if stage >= len(REVIEW_INTERVALS):
+            continue
+        base = last or str(ts)[:10]
+        try:
+            base_day = dt.datetime.strptime(base[:10], "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if (today - base_day).days >= REVIEW_INTERVALS[stage]:
+            due.append(int(ask_id))
+    return due
+
+def bump_review_stage(conn: sqlite3.Connection, ask_ids: list[int]) -> None:
+    if not ask_ids:
+        return
+    with _LOCK:
+        conn.executemany(
+            "UPDATE asks SET review_stage = review_stage + 1, last_remind = ? WHERE id = ?",
+            [(dt.date.today().isoformat(), i) for i in ask_ids],
+        )
+        conn.commit()
