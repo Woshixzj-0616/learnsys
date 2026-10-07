@@ -1,3 +1,8 @@
 # 「问一问」跑起来只要这两样（都是实测在 Windows + Python 3.14 上能用的版本）
 PySide6==6.11.2
 comtypes>=1.4.17
+# 「录制」三路（系统声音转写 + 快照）—— 2026.10 起问一问也要用
+numpy
+faster-whisper
+pyaudiowpatch
+pycaw

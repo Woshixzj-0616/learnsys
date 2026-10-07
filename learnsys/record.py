@@ -49,12 +49,14 @@ class WindowRecorder(QtCore.QObject):
         """这段记了多少条 = 切了多少次窗口。"""
         return self._switches
 
-    def start(self) -> None:
+    def start(self, session_id: int | None = None) -> None:
+        """开始一段记录。session_id 传进来 = 接管别人开好的会话（问一问的「录制」
+        三路合一：窗口/声音/快照共用同一个 session，复盘才好对齐）。"""
         if self.running:
             return
         self._conn = self._conn_getter()
         self._db_path = config.db_path()
-        self._session_id = store.start_session(self._conn)
+        self._session_id = session_id if session_id is not None else store.start_session(self._conn)
         self._started_at = store.now()
         self._switches = 0
         self._last = None

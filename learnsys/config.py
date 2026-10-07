@@ -136,7 +136,16 @@ CHUNK_SECONDS = 45.0        # 每攒多少秒的录音转一次
 #   45s 是折中：转写约 12s 追得上，落后约 1 分钟。想更实时就调小。
 SILENCE_RMS = 0.003         # 响度低于这个就跳过：静音不花算力、不落库
 MIN_CHUNK_SECONDS = 2.0     # 短于这个的碎块直接丢掉
-ASR_MODEL_DIR = str(ROOT / "models" / "small")
+
+def _model_dir() -> str:
+    """whisper 模型目录：源码在 ROOT/models；打包后 exe 在 dist/问一问/ 里，
+    往上两级找仓库根的 models（拷出去没有模型 ⇒ 用默认路径，转写会报「加载失败」）。"""
+    for cand in (ROOT / "models" / "small", ROOT.parent.parent / "models" / "small"):
+        if (cand / "model.bin").exists():
+            return str(cand)
+    return str(ROOT / "models" / "small")
+
+ASR_MODEL_DIR = _model_dir()
 ASR_DEVICE = "cpu"          # 想用显卡填 "cuda"（要先装 cuDNN/cuBLAS）
 ASR_COMPUTE_TYPE = "int8"   # cuda 时改成 "float16"
 ASR_LANGUAGE = "zh"
@@ -145,6 +154,8 @@ ASR_VAD = True              # 静音切段；失败会自动退回 False
 # ---- 问一问（框选屏幕 → 问 AI）----
 # 下面带「设置.json」的几项都能在 D:/学习系统/设置.json 里改 —— 打包成 exe 后就靠它
 ASK_HOTKEY = USER.get("hotkey") or "alt+q"   # 全局快捷键：修饰键(alt/ctrl/shift/win) + 主键
+# 录制时每隔多少秒截一张全屏快照（设置.json 里 frame_seconds 可改，最小 5 秒）
+ASK_FRAME_SECONDS = max(5.0, float(_user_int("frame_seconds", 30)))
 ASK_TIMEOUT_SECONDS = 90.0      # 等 AI 回话的上限；超时就在横条里给中文提示，不装死
 # 答案最长多少 token —— **只用来防失控，不能用来提速**：
 # 实测 deepseek-flash 是推理模型，思考过程也吃这份配额（一次回答 240 token 里 117 个是推理），

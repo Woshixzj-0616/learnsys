@@ -16,7 +16,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from learnsys import config, record, store
 from learnsys.ask import VERSION, backup, bar, hotkey as hotkey_mod, icon as icon_mod, study
-from learnsys.ask import identity, overlay, single
+from learnsys.ask import identity, liverec, overlay, single
 
 LAUNCHER_NAME = "问一问.cmd"      # 源码运行时那个启动器：开机自启、开始菜单快捷方式都指向它
 
@@ -118,6 +118,7 @@ class AskApp(QtCore.QObject):
         self.bar.cleared.connect(self._shot_done)     # 点「清空」⇒ 临时截图也删掉
         self.bar.review_requested.connect(self._review_today)
         self.bar.star_toggled.connect(self._toggle_star)
+        self.bar.record_toggled.connect(self._toggle_record)
         self.bar.extra_context_provider = self._transcript_context
         self.bar.history_provider = self._recent_asks
         self.bar.history_days_provider = self._history_days
@@ -126,8 +127,10 @@ class AskApp(QtCore.QObject):
         self._backup_dir = (pathlib.Path(config.USER.get("backup_dir"))
                             if config.USER.get("backup_dir")
                             else config.DATA_ROOT.parent / "学习系统备份")
-        self.recorder = record.WindowRecorder(self._conn)   # 采集层：记「你在看哪个窗口」
-        self.recorder.ticked.connect(self._record_tick)
+        self.live = liverec.LiveRecorder(self._conn, self)   # 三路录制：声音+屏幕+窗口
+        self.live.ticked.connect(self._live_tick)
+        self.live.info.connect(self._live_info)
+        self.live.stopped.connect(self._live_stopped)
         self.caller = single.Server(self)      # 别人再点一次 → 把横栏叫回来（不再开第二个）
         self.caller.called.connect(self._called_back)
         self.tray = self._build_tray()
@@ -139,7 +142,7 @@ class AskApp(QtCore.QObject):
         menu = QtWidgets.QMenu()
         menu.addAction(f"框选提问（{self.hotkey.pretty}）", self.pick)
         menu.addSeparator()
-        self.record_action = menu.addAction("开始记录（记我在看什么）")
+        self.record_action = menu.addAction("开始完整录制（声音+屏幕+窗口）")
         self.record_action.setCheckable(True)
         self.record_action.triggered.connect(self._toggle_record)
         menu.addAction("展开横栏", self.show_bar)
@@ -243,53 +246,69 @@ class AskApp(QtCore.QObject):
         self.show_bar()
         self.bar.show_message("问一问已经在跑了 —— 把横栏给你叫回来了。")
 
-    # ---- 采集层：开始 / 结束记录 ----
+    # ---- 采集层：开始 / 结束完整录制（声音 + 屏幕 + 窗口）----
 
-    def _toggle_record(self, checked: bool) -> None:
-        if checked:
-            self.recorder.start()
-            self.tray.showMessage(
-                "问一问", "开始记录了 —— 你在看哪个窗口会被记下来，**只记到你喊停为止**，不全天。",
-                QtWidgets.QSystemTrayIcon.Information, 6000)
+    def _toggle_record(self, checked: bool = False) -> None:
+        """托盘菜单和横栏「录制」按钮共用这一个开关。"""
+        if self.live.recording:
+            self.live.stop()
+            self.bar.show_message("正在收尾 —— 最后一块转写完（最多一两分钟）会汇报总结。")
         else:
-            done = self.recorder.stop()
-            self.tray.showMessage("问一问", self._record_summary(done),
-                                  QtWidgets.QSystemTrayIcon.Information, 10000)
-        self._sync_record_ui()
+            self.live.start()
 
     def _record_summary(self, done: dict) -> str:
-        """结束时那句话：记了多久、切了几次、最久停在哪个程序。"""
+        """结束时那句话：记了多久、切了几次、转写多少、快照多少。"""
         if not done:
             return "这段没记下东西。"
         top_name, top_min = done.get("最久") or ("", 0)
-        text = f"记完了：{done.get('分钟', 0)} 分钟 · 切了 {done.get('切换', 0)} 次窗口"
+        text = f"录制完成：{done.get('分钟', 0)} 分钟 · 切了 {done.get('切换', 0)} 次窗口"
+        chars = int(done.get("转写字数") or 0)
+        frames = int(done.get("快照张数") or 0)
+        if chars:
+            text += f" · 转写 {chars} 字（{done.get('转写条数', 0)} 段）"
+        if frames:
+            text += f" · 快照 {frames} 张"
         if top_name and top_min:
-            text += f" · 最久停在「{top_name}」约 {top_min} 分钟"
-        text += f"。\n在 {config.day_dir()} 里。"
+            text += f"\n最久停在「{top_name}」约 {top_min} 分钟"
+        text += f"\n快照在 {done.get('快照目录', '')}；点「复盘」可以让 AI 帮你总结这段。"
         return text
 
-    def _sync_record_ui(self) -> None:
-        """托盘那条菜单 + 横栏那行字，跟着记录状态走。"""
-        on = self.recorder.running
+    def _live_tick(self) -> None:
+        """每秒：托盘菜单显示进度，横栏显示「● 录制中」+ 转写/快照计数。"""
+        on = self.live.recording
         self.record_action.setChecked(on)
-        self._record_tick()
-
-    def _record_tick(self) -> None:
-        """每秒：菜单上显示记了多久，横栏上显示「记录中」。"""
-        on = self.recorder.running
-        if on:
+        if self.live.finishing:
+            self.record_action.setText("结束完整录制（正在收尾转写…）")
+            self.bar.set_recording(True, self.live.window_rec.elapsed,
+                                   self.live.window_rec.switches, "正在收尾转写…")
+        elif on:
             self.record_action.setText(
-                f"结束记录（已记 {self.recorder.elapsed:.0f} 分钟 · 切 {self.recorder.switches} 次）")
+                f"结束完整录制（已记 {self.live.window_rec.elapsed:.0f} 分 · 转写 {self.live.chars} 字）")
+            detail = f"转写 {self.live.chars} 字 · 快照 {self.live.frames} 张"
+            if self.live.chars == 0 and not self.live.listening:
+                detail += " · 还没听到声音"
+            self.bar.set_recording(True, self.live.window_rec.elapsed,
+                                   self.live.window_rec.switches, detail)
         else:
-            self.record_action.setText("开始记录（记我在看什么）")
-        self.bar.set_recording(on, self.recorder.elapsed, self.recorder.switches)
+            self.record_action.setText("开始完整录制（声音+屏幕+窗口）")
+            self.bar.set_recording(False)
+
+    def _live_info(self, text: str) -> None:
+        self.bar.show_message(text)
+
+    def _live_stopped(self, summary: dict) -> None:
+        text = self._record_summary(summary)
+        self.tray.showMessage("问一问", text, QtWidgets.QSystemTrayIcon.Information, 12000)
+        self.bar.show_message(text.replace(chr(10), " "))
 
     def quit(self) -> None:
         self.bar.shutdown()      # 先把问答线程收干净 —— 还在跑就销毁会崩（QThread）
+        if self.live.recording:
+            self.live.stop()     # 退出前收尾录制（后台线程写完最后一块，daemon 兜底）
         if self._backup_worker is not None and self._backup_worker.isRunning():
             self._backup_worker.wait(30000)     # 打包到一半别留半个 zip（数据不大，等得起）
-        if self.recorder is not None and self.recorder.running:
-            self.recorder.stop()      # 退出前把这段记录收尾，别留个没结束的 session
+        if self.live.recording:
+            self.live.stop()      # 退出前收尾录制（转写线程 daemon 兜底）
         self.caller.close()
         self._shot_done()
         if self.conn is not None:
@@ -549,9 +568,7 @@ class AskApp(QtCore.QObject):
 
     def _transcript_context(self) -> str:
         """追问时捎带的课堂转写片段（最近这些年，cap 在 study 里控）。"""
-        if self.recorder is None or not self.recorder.running:
-            return ""
-        try:
+        try:   # 刚录完也能带上 —— 有近 12 分钟内的转写就捎，没有就空串
             since = (datetime.datetime.now()
                      - datetime.timedelta(minutes=study._CONTEXT_MINUTES + 2)
                      ).strftime("%Y-%m-%d %H:%M:%S")

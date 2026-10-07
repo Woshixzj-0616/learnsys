@@ -58,6 +58,7 @@ QToolButton#tiny:checked { color: #5aaaff; }          /* 置顶开着时亮蓝 *
 QToolButton[role="accent"] { color: #6ea8ff; }         /* 复盘：主操作，蓝字 */
 QToolButton[role="accent"]:hover { color: #a8ccff; background: #243043; }
 QToolButton[role="danger"]:hover { color: #ff8177; background: #34262a; }  /* 清空：悬停泛红 */
+QToolButton[role="recording"] { color: #ff8177; }      /* 录制中：红字提醒 */
 QToolButton[starred="true"] { color: #f5b74e; }        /* 已收藏：金字 */
 
 QLabel#status { color: #98a1ab; font-size: 12px; }
@@ -234,6 +235,7 @@ class AskBar(QtWidgets.QWidget):
     cleared = QtCore.Signal()                  # 用户点了「清空」—— app 去删临时截图
     review_requested = QtCore.Signal()         # 用户点了「复盘」—— app 拿今天的记录去问 AI
     star_toggled = QtCore.Signal(object)       # 用户点了「收藏」—— (db_path, ask_id)，app 改库
+    record_toggled = QtCore.Signal()           # 用户点了「录制」—— app 开/停三路录制
 
     def __init__(self, tip: str):
         super().__init__(None)
@@ -549,6 +551,13 @@ class AskBar(QtWidgets.QWidget):
         self.review_btn.setToolTip("拿今天记录的窗口和课堂转写问 AI：我刚才学了什么？（要先在托盘「开始记录」）")
         self.review_btn.clicked.connect(self.review_requested.emit)
 
+        self.rec_btn = QtWidgets.QToolButton(card)
+        self.rec_btn.setObjectName("tiny")
+        self.rec_btn.setText("录制")
+        self.rec_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.rec_btn.setToolTip("录系统声音（不录麦克风）+ 每半分钟一张全屏快照 + 看过哪些窗口 —— 全落今天的库，复盘直接吃")
+        self.rec_btn.clicked.connect(self.record_toggled.emit)
+
         # 按钮行：**位置必须恒定**。
         # 以前状态文字和按钮挤在同一行，状态一显示（「用了 0.8 秒…」）就把整排按钮往右推
         # 两百像素 ⇒ 用户按记忆中的位置点「新会话」，实际点到了「置顶」。
@@ -558,7 +567,8 @@ class AskBar(QtWidgets.QWidget):
         bottom.setSpacing(6)
         bottom.addStretch(1)
         for btn in (self.top_btn, self.session_btn, self.clear_btn,
-                    self.history_btn, self.copy_btn, self.star_btn, self.review_btn):
+                    self.history_btn, self.copy_btn, self.star_btn, self.review_btn,
+                    self.rec_btn):
             btn.setFixedWidth(BUTTON_W)
             bottom.addWidget(btn)
         box.addLayout(bottom)
@@ -825,12 +835,25 @@ class AskBar(QtWidgets.QWidget):
         self.setWindowOpacity(0.99)
         self.setWindowOpacity(1.0)
 
-    def set_recording(self, on: bool, minutes: float = 0.0, switches: int = 0) -> None:
-        """采集层开着的时候，横栏上给一行「● 记录中 …」—— 让人知道它在记。"""
+    def set_recording(self, on: bool, minutes: float = 0.0, switches: int = 0,
+                      detail: str = "") -> None:
+        """采集层开着的时候，横栏上给一行「● 录制中 …」—— 让人知道它在记。
+
+        detail 是可选的追加信息（转写字数 / 快照张数 / 没听到声音提示）。
+        录制按钮同步换字 + 泛红（role 属性驱动 QSS）。
+        """
         was = self.rec_line.isVisible()
         self.rec_line.setVisible(on)
         if on:
-            self.rec_line.setText(f"● 记录中 {minutes:.0f} 分 · 切了 {switches} 次窗口")
+            text = f"● 录制中 {minutes:.0f} 分 · 切了 {switches} 次窗口"
+            if detail:
+                text += f" · {detail}"
+            self.rec_line.setText(text)
+        self.rec_btn.setText("停止录制" if on else "录制")
+        self.rec_btn.setProperty("role", "recording" if on else None)
+        style = self.rec_btn.style()
+        style.unpolish(self.rec_btn)
+        style.polish(self.rec_btn)
         if on != was:
             self._relayout()     # 那行字一显一隐窗口高度跟着变 —— 当场同步好
 
