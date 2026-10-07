@@ -17,7 +17,7 @@ from unittest import mock
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from PySide6 import QtCore, QtWidgets  # noqa: E402
+from PySide6 import QtCore, QtWidgets, QtGui  # noqa: E402
 
 from learnsys.ask import VERSION, app as app_mod, backend, bar, usage  # noqa: E402
 
@@ -238,6 +238,52 @@ class TestTopmostToggle(unittest.TestCase):
         self.assertNotEqual(
             int(self.b.windowFlags()) & int(QtCore.Qt.WindowStaysOnTopHint), 0,
             "置顶失败时兜底必须带 WindowStaysOnTopHint")
+
+
+class TestMoreMenuAndClearConfirm(unittest.TestCase):
+    """「⋯」收纳菜单 + 清空确认：低频操作收起来，危险动作有护栏。"""
+
+    def setUp(self):
+        _app()
+        self.b = bar.AskBar("Alt+Q")
+        self.addCleanup(self.b.shutdown)
+        self.addCleanup(self.b.deleteLater)
+
+    def test_low_frequency_buttons_hidden_but_alive(self):
+        for btn in (self.b.top_btn, self.b.clear_btn, self.b.history_btn, self.b.quiz_btn):
+            self.assertTrue(btn.isHidden(), f"{btn.text()} 本体应隐藏")
+        for btn in (self.b.copy_btn, self.b.star_btn, self.b.session_btn,
+                    self.b.review_btn, self.b.rec_btn, self.b.more_btn):
+            self.assertFalse(btn.isHidden(), f"{btn.text()} 应在横栏上")
+
+    def test_menu_action_triggers_quiz(self):
+        got = []
+        self.b.quiz_requested.connect(lambda: got.append(1))
+        self.b.quiz_btn.click()          # 菜单动作就是调它
+        self.assertEqual(got, [1])
+
+    def test_clear_confirm_skipped_when_empty(self):
+        with mock.patch.object(QtWidgets.QMessageBox, "exec", side_effect=AssertionError("不该弹")):
+            self.b._clear_with_confirm()  # 空界面：直接清，不弹框
+        self.assertTrue(self.b.answer.isHidden())
+
+    def test_clear_confirm_cancel_keeps_content(self):
+        self.b._start_turn("问题")
+        seq = self.b._turn_seq
+        self.b._on_chunk("答案内容", replace=False, seq=seq)
+        self.b._finish("问题", "答案内容", None, seq, "text", "")
+        with mock.patch.object(self.b, "_confirm_clear", return_value=False):
+            self.b._clear_with_confirm()
+        self.assertFalse(self.b.answer.isHidden(), "点了「先不清」内容必须还在")
+
+    def test_clear_confirm_yes_clears(self):
+        self.b._start_turn("问题")
+        seq = self.b._turn_seq
+        self.b._on_chunk("答案内容", replace=False, seq=seq)
+        self.b._finish("问题", "答案内容", None, seq, "text", "")
+        with mock.patch.object(self.b, "_confirm_clear", return_value=True):
+            self.b._clear_with_confirm()
+        self.assertTrue(self.b.answer.isHidden(), "点了「清空」内容应被清掉")
 
 
 if __name__ == "__main__":

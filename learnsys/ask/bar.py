@@ -242,6 +242,9 @@ class AskBar(QtWidgets.QWidget):
     quiz_requested = QtCore.Signal()           # 用户点了「测验」—— app 出 5 道题
     rec_pause_toggled = QtCore.Signal()        # 右键录制按钮 → 暂停/继续
     rec_timer_set = QtCore.Signal(int)         # 右键录制按钮 → 定时停止（分钟，0=取消）
+    report_requested = QtCore.Signal()         # 「⋯」菜单 → 生成学习报告
+    notes_requested = QtCore.Signal()          # 「⋯」菜单 → 导出对话笔记
+    anki_requested = QtCore.Signal()           # 「⋯」菜单 → 导出错题本
 
     def __init__(self, tip: str):
         super().__init__(None)
@@ -574,17 +577,26 @@ class AskBar(QtWidgets.QWidget):
         self.quiz_btn.setToolTip("AI 根据今天的学习记录出 5 道题考你 —— 在下面输入框里答，它逐题批改")
         self.quiz_btn.clicked.connect(self.quiz_requested.emit)
 
+        self.more_btn = QtWidgets.QToolButton(card)
+        self.more_btn.setObjectName("tiny")
+        self.more_btn.setText("⋯")
+        self.more_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.more_btn.setToolTip("测验 / 历史 / 报告 / 笔记 / 错题本 / 置顶 / 清空 —— 低频的都收在这里")
+        self.more_btn.clicked.connect(self._more_menu)
+
         # 按钮行：**位置必须恒定**。
         # 以前状态文字和按钮挤在同一行，状态一显示（「用了 0.8 秒…」）就把整排按钮往右推
         # 两百像素 ⇒ 用户按记忆中的位置点「新会话」，实际点到了「置顶」。
         # 现在：按钮各占固定宽度、整体靠右；状态文字单独一行放在下面（它会换行，但推不动按钮）。
-        # 新按钮一律往**尾部**加 —— 别动前面几个的位置，肌肉记忆值钱。
+        # 2026.10 整理：高频的 5 个 + 「⋯」收纳菜单上屏；置顶/清空/历史/测验/低频操作收进菜单，
+        # 但控件本体都还在（隐藏）—— 信号、测试、菜单动作照常用它们。
+        for btn in (self.top_btn, self.clear_btn, self.history_btn, self.quiz_btn):
+            btn.setVisible(False)          # 收进「⋯」菜单的按钮本体
         bottom = QtWidgets.QHBoxLayout()
         bottom.setSpacing(6)
         bottom.addStretch(1)
-        for btn in (self.top_btn, self.session_btn, self.clear_btn,
-                    self.history_btn, self.copy_btn, self.star_btn, self.review_btn,
-                    self.rec_btn, self.quiz_btn):
+        for btn in (self.copy_btn, self.star_btn, self.session_btn,
+                    self.review_btn, self.rec_btn, self.more_btn):
             btn.setFixedWidth(BUTTON_W)
             bottom.addWidget(btn)
         box.addLayout(bottom)
@@ -1186,6 +1198,44 @@ class AskBar(QtWidgets.QWidget):
                                  lambda m=minutes: self.rec_timer_set.emit(m))
         timer_menu.addAction("取消定时", lambda: self.rec_timer_set.emit(0))
         menu.exec(self.rec_btn.mapToGlobal(pos))
+
+    def _more_menu(self) -> None:
+        """「⋯」收纳菜单：低频操作全在这里，横栏上只留高频按钮。"""
+        menu = QtWidgets.QMenu(self)
+        menu.setStyleSheet(QSS)
+        menu.addAction("测验（5 道题）", self.quiz_btn.click)
+        menu.addAction("历史", self.history_btn.click)
+        menu.addSeparator()
+        menu.addAction("学习报告（Markdown）", self.report_requested.emit)
+        menu.addAction("导出对话笔记", self.notes_requested.emit)
+        menu.addAction("导出错题本（Anki CSV）", self.anki_requested.emit)
+        menu.addSeparator()
+        top = menu.addAction("置顶（横栏一直在最上层）")
+        top.setCheckable(True)
+        top.setChecked(self._on_top)
+        top.triggered.connect(self.top_btn.click)
+        menu.addSeparator()
+        menu.addAction("清空当前对话", self._clear_with_confirm)
+        menu.exec(self.more_btn.mapToGlobal(self.more_btn.rect().bottomLeft()))
+
+    def _clear_with_confirm(self) -> None:
+        """清空前确认一下（有内容才弹；空界面直接清，不烦人）。"""
+        has_content = (bool(self.answer.toPlainText().strip())
+                       or self.thumb.isVisible() or bool(self._turns))
+        if has_content and not self._confirm_clear():
+            return
+        self.clear_session()
+
+    def _confirm_clear(self) -> bool:
+        """弹确认框，用户点「清空」返回 True。单独拆出来方便测试。"""
+        box = QtWidgets.QMessageBox(self)
+        box.setWindowTitle("清空")
+        box.setText("把当前对话清掉？截图和收藏过的题不受影响，随时能从「历史」再看。")
+        yes = box.addButton("清空", QtWidgets.QMessageBox.DestructiveRole)
+        cancel = box.addButton("先不清", QtWidgets.QMessageBox.RejectRole)
+        box.setDefaultButton(cancel)
+        box.exec()
+        return box.clickedButton() is yes
 
     def set_rec_paused(self, paused: bool) -> None:
         self.rec_paused = paused

@@ -168,6 +168,9 @@ class AskApp(QtCore.QObject):
         self.bar.star_toggled.connect(self._toggle_star)
         self.bar.record_toggled.connect(self._toggle_record)
         self.bar.quiz_requested.connect(self._quiz_today)
+        self.bar.report_requested.connect(self._generate_report)
+        self.bar.notes_requested.connect(self._export_notes)
+        self.bar.anki_requested.connect(self._export_anki)
         self.bar.rec_pause_toggled.connect(self._toggle_pause)
         self.bar.rec_timer_set.connect(lambda m: self.live.set_stop_timer(m))
         self.bar.extra_context_provider = self._transcript_context
