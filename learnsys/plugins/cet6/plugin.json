@@ -1,0 +1,14 @@
+{
+  "id": "cet6",
+  "name": "六级精听",
+  "icon": "♪",
+  "type": "iframe",
+  "entry": "/cet6/工作台/精听工作台.html",
+  "order": 30,
+  "status": "ready",
+  "version": "2.0.0",
+  "category": "语言",
+  "home": true,
+  "tagline": "真题精听，断点回听与分析",
+  "description": "原六级工作台原样嵌入；AI 分析走统一后台，断点同步进今日时间线。模块未安装时显示安装提示。"
+}

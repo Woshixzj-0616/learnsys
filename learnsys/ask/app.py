@@ -13,6 +13,7 @@ import pathlib
 import shutil
 import sys
 import time
+import traceback
 import urllib.request
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -313,6 +314,7 @@ class AskApp(QtCore.QObject):
         try:
             from learnsys.server.app import port_free, serve_in_thread
         except Exception as exc:
+            self._log_startup_error(exc)
             self._warn(f"本地服务没加载起来：{exc}")
             return
 
@@ -337,7 +339,20 @@ class AskApp(QtCore.QObject):
                 return
             except Exception as exc:
                 last_error = str(exc)
+                self._log_startup_error(exc)
         self._warn(f"本地服务没起来：{last_error or '8765 / 8766 都不可用'}")
+
+    @staticmethod
+    def _log_startup_error(exc: BaseException) -> None:
+        """无黑框模式看不到 traceback —— 落到数据目录，用户能直接把文件发过来。"""
+        try:
+            path = config.DATA_ROOT / "启动错误.log"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write(f"\n===== {datetime.datetime.now():%Y-%m-%d %H:%M:%S} =====\n")
+                fh.write("".join(traceback.format_exception(type(exc), exc, exc.__traceback__)))
+        except Exception:
+            pass
 
     def web_url(self) -> str:
         return f"http://127.0.0.1:{self._web_port}/" if self._web_port else ""

@@ -90,6 +90,15 @@ export async function mount(ctx) {
     renderThread();
     setSubDefault();
   }
+
+  // 插件联动：`#/ask?prompt=...` 预填问题（网工训练场「开练」用），不自动发送，留给人改
+  const prompt = ctx.query?.get("prompt");
+  if (prompt) {
+    dom.input.value = prompt;
+    dom.input.dispatchEvent(new Event("input"));
+    dom.input.focus();
+    dom.status.textContent = "题目已填好 —— 想改就直接改，按 Enter 发送";
+  }
 }
 
 export function unmount() {

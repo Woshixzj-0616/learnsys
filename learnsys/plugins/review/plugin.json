@@ -1,0 +1,14 @@
+{
+  "id": "review",
+  "name": "复盘",
+  "icon": "↺",
+  "type": "native-page",
+  "entry": "pages/review.html",
+  "order": 40,
+  "status": "planned",
+  "version": "0.1.0",
+  "category": "回顾",
+  "home": false,
+  "tagline": "把今天学到的收成一张卡",
+  "description": "计划：今日/本周复盘、报告历史、自动总结。"
+}

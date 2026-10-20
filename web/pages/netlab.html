@@ -1,0 +1,27 @@
+<div class="netlab-page">
+  <section class="netlab-hero">
+    <div class="netlab-hero-main">
+      <p class="stage-eyebrow">网工训练场 · 内置插件</p>
+      <h2>按 TCP/IP 分层，一天练一格。</h2>
+      <p class="stage-sub">每张卡都是「原理要点 + 一道要你动手算/判断的题」。点「开练」会把题目送进问一问，
+        AI 先讲清原理，再出题、等你回答、当场批改。</p>
+      <div class="netlab-chips">
+        <span>地址与子网</span><span>二层交换</span><span>三层路由</span>
+        <span>TCP/UDP</span><span>应用协议</span><span>排障工具</span>
+      </div>
+    </div>
+    <div class="netlab-hero-side">
+      <div class="netlab-meter">
+        <div class="netlab-meter-top">
+          <span>训练进度</span>
+          <strong id="netlab-count">0 / 18</strong>
+        </div>
+        <div class="goal-bar"><i id="netlab-fill"></i></div>
+        <small id="netlab-today">今天完成 0 格</small>
+      </div>
+      <button class="btn btn-primary" type="button" id="random-drill">随机开一格</button>
+    </div>
+  </section>
+
+  <div id="netlab-tracks" class="netlab-tracks"></div>
+</div>

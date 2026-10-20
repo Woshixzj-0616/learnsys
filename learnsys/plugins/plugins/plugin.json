@@ -1,0 +1,15 @@
+{
+  "id": "plugins",
+  "name": "插件中心",
+  "icon": "⌘",
+  "type": "native-page",
+  "entry": "pages/plugins.html",
+  "script": "js/pages/plugins.js",
+  "order": 95,
+  "status": "ready",
+  "version": "2.0.0",
+  "category": "系统",
+  "home": false,
+  "tagline": "启停插件、看清单",
+  "description": "学习系统的插件清单：开关、版本、入口与说明。"
+}

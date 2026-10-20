@@ -62,9 +62,9 @@ a = Analysis(
     datas=[
         # 浏览器工作台：HTML/CSS/JS + 本地依赖 + KaTeX 字体
         (os.path.join(SPECPATH, 'web'), 'web'),
-        # 模块注册表（壳层按它渲染侧栏）
-        (os.path.join(SPECPATH, 'learnsys', 'modules', 'registry.json'),
-         os.path.join('learnsys', 'modules')),
+        # 插件清单（壳层按它渲染侧栏与学习台；每个插件一个 plugin.json）
+        (os.path.join(SPECPATH, 'learnsys', 'plugins'),
+         os.path.join('learnsys', 'plugins')),
     ],
     hiddenimports=[
         # 本地服务是函数内懒加载，手点一次更稳

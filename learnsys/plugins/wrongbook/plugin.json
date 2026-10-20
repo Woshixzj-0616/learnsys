@@ -1,0 +1,14 @@
+{
+  "id": "wrongbook",
+  "name": "错题本",
+  "icon": "★",
+  "type": "native-page",
+  "entry": "pages/wrongbook.html",
+  "order": 60,
+  "status": "planned",
+  "version": "0.1.0",
+  "category": "回顾",
+  "home": false,
+  "tagline": "收藏、复习、导出 Anki",
+  "description": "计划：收藏、间隔复习、Anki 导出。"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "materials",
+  "name": "资料",
+  "icon": "▤",
+  "type": "native-page",
+  "entry": "pages/materials.html",
+  "order": 70,
+  "status": "planned",
+  "version": "0.1.0",
+  "category": "资料",
+  "home": false,
+  "tagline": "课件、术语表、笔记",
+  "description": "计划：课件、术语表、笔记与资料库。"
+}

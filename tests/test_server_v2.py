@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import socket
 import tempfile
 import unittest
 from unittest import mock
@@ -138,6 +139,21 @@ class ServerTest(unittest.TestCase):
         today = self.client.get("/api/today", headers=AUTH).json()
         row = next(item for item in today["cet6"] if item["paper"] == "卷一")
         self.assertEqual(row["paper_id"], "卷一目录")
+
+
+class PortProbeTest(unittest.TestCase):
+    def test_port_free_detects_listener_and_closed_port(self):
+        """真机坑：没有监听时 connect 可能超时而不是拒绝 —— 必须能判定为空闲。"""
+        from learnsys.server.app import port_free
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.bind(("127.0.0.1", 0))
+        port = srv.getsockname()[1]
+        srv.listen(1)
+        try:
+            self.assertFalse(port_free(port), "已经有人在监听，应判为占用")
+        finally:
+            srv.close()
+        self.assertTrue(port_free(port), "监听关掉后应判为空闲")
 
 
 if __name__ == "__main__":

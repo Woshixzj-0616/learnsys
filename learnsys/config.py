@@ -16,9 +16,20 @@ FROZEN = bool(getattr(sys, "frozen", False))     # True = 正在打包好的 exe
 ROOT = (pathlib.Path(sys.executable).resolve().parent if FROZEN
         else pathlib.Path(__file__).resolve().parent.parent)
 
-# ---- 数据存哪：D 盘专用一个文件夹 ----
+# ---- 数据存哪 ----
+# 优先级：环境变量 LEARNSYS_DATA_ROOT → 已有安装的 D:\学习系统（兼容旧数据）→ 用户目录\学习系统。
 # v2 起记录统一进 learning.db；按天文件夹只放截图/录屏/报告这些产物。
-DATA_ROOT = pathlib.Path("D:/学习系统")
+def _data_root() -> pathlib.Path:
+    env = os.environ.get("LEARNSYS_DATA_ROOT", "").strip()
+    if env:
+        return pathlib.Path(env).expanduser()
+    legacy = pathlib.Path("D:/学习系统")
+    if legacy.exists():
+        return legacy
+    return pathlib.Path.home() / "学习系统"
+
+
+DATA_ROOT = _data_root()
 UNIFIED_DB = True
 
 
@@ -65,7 +76,7 @@ SETTINGS_TEMPLATE = {
     "_记录": "点托盘里的「开始记录」，它会记下你在看哪个窗口 —— **只在你开始之后记，不全天**，"
              "数据只在本地。关掉下面这项就只记程序名、不记窗口标题（标题里可能有聊天对象、私人信息）",
     "record_window_title": True,
-    "_backup_dir": "数据自动备份放哪儿（留空 = D:/学习系统备份）。每周自动备一次，托盘里也能「立即备份数据」",
+    "_backup_dir": "数据自动备份放哪儿（留空 = 数据目录旁的「学习系统备份」）。每周自动备一次，托盘里也能「立即备份数据」",
     "backup_dir": "",
     "_keep_days": "数据保留天数：超过这么多天的旧数据文件夹自动删除（0 = 永不删，默认）",
     "keep_days": 0,
@@ -76,6 +87,10 @@ SETTINGS_TEMPLATE = {
     "_cet6_dir": "六级精听目录（可选模块；留空 = 自动找仓库旁边的「六级精听」）。"
                  "目录里要有 工作台\\精听工作台.html 和 试卷\\",
     "cet6_dir": "",
+    "_daily_goal_xp": "每日学习点目标（默认 100）。问答 10 / 转写 5 / 六级断点 8 / 专注 1 分钟 1 / 收藏 3",
+    "daily_goal_xp": 100,
+    "_名字": "学习台左上角怎么称呼你（留空 = 不显示名字）",
+    "名字": "",
 }
 
 

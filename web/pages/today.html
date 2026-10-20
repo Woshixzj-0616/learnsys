@@ -1,4 +1,61 @@
-<div class="today-page">
+<div class="today-page stage-page">
+  <section class="onboarding" id="onboarding" hidden>
+    <div class="onb-mark" aria-hidden="true">◎</div>
+    <div class="onb-main">
+      <p class="stage-eyebrow">第一次用 · 三步跑起来</p>
+      <h2>舞台已经搭好，先接上模型。</h2>
+      <ol class="onb-steps">
+        <li><strong>配置模型</strong>：设置页填 <code>base_url / auth_token / model</code>，或设环境变量；视觉 key 可选。</li>
+        <li><strong>选一个插件开始</strong>：问一问（Alt+Q 框选）、网工训练场（每天一格）、六级精听（真题断点）。</li>
+        <li><strong>数据留在本地</strong>：问答、转写、进度进 <code>learning.db</code>；密钥不进日志、不进 Git。</li>
+      </ol>
+      <div class="onb-actions">
+        <a class="btn btn-primary" href="#/settings">去配置模型</a>
+        <a class="btn" href="#/netlab">先逛训练场</a>
+        <a class="btn" href="#/plugins">看插件清单</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="stage-hero" id="stage-hero">
+    <div class="stage-hero-main">
+      <p class="stage-eyebrow" id="stage-greeting">学习台</p>
+      <h2 class="stage-title">今天，练一格。</h2>
+      <p class="stage-sub" id="stage-sub">问出去、听清楚、抓包看明白 —— 每天留下一点能看见的进度。</p>
+      <div class="stage-goal">
+        <div class="stage-goal-head">
+          <span>今日学习点</span>
+          <strong id="goal-text">0 / 100</strong>
+        </div>
+        <div class="goal-bar"><i id="goal-fill"></i></div>
+        <small id="goal-note">问答 10 · 转写 5 · 六级断点 8 · 专注 1 分钟 1</small>
+      </div>
+    </div>
+    <div class="stage-hero-side">
+      <div class="streak-card">
+        <span class="streak-flame" aria-hidden="true">▲</span>
+        <span class="streak-num" id="streak-num">0</span>
+        <span class="streak-label">天连续学习</span>
+      </div>
+      <div class="level-card">
+        <div class="level-line">
+          <span class="level-badge" id="level-badge">Lv.1</span>
+          <span class="level-title" id="level-title">网络小白</span>
+        </div>
+        <div class="level-bar"><i id="level-fill"></i></div>
+        <small class="level-note" id="level-note">再攒 300 学习点升级</small>
+      </div>
+    </div>
+  </section>
+
+  <section class="plugin-stage">
+    <div class="stage-head">
+      <h2 class="section-title">插件舞台</h2>
+      <span class="hint">点卡片进入 · <a href="#/plugins">插件中心</a>可开关</span>
+    </div>
+    <div class="plugin-grid" id="plugin-grid"></div>
+  </section>
+
   <div class="stat-strip" id="today-stats" aria-label="今日概览"></div>
 
   <div class="today-body">
@@ -9,8 +66,8 @@
 
     <aside>
       <div class="panel">
-        <div class="panel-head">专注</div>
-        <div class="panel-body" id="focus-body"></div>
+        <div class="panel-head">本周</div>
+        <div class="panel-body" id="week-body"></div>
       </div>
 
       <div class="panel" id="cet6-panel" style="margin-top:16px" hidden>
@@ -18,15 +75,25 @@
         <div class="panel-body" id="cet6-body"></div>
       </div>
 
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-head">专注</div>
+        <div class="panel-body" id="focus-body"></div>
+      </div>
+
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-head">成就 <span class="hint" id="ach-count"></span></div>
+        <div class="panel-body achievement-list" id="achievements"></div>
+      </div>
+
       <div class="shortcuts">
         <button class="shortcut" type="button" data-go="#/ask">
           <span>问一个问题</span><span>进入问一问</span>
         </button>
+        <button class="shortcut" type="button" data-go="#/netlab">
+          <span>去训练场练一格</span><span>子网 / 路由 / 抓包</span>
+        </button>
         <button class="shortcut" type="button" id="continue-last">
           <span>继续最近的会话</span><span>接着上次</span>
-        </button>
-        <button class="shortcut" type="button" data-go="#/settings">
-          <span>检查模型与密钥</span><span>设置</span>
         </button>
       </div>
     </aside>

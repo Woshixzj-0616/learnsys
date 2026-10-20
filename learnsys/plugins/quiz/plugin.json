@@ -1,0 +1,14 @@
+{
+  "id": "quiz",
+  "name": "测验",
+  "icon": "?",
+  "type": "native-page",
+  "entry": "pages/quiz.html",
+  "order": 50,
+  "status": "planned",
+  "version": "0.1.0",
+  "category": "练习",
+  "home": false,
+  "tagline": "让 AI 按你的记录出题",
+  "description": "计划：出题、逐题批改、结果进错题本。"
+}

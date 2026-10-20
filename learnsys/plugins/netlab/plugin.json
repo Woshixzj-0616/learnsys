@@ -1,0 +1,15 @@
+{
+  "id": "netlab",
+  "name": "网工训练场",
+  "icon": "⇄",
+  "type": "native-page",
+  "entry": "pages/netlab.html",
+  "script": "js/pages/netlab.js",
+  "order": 25,
+  "status": "ready",
+  "version": "2.0.0",
+  "category": "专业",
+  "home": true,
+  "tagline": "子网、路由、抓包——每天练一格",
+  "description": "给网络工程专业的训练场：按 TCP/IP 分层组织训练卡，一键把题目送进问一问，完成记录进时间线与学习点。"
+}

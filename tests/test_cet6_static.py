@@ -93,9 +93,8 @@ class Cet6StaticTest(unittest.TestCase):
 
 class RegistryTest(unittest.TestCase):
     def test_cet6_module_is_ready(self):
-        import json
-        from learnsys.modules import registry_path
-        data = json.loads(registry_path().read_text(encoding="utf-8"))
+        from learnsys.modules import load_registry
+        data = load_registry()
         mod = next(m for m in data["modules"] if m["id"] == "cet6")
         self.assertEqual(mod["status"], "ready")
         self.assertEqual(mod["entry"], "/cet6/工作台/精听工作台.html")

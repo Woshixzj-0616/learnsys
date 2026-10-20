@@ -30,20 +30,33 @@ function moduleById(id) {
   return registry.find((item) => item.id === id) || null;
 }
 
+const SYSTEM_PLUGINS = new Set(["settings", "plugins"]);
+
+function navItem(module, activeId) {
+  const active = module.id === activeId ? " active" : "";
+  const planned = module.status === "planned" ? " planned" : "";
+  const flag = module.status === "planned" ? '<span class="nav-flag">待建</span>' : "";
+  return `<a class="nav-item${active}${planned}" href="#/${module.id}" data-id="${escapeHtml(module.id)}"
+             title="${escapeHtml(module.description || module.note || module.name)}">
+    <span class="nav-icon" aria-hidden="true">${escapeHtml(module.icon || "·")}</span>
+    <span class="nav-label">${escapeHtml(module.name)}</span>${flag}
+  </a>`;
+}
+
+function navGroup(label, items, activeId) {
+  if (!items.length) return "";
+  return `<div class="nav-group-label">${escapeHtml(label)}</div>`
+    + items.map((item) => navItem(item, activeId)).join("");
+}
+
 function renderNav(activeId) {
-  nav.innerHTML = registry
-    .filter((module) => prefs[module.id] !== false)
-    .map((module) => {
-      const active = module.id === activeId ? " active" : "";
-      const planned = module.status === "planned" ? " planned" : "";
-      const flag = module.status === "planned" ? '<span class="nav-flag">待建</span>' : "";
-      return `<a class="nav-item${active}${planned}" href="#/${module.id}" data-id="${escapeHtml(module.id)}"
-                 title="${escapeHtml(module.note || module.name)}">
-        <span class="nav-icon" aria-hidden="true">${escapeHtml(module.icon || "·")}</span>
-        <span class="nav-label">${escapeHtml(module.name)}</span>${flag}
-      </a>`;
-    })
-    .join("");
+  const visible = registry.filter((module) => prefs[module.id] !== false);
+  const ready = visible.filter((m) => m.status !== "planned" && !SYSTEM_PLUGINS.has(m.id));
+  const planned = visible.filter((m) => m.status === "planned");
+  const system = visible.filter((m) => SYSTEM_PLUGINS.has(m.id));
+  nav.innerHTML = navGroup("舞台", ready, activeId)
+    + navGroup("待建", planned, activeId)
+    + navGroup("系统", system, activeId);
 }
 
 function setHeader(module) {
@@ -73,7 +86,8 @@ async function navigate() {
   const route = parseRoute();
   const module = moduleById(route.id) || moduleById("today");
   if (!module) {
-    view.innerHTML = `<div class="empty"><strong>没有可显示的模块</strong>检查 registry.json 是否可读。</div>`;
+    view.innerHTML = `<div class="empty"><strong>没有可显示的插件</strong>检查
+      <code>learnsys/plugins/*/plugin.json</code> 是否可读。</div>`;
     return;
   }
 

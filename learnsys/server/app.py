@@ -5,10 +5,13 @@
 """
 from __future__ import annotations
 
+import datetime
 import os
 import secrets
 import socket
 import threading
+import time
+import traceback
 
 import uvicorn
 from fastapi import FastAPI
@@ -122,32 +125,78 @@ class _ThreadServer(uvicorn.Server):
 
 
 def port_free(port: int, host: str = "127.0.0.1") -> bool:
-    """端口能不能用：**先试着连一下**，连得上 = 有人已经在监听。
+    """端口能不能用。
 
-    不能用 `bind()` 探：Windows 的 SO_REUSEADDR 允许两个进程同时绑同一端口，
-    会把“已被占用”误判成空闲，最后两个服务抢同一条连接。
+    两段判定：
+    1. 连得上 = 已占用；被明确拒绝 = 空闲；
+    2. **连接超时**（真机上见过：没有任何监听时 SYN 被安全软件丢掉，不返回 RST）
+       改用 `bind()` 探。Windows 的 `SO_REUSEADDR` 允许多个进程绑同一端口，
+       所以这里用 `SO_EXCLUSIVEADDRUSE`：已有服务在先，独占绑定会失败 → 判断为占用。
     """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(0.3)
         try:
             sock.connect((host, port))
         except socket.timeout:
-            return False         # 没拒绝也没接受 = 当它有人在，别去抢
+            pass                 # 超时不能下结论，走下面的 bind 探测
         except OSError:
             return True          # 拒绝连接 = 没人监听
-        return False             # 连上了 = 已占用
+        else:
+            return False         # 连上了 = 已占用
+
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        probe.bind((host, port))
+        return True
+    except OSError:
+        return False
+    finally:
+        probe.close()
+
+
+def _log_server_error(exc: BaseException) -> None:
+    """后台线程里的异常在无黑框 exe 里看不到 —— 落到数据目录，方便排查。"""
+    try:
+        path = config.DATA_ROOT / "启动错误.log"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(f"\n===== {datetime.datetime.now():%Y-%m-%d %H:%M:%S} =====\n")
+            fh.write("".join(traceback.format_exception(type(exc), exc, exc.__traceback__)))
+    except Exception:
+        pass
 
 
 def serve_in_thread(port: int = DEFAULT_PORT) -> _ThreadServer:
-    """起一个后台服务线程；端口被占就抛 RuntimeError，由调用方给中文提示。"""
+    """起一个后台服务线程；端口被占 / 线程没起来都抛 RuntimeError，调用方给中文提示。"""
     if not port_free(port):
         raise RuntimeError(f"端口 {port} 被占用（可能旧的 启动分析服务.bat 还在跑）")
     server = _ThreadServer(uvicorn.Config(
         create_app(port=port), host="127.0.0.1", port=port,
         log_level="warning", access_log=False))
-    thread = threading.Thread(target=server.run, name="learnsys-server", daemon=True)
+
+    def run() -> None:
+        try:
+            server.run()
+        except BaseException as exc:          # 线程里抛出去没人接，先记下来再退出
+            server.start_error = exc
+            _log_server_error(exc)
+
+    thread = threading.Thread(target=run, name="learnsys-server", daemon=True)
     thread.start()
-    return server
+    # 等它真的开始监听：uvicorn 在 thread 里绑定失败时，serve_in_thread 原来会误报成功
+    for _ in range(80):
+        if getattr(server, "started", False):
+            return server
+        if not thread.is_alive():
+            break
+        time.sleep(0.05)
+    error = getattr(server, "start_error", None)
+    if error is None:
+        error = RuntimeError("服务线程 4 秒内没有开始监听")
+        _log_server_error(error)
+    raise RuntimeError(f"服务没起来：{error}")
 
 
 def main() -> int:
