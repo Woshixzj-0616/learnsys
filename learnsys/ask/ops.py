@@ -38,6 +38,12 @@ PROTECTED = ("c:/windows", "c:/program files", "c:/program files (x86)", "c:/pro
 # 常用根目录提示（拼进计划题里，AI 知道这台机器的盘面布局）
 ROOT_HINT = "这台机器常用的位置：D:/学习系统（本程序数据）、D:/课件（课件）、C:/Users/<用户名>/Downloads（下载）"
 
+# 电脑助手走 Agent 时用的系统提示：**不要**套导师口径，只要 JSON 计划。
+SYSTEM_PROMPT = (
+    "你是电脑操作助手。严格按用户消息里的要求输出 JSON 数组；"
+    "只输出 JSON，不要解释、不要 Markdown 代码块以外的文字、不要加「想一想」。"
+)
+
 
 # ---- 计划的生成与解析 ----
 

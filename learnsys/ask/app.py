@@ -756,7 +756,10 @@ class AskApp(QtCore.QObject):
             self.bar.show_message("上一句还在写 —— 等它写完再叫电脑助手。")
             return
         plan_question = ops.plan_question(request)
-        self.bar.ask_with_context(plan_question, f"电脑助手：{request}")
+        # 电脑助手不是导师：用独立系统提示、关掉工具，只要 JSON 计划。
+        self.bar.ask_with_context(plan_question, f"电脑助手：{request}",
+                                  mode="quick", system_override=ops.SYSTEM_PROMPT,
+                                  use_tools=False)
 
     def _execute_ops(self, steps: list[dict]) -> None:
         """后台线程逐步执行计划，结果一条条回流到答案区；全量写日志。"""

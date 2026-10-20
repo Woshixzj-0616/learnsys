@@ -8,14 +8,15 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import threading
 import time
 import uuid
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from learnsys import config
-from learnsys.ask import backend, icon as icon_mod, usage
+from learnsys import agent, config
+from learnsys.ask import icon as icon_mod, usage
 
 # 设计规范（改样式先看这里，别一处一处试）：
 #   底色  卡片 #1b1e23 ｜ 输入 #23262b ｜ 答案区 #15171a（一层比一层深，视线自然往下走）
@@ -90,6 +91,12 @@ QToolTip { background: #202329; color: #d7dbe0; border: 1px solid #33383f;
 
 THUMB_W, THUMB_H = 64, 40
 BUTTON_W = 68                # 底部那排按钮统一宽度 —— 文字在「置顶 / 不置顶」之间变也不挪位
+MODE_LABELS = {
+    "explain": "讲解（完整回答 + 思考题）",
+    "guide": "引导（先给提示，再反问）",
+    "quiz": "测验（出题 + 逐题批改）",
+    "quick": "速答（短）",
+}
 MOVE_SLOP = 4                     # 拖动超过这么多像素才算「拖」，否则算「点」
 _LINE_HEIGHT_PROPORTIONAL = 1     # QTextBlockFormat.ProportionalHeight（PySide6 里 int(枚举) 会报错）
 _USAGE_TTL_SECONDS = 300.0        # 占用数字缓存多久：横栏每次露出来都触发，不缓存就是每次全盘 walk
@@ -134,6 +141,19 @@ def _answer_char() -> QtGui.QTextCharFormat:
     return fmt
 
 
+def _markdown_bold_for_qt(text: str) -> str:
+    """把 `**加粗**` 换成 Qt 认的行内 `<b>`，但跳过 ``` 代码围栏。
+
+    Qt 的 Markdown 解析器对「**（中文括号）**」这种边界会漏解析，
+    把 `**` 原样留在界面上；换行内 HTML 能稳定加粗。代码围栏里的
+    `a ** b` / `**kwargs` 不能动，所以按围栏切开只处理正文段。
+    """
+    parts = re.split(r"(```.*?```)", text, flags=re.S)
+    for i in range(0, len(parts), 2):
+        parts[i] = re.sub(r"\*\*([^*\n]+?)\*\*", r"<b>\1</b>", parts[i])
+    return "".join(parts)
+
+
 def _thumb(pixmap: QtGui.QPixmap, width: int, height: int) -> QtGui.QPixmap:
     """把截的那块缩成圆角小图（按原比例，居中留白，不裁内容）。"""
     if pixmap is None or pixmap.isNull():
@@ -172,18 +192,29 @@ class _AskWorker(QtCore.QThread):
     chunk = QtCore.Signal(str, bool)  # 流式：(新到的字, True = 整段替换/ False = 追加)
     done = QtCore.Signal(str)        # 完整答案（含已流出的部分）
     failed = QtCore.Signal(str)      # 失败原因（若已有部分文本，界面会留着）
+    activity = QtCore.Signal(str)    # 状态行的一句话：看图 / 查记录 / 推理中
 
     def __init__(self, image_path: str, question: str, history, parent=None, context: str = "",
-                 extra_images: list[str] | None = None):
+                 extra_images: list[str] | None = None, mode: str = "explain"):
         super().__init__(parent)
         self._image_path = image_path
         self._question = question
         self._history = history
         self._context = context      # 课上转写片段（追问时捎给 AI，界面不显示）
         self._extra_images = list(extra_images or [])  # 复盘附带的屏幕快照
+        self._mode = mode
+        self._system_override = ""     # 电脑助手等非导师任务用
+        self._use_tools = True
         self._cancelled = False
-        self._abort = threading.Event()       # 传给 ask_stream：一置位就收摊
+        self._abort = threading.Event()       # 传给 Agent：一置位就收摊
         self._sink: list = []                 # 底层响应，cancel 时 close 掐断连接
+        self._last_activity = ""              # 同一句话只发一次（思考增量每片都来，别刷屏）
+
+    def _say(self, text: str) -> None:
+        text = str(text or "")
+        if text and text != self._last_activity:
+            self._last_activity = text
+            self.activity.emit(text)
 
     def cancel(self) -> None:
         """这一轮不要了（用户开了新会话 / 清空）—— **连连接一起掐**，
@@ -199,34 +230,50 @@ class _AskWorker(QtCore.QThread):
 
     def run(self):
         parts: list[str] = []
-        shown = ""                    # 已经显示出去的（清洗过之后的）累积文本
-        question = self._question
-        if self._context:
-            question = f"{self._question}\n\n{self._context}"
+        final = ""
         try:
-            for piece in backend.ask_stream(
-                    self._image_path, question, self._history,
-                    abort=self._abort, response_sink=self._sink,
-                    extra_images=self._extra_images):
+            request = agent.AgentRequest(
+                message=self._question,
+                history=self._history,
+                image_path=self._image_path,
+                extra_images=self._extra_images,
+                context=self._context,
+                mode=self._mode,
+                system_override=self._system_override,
+                use_tools=self._use_tools,
+            )
+            for event in agent.run(request, abort=self._abort, response_sink=self._sink):
                 if self._cancelled:
                     return
-                parts.append(piece)
-                # 拿累积全文去洗：`**重点**` 常常被切成两片，洗单片是洗不掉的
-                full = backend.tidy_so_far("".join(parts))
-                if full == shown:
-                    continue
-                if shown and full.startswith(shown):
-                    self.chunk.emit(full[len(shown):], False)   # 正常追加
-                else:
-                    self.chunk.emit(full, True)                 # 清洗改了已显示的部分 ⇒ 整段重放
-                shown = full
+                if event.kind == "text":
+                    parts.append(event.text)
+                    self.chunk.emit(event.text, False)
+                elif event.kind == "thinking":
+                    self._say("正在推理…")
+                elif event.kind == "vision":
+                    if event.text:
+                        self._say(event.text)
+                    elif event.data:
+                        used = event.data.get("used_vision")
+                        self._say("看图完成（视觉模型）" if used
+                                  else "看图完成（只读了文字，没看到图）")
+                elif event.kind == "tool_start":
+                    name = event.data.get("name") or "记录"
+                    self._say(f"查找：{name}…")
+                elif event.kind == "tool_end":
+                    self._say(str(event.data.get("preview") or "整理答案…"))
+                elif event.kind == "error":
+                    self.failed.emit(event.text)
+                    return
+                elif event.kind == "done":
+                    final = str(event.data.get("text") or "")
             if self._cancelled:
                 return
-            text = backend.tidy_answer("".join(parts).strip())
+            text = (final or "".join(parts)).strip()
             if not text:
-                raise backend.AskError("答案回来了但是空的，再问一次试试。")
+                raise agent.AgentError("答案回来了但是空的，再问一次试试。")
             self.done.emit(text)
-        except backend.AskError as exc:
+        except agent.AgentError as exc:
             self.failed.emit(str(exc))
         except Exception as exc:                      # 兜底：别让后台异常把界面搞死
             self.failed.emit(f"出错了：{exc}")
@@ -268,6 +315,8 @@ class AskBar(QtWidgets.QWidget):
         self._workers: list[_AskWorker] = []      # 后台问答线程（退出时要 wait，见 shutdown）
         self._usage_worker = None                 # 后台算占用的那个线程
         self._streaming = False
+        self._activity = ""           # 状态行的一句话（看图 / 查记录 / 推理中）
+        self.ask_mode = "explain"     # 讲解 / 引导 / 测验 / 速答（Web 工作台可改）
         self._fit_timer = None        # 流式重排的节流器（别每片都排）
         self._answer_start = None     # 答案区里「答案」从第几个字符开始（None = 这一轮还没开始）
         self._turn_seq = 0            # 第几轮（被掐掉的旧那一轮回来时靠它认出来，别写回界面）
@@ -840,6 +889,7 @@ class AskBar(QtWidgets.QWidget):
         self.answer.setFixedHeight(76)
         self._set_copy_enabled(False)
         self._streaming = False
+        self._activity = ""
         self._answer_start = None
         self._last_answer = ""
         self._showing_history = False
@@ -1056,25 +1106,30 @@ class AskBar(QtWidgets.QWidget):
         self.ask.clear()              # 问题已经上屏了 ⇒ 输入框清空，直接打下一句
 
     def ask_with_context(self, send_text: str, display_text: str, context: str = "",
-                         images: list[str] | None = None) -> None:
-        """「程序替用户问」的入口（复盘/测验用）：界面显示 display_text，发给 AI 的是 send_text。
+                         images: list[str] | None = None, mode: str = "",
+                         system_override: str = "", use_tools: bool = True) -> None:
+        """「程序替用户问」的入口（复盘/测验/电脑助手用）：界面显示 display_text，发给 AI 的是 send_text。
 
         images = 附加截图（多图），主 image_path 之外最多再带 4 张。
+        system_override / use_tools 给非导师任务（比如电脑助手只出 JSON 计划）。
         """
         if self._worker is not None:
             self.show_message("上一句还在写 —— 等它写完再点。")
             return
         if not send_text.strip():
             return
-        self._begin_turn(send_text, display_text, context, images)
+        self._begin_turn(send_text, display_text, context, images, mode,
+                         system_override, use_tools)
 
     def _begin_turn(self, send_text: str, display_text: str, context: str,
-                    images: list[str] | None = None) -> None:
+                    images: list[str] | None = None, mode: str = "",
+                    system_override: str = "", use_tools: bool = True) -> None:
         """开一轮问答：显示 display_text，问 AI 的是 send_text（可带转写上下文）。"""
         self.go.setEnabled(False)
         self._started_at = time.monotonic()
         self._dots = 0
         self._streaming = False
+        self._activity = ""
         self.status.setVisible(True)
         self.status.setText("在想…")
         self._set_copy_enabled(False)
@@ -1090,8 +1145,15 @@ class AskBar(QtWidgets.QWidget):
         image_path = self._image_path or ""
         self._worker = _AskWorker(self._image_path, send_text, list(self._turns), self,
                                   context=context, extra_images=images)
+        # 模式用属性给，不放进构造参数：旧测试里替换的 FakeWorker 只认旧签名，
+        # 传 `mode=` 会直接 TypeError。属性赋值对新旧 worker 都无害。
+        self._worker._mode = mode or self.ask_mode
+        self._worker._system_override = system_override
+        self._worker._use_tools = use_tools
         self._workers.append(self._worker)       # 留着，退出时要 wait（shutdown）
         self._worker.finished.connect(self._reap_workers)
+        if hasattr(self._worker, "activity"):
+            self._worker.activity.connect(self._on_activity)
         self._worker.chunk.connect(lambda piece, replace, s=seq: self._on_chunk(piece, replace, s))
         self._worker.done.connect(
             lambda text, s=seq, k=kind, p=image_path: self._finish(display_text, text, None, s, k, p))
@@ -1099,9 +1161,14 @@ class AskBar(QtWidgets.QWidget):
             lambda message, s=seq, k=kind, p=image_path: self._finish(display_text, "", message, s, k, p))
         self._worker.start()
 
+    def _on_activity(self, text: str) -> None:
+        """后台线程发来的一句话：看图 / 查记录 / 推理中。只更新状态行，不动布局。"""
+        self._activity = str(text or "")
+
     def _tick(self) -> None:
         self._dots = (self._dots + 1) % 4
-        label = "正在写" if self._streaming else "在想"   # 推理模型先想后写，前几秒没字是正常的
+        # 有更具体的动作（查记录 / 看图）就显示它；否则按「先想后写」显示
+        label = self._activity or ("正在写" if self._streaming else "在想")
         self.status.setText(label + "·" * self._dots
                             + f"  {time.monotonic() - self._started_at:.0f} 秒")
 
@@ -1144,6 +1211,35 @@ class AskBar(QtWidgets.QWidget):
         self._last_answer = text
         self._set_copy_enabled(bool(text.strip()))
 
+    def _set_answer_markdown(self, text: str) -> None:
+        """把答案那一段换成 Markdown 渲染后的富文本。
+
+        流式期间按原文追加（能看见字在长），结束时只重排「答案」这一段，
+        上面的问题气泡不动。颜色用深色主题的正文色，避免默认黑色看不清。
+        """
+        if self._answer_start is None:
+            return
+        cursor = self.answer.textCursor()
+        cursor.setPosition(self._answer_start)
+        cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.KeepAnchor)
+        document = QtGui.QTextDocument()
+        # Qt 的 toHtml() 会按文档默认字体写死 font-size；不设就会从 15px 缩回 9pt。
+        font = QtGui.QFont("Microsoft YaHei UI")
+        font.setPixelSize(15)
+        document.setDefaultFont(font)
+        document.setDocumentMargin(0)
+        document.setDefaultStyleSheet(
+            "body { color: #dce4ee; }"
+            "h1,h2,h3,h4 { color: #f1f3f4; }"
+            "code, pre { color: #f5b74e; font-family: 'Cascadia Mono','Consolas',monospace; }"
+            "a { color: #6ea8ff; }"
+            "blockquote { color: #aeb7c2; }"
+        )
+        document.setMarkdown(_markdown_bold_for_qt(text))
+        cursor.insertHtml(document.toHtml())
+        self._last_answer = text
+        self._set_copy_enabled(bool(text.strip()))
+
     def _schedule_fit(self) -> None:
         """流式别每来一片就重排一遍答案区 —— 攒 80 毫秒再排，窗口不至于一路抖。"""
         if self._fit_timer is None:
@@ -1162,6 +1258,7 @@ class AskBar(QtWidgets.QWidget):
         # 中途点 ✕ / 清空会把图丢掉，再读就会把图问答错记成纯文字。
         if seq != self._turn_seq:
             return
+        self._activity = ""
         if self._timer is not None:
             self._timer.stop()
             self._timer = None
@@ -1184,7 +1281,7 @@ class AskBar(QtWidgets.QWidget):
                 self._set_copy_enabled(False)
                 self.status.setText("没成功 —— 改一下再问")
         else:
-            self._set_answer_part(text)
+            self._set_answer_markdown(text)      # 完整答案用 Markdown 渲染一次
             self._set_copy_enabled(True)
             self._turns.append((question, text))
             if kind == "image":
@@ -1220,6 +1317,13 @@ class AskBar(QtWidgets.QWidget):
         """「⋯」收纳菜单：低频操作全在这里，横栏上只留高频按钮。"""
         menu = QtWidgets.QMenu(self)
         menu.setStyleSheet(QSS)
+        mode_menu = menu.addMenu("回答模式")
+        for key, label in MODE_LABELS.items():
+            action = mode_menu.addAction(label)
+            action.setCheckable(True)
+            action.setChecked(self.ask_mode == key)
+            action.triggered.connect(lambda checked=False, m=key: self._set_mode(m))
+        menu.addSeparator()
         menu.addAction("测验（5 道题）", self.quiz_btn.click)
         menu.addAction("历史", self.history_btn.click)
         menu.addSeparator()
@@ -1234,6 +1338,16 @@ class AskBar(QtWidgets.QWidget):
         menu.addSeparator()
         menu.addAction("清空当前对话", self._clear_with_confirm)
         menu.exec(self.more_btn.mapToGlobal(self.more_btn.rect().bottomLeft()))
+
+    def _set_mode(self, mode: str) -> None:
+        """切回答模式：讲解 / 引导 / 测验 / 速答。只影响下一轮，不动当前答案。"""
+        if mode not in MODE_LABELS:
+            return
+        self.ask_mode = mode
+        label = MODE_LABELS[mode]
+        self.status.setVisible(True)
+        self.status.setText(f"回答模式：{label}")
+        self.ask.setPlaceholderText(f"回答模式：{label} —— 直接打字问")
 
     def _clear_with_confirm(self) -> None:
         """清空前确认一下（有内容才弹；空界面直接清，不烦人）。"""
