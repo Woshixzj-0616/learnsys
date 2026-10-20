@@ -217,20 +217,25 @@ def add_ask(conn: sqlite3.Connection, question: str, answer: str, ms: int, backe
     return row_id
 
 
-def recent_asks(conn: sqlite3.Connection, limit: int = 8, day: str = ""):
+def recent_asks(conn: sqlite3.Connection, limit: int = 8, day: str = "",
+                with_conversation: bool = False):
     """最近问过的几条（新→旧）—— 带 kind/image_path/id，界面好区分图问/文问、好收藏。
 
     `day` 传 'YYYY-MM-DD' 就只取那天的；统一库下「今天的对话笔记」必须带它。
+    `with_conversation=True` 时多带一列 conversation_id（Web 时间线跳会话用）；
+    默认不带，横栏历史按旧 6 列形状解包。
     """
+    extra = ", conversation_id" if with_conversation else ""
     with _LOCK:
         if day:
             return conn.execute(
-                "SELECT ts, question, answer, kind, image_path, id FROM asks "
-                "WHERE ts LIKE ? ORDER BY id DESC LIMIT ?",
+                f"SELECT ts, question, answer, kind, image_path, id{extra} "
+                "FROM asks WHERE ts LIKE ? ORDER BY id DESC LIMIT ?",
                 (f"{day}%", limit),
             ).fetchall()
         return conn.execute(
-            "SELECT ts, question, answer, kind, image_path, id FROM asks ORDER BY id DESC LIMIT ?",
+            f"SELECT ts, question, answer, kind, image_path, id{extra} "
+            "FROM asks ORDER BY id DESC LIMIT ?",
             (limit,),
         ).fetchall()
 

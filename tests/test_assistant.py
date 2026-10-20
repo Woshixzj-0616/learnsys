@@ -294,6 +294,7 @@ class TestOcrQueue(unittest.TestCase):
     def test_enqueue_ocr_lands_in_db(self):
         from learnsys.ask import ocr
         q = ocr.OcrQueue(lambda: self.conn)
+        self.addCleanup(q.shutdown)
         got = []
         q.text_ready.connect(lambda p, t: got.append((p, t)))
         with mock.patch.object(ocr, "ocr_image", return_value="板书：哈夫曼树"):
@@ -307,6 +308,7 @@ class TestOcrQueue(unittest.TestCase):
     def test_ocr_failure_does_not_kill_queue(self):
         from learnsys.ask import ocr
         q = ocr.OcrQueue(lambda: self.conn)
+        self.addCleanup(q.shutdown)
         calls = []
 
         def flaky(path):

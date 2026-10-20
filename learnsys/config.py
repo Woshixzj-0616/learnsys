@@ -70,6 +70,8 @@ SETTINGS_TEMPLATE = {
     "keep_days": 0,
     "_frame_seconds": "录制时每隔多少秒截一张全屏快照（最小 5）",
     "frame_seconds": 30,
+    "_workbench_on_start": "打开问一问时，是否自动弹出学习台窗口（false = 只出快捷栏，从托盘再打开）",
+    "workbench_on_start": True,
 }
 
 
@@ -179,6 +181,8 @@ ASR_VAD = True              # 静音切段；失败会自动退回 False
 # ---- 问一问（框选屏幕 → 问 AI）----
 # 下面带「设置.json」的几项都能在 D:/学习系统/设置.json 里改 —— 打包成 exe 后就靠它
 ASK_HOTKEY = USER.get("hotkey") or "alt+q"   # 全局快捷键：修饰键(alt/ctrl/shift/win) + 主键
+# 启动时自动弹出学习台窗口（Edge/Chrome 的应用模式）；不想每次都弹就设 false
+WORKBENCH_ON_START = _user_bool("workbench_on_start", True)
 # 录制时每隔多少秒截一张全屏快照（设置.json 里 frame_seconds 可改，最小 5 秒）
 ASK_FRAME_SECONDS = max(5.0, float(_user_int("frame_seconds", 30)))
 ASK_TIMEOUT_SECONDS = 90.0      # 等 AI 回话的上限；超时就在横条里给中文提示，不装死

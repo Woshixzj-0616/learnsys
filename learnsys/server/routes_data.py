@@ -22,6 +22,7 @@ def _ask_dict(row) -> dict:
     return {
         "ts": row[0], "question": row[1], "answer": row[2],
         "kind": row[3] or "text", "image_path": row[4] or "", "id": row[5],
+        "conversation_id": row[6] if len(row) > 6 else None,
     }
 
 
@@ -36,7 +37,7 @@ def today(_=Depends(require_token)):
     try:
         day = datetime.date.today().isoformat()
         focus = store.focus_stats(conn, day=day)
-        asks = store.recent_asks(conn, limit=10, day=day)
+        asks = store.recent_asks(conn, limit=10, day=day, with_conversation=True)
         ask_count = int(conn.execute(
             "SELECT COUNT(*) FROM asks WHERE ts LIKE ?", (f"{day}%",)).fetchone()[0] or 0)
         transcript_count, chars = conn.execute(

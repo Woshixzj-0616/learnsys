@@ -60,6 +60,18 @@ class OcrQueue(QtCore.QObject):
             self._thread = threading.Thread(target=self._loop, name="ocr", daemon=True)
             self._thread.start()
 
+    def shutdown(self, timeout: float = 5.0) -> None:
+        """收掉后台线程：排一个空哨兵，等它把队列走完（或超时）。
+
+        不这么做的话，进程退出时线程还可能 emit 信号 / 写已关闭的库，
+        PySide 的清理和线程撞在一起会把整个进程段错误掉（测试里实测复现过）。
+        """
+        self._queue.put(None)
+        thread = self._thread
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=timeout)
+        self._thread = None
+
     def _loop(self) -> None:
         while True:
             item = self._queue.get()

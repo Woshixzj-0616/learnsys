@@ -12,12 +12,15 @@ import threading
 
 import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from learnsys import config
 from learnsys.agent.config import load_config
 from learnsys.ask import VERSION
-from learnsys.server import routes_agent, routes_cet6, routes_data
+from learnsys.modules import web_dir
+from learnsys.server import (routes_agent, routes_cet6, routes_data, routes_settings,
+                             routes_ui, routes_upload, routes_web, runtime)
 from learnsys.server.security import origin_allowed
 
 DEFAULT_PORT = 8765
@@ -27,6 +30,15 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
     app = FastAPI(title="学习系统", version=VERSION, docs_url="/docs", redoc_url=None)
     app.state.token = token or os.environ.get("LEARNSYS_TOKEN") or secrets.token_urlsafe(24)
     app.state.port = port
+
+    @app.middleware("http")
+    async def no_store_web(request, call_next):
+        """工作台是本地文件，改完刷新就要生效 —— 别让浏览器拿旧 JS/CSS。"""
+        response = await call_next(request)
+        path = request.url.path
+        if path == "/" or path.startswith("/web/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.middleware("http")
     async def guard(request, call_next):
@@ -48,6 +60,14 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
     app.include_router(routes_agent.router)
     app.include_router(routes_data.router)
     app.include_router(routes_cet6.router)
+    app.include_router(routes_web.router)
+    app.include_router(routes_settings.router)
+    app.include_router(routes_upload.router)
+    app.include_router(routes_ui.router)
+
+    assets = web_dir()
+    if (assets / "index.html").exists():
+        app.mount("/web", StaticFiles(directory=str(assets), html=True), name="web")
 
     @app.get("/api/health")
     def health():
@@ -60,23 +80,33 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
             "token": app.state.token,
             "port": port,
             "db": str(config.db_path()),
+            # true = 这个后台接在 Qt 主进程上，页面能调快捷栏；
+            # 单独起的开发后台是 false，App 启动时不会复用它
+            "quickbar": runtime.available(),
         }
+
+    index = web_dir() / "index.html"
 
     @app.get("/", response_class=HTMLResponse)
     def root():
-        """P3 之前先给一个能点的占位页；真正的 Web 工作台在 P3。"""
+        """Web 工作台；`web/` 还没放进来时退回一个能点的占位页。"""
+        if index.exists():
+            return FileResponse(index)
         return f"""<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <title>学习系统 · 后台</title>
 <style>body{{background:#1b1e23;color:#dfe6ee;font-family:'Microsoft YaHei UI',sans-serif;
-padding:40px;line-height:1.7}}a{{color:#6ea8ff}}code{{color:#f5b74e}}</style>
+padding:40px;line-height:1.7}}a{{color:#6ea8ff}}</style>
 <h1>学习系统后台已启动</h1>
 <p>版本 {VERSION} · 服务在 127.0.0.1:{port}</p>
-<ul>
-<li><a href="/api/health">/api/health</a> —— 存活、模型、令牌</li>
-<li><a href="/docs">/docs</a> —— 接口文档</li>
-<li><a href="/api/today">/api/today</a> —— 今日概览（要令牌）</li>
-</ul>
-<p>Web 工作台在 P3；现在快捷栏已经用同一个 Agent。</p></html>"""
+<p>没找到 <code>web/index.html</code>，Web 工作台还没装进来。</p>
+<ul><li><a href="/api/health">/api/health</a> —— 存活、模型、令牌</li></ul></html>"""
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    def favicon():
+        icon = config.ROOT / "问一问.ico"
+        if icon.exists():
+            return FileResponse(icon)
+        return Response(status_code=204)
 
     return app
 
@@ -89,12 +119,20 @@ class _ThreadServer(uvicorn.Server):
 
 
 def port_free(port: int, host: str = "127.0.0.1") -> bool:
+    """端口能不能用：**先试着连一下**，连得上 = 有人已经在监听。
+
+    不能用 `bind()` 探：Windows 的 SO_REUSEADDR 允许两个进程同时绑同一端口，
+    会把“已被占用”误判成空闲，最后两个服务抢同一条连接。
+    """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.3)
         try:
-            sock.bind((host, port))
-            return True
+            sock.connect((host, port))
+        except socket.timeout:
+            return False         # 没拒绝也没接受 = 当它有人在，别去抢
         except OSError:
-            return False
+            return True          # 拒绝连接 = 没人监听
+        return False             # 连上了 = 已占用
 
 
 def serve_in_thread(port: int = DEFAULT_PORT) -> _ThreadServer:

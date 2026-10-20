@@ -296,6 +296,7 @@ class AskBar(QtWidgets.QWidget):
     computer_request = QtCore.Signal(str)      # 输入 > 开头 = 电脑助手（AI 出操作计划）
     ops_result = QtCore.Signal(str)            # 电脑助手每步执行结果（后台线程发）
     remind_scheduled = QtCore.Signal(int, str)  # 计划里出现 remind → app 挂定时器
+    workbench_requested = QtCore.Signal()      # 「工作台」→ app 打开独立学习台窗口
 
     def __init__(self, tip: str):
         super().__init__(None)
@@ -617,6 +618,13 @@ class AskBar(QtWidgets.QWidget):
         self.review_btn.setToolTip("拿今天记录的窗口和课堂转写问 AI：我刚才学了什么？（要先在托盘「开始记录」）")
         self.review_btn.clicked.connect(self.review_requested.emit)
 
+        self.workbench_btn = QtWidgets.QToolButton(card)
+        self.workbench_btn.setObjectName("tiny")
+        self.workbench_btn.setText("工作台")
+        self.workbench_btn.setCursor(QtCore.Qt.PointingHandCursor)
+        self.workbench_btn.setToolTip("在独立窗口里打开学习台：Markdown、公式、代码和工具轨迹都更完整")
+        self.workbench_btn.clicked.connect(self.workbench_requested.emit)
+
         self.rec_btn = QtWidgets.QToolButton(card)
         self.rec_btn.setObjectName("tiny")
         self.rec_btn.setText("录制")
@@ -653,7 +661,7 @@ class AskBar(QtWidgets.QWidget):
         bottom.setSpacing(6)
         bottom.addStretch(1)
         for btn in (self.copy_btn, self.star_btn, self.session_btn,
-                    self.review_btn, self.rec_btn, self.more_btn):
+                    self.review_btn, self.workbench_btn, self.rec_btn, self.more_btn):
             btn.setFixedWidth(BUTTON_W)
             bottom.addWidget(btn)
         box.addLayout(bottom)

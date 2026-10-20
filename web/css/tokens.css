@@ -1,0 +1,102 @@
+/* 设计令牌：颜色、字号、间距、圆角只在这里定义。
+   其余 CSS 一律引用变量 —— 改主题不用翻遍文件。 */
+
+:root {
+  /* 底色：夜里书桌的墨蓝，不是纯黑 */
+  --bg: #1b1e23;
+  --bg-raised: #21252b;
+  --bg-sunken: #15181c;
+  --bg-input: #181b20;
+
+  /* 分隔线：两档，够用就行 */
+  --line: #2b3139;
+  --line-strong: #3a424d;
+
+  /* 文字：正文 / 次要 / 极弱 */
+  --text: #dfe6ee;
+  --text-dim: #9aa7b5;
+  --text-faint: #6d7a89;
+
+  /* 主色：动作与选中 */
+  --accent: #4d8bff;
+  --accent-strong: #6ea1ff;
+  --accent-soft: rgba(77, 139, 255, 0.13);
+  --accent-line: rgba(77, 139, 255, 0.42);
+
+  /* 荧光笔：只标记「今天 / 当前 / 待处理」，不拿来做按钮 */
+  --mark: #f0b45e;
+  --mark-soft: rgba(240, 180, 94, 0.14);
+
+  /* 状态 */
+  --ok: #63c08f;
+  --warn: #e0a35c;
+  --err: #e37b7b;
+  --err-soft: rgba(227, 123, 123, 0.12);
+
+  /* 字号 */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 15px;
+  --fs-md: 16px;
+  --fs-lg: 20px;
+  --fs-xl: 28px;
+
+  /* 间距 4 的倍数 */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+
+  /* 圆角：卡片 / 控件 / 小标签 */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  /* 版心 */
+  --sidebar-w: 216px;
+  --measure: 820px;
+  --page-max: 1120px;
+
+  --font-ui: "Microsoft YaHei UI", "微软雅黑", "PingFang SC", system-ui, sans-serif;
+  --font-code: "Cascadia Mono", "Consolas", "SFMono-Regular", monospace;
+
+  --ease: 120ms ease;
+}
+
+* { box-sizing: border-box; }
+
+/* 作者样式里的 display 会盖掉 hidden 属性，这里统一压住 */
+[hidden] { display: none !important; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  line-height: 1.65;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--accent-soft); color: #fff; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

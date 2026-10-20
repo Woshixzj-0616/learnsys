@@ -1,0 +1,131 @@
+<form class="settings-page" id="settings-form">
+  <section class="settings-section">
+    <h2>文本模型</h2>
+    <p class="hint">主对话用的 Anthropic Messages 兼容服务。密钥只保存在本机，页面拿不到明文。</p>
+
+    <div class="setting-row">
+      <label class="setting-label" for="agent-base">服务地址<small>填到 /anthropic 或 /v1 都行</small></label>
+      <div class="setting-control">
+        <input class="input" id="agent-base" spellcheck="false" autocomplete="off">
+        <span class="hint">例如 https://api.deepseek.com/anthropic</span>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <label class="setting-label" for="agent-token">密钥<small>留空 = 不修改</small></label>
+      <div class="setting-control">
+        <input class="input" id="agent-token" type="password" spellcheck="false"
+               autocomplete="new-password">
+        <span class="hint" id="agent-token-hint">未配置</span>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <label class="setting-label" for="agent-model">主模型<small>回答与工具调用</small></label>
+      <div class="setting-control">
+        <input class="input" id="agent-model" spellcheck="false" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <label class="setting-label" for="agent-fast">轻量模型<small>短任务 / 快速判断</small></label>
+      <div class="setting-control">
+        <input class="input" id="agent-fast" spellcheck="false" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <label class="setting-label" for="agent-tokens">回答上限<small>token，默认 8192</small></label>
+      <div class="setting-control">
+        <input class="input" id="agent-tokens" type="number" min="64" max="131072" step="64">
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <label class="setting-label">思考模式<small>模型是否先推理再回答</small></label>
+      <div class="setting-control">
+        <label class="toggle-row"><input type="checkbox" id="agent-thinking"> 允许思考过程</label>
+        <div class="inline">
+          <button class="btn" type="button" id="test-text">测试文本连接</button>
+          <span class="test-result" id="test-text-result"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h2>视觉模型</h2>
+    <p class="hint">DeepSeek 直连不支持图片。这里填一个 OpenAI 兼容的视觉模型，截图会先转述成文字；不填就退回 OCR。</p>
+
+    <div class="setting-row">
+      <label class="setting-label" for="vision-base">服务地址<small>OpenAI 兼容 /v1</small></label>
+      <div class="setting-control">
+        <input class="input" id="vision-base" spellcheck="false" autocomplete="off"
+               placeholder="https://open.bigmodel.cn/api/paas/v4">
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <label class="setting-label" for="vision-key">密钥<small>留空 = 不修改</small></label>
+      <div class="setting-control">
+        <input class="input" id="vision-key" type="password" spellcheck="false"
+               autocomplete="new-password">
+        <span class="hint" id="vision-key-hint">未配置</span>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <label class="setting-label" for="vision-model">模型<small>例如 glm-4v-flash</small></label>
+      <div class="setting-control">
+        <input class="input" id="vision-model" spellcheck="false" autocomplete="off">
+        <div class="inline">
+          <button class="btn" type="button" id="test-vision">测试视觉连接</button>
+          <span class="test-result" id="test-vision-result"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h2>快捷栏</h2>
+    <div class="setting-row">
+      <label class="setting-label" for="hotkey">框选快捷键<small>重启后生效</small></label>
+      <div class="setting-control">
+        <input class="input" id="hotkey" spellcheck="false" autocomplete="off" placeholder="Alt+Q">
+        <span class="hint">修饰键 + 一个字母 / 数字 / F1–F24，例如 Alt+Q、Ctrl+Shift+F2</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h2>数据与备份</h2>
+    <div class="setting-row">
+      <label class="setting-label" for="data-root">数据目录<small>只读展示</small></label>
+      <div class="setting-control">
+        <input class="input" id="data-root" readonly>
+        <span class="hint" id="settings-path"></span>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label class="setting-label">立即备份<small>整包 zip 到旁边</small></label>
+      <div class="setting-control">
+        <div class="inline">
+          <button class="btn" type="button" id="backup-now">备份现在</button>
+          <span class="test-result" id="backup-result"></span>
+        </div>
+        <span class="hint" id="backup-dir"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h2>侧栏模块</h2>
+    <p class="hint">关掉的模块只是不显示在侧栏；数据不会被删。</p>
+    <div id="module-toggles" class="setting-control"></div>
+  </section>
+
+  <div class="settings-actions">
+    <button class="btn btn-primary" type="button" id="save-bottom">保存设置</button>
+    <span class="save-note" id="save-note"></span>
+  </div>
+</form>

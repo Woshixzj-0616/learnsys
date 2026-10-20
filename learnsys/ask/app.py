@@ -7,19 +7,42 @@
 from __future__ import annotations
 
 import datetime
+import json
 import os
 import pathlib
 import shutil
 import sys
+import time
+import urllib.request
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from learnsys import config, record, store
 from learnsys.ask import VERSION, backup, bar, hotkey as hotkey_mod, icon as icon_mod, study
-from learnsys.ask import backend, identity, liverec, ocr, ops, overlay, single, scheduler
+from learnsys.ask import backend, identity, liverec, ocr, ops, overlay, single, scheduler, workbench
 
 LAUNCHER_NAME = "问一问.cmd"      # 源码运行时那个启动器：开机自启、开始菜单快捷方式都指向它
 NL = chr(92) + "n"               # 写进文件/字符串字面量里的「反斜杠+n」（换行转义）
+
+
+def _server_info(port: int, timeout: float = 0.5) -> dict:
+    try:
+        with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/api/health", timeout=timeout) as response:
+            data = json.loads(response.read().decode("utf-8", "replace"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _server_healthy(port: int, timeout: float = 0.5) -> bool:
+    """端口上是不是已经有一个能用的学习系统后台（避免重复起、也避免误杀别人）。"""
+    return bool(_server_info(port, timeout).get("ok"))
+
+
+def _server_has_ui(port: int, timeout: float = 0.5) -> bool:
+    """这个后台是不是接在 Qt 主进程上（能调快捷栏），而不是单独起的开发后台。"""
+    return bool(_server_info(port, timeout).get("quickbar"))
 
 
 def version_line() -> str:
@@ -166,10 +189,21 @@ class AskApp(QtCore.QObject):
     # 框选松手后有 140ms 的截图延迟 —— 这期间再按快捷键不许框出第二个。
     # 放类上：谁都有默认值，别依赖 __init__ 跑过（测试里有 __new__ 裸构造的用法）
     _capture_scheduled = False
+    # Web 工作台的请求从 FastAPI 线程发出来 → 发信号排队回 Qt 主线程
+    show_bar_requested = QtCore.Signal()
+    pick_requested_ui = QtCore.Signal()
 
     def __init__(self, app: QtWidgets.QApplication):
         super().__init__()
         self.app = app
+        self.show_bar_requested.connect(self.show_bar)
+        self.pick_requested_ui.connect(self.pick)
+        try:
+            from learnsys.server import runtime as web_runtime
+            web_runtime.register_ui(show_bar=self.show_bar_requested.emit,
+                                    pick=self.pick_requested_ui.emit)
+        except Exception as exc:
+            print(f"工作台↔快捷栏桥没接上：{exc}", file=sys.stderr)
         self.conn = None
         self._conn_path = None
         self.snip = None
@@ -179,6 +213,7 @@ class AskApp(QtCore.QObject):
         self.bar = bar.AskBar(self.hotkey.pretty)     # 全程序唯一一条横栏
         self.bar.pick_requested.connect(self.pick)
         self.bar.answered.connect(self._remember)
+        self.bar.workbench_requested.connect(self.open_web)
         # ✕ 只是把界面收进托盘 —— 图和答案都还在，**别在这儿删截图**（删截图只归
         # 「清空 / 换一张 / 退出」管）。以前接在 exited 上，正在问的那轮会被连累。
         self.bar.cleared.connect(self._shot_done)     # 点「清空」⇒ 临时截图也删掉
@@ -197,6 +232,8 @@ class AskApp(QtCore.QObject):
         self.bar.history_db_path_provider = lambda: str(self._conn_path or config.db_path())
         self._backup_worker = None
         self._web_server = None                  # FastAPI/uvicorn 后台线程（P2）
+        self._web_port = 0                       # 8765，占了就退 8766
+        self._web_external = False               # 复用已在跑的后台，不归本进程管
         self._backup_dir = (pathlib.Path(config.USER.get("backup_dir"))
                             if config.USER.get("backup_dir")
                             else config.DATA_ROOT.parent / "学习系统备份")
@@ -225,7 +262,7 @@ class AskApp(QtCore.QObject):
         self.record_action.setCheckable(True)
         self.record_action.triggered.connect(self._toggle_record)
         menu.addAction("展开横栏", self.show_bar)
-        menu.addAction("打开学习系统后台（浏览器）", self.open_web)
+        menu.addAction("打开学习台（独立窗口）", self.open_web)
         menu.addAction("收起成小条", lambda: self.bar.set_collapsed(True))
         menu.addAction("回到屏幕上方居中", self.bar.center_top)
         menu.addAction("打开今天的数据文件夹", self.open_today)
@@ -266,22 +303,56 @@ class AskApp(QtCore.QObject):
         self.bar.raise_()
 
     def start_web(self) -> None:
-        """起本地服务（Agent / 数据 / 六级分析共用一个进程）。失败不拦启动。"""
-        if self._web_server is not None:
+        """起本地服务（Agent / 数据 / 六级分析共用一个进程）。
+
+        顺序：8765 已有健康后台就复用 → 否则自己起 8765 → 被占就退 8766。
+        失败不拦启动 —— 快捷栏仍然能用。
+        """
+        if self._web_port:
             return
         try:
-            from learnsys.server.app import serve_in_thread
-            self._web_server = serve_in_thread(8765)
-            self.bar.show_message("学习系统后台已启动：http://127.0.0.1:8765/")
+            from learnsys.server.app import port_free, serve_in_thread
         except Exception as exc:
-            self._warn(f"本地服务没起来：{exc}")
+            self._warn(f"本地服务没加载起来：{exc}")
+            return
+
+        last_error = ""
+        for port in (8765, 8766):
+            if _server_healthy(port):
+                if _server_has_ui(port):
+                    self._web_port = port
+                    self._web_external = True
+                    self.bar.show_message(f"学习系统后台已在运行：http://127.0.0.1:{port}/")
+                    return
+                # 单独起的开发后台：数据能用，但页面调不动快捷栏 → 另起一个带 UI 的
+                last_error = f"端口 {port} 有一个没接快捷栏的后台"
+                continue
+            if not port_free(port):
+                last_error = f"端口 {port} 被别的程序占着"
+                continue
+            try:
+                self._web_server = serve_in_thread(port)
+                self._web_port = port
+                self.bar.show_message(f"学习系统后台已启动：http://127.0.0.1:{port}/")
+                return
+            except Exception as exc:
+                last_error = str(exc)
+        self._warn(f"本地服务没起来：{last_error or '8765 / 8766 都不可用'}")
+
+    def web_url(self) -> str:
+        return f"http://127.0.0.1:{self._web_port}/" if self._web_port else ""
 
     def open_web(self) -> None:
-        """用默认浏览器打开本地后台（P3 会换成正式 Web 工作台）。"""
-        import webbrowser
-        if self._web_server is None:
+        """打开学习台：有窗口就聚焦，没有就开一个无地址栏的应用窗口。"""
+        if not self._web_port:
             self.start_web()
-        webbrowser.open("http://127.0.0.1:8765/")
+        if not self._web_port:
+            self._warn("学习台打不开：本地服务没起来。")
+            return
+        self.bar.show_message(f"正在打开学习台：http://127.0.0.1:{self._web_port}/")
+        how = workbench.open_or_focus(self.web_url())
+        if how == "默认浏览器":
+            self._warn("没找到 Edge / Chrome，已改用默认浏览器打开学习台。")
 
     def start(self) -> None:
         day = self.prepare_today()          # 打开 app 就先把当天的文件夹建出来
@@ -304,6 +375,9 @@ class AskApp(QtCore.QObject):
                 "问一问",
                 f"已就绪 —— 按 {self.hotkey.pretty} 框一块屏幕；横栏能拖着挪、也能收成小条。",
                 QtWidgets.QSystemTrayIcon.Information, 5000)
+        if config.WORKBENCH_ON_START:
+            # 等后台线程把 8765/8766 绑定好再开窗；页面自己也有重试，早了也不白屏
+            QtCore.QTimer.singleShot(700, self.open_web)
 
     def _exe_is_stale(self) -> bool:
         """打包出的 exe 是不是比仓库源码旧（只在「exe 就在仓库 dist 里」时才比得出）。"""
@@ -349,9 +423,10 @@ class AskApp(QtCore.QObject):
                    else "没找到要修的（先在任务栏上固定一条，再点这个）。")
 
     def _called_back(self) -> None:
-        """又点了一次「问一问」—— 把横栏露出来给他看。"""
+        """又点了一次「问一问」—— 横栏露出来，学习台也打开/聚焦。"""
         self.show_bar()
-        self.bar.show_message("问一问已经在跑了 —— 把横栏给你叫回来了。")
+        self.open_web()
+        self.bar.show_message("问一问已经在跑了 —— 横栏和学习台都给你叫回来了。")
 
     # ---- 采集层：开始 / 结束完整录制（声音 + 屏幕 + 窗口）----
 
@@ -409,6 +484,12 @@ class AskApp(QtCore.QObject):
         self.bar.show_message(text.replace(chr(10), " "))
 
     def quit(self) -> None:
+        try:
+            from learnsys.server import runtime as web_runtime
+            web_runtime.clear_ui()   # 退出后别再让页面点「快捷栏」打到空处
+        except Exception:
+            pass
+        self._ocr.shutdown()     # OCR 线程先停：别让它在关库之后还写 frame_text
         self.bar.shutdown()      # 先把问答线程收干净 —— 还在跑就销毁会崩（QThread）
         if self.live.recording:
             self.live.stop()     # 退出前收尾录制（后台线程写完最后一块，daemon 兜底）

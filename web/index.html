@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>学习系统</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/web/css/tokens.css">
+  <link rel="stylesheet" href="/web/vendor/highlight-dark.css">
+  <link rel="stylesheet" href="/web/vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="/web/css/app.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">◒</span>
+        <span class="brand-name">学习系统</span>
+        <span class="brand-version" id="version"></span>
+      </div>
+      <nav class="nav" id="nav" aria-label="模块"></nav>
+      <div class="nav-tools">
+        <button class="nav-tool" type="button" id="ui-quickbar" title="把快捷栏叫到屏幕上方">
+          <span class="nav-icon" aria-hidden="true">⌁</span><span>快捷栏</span>
+        </button>
+        <button class="nav-tool" type="button" id="ui-pick" title="直接框选屏幕提问">
+          <span class="nav-icon" aria-hidden="true">⛶</span><span>框选提问</span>
+        </button>
+      </div>
+      <div class="side-foot">
+        <span class="dot" id="backend-dot" aria-hidden="true"></span>
+        <span id="backend-text">连接中…</span>
+        <a class="side-link" href="/docs" target="_blank" rel="noreferrer">接口</a>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h1 id="page-title">今日</h1>
+          <p id="page-sub"></p>
+        </div>
+        <div class="topbar-actions" id="page-actions"></div>
+      </header>
+      <section class="view" id="view" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="/web/vendor/marked.min.js"></script>
+  <script src="/web/vendor/purify.min.js"></script>
+  <script src="/web/vendor/highlight.min.js"></script>
+  <script src="/web/vendor/katex/katex.min.js"></script>
+  <script src="/web/vendor/katex/auto-render.min.js"></script>
+  <script type="module" src="/web/js/shell.js"></script>
+</body>
+</html>

@@ -59,8 +59,19 @@ a = Analysis(
     [os.path.join(SPECPATH, '问一问.py')],
     pathex=[SPECPATH],
     binaries=[],
-    datas=[],
+    datas=[
+        # 浏览器工作台：HTML/CSS/JS + 本地依赖 + KaTeX 字体
+        (os.path.join(SPECPATH, 'web'), 'web'),
+        # 模块注册表（壳层按它渲染侧栏）
+        (os.path.join(SPECPATH, 'learnsys', 'modules', 'registry.json'),
+         os.path.join('learnsys', 'modules')),
+    ],
     hiddenimports=[
+        # 本地服务是函数内懒加载，手点一次更稳
+        'fastapi',
+        'uvicorn',
+        'pydantic',
+        'starlette',
         # comtypes 是「用到才现生成」的，PyInstaller 扫不到 —— 得手点名
         'comtypes',
         'comtypes.client',

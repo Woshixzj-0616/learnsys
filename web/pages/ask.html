@@ -1,0 +1,37 @@
+<div class="ask-layout">
+  <aside class="conv-pane">
+    <div class="conv-head">
+      <button class="conv-new" type="button" id="new-conv">＋ 新对话</button>
+    </div>
+    <div class="conv-list" id="conv-list"></div>
+  </aside>
+
+  <section class="chat">
+    <div class="thread" id="thread">
+      <div class="thread-inner" id="thread-inner"></div>
+    </div>
+
+    <div class="composer-wrap">
+      <form class="composer" id="composer">
+        <div class="attach-row" id="attach-row" hidden></div>
+        <textarea id="input" rows="1"
+          placeholder="想问什么？Enter 发送，Shift+Enter 换行"></textarea>
+        <div class="composer-row">
+          <select class="select" id="mode" aria-label="回答模式">
+            <option value="explain">讲解</option>
+            <option value="guide">引导</option>
+            <option value="quiz">测验</option>
+            <option value="quick">速答</option>
+          </select>
+          <button type="button" class="btn btn-quiet" id="attach-image">图片</button>
+          <button type="button" class="btn btn-quiet" id="attach-doc">文档</button>
+          <span class="composer-status" id="composer-status"></span>
+          <button type="button" class="btn btn-danger" id="stop" hidden>停止</button>
+          <button type="submit" class="btn btn-primary" id="send">发送</button>
+        </div>
+        <input type="file" id="file-image" accept="image/*" aria-label="选择图片" hidden>
+        <input type="file" id="file-doc" accept=".pdf,.docx,.pptx,.txt,.md" aria-label="选择文档" hidden>
+      </form>
+    </div>
+  </section>
+</div>
