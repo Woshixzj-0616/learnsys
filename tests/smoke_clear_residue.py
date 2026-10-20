@@ -115,15 +115,15 @@ def main():
     app.processEvents()
     check("看历史时提示行可见", b.status.isVisible())
 
-    # 8. 记录行显隐窗口高度同步
+    # 8. 记录行常驻固定高度：开关录制只换字，窗口不动
     base = b.height()
     b.set_recording(True, 1, 0)
     app.processEvents()
     grew = b.height()
     b.set_recording(False)
     app.processEvents()
-    check("记录行出现窗口变高、收起缩回", grew > base and b.height() == base,
-          f"base={base} grew={grew} back={b.height()}")
+    check("记录行开关不改变窗口高度", grew == base and b.height() == base,
+          f"base={base} on={grew} off={b.height()}")
 
     # 9. 收起/展开往返
     b.set_collapsed(True)

@@ -236,6 +236,7 @@ class TestBarStudyUI(unittest.TestCase):
         self.addCleanup(self.b.deleteLater)
 
     def test_star_disabled_until_starrable(self):
+        self.b.set_state(bar.STATE_DONE)          # 收藏只在「答完 / 看历史」的状态里可用
         self.assertFalse(self.b.star_btn.isEnabled())
         self.b.set_starrable("D:/x/learnsys.db", 7)
         self.assertTrue(self.b.star_btn.isEnabled())

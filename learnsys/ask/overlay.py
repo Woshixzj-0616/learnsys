@@ -2,6 +2,9 @@
 
 选区外压暗、选区内透出真实屏幕；坐标一律用 Qt 的**逻辑像素**（Qt6 自己就是 DPI 感知的），
 松手时发出的是覆盖所有屏幕的全局坐标。
+
+`cover` 是几块要**整块盖住**的矩形（快捷栏）—— 用不透明白色块遮掉、而不是把窗口
+hide() 掉：hide/show 会让任务栏闪、焦点丢，回来还要再抢一次焦点。
 """
 from __future__ import annotations
 
@@ -11,6 +14,7 @@ DIM = QtGui.QColor(0, 0, 0, 110)
 EDGE = QtGui.QColor(90, 170, 255)
 TEXT = QtGui.QColor(255, 255, 255, 235)
 PLATE = QtGui.QColor(20, 22, 26, 200)
+COVER = QtGui.QColor(27, 30, 35, 255)    # 和横栏卡片同色；不透明，截图也抓不到下面
 MIN_SIDE = 8
 
 
@@ -18,8 +22,9 @@ class Overlay(QtWidgets.QWidget):
     selected = QtCore.Signal(QtCore.QRect)   # 选中的矩形（全局逻辑坐标）
     cancelled = QtCore.Signal()
 
-    def __init__(self):
+    def __init__(self, cover: list[QtCore.QRect] | None = None):
         super().__init__(None)
+        self._cover = [QtCore.QRect(r) for r in (cover or [])]
         self.setWindowFlags(
             QtCore.Qt.FramelessWindowHint
             | QtCore.Qt.WindowStaysOnTopHint
@@ -56,6 +61,10 @@ class Overlay(QtWidgets.QWidget):
             painter.setPen(QtGui.QPen(EDGE, 2))
             painter.drawRect(sel.adjusted(0, 0, -1, -1))
             self._draw_size(painter, sel)
+        # 横栏整块盖住（在选区之上也盖）—— 松手截图时不会把横栏自己抓进去
+        painter.setPen(QtCore.Qt.NoPen)
+        for rect in self._cover:
+            painter.fillRect(rect.translated(-self._origin), COVER)
         self._draw_hint(painter, whole)
 
     def _plate(self, painter, text, center):

@@ -72,6 +72,9 @@ QTextBrowser#answer { background: #171c23; border: 1px solid #283039; border-rad
                       color: #dfe6ee; padding: 13px 16px; font-size: 15px;
                       selection-background-color: #35618f; }
 
+QFrame#grip { background: #2a2f36; border-radius: 3px; }
+QFrame#grip:hover { background: #4d8bff; }           /* 拖底边改答案区高度 */
+
 QScrollBar:vertical { background: transparent; width: 8px; margin: 4px 2px 4px 0; }
 QScrollBar::handle:vertical { background: #3a4048; border-radius: 4px; min-height: 30px; }
 QScrollBar::handle:vertical:hover { background: #4a525c; }
@@ -91,6 +94,35 @@ QToolTip { background: #202329; color: #d7dbe0; border: 1px solid #33383f;
 
 THUMB_W, THUMB_H = 64, 40
 BUTTON_W = 68                # 底部那排按钮统一宽度 —— 文字在「置顶 / 不置顶」之间变也不挪位
+
+# ---- 固定几何（T3.5）----
+# 每一行都钉死高度，窗口尺寸只由这些常量 + 答案面板高度算出来。
+# 内容怎么长、状态文字多长，都不许再把窗口撑大或推按钮。
+BAR_OUTER_X = 14             # 窗口左右留白（给阴影）
+BAR_OUTER_TOP = 12           # 窗口顶部留白（给阴影）
+CARD_PAD_X = 12
+CARD_PAD_TOP = 10
+CARD_PAD_BOTTOM = 10
+CARD_GAP = 9                 # 卡片内各行间距
+ROW_H = 40                   # 输入行（缩略图 40 高，整行跟着它）
+BUTTON_H = 28                # 底部按钮行
+STATUS_H = 22                # 状态行 —— 永远占着，长短只截断不换行
+REC_H = 18                   # 录制信息行 —— 永远占着
+USAGE_H = 16                 # 占用行
+GRIP_H = 7                   # 答案面板底边的拖拽条
+PILL_H = 44                  # 收起后的小条
+
+# 状态机：所有界面显隐只认这一组名字（见 set_state）
+STATE_IDLE = "idle"
+STATE_THINKING = "thinking"
+STATE_STREAMING = "streaming"
+STATE_DONE = "done"
+STATE_ERROR = "error"
+STATE_HISTORY = "history"
+_ANSWER_STATES = frozenset({STATE_THINKING, STATE_STREAMING, STATE_DONE,
+                            STATE_ERROR, STATE_HISTORY})
+_STATES = frozenset({STATE_IDLE, *_ANSWER_STATES})
+
 MODE_LABELS = {
     "explain": "讲解（完整回答 + 思考题）",
     "guide": "引导（先给提示，再反问）",
@@ -279,6 +311,47 @@ class _AskWorker(QtCore.QThread):
             self.failed.emit(f"出错了：{exc}")
 
 
+class _AnswerGrip(QtWidgets.QFrame):
+    """答案面板底边的拖拽条：往下拖加高、往上拖缩矮。
+
+    只发「相对按下时挪了多少」—— 由 AskBar 统一夹到上下限并重算窗口几何，
+    面板自己有固定高度，内容再多也只滚动、不长高。
+    """
+
+    moved = QtCore.Signal(int)
+    released = QtCore.Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("grip")
+        self.setFixedHeight(GRIP_H)
+        self.setCursor(QtCore.Qt.CursorShape.SizeVerCursor)
+        self.setToolTip("按住往下拖：答案区变高；往上拖：变矮")
+        self._start = None
+
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            self._start = int(event.globalPosition().y())
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._start is None:
+            super().mouseMoveEvent(event)
+            return
+        self.moved.emit(int(event.globalPosition().y()) - self._start)
+        event.accept()
+
+    def mouseReleaseEvent(self, event):
+        if self._start is None:
+            super().mouseReleaseEvent(event)
+            return
+        self._start = None
+        self.released.emit()
+        event.accept()
+
+
 class AskBar(QtWidgets.QWidget):
     answered = QtCore.Signal(object)            # {question, answer, ms, kind, image_path, thread}
     exited = QtCore.Signal()                   # 用户把横栏收进托盘（✕）
@@ -318,7 +391,6 @@ class AskBar(QtWidgets.QWidget):
         self._streaming = False
         self._activity = ""           # 状态行的一句话（看图 / 查记录 / 推理中）
         self.ask_mode = "explain"     # 讲解 / 引导 / 测验 / 速答（Web 工作台可改）
-        self._fit_timer = None        # 流式重排的节流器（别每片都排）
         self._answer_start = None     # 答案区里「答案」从第几个字符开始（None = 这一轮还没开始）
         self._turn_seq = 0            # 第几轮（被掐掉的旧那一轮回来时靠它认出来，别写回界面）
         self._last_answer = ""        # 最近一次的**答案**原文（复制按钮只复制它，不带问题）
@@ -336,6 +408,13 @@ class AskBar(QtWidgets.QWidget):
         self.history_days_provider = None    # app 塞的：() -> [(label, db_path, rows), ...] 更早的日子
         self.history_db_path_provider = None  # app 塞的：() -> str，今天那个库的路径（收藏要落对库）
         self._state = self._load_state()
+        self._answer_shown = False    # 答案面板是否在版面上（只有 set_state 能改）
+        self._answer_h = self._load_answer_h()
+        self._status_text = ""        # 状态行全文（界面上是截断版，悬停看全文）
+        self._recording = False
+        self._rec_text = ""           # 录制行全文（界面上可能被截断）
+        self._drag_base = None        # 拖答案底边时的起始高度
+        self._state_name = STATE_IDLE
         # 界面设置里的 always_on_top 可能被手改成字符串 "false" —— `bool("false")` 是 True！
         # 走和 `config._user_bool` 同一套判法，别自己 bool()。
         self._on_top = _as_bool(self._state.get("always_on_top", config.ASK_BAR_ALWAYS_ON_TOP),
@@ -361,10 +440,19 @@ class AskBar(QtWidgets.QWidget):
             return {}
         return data if isinstance(data, dict) else {}
 
+    def _load_answer_h(self) -> int:
+        """答案面板高度：上次拖到多少就恢复多少，夹在 [最矮, 屏高上限] 之间。"""
+        try:
+            value = int(self._state.get("answer_h", config.ASK_BAR_ANSWER_DEFAULT_H))
+        except (TypeError, ValueError):
+            value = config.ASK_BAR_ANSWER_DEFAULT_H
+        return max(config.ASK_BAR_ANSWER_MIN_H, min(value, self._answer_cap))
+
     def _save_state(self) -> None:
         state = dict(self._state)
         state["x"], state["y"] = self.x(), self.y()
         state["collapsed"] = self._collapsed
+        state["answer_h"] = self._answer_h
         self._state = state
         try:
             config.SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -403,7 +491,7 @@ class AskBar(QtWidgets.QWidget):
 
     def _restore_place(self) -> None:
         self._collapsed = bool(self._state.get("collapsed"))
-        self._apply_collapse()
+        self._apply_geometry()
         x, y = self._state.get("x"), self._state.get("y")
         area = self._usable()
         if isinstance(x, int) and isinstance(y, int) and area.contains(QtCore.QPoint(x, y)):
@@ -483,7 +571,7 @@ class AskBar(QtWidgets.QWidget):
     def _build(self) -> None:
         self.setStyleSheet(QSS)
         outer = QtWidgets.QVBoxLayout(self)
-        outer.setContentsMargins(14, 12, 14, 0)      # 上下给阴影留位置
+        outer.setContentsMargins(BAR_OUTER_X, BAR_OUTER_TOP, BAR_OUTER_X, 0)  # 给阴影留位置
         outer.setSpacing(0)
 
         self.card = QtWidgets.QFrame(self)
@@ -508,8 +596,8 @@ class AskBar(QtWidgets.QWidget):
         card.setGraphicsEffect(shadow)
 
         box = QtWidgets.QVBoxLayout(card)
-        box.setContentsMargins(12, 10, 12, 10)
-        box.setSpacing(9)
+        box.setContentsMargins(CARD_PAD_X, CARD_PAD_TOP, CARD_PAD_X, CARD_PAD_BOTTOM)
+        box.setSpacing(CARD_GAP)
 
         row = QtWidgets.QHBoxLayout()
         row.setSpacing(10)
@@ -520,6 +608,7 @@ class AskBar(QtWidgets.QWidget):
 
         self.pick_btn = QtWidgets.QPushButton("框选", card)
         self.pick_btn.setObjectName("pick")
+        self.pick_btn.setFixedHeight(ROW_H - 2)
         self.pick_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.pick_btn.setToolTip(f"框一块屏幕来问（{self._tip}）")
         self.pick_btn.clicked.connect(self.pick_requested.emit)
@@ -534,11 +623,13 @@ class AskBar(QtWidgets.QWidget):
 
         self.ask = QtWidgets.QLineEdit(card)
         self.ask.setObjectName("ask")
+        self.ask.setFixedHeight(ROW_H - 2)
         self.ask.returnPressed.connect(self.submit)
         row.addWidget(self.ask, 1)
 
         self.go = QtWidgets.QPushButton("问", card)
         self.go.setObjectName("go")
+        self.go.setFixedHeight(ROW_H - 2)
         self.go.setCursor(QtCore.Qt.PointingHandCursor)
         self.go.clicked.connect(self.submit)
         row.addWidget(self.go)
@@ -546,6 +637,7 @@ class AskBar(QtWidgets.QWidget):
         self.collapse_btn = QtWidgets.QToolButton(card)
         self.collapse_btn.setObjectName("tiny")
         self.collapse_btn.setText("－")
+        self.collapse_btn.setFixedHeight(ROW_H - 2)
         self.collapse_btn.setCursor(QtCore.Qt.PointingHandCursor)
         self.collapse_btn.setToolTip("收起成一条小条（点小条又能展开）")
         self.collapse_btn.clicked.connect(lambda: self.set_collapsed(True))
@@ -554,16 +646,31 @@ class AskBar(QtWidgets.QWidget):
         close = QtWidgets.QToolButton(card)
         close.setObjectName("tiny")
         close.setText("✕")
+        close.setFixedHeight(ROW_H - 2)
         close.setCursor(QtCore.Qt.PointingHandCursor)
         close.setToolTip("收进托盘（程序不退出，随时能从托盘叫回来）")
         close.clicked.connect(self.hide_bar)
         row.addWidget(close)
         box.addLayout(row)
 
+        # 状态行：固定高度、不换行 —— 长了只截断（悬停看全文），绝不推窗口/按钮
         self.status = QtWidgets.QLabel(card)
         self.status.setObjectName("status")
-        self.status.setWordWrap(True)
-        self.status.setVisible(False)
+        self.status.setWordWrap(False)
+        self.status.setFixedHeight(STATUS_H)
+
+        # 录制信息行：固定高度、常驻版面（不录制时是空行）—— 显隐不再改变窗口高度
+        self.rec_line = QtWidgets.QLabel(card)
+        self.rec_line.setObjectName("rec")
+        self.rec_line.setWordWrap(False)
+        self.rec_line.setFixedHeight(REC_H)
+        self.rec_line.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+
+        # 状态和录制并成一行（左状态、右录制）—— 布局在按钮行之后再加
+        self.info_row = QtWidgets.QHBoxLayout()
+        self.info_row.setSpacing(12)
+        self.info_row.addWidget(self.status, 1)
+        self.info_row.addWidget(self.rec_line, 0)
 
         self.copy_btn = QtWidgets.QToolButton(card)
         self.copy_btn.setObjectName("tiny")
@@ -662,26 +769,31 @@ class AskBar(QtWidgets.QWidget):
         bottom.addStretch(1)
         for btn in (self.copy_btn, self.star_btn, self.session_btn,
                     self.review_btn, self.workbench_btn, self.rec_btn, self.more_btn):
-            btn.setFixedWidth(BUTTON_W)
+            btn.setFixedSize(BUTTON_W, BUTTON_H)
             bottom.addWidget(btn)
         box.addLayout(bottom)
         self._sync_top_btn()
 
-        box.addWidget(self.status)      # 单独一行：长短变化不影响上面那排按钮
+        box.addLayout(self.info_row)    # 状态在左、录制在右：长短都推不动上面的按钮
 
+        # 答案面板：高度固定（可拖底边），内容多了在面板内滚动 —— 流式期间不再长高
         self.answer = QtWidgets.QTextBrowser(card)
         self.answer.setObjectName("answer")
         self.answer.setOpenExternalLinks(True)
+        self.answer.setFixedHeight(self._answer_h)
         self.answer.setVisible(False)
         box.addWidget(self.answer)
 
-        self.rec_line = QtWidgets.QLabel(card)      # 「● 记录中 …」—— 只在记录的时候露出来
-        self.rec_line.setObjectName("rec")
-        self.rec_line.setVisible(False)
-        box.addWidget(self.rec_line)
+        self.answer_grip = _AnswerGrip(card)
+        self.answer_grip.setVisible(False)
+        self.answer_grip.moved.connect(self._resize_answer)
+        self.answer_grip.released.connect(self._finish_resize)
+        box.addWidget(self.answer_grip)
 
         self.usage_line = QtWidgets.QLabel(card)
         self.usage_line.setObjectName("usage")
+        self.usage_line.setWordWrap(False)
+        self.usage_line.setFixedHeight(USAGE_H)
         box.addWidget(self.usage_line)
 
     def _build_pill(self, pill: QtWidgets.QFrame) -> None:
@@ -691,6 +803,7 @@ class AskBar(QtWidgets.QWidget):
         shadow.setColor(QtGui.QColor(0, 0, 0, 180))
         pill.setGraphicsEffect(shadow)
 
+        pill.setFixedHeight(PILL_H)
         lay = QtWidgets.QHBoxLayout(pill)
         lay.setContentsMargins(14, 7, 14, 7)
         lay.setSpacing(10)
@@ -704,25 +817,58 @@ class AskBar(QtWidgets.QWidget):
         lay.addWidget(self.pill_usage, 1)
         lay.addWidget(self.pill_hint)
 
-    def _apply_collapse(self) -> None:
+    def _compact_card_h(self) -> int:
+        """没有答案面板时的卡片高度：输入行 / 按钮行 / 状态行 / 占用行 + 三个间距。"""
+        return (CARD_PAD_TOP + CARD_PAD_BOTTOM + ROW_H + BUTTON_H + STATUS_H + USAGE_H
+                + 3 * CARD_GAP)
+
+    def _expanded_card_h(self) -> int:
+        """有答案面板时：紧凑高度 + 面板 + 拖拽条 + 两个间距。"""
+        return self._compact_card_h() + 2 * CARD_GAP + GRIP_H + self._answer_h
+
+    def _apply_geometry(self) -> None:
+        """窗口尺寸的唯一出口：只由「收起与否 + 答案面板显隐 + 面板高度」决定。
+
+        不再 `adjustSize()`、不再让布局按内容算尺寸 —— 内容变化永远不触发这里，
+        所以流式、状态文字、录制信息都不会让窗口跳。
+        """
         if self._collapsed:
             self.card.setVisible(False)
             self.pill.setVisible(True)
-            self.pill.setFixedWidth(config.ASK_BAR_PILL_WIDTH)
-            self.setFixedWidth(config.ASK_BAR_PILL_WIDTH + 28)
+            width = config.ASK_BAR_PILL_WIDTH + 2 * BAR_OUTER_X
+            height = PILL_H + BAR_OUTER_TOP
         else:
             self.pill.setVisible(False)
             self.card.setVisible(True)
-            self.setFixedWidth(self._full_width() + 28)
-        self._relayout()
+            width = self._full_width() + 2 * BAR_OUTER_X
+            card_h = self._expanded_card_h() if self._answer_shown else self._compact_card_h()
+            height = card_h + BAR_OUTER_TOP
+        size = QtCore.QSize(width, height)
+        if self.minimumSize() != size or self.maximumSize() != size:
+            self.setFixedSize(size)
+
+    def _resize_answer(self, delta: int) -> None:
+        """拖答案底边：只改面板高度，窗口高度跟着固定几何一起算。"""
+        if self._drag_base is None:
+            self._drag_base = self._answer_h
+        height = max(config.ASK_BAR_ANSWER_MIN_H,
+                     min(self._drag_base + delta, self._answer_cap))
+        if height == self._answer_h:
+            return
+        self._answer_h = height
+        self.answer.setFixedHeight(height)
+        self._apply_geometry()
+
+    def _finish_resize(self) -> None:
+        self._drag_base = None
+        self._save_state()
 
     def set_collapsed(self, flag: bool) -> None:
         if flag == self._collapsed:
             return
         self._collapsed = flag
-        self._apply_collapse()
+        self._apply_geometry()
         self._clamp()
-        self._fit_answer()
         if not flag:
             self.ask.setFocus(QtCore.Qt.OtherFocusReason)
         self._save_state()
@@ -732,40 +878,6 @@ class AskBar(QtWidgets.QWidget):
 
     def _place(self) -> None:                      # 兼容旧调用
         self._place_default()
-
-    def _relayout(self) -> None:
-        """内容显隐 / 高度变了之后，**当场**把窗口尺寸同步好 —— 光 adjustSize() 缩不回去。
-
-        根因：setVisible / setFixedHeight 只把**直接父布局**标脏、再发一个异步的
-        LayoutRequest；事件循环没转过之前，外层布局的 sizeHint 和**窗口的最小尺寸都
-        还钉着旧值**，adjustSize 的 resize 会被旧的最小尺寸顶回去（真踩过：清空 /
-        新会话后窗口留着旧答案那一截高度，看着就是「画面叠加」）。所以两层布局都要
-        invalidate + activate（先内层再外层 —— 只标外层，读到的还是内层的旧缓存），
-        窗口 min/max 更新到位后再 adjustSize 才真正缩得回去。
-        """
-        inner = self.card.layout()
-        if inner is not None:
-            inner.invalidate()
-            inner.activate()
-        lay = self.layout()
-        if lay is not None:
-            lay.invalidate()
-            lay.activate()
-        self.adjustSize()
-
-    def _fit_answer(self) -> None:
-        """答案区按内容长高（到上限就滚动），这样答案不用挤在小框里。"""
-        if not self.answer.isVisible():
-            return
-        width = max(240, self.answer.viewport().width())
-        document = self.answer.document()
-        document.setTextWidth(width)
-        needed = int(document.size().height()) + 24
-        self.answer.setFixedHeight(max(76, min(needed, self._answer_cap)))
-        self._relayout()
-        if self._follow:               # 流式跟随：正看最新就滚到最新；用户上翻过就别拽
-            bar_sb = self.answer.verticalScrollBar()
-            bar_sb.setValue(bar_sb.maximum())
 
     def _set_answer(self, text: str) -> None:
         self.answer.setPlainText(text)
@@ -790,6 +902,65 @@ class AskBar(QtWidgets.QWidget):
         self.top_btn.setText("置顶" if self._on_top else "不置顶")
         self.top_btn.setChecked(self._on_top)
 
+    # ---- 状态机 ----
+    #
+    # 界面的显隐只有这一个入口：答案面板在不在、按钮能不能点、状态行写什么，全走
+    # `set_state()`。别处一律不许 `answer.setVisible(...)` / 直接改布局 —— 一散开，
+    # 「状态变化奇怪」就会重新长回来。
+
+    def set_state(self, state: str, status: str | None = None) -> None:
+        """切换界面状态（idle / thinking / streaming / done / error / history）。"""
+        if state not in _STATES:
+            raise ValueError(f"未知状态：{state}")
+        self._state_name = state
+        show_answer = state in _ANSWER_STATES
+        if show_answer != self._answer_shown:
+            self._answer_shown = show_answer
+            self.answer.setVisible(show_answer)
+            self.answer_grip.setVisible(show_answer)
+            if show_answer:
+                self.answer.setFixedHeight(self._answer_h)
+            self._apply_geometry()          # 只有面板显隐才动窗口几何
+        busy = state in (STATE_THINKING, STATE_STREAMING)
+        self.go.setEnabled(not busy)
+        self._set_copy_enabled(show_answer and bool(self._last_answer.strip()))
+        self._sync_star()
+        if status is not None:
+            self._set_status(status)
+
+    def _sync_star(self) -> None:
+        self.star_btn.setEnabled(self._state_name in (STATE_DONE, STATE_HISTORY)
+                                 and self._starrable is not None)
+
+    def _set_status(self, text: str) -> None:
+        """状态行：固定一行高，长文按宽度截断，全文放悬停提示。"""
+        text = " ".join(str(text or "").split())
+        self._status_text = text
+        width = max(160, self._full_width() - 2 * CARD_PAD_X - 2)
+        if self._rec_text:              # 录制信息占着同一行右侧，先给它让位
+            reserve = min(self._full_width() // 2,
+                          self.rec_line.fontMetrics().horizontalAdvance(self._rec_text))
+            width = max(160, width - reserve - 12)
+        shown = self.status.fontMetrics().elidedText(text, QtCore.Qt.ElideRight, width)
+        self.status.setText(shown)
+        self.status.setToolTip("" if shown == text else text)
+
+    def _set_rec(self, text: str) -> None:
+        """录制信息：和状态同一行，靠右；长文截断，全文留在 `_rec_text` 和悬停提示里。"""
+        text = " ".join(str(text or "").split())
+        self._rec_text = text
+        width = max(160, self._full_width() // 2)
+        shown = self.rec_line.fontMetrics().elidedText(text, QtCore.Qt.ElideRight, width)
+        self.rec_line.setText(shown)
+        self.rec_line.setToolTip("" if shown == text else text)
+
+    def _scroll_follow(self) -> None:
+        """流式时视图跟着最新内容走；用户往上翻过（_follow=False）就别拽。"""
+        if not self._follow:
+            return
+        bar_sb = self.answer.verticalScrollBar()
+        bar_sb.setValue(bar_sb.maximum())
+
     # ---- 状态切换 ----
 
     def set_idle(self) -> None:
@@ -799,6 +970,7 @@ class AskBar(QtWidgets.QWidget):
         self.drop_image()
         self.clear_doc()
         self._reset_answer()
+        self._set_status(f"按 {self._tip} 框选提问 · 直接打字也行")
 
     def _drop_running(self) -> None:
         """把正在写的那一轮掐掉 —— 用户要开新会话 / 清空时，别让他干等。
@@ -886,16 +1058,14 @@ class AskBar(QtWidgets.QWidget):
         self._reset_answer()
         if self._collapsed:
             self.set_collapsed(False)
+        # 框选时横栏只是被遮罩盖住、没隐藏；遮罩关掉后把焦点收回输入框
+        self.raise_()
+        self.activateWindow()
         self.ask.setFocus(QtCore.Qt.OtherFocusReason)
 
     def _reset_answer(self) -> None:
-        self.status.setVisible(False)
-        self.status.clear()
         self.answer.clear()
         self.answer.setPlainText("")        # clear() 再补一道 —— 文档/缓存都归零
-        self.answer.setVisible(False)
-        self.answer.setFixedHeight(76)
-        self._set_copy_enabled(False)
         self._streaming = False
         self._activity = ""
         self._answer_start = None
@@ -903,33 +1073,10 @@ class AskBar(QtWidgets.QWidget):
         self._showing_history = False
         self._follow = False       # 内容都清了，没什么可跟随的
         self._starrable = None     # 当前内容没了，「收藏」跟着灭
-        self.star_btn.setEnabled(False)
         self.star_btn.setText("收藏")
-        self._relayout()                    # ⚠️ 窗口高度必须当场缩回去 —— 光 adjustSize
-                                            # 会被布局钉着的旧最小尺寸顶住（残影的根子）
-        self._force_repaint()               # 保险丝：半透明+阴影的像素残影再兜一道
-
-    def _force_repaint(self) -> None:
-        """清完内容**必须**强制重画 —— 不然半透明窗口会留旧内容的像素残影。
-
-        「画面叠加」有两层根因，这里兜的是第二层（第一层「窗口缩不回去」归
-        `_relayout` 管）—— Windows 合成层的缓存：
-        ① `QGraphicsDropShadowEffect` 会缓存整张卡片的位图，内容变了不作废就照着旧图叠；
-        ② `WA_TranslucentBackground`（半透明窗口）用的是分层窗口，不逼一下不重合成。
-        """
-        # ① 作废阴影效果的位图缓存（关了再开 = 强制重建）
-        eff = self.card.graphicsEffect()
-        if eff is not None:
-            eff.setEnabled(False)
-            eff.setEnabled(True)
-        # ② 同步重画各个部件
-        self.answer.viewport().repaint()
-        self.card.repaint()
-        self.pill.repaint()
-        self.repaint()
-        # ③ 逼 Windows 分层窗口重新合成（0.99→1.0 是经典做法，肉眼看不出闪）
-        self.setWindowOpacity(0.99)
-        self.setWindowOpacity(1.0)
+        # 清空 → 唯一入口回到 idle：面板收起、窗口缩回紧凑几何。
+        # 不再 `_force_repaint()` 抖透明度和阴影 —— 几何稳定后没有像素残影可补。
+        self.set_state(STATE_IDLE, status="")
 
     def set_recording(self, on: bool, minutes: float = 0.0, switches: int = 0,
                       detail: str = "") -> None:
@@ -938,20 +1085,22 @@ class AskBar(QtWidgets.QWidget):
         detail 是可选的追加信息（转写字数 / 快照张数 / 没听到声音提示）。
         录制按钮同步换字 + 泛红（role 属性驱动 QSS）。
         """
-        was = self.rec_line.isVisible()
-        self.rec_line.setVisible(on)
+        self._recording = on
         if on:
             text = f"● 录制中 {minutes:.0f} 分 · 切了 {switches} 次窗口"
             if detail:
                 text += f" · {detail}"
-            self.rec_line.setText(text)
-        self.rec_btn.setText("停止录制" if on else "录制")
+            self._set_rec(text)
+        else:
+            self._set_rec("")
+        if self._status_text:           # 右侧让出的宽度变了，状态行重新截一次
+            self._set_status(self._status_text)
+        self.rec_btn.setText("停止" if on else "录制")   # 「停止录制」四字在 68px 槽里会被截断
         self.rec_btn.setProperty("role", "recording" if on else None)
         style = self.rec_btn.style()
         style.unpolish(self.rec_btn)
         style.polish(self.rec_btn)
-        if on != was:
-            self._relayout()     # 那行字一显一隐窗口高度跟着变 —— 当场同步好
+        # 录制行常驻固定高度 —— 开关录制只换字，窗口不动
 
     def refresh_usage(self) -> None:
         """占用数字在后台线程里算 —— walk 整个数据盘会卡界面，别放主线程。
@@ -988,16 +1137,18 @@ class AskBar(QtWidgets.QWidget):
         self.pill.setToolTip(info.detail + chr(10) + "点一下展开 · 拖动可以挪位置")
 
     def show_message(self, text: str) -> None:
-        self.status.setVisible(True)
-        self.status.setText(text)
-        self._relayout()            # 状态行显隐/换行都牵动窗口高度 —— 当场同步
-        self._force_repaint()       # 半透明窗口不重画会留残影
+        """状态行写一句话 —— 只换字，不动布局，不重排窗口。"""
+        self._set_status(text)
 
     # ---- 交互 ----
 
     def showEvent(self, event):
         super().showEvent(event)
         self._answer_cap = self._calc_answer_cap()   # 分辨率/屏幕可能变了，重算
+        self._answer_h = max(config.ASK_BAR_ANSWER_MIN_H,
+                             min(self._answer_h, self._answer_cap))
+        self.answer.setFixedHeight(self._answer_h)
+        self._apply_geometry()
         self.refresh_usage()
         self._clamp()
         self.raise_()
@@ -1005,7 +1156,6 @@ class AskBar(QtWidgets.QWidget):
             self.activateWindow()
             self.ask.setFocus(QtCore.Qt.OtherFocusReason)
         self._topmost(self._on_top)      # 每次露出来都重申一遍层级（别的窗口可能盖过它）
-        QtCore.QTimer.singleShot(0, self._fit_answer)
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Escape:
@@ -1066,7 +1216,6 @@ class AskBar(QtWidgets.QWidget):
         """
         if self._answer_start is None:
             self.answer.clear()
-            self.answer.setFixedHeight(76)
             self._showing_history = False     # 新问起手，历史视图已经不在了
         cursor = self.answer.textCursor()
         if self.answer.toPlainText().strip():
@@ -1083,8 +1232,9 @@ class AskBar(QtWidgets.QWidget):
                                    # 复制会把上一轮答案拼进来，中断时上下文也会被污染
         self._follow = True        # 新一轮从跟随最新内容开始（用户上翻就停，见 _on_chunk）
         cursor.setCharFormat(_answer_char())     # 答案用正常颜色，别接着用蓝底那块的白字
-        self.answer.setVisible(True)
         self.answer.setTextCursor(cursor)
+        self._scroll_follow()
+        self.set_state(STATE_THINKING)     # 面板显隐只走状态机（这里只是把面板亮出来）
 
     def submit(self) -> None:
         if self._worker is not None:
@@ -1133,15 +1283,12 @@ class AskBar(QtWidgets.QWidget):
                     images: list[str] | None = None, mode: str = "",
                     system_override: str = "", use_tools: bool = True) -> None:
         """开一轮问答：显示 display_text，问 AI 的是 send_text（可带转写上下文）。"""
-        self.go.setEnabled(False)
         self._started_at = time.monotonic()
         self._dots = 0
         self._streaming = False
         self._activity = ""
-        self.status.setVisible(True)
-        self.status.setText("在想…")
-        self._set_copy_enabled(False)
         self._start_turn(display_text)
+        self.set_state(STATE_THINKING, status="在想…")
         self._timer = QtCore.QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.start(400)
@@ -1177,8 +1324,8 @@ class AskBar(QtWidgets.QWidget):
         self._dots = (self._dots + 1) % 4
         # 有更具体的动作（查记录 / 看图）就显示它；否则按「先想后写」显示
         label = self._activity or ("正在写" if self._streaming else "在想")
-        self.status.setText(label + "·" * self._dots
-                            + f"  {time.monotonic() - self._started_at:.0f} 秒")
+        self._set_status(label + "·" * self._dots
+                         + f"  {time.monotonic() - self._started_at:.0f} 秒")
 
     def _on_chunk(self, piece: str, replace: bool = False, seq: int = 0) -> None:
         """流式：字一到就往答案区追加（已经洗过 Markdown 噪声了）。
@@ -1188,10 +1335,9 @@ class AskBar(QtWidgets.QWidget):
         """
         if seq != self._turn_seq:
             return
-        if self.answer.isHidden():
-            self.answer.setVisible(True)
-        # 插入**之前**看一眼滚动条：用户在底部 = 还在跟着看 ⇒ 长高/滚到底继续跟；
-        # 用户自己往上翻了 ⇒ 别拽人（这个判断写在此处，翻页动作本身不会被打断）
+        if self._state_name != STATE_STREAMING:
+            self.set_state(STATE_STREAMING)     # 只切一次：thinking → streaming 不动几何
+        # 插入**之前**看一眼滚动条：用户在底部 = 还在跟着看；上翻过 = 别拽人
         sb = self.answer.verticalScrollBar()
         self._follow = sb.value() >= sb.maximum() - _SCROLL_SLACK
         self._streaming = True
@@ -1200,13 +1346,14 @@ class AskBar(QtWidgets.QWidget):
             self._set_answer_part(piece)
         else:
             # 用文档光标插入，**不走** moveCursor —— 那个会顺带把视图拽到底，
-            # 用户上翻看旧内容时就被打断（跟随与否完全交给 _fit_answer 的 _follow）
+            # 用户上翻看旧内容时就被打断（跟随与否交给 _scroll_follow）
             cursor = self.answer.textCursor()
             cursor.movePosition(QtGui.QTextCursor.End)
             cursor.insertText(piece)
             # 追加也要记进 _last_answer：复制按钮只认它，不认整篇文档（不然连「我：」那行一起拷）
             self._last_answer += piece
-        self._schedule_fit()
+        # 面板高度固定 ⇒ 没有重排：只把在底部的人的视图滚到最新
+        self._scroll_follow()
 
     def _set_answer_part(self, text: str) -> None:
         """只替换「答案」那一段 —— 「我：」那一行留在上面不动。"""
@@ -1248,14 +1395,6 @@ class AskBar(QtWidgets.QWidget):
         self._last_answer = text
         self._set_copy_enabled(bool(text.strip()))
 
-    def _schedule_fit(self) -> None:
-        """流式别每来一片就重排一遍答案区 —— 攒 80 毫秒再排，窗口不至于一路抖。"""
-        if self._fit_timer is None:
-            self._fit_timer = QtCore.QTimer(self)
-            self._fit_timer.setSingleShot(True)
-            self._fit_timer.timeout.connect(self._fit_answer)
-        self._fit_timer.start(80)
-
     def _finish(self, question: str, text: str, error, seq: int = 0,
                 kind: str = "text", image_path: str = "") -> None:
         # 被掐掉的旧那一轮（用户已经开了新会话 / 清空）跑完也会走到这儿 ——
@@ -1272,31 +1411,26 @@ class AskBar(QtWidgets.QWidget):
             self._timer = None
         self._worker = None
         self._streaming = False
-        self.go.setEnabled(True)
         ms = int((time.monotonic() - self._started_at) * 1000)
-        self.answer.setVisible(True)
         if error:
             # 只看「答案那一段」有没有写出来的 —— 上面那行「我：」不算
             partial = self._last_answer.strip()
             if partial:
                 # 流到一半断了：留着已写出的，底下标一句
-                self.status.setText(f"回答中断 —— {error}")
-                self._set_copy_enabled(True)
+                self.set_state(STATE_ERROR, status=f"回答中断 —— {error}")
                 # 已写出的那段也算上下文 —— 不然追问「继续」时 AI 记不得自己说过啥
                 self._turns.append((question, partial))
             else:
                 self._set_answer_part(error)
-                self._set_copy_enabled(False)
-                self.status.setText("没成功 —— 改一下再问")
+                self.set_state(STATE_ERROR, status="没成功 —— 改一下再问")
         else:
             self._set_answer_markdown(text)      # 完整答案用 Markdown 渲染一次
-            self._set_copy_enabled(True)
             self._turns.append((question, text))
             if kind == "image":
-                self.status.setText(
-                    f"用了 {ms / 1000:.1f} 秒 · 还想追问就直接再打字（看的还是这张图）")
+                status = f"用了 {ms / 1000:.1f} 秒 · 还想追问就直接再打字（看的还是这张图）"
             else:
-                self.status.setText(f"用了 {ms / 1000:.1f} 秒 · 还想追问就直接再打字")
+                status = f"用了 {ms / 1000:.1f} 秒 · 还想追问就直接再打字"
+            self.set_state(STATE_DONE, status=status)
             self.answered.emit({
                 "question": question,
                 "answer": text,
@@ -1305,7 +1439,7 @@ class AskBar(QtWidgets.QWidget):
                 "image_path": image_path,
                 "thread": self._thread,
             })
-        self._fit_answer()
+        self._scroll_follow()
         self.ask.setFocus(QtCore.Qt.OtherFocusReason)
 
     def _rec_menu(self, pos) -> None:
@@ -1353,8 +1487,7 @@ class AskBar(QtWidgets.QWidget):
             return
         self.ask_mode = mode
         label = MODE_LABELS[mode]
-        self.status.setVisible(True)
-        self.status.setText(f"回答模式：{label}")
+        self._set_status(f"回答模式：{label}")
         self.ask.setPlaceholderText(f"回答模式：{label} —— 直接打字问")
 
     def _clear_with_confirm(self) -> None:
@@ -1395,28 +1528,30 @@ class AskBar(QtWidgets.QWidget):
 
     def append_text(self, text: str) -> None:
         """往答案区末尾追加一段（电脑助手逐步汇报执行结果用）。"""
-        if self.answer.isHidden():
-            self.answer.setVisible(True)
+        if not self._answer_shown:
+            self.set_state(STATE_DONE)      # 没有对话时也把面板亮出来（几何只变这一次）
         cursor = self.answer.textCursor()
         cursor.movePosition(QtGui.QTextCursor.End)
         cursor.insertBlock(_gap_block())
         cursor.insertText(text, _answer_char())
-        self._schedule_fit()
+        self._scroll_follow()
 
     def set_rec_paused(self, paused: bool) -> None:
         self.rec_paused = paused
+        if not self._recording:
+            return
         if paused:
-            self.rec_line.setText("⏸ 已暂停 —— 右键「录制」继续")
-        elif self.rec_line.isVisible():
-            self.rec_line.setText("● 继续录制")
+            self._set_rec("⏸ 已暂停 —— 右键「录制」继续")
+        else:
+            self._set_rec("● 继续录制")
 
     # ---- 复制 / 收藏 / 历史 ----
 
     def set_starrable(self, db_path: str, ask_id: int) -> None:
         """刚答完的一轮落库了 —— 「收藏」亮起来，指到今天库里那条。"""
         self._starrable = (str(db_path), int(ask_id))
-        self.star_btn.setEnabled(True)
         self.star_btn.setText("收藏")
+        self._sync_star()          # 能不能点由当前状态 + 有没有目标决定
 
     def set_star_label(self, starred: bool) -> None:
         """app 改完库回调：按钮文字跟真实状态走，金色「已收藏★」靠 starred 属性点亮。"""
@@ -1438,23 +1573,22 @@ class AskBar(QtWidgets.QWidget):
         if not text:
             return
         QtWidgets.QApplication.clipboard().setText(text)
-        self.status.setVisible(True)
-        self.status.setText("已复制到剪贴板")
+        self._set_status("已复制到剪贴板")
         QtCore.QTimer.singleShot(1600, self._restore_status_hint)
 
     def _restore_status_hint(self) -> None:
         if self._worker is not None or self._streaming:
             return
         if self._showing_history:
-            self.status.setText("这是历史记录 —— 要继续问，直接打字或先框一块屏")
+            self._set_status("这是历史记录 —— 要继续问，直接打字或先框一块屏")
         elif self._image_path and self._turns:
-            self.status.setText("还想追问就直接再打字（看的还是这张图）")
+            self._set_status("还想追问就直接再打字（看的还是这张图）")
         elif self._image_path:
-            self.status.setText("想问这块屏的什么？（回车发送 · 答完还能接着追问）")
+            self._set_status("想问这块屏的什么？（回车发送 · 答完还能接着追问）")
         elif self._turns:
-            self.status.setText("还想追问就直接再打字")
+            self._set_status("还想追问就直接再打字")
         elif self.answer.toPlainText().strip():
-            self.status.setText("这是历史记录 —— 要继续问，直接打字或先框一块屏")
+            self._set_status("这是历史记录 —— 要继续问，直接打字或先框一块屏")
 
     def _show_history(self) -> None:
         rows = self.history_provider() if self.history_provider else None
@@ -1523,13 +1657,9 @@ class AskBar(QtWidgets.QWidget):
         self._set_answer(f"{head}\n\n【答】{body}")
         self._last_answer = body               # 复制按钮只复制答案本身
         self._showing_history = True           # 这是历史记录，别把状态提示当成当前对话
-        self._follow = False                   # 历史从头看 —— 之后 _fit_answer 别把视图拽到底
+        self._follow = False                   # 历史从头看 —— 别把视图拽到底
         self._starrable = star_info            # 带着库路径和 id ⇒ 这条能收藏
-        self.star_btn.setEnabled(star_info is not None)
         self.star_btn.setText("收藏")
-        self._set_copy_enabled(bool(body.strip()))
-        self.answer.setVisible(True)
-        self.status.setVisible(True)           # _reset_answer 刚把它藏了 —— 不亮出来这句提示看不见
-        self.status.setText("这是历史记录 —— 要继续问，直接打字或先框一块屏")
-        self._fit_answer()
+        self.set_state(STATE_HISTORY, status="这是历史记录 —— 要继续问，直接打字或先框一块屏")
+        self.answer.verticalScrollBar().setValue(0)
         self.ask.setFocus()

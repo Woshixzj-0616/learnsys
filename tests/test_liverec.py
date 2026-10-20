@@ -157,13 +157,15 @@ class TestBarRecButton(unittest.TestCase):
     def test_set_recording_updates_button_and_line(self):
         self.assertEqual(self.b.rec_btn.text(), "录制")
         self.b.set_recording(True, 2.0, 3, "转写 45 字 · 快照 2 张")
-        self.assertEqual(self.b.rec_btn.text(), "停止录制")
+        self.assertEqual(self.b.rec_btn.text(), "停止")
         self.assertIn("录制中 2 分", self.b.rec_line.text())
-        self.assertIn("转写 45 字", self.b.rec_line.text())
-        self.assertIn("快照 2 张", self.b.rec_line.text())
+        # 录制行和状态行并排、固定一行 —— 超长时界面截断，全文在 _rec_text / 悬停里
+        self.assertIn("转写 45 字", self.b._rec_text)
+        self.assertIn("快照 2 张", self.b._rec_text)
         self.b.set_recording(False)
         self.assertEqual(self.b.rec_btn.text(), "录制")
-        self.assertFalse(self.b.rec_line.isVisible())
+        # 录制行常驻固定高度（T3.5：不许显隐推窗口），停止后只清空文字
+        self.assertEqual(self.b.rec_line.text(), "")
 
 
 if __name__ == "__main__":

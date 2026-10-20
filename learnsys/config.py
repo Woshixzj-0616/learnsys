@@ -233,6 +233,8 @@ ASK_BAR_WIDTH_RATIO = 0.82        # 占屏幕宽度的比例
 ASK_BAR_WIDTH_MAX = 1400          # 最宽不超过
 ASK_BAR_TOP_GAP = 10              # 离屏幕顶端多远
 ASK_BAR_ANSWER_MAX_RATIO = 0.62   # 答案区最高占屏幕高度的比例（再长就滚动）
+ASK_BAR_ANSWER_DEFAULT_H = 420    # 答案面板默认高度（固定，拖底边才改）
+ASK_BAR_ANSWER_MIN_H = 160        # 答案面板最矮拖到多少
 ASK_BAR_PILL_WIDTH = 250          # 收起成一条小条后有多宽
 ASK_BAR_ALWAYS_ON_TOP = False     # 不再强制置顶（负责人：挡别的界面）；横栏上「置顶」开关随时改
 

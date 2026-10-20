@@ -574,8 +574,9 @@ class AskApp(QtCore.QObject):
             self.bar.show_message("上一句还在写 —— 等它写完，或者点「新会话」重开一轮。")
             self.show_bar()
             return
-        self.bar.hide()                  # 别把自己框进去
-        self.snip = overlay.Overlay()
+        # 不 hide() 横栏：遮罩会用不透明块把横栏整块盖住（截图抓不到），
+        # 这样任务栏不闪、焦点不丢，取消后也不用再抢一次焦点。
+        self.snip = overlay.Overlay(cover=[self.bar.frameGeometry()])
         self.snip.selected.connect(self._region_chosen)
         self.snip.cancelled.connect(self._pick_cancelled)
         self.snip.show()
@@ -583,6 +584,7 @@ class AskApp(QtCore.QObject):
     def _pick_cancelled(self) -> None:
         self.snip = None
         self.show_bar()                  # 框选取消 → 横栏原样回来
+        self.bar.activateWindow()
 
     def _region_chosen(self, rect: QtCore.QRect) -> None:
         self.snip = None
