@@ -130,7 +130,7 @@ class _StartupWorker(QtCore.QThread):
         import datetime as _dt
         due_total = 0
         try:
-            for _day, db_path in study.day_dbs(self._data_root):
+            for _day, db_path in study.storage_dbs(self._data_root):
                 conn = store.connect(db_path)
                 try:
                     due = store.due_starred(conn, _dt.date.today())
@@ -196,6 +196,7 @@ class AskApp(QtCore.QObject):
         self.bar.history_days_provider = self._history_days
         self.bar.history_db_path_provider = lambda: str(self._conn_path or config.db_path())
         self._backup_worker = None
+        self._web_server = None                  # FastAPI/uvicorn 后台线程（P2）
         self._backup_dir = (pathlib.Path(config.USER.get("backup_dir"))
                             if config.USER.get("backup_dir")
                             else config.DATA_ROOT.parent / "学习系统备份")
@@ -224,6 +225,7 @@ class AskApp(QtCore.QObject):
         self.record_action.setCheckable(True)
         self.record_action.triggered.connect(self._toggle_record)
         menu.addAction("展开横栏", self.show_bar)
+        menu.addAction("打开学习系统后台（浏览器）", self.open_web)
         menu.addAction("收起成小条", lambda: self.bar.set_collapsed(True))
         menu.addAction("回到屏幕上方居中", self.bar.center_top)
         menu.addAction("打开今天的数据文件夹", self.open_today)
@@ -262,6 +264,24 @@ class AskApp(QtCore.QObject):
         self.bar.setWindowState(self.bar.windowState() & ~QtCore.Qt.WindowMinimized)
         self.bar.show()
         self.bar.raise_()
+
+    def start_web(self) -> None:
+        """起本地服务（Agent / 数据 / 六级分析共用一个进程）。失败不拦启动。"""
+        if self._web_server is not None:
+            return
+        try:
+            from learnsys.server.app import serve_in_thread
+            self._web_server = serve_in_thread(8765)
+            self.bar.show_message("学习系统后台已启动：http://127.0.0.1:8765/")
+        except Exception as exc:
+            self._warn(f"本地服务没起来：{exc}")
+
+    def open_web(self) -> None:
+        """用默认浏览器打开本地后台（P3 会换成正式 Web 工作台）。"""
+        import webbrowser
+        if self._web_server is None:
+            self.start_web()
+        webbrowser.open("http://127.0.0.1:8765/")
 
     def start(self) -> None:
         day = self.prepare_today()          # 打开 app 就先把当天的文件夹建出来
@@ -401,6 +421,11 @@ class AskApp(QtCore.QObject):
         if self.conn is not None:
             try:
                 self.conn.close()
+            except Exception:
+                pass
+        if self._web_server is not None:
+            try:
+                self._web_server.should_exit = True
             except Exception:
                 pass
         self.app.quit()
@@ -620,7 +645,13 @@ class AskApp(QtCore.QObject):
             return []
 
     def _history_days(self):
-        """更早有问答的日子（新→旧，最多 7 天）—— 历史菜单里「更早的日子」用。"""
+        """更早有问答的日子（新→旧，最多 7 天）—— 历史菜单里「更早的日子」用。
+
+        v2 统一库把所有日子放在一起，「更早的日子」会重复；主「历史」列表已经
+        按时间倒序包含全部，所以这里直接返回空。
+        """
+        if config.UNIFIED_DB:
+            return []
         out = []
         today = config.day_dir()
         try:
@@ -646,10 +677,14 @@ class AskApp(QtCore.QObject):
         """「复盘」按钮：把今天的窗口记录 + 课堂转写交给 AI 总结。"""
         try:
             conn = self._conn()
+            day_text = datetime.date.today().isoformat()
             sessions = conn.execute(
-                "SELECT id, started_at, COALESCE(ended_at, '') FROM sessions ORDER BY id"
+                "SELECT id, started_at, COALESCE(ended_at, '') FROM sessions "
+                "WHERE started_at LIKE ? ORDER BY id", (f"{day_text}%",)
             ).fetchall()
-            transcript_rows = store.search_transcripts(conn, limit=500)
+            transcript_rows = store.search_transcripts(
+                conn, ts_from=f"{day_text} 00:00:00", ts_to=f"{day_text} 23:59:59",
+                limit=500)
         except Exception as exc:
             self._warn(f"读今天的记录失败：{exc}")
             return
@@ -714,7 +749,8 @@ class AskApp(QtCore.QObject):
     def _show_focus(self) -> None:
         """托盘「今天学了多久」：窗口记录算专注统计。"""
         try:
-            line = study.focus_line(store.focus_stats(self._conn()))
+            line = study.focus_line(store.focus_stats(
+                self._conn(), day=datetime.date.today().isoformat()))
         except Exception as exc:
             self._warn(f"统计没算出来：{exc}")
             return
@@ -727,7 +763,7 @@ class AskApp(QtCore.QObject):
         """托盘「导出错题本」：把所有日子里收藏的问答导成 Anki 能导入的 CSV。"""
         collected = []
         try:
-            for day, db_path in study.day_dbs(config.DATA_ROOT):
+            for day, db_path in study.storage_dbs(config.DATA_ROOT):
                 conn = store.connect(db_path)
                 try:
                     collected.extend(store.starred_asks(conn))
@@ -810,12 +846,19 @@ class AskApp(QtCore.QObject):
     # ---- 学习产出：测验 / 报告 / 笔记 ----
 
     def _today_data(self):
-        """把今天的录制/问答数据凑齐（给复盘/测验/报告共用）。"""
+        """把今天的录制/问答数据凑齐（给复盘/测验/报告共用）。
+
+        统一库下必须按日期过滤，否则会把历史全算进「今天」。
+        """
         conn = self._conn()
+        day_text = datetime.date.today().isoformat()
         sessions = conn.execute(
-            "SELECT id, started_at, COALESCE(ended_at, '') FROM sessions ORDER BY id").fetchall()
-        transcript_rows = store.search_transcripts(conn, limit=500)
-        asks = store.recent_asks(conn, limit=30)
+            "SELECT id, started_at, COALESCE(ended_at, '') FROM sessions "
+            "WHERE started_at LIKE ? ORDER BY id", (f"{day_text}%",)).fetchall()
+        transcript_rows = store.search_transcripts(
+            conn, ts_from=f"{day_text} 00:00:00", ts_to=f"{day_text} 23:59:59",
+            limit=500)
+        asks = store.recent_asks(conn, limit=30, day=day_text)
         return sessions, transcript_rows, asks
 
     def _quiz_today(self) -> None:
@@ -917,7 +960,12 @@ class AskApp(QtCore.QObject):
 
     def _export_notes(self) -> None:
         """导出今天的对话为 Markdown 笔记。"""
-        asks = self._recent_asks()
+        try:
+            asks = store.recent_asks(self._conn(), limit=200,
+                                     day=datetime.date.today().isoformat())
+        except Exception as exc:
+            self._warn(f"读今天的问答失败：{exc}")
+            return
         if not asks:
             self._warn("今天还没有问答可导出。")
             return
@@ -987,6 +1035,7 @@ def main() -> int:
     app.setApplicationName("learnsys-ask")
     app.setQuitOnLastWindowClosed(False)
     ask_app = AskApp(app)
+    ask_app.start_web()                 # 本地服务与快捷栏同一个进程
     app.aboutToQuit.connect(ask_app.hotkey.unregister)
     app.aboutToQuit.connect(ask_app.bar.shutdown)   # 兜底：走别的路径退出也先收线程
     QtCore.QTimer.singleShot(0, ask_app.start)
