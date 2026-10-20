@@ -107,12 +107,13 @@ def search_records(query: str, days: int = 7, kinds: list | None = None,
     wanted = set(kinds or ["asks", "transcripts", "frames"])
     root = pathlib.Path(data_root or config.DATA_ROOT)
     since = datetime.date.today() - datetime.timedelta(days=days)
+    since_ts = since.isoformat() + " 00:00:00"
     # 空关键词不是错误：模型常拿它来「看最近记录」。LIKE '%%' 就是全匹配。
     pattern = f"%{query}%" if query else "%"
     what = f"和「{query}」相关" if query else ""
     found: list[tuple[str, str, str]] = []      # (ts, 来源, 正文)
 
-    for day, db_path in study.day_dbs(root):
+    for day, db_path in study.storage_dbs(root):
         if day < since:
             continue
         try:
@@ -123,19 +124,21 @@ def search_records(query: str, days: int = 7, kinds: list | None = None,
             if "asks" in wanted:
                 for ts, question, answer in conn.execute(
                         "SELECT ts, question, answer FROM asks "
-                        "WHERE question LIKE ? OR answer LIKE ? "
-                        "ORDER BY ts DESC LIMIT ?", (pattern, pattern, limit)):
+                        "WHERE (question LIKE ? OR answer LIKE ?) AND ts >= ? "
+                        "ORDER BY ts DESC LIMIT ?", (pattern, pattern, since_ts, limit)):
                     found.append((_stamp(ts), "问答",
                                   f"问：{_one_line(question, 160)}｜答：{_one_line(answer, 260)}"))
             if "transcripts" in wanted:
                 for ts, text in conn.execute(
-                        "SELECT ts_start, text FROM transcripts WHERE text LIKE ? "
-                        "ORDER BY ts_start DESC LIMIT ?", (pattern, limit)):
+                        "SELECT ts_start, text FROM transcripts "
+                        "WHERE text LIKE ? AND ts_start >= ? "
+                        "ORDER BY ts_start DESC LIMIT ?", (pattern, since_ts, limit)):
                     found.append((_stamp(ts), "课堂转写", _one_line(text, 320)))
             if "frames" in wanted:
                 for ts, text in conn.execute(
-                        "SELECT ts, text FROM frame_text WHERE text LIKE ? "
-                        "ORDER BY ts DESC LIMIT ?", (pattern, limit)):
+                        "SELECT ts, text FROM frame_text "
+                        "WHERE text LIKE ? AND ts >= ? "
+                        "ORDER BY ts DESC LIMIT ?", (pattern, since_ts, limit)):
                     found.append((_stamp(ts), "屏幕文字", _one_line(text, 320)))
         except Exception:
             continue
@@ -166,10 +169,13 @@ def search_records(query: str, days: int = 7, kinds: list | None = None,
 def today_summary(*, data_root: pathlib.Path | None = None) -> str:
     """今天的学习概况。"""
     root = pathlib.Path(data_root or config.DATA_ROOT)
-    db_path = root / f"{datetime.date.today():%Y.%m.%d}" / "learnsys.db"
-    if not db_path.exists():
-        # 兼容 v1 的目录命名（2026.10.2 这种不补零的）
-        today = datetime.date.today()
+    today = datetime.date.today()
+    day_text = today.isoformat()
+    unified = root / "learning.db"
+    if unified.exists():
+        db_path = unified
+    else:
+        # 兼容 v1：还没迁移时读按天库
         db_path = root / f"{today.year}.{today.month}.{today.day}" / "learnsys.db"
     if not db_path.exists():
         return "今天还没有学习记录（没开录制，也没有问答）。"
@@ -178,12 +184,14 @@ def today_summary(*, data_root: pathlib.Path | None = None) -> str:
     except Exception as exc:
         return f"读今天的记录失败：{exc}"
     try:
-        stats = store.focus_stats(conn)
-        ask_rows = store.recent_asks(conn, limit=5)
-        transcript_count = conn.execute("SELECT COUNT(*) FROM transcripts").fetchone()[0]
-        char_count = conn.execute(
-            "SELECT COALESCE(SUM(LENGTH(text)), 0) FROM transcripts").fetchone()[0]
-        due = store.due_starred(conn, datetime.date.today())
+        stats = store.focus_stats(conn, day=day_text)
+        ask_rows = store.recent_asks(conn, limit=5, day=day_text)
+        ask_count = conn.execute(
+            "SELECT COUNT(*) FROM asks WHERE ts LIKE ?", (f"{day_text}%",)).fetchone()[0]
+        transcript_count, char_count = conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(LENGTH(text)), 0) FROM transcripts "
+            "WHERE ts_start LIKE ?", (f"{day_text}%",)).fetchone()
+        due = store.due_starred(conn, today)
     except Exception as exc:
         return f"统计今天的记录失败：{exc}"
     finally:
@@ -192,7 +200,7 @@ def today_summary(*, data_root: pathlib.Path | None = None) -> str:
         except Exception:
             pass
 
-    lines = [f"今天（{datetime.date.today():%Y-%m-%d}）的学习概况："]
+    lines = [f"今天（{day_text}）的学习概况："]
     minutes = float(stats.get("分钟") or 0)
     lines.append(
         f"- 记录时长 {minutes:.0f} 分钟，切换窗口 {stats.get('切换', 0)} 次")
@@ -200,7 +208,7 @@ def today_summary(*, data_root: pathlib.Path | None = None) -> str:
     if apps:
         lines.append("- 最久停在：" + "、".join(
             f"{name} {mins:.0f} 分" for name, mins in apps[:3]))
-    lines.append(f"- 问答 {len(ask_rows)} 条（这里只列最近 5 条）")
+    lines.append(f"- 问答 {int(ask_count)} 条（这里只列最近 5 条）")
     lines.append(f"- 课堂转写 {int(transcript_count)} 段 / {int(char_count)} 字")
     if due:
         lines.append(f"- 错题本有 {len(due)} 题到复习期了")

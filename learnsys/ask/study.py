@@ -32,6 +32,17 @@ def day_dbs(data_root: pathlib.Path) -> list[tuple[datetime.date, pathlib.Path]]
     return out
 
 
+def storage_dbs(data_root: pathlib.Path) -> list[tuple[datetime.date, pathlib.Path]]:
+    """当前该读哪个库：v2 统一库存在就只读它；否则退回旧按天库。
+
+    迁移后旧按天库仍在（只读备份），再一起扫会把同一条问答数两遍。
+    """
+    unified = data_root / "learning.db"
+    if unified.exists():
+        return [(datetime.date.today(), unified)]
+    return day_dbs(data_root)
+
+
 def _transcript_ts_text(row) -> tuple[str, str]:
     """转写行的时间/正文，兼容两种形状：search_transcripts 的 4 列（含 session_id）
     和测试/手工传的 3 列 —— 4 列时正文在 [3]，3 列时在 [2]（真踩过：拿 [2] 当正文，

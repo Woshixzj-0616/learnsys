@@ -15,8 +15,10 @@ FROZEN = bool(getattr(sys, "frozen", False))     # True = 正在打包好的 exe
 ROOT = (pathlib.Path(sys.executable).resolve().parent if FROZEN
         else pathlib.Path(__file__).resolve().parent.parent)
 
-# ---- 数据存哪：D 盘专用一个文件夹，按天分（如 2026.10.2）----
+# ---- 数据存哪：D 盘专用一个文件夹 ----
+# v2 起记录统一进 learning.db；按天文件夹只放截图/录屏/报告这些产物。
 DATA_ROOT = pathlib.Path("D:/学习系统")
+UNIFIED_DB = True
 
 
 # ---- 你能改的那几项：D:/学习系统/设置.json（程序只读它，不往里写）----
@@ -126,8 +128,12 @@ def day_dir(when=None) -> pathlib.Path:
 
 
 def db_path(when=None) -> pathlib.Path:
-    """那天的库（一天一份；删一天 = 删一个文件夹）"""
-    return day_dir(when) / "learnsys.db"
+    """统一库：所有日子的问答、转写、窗口、会话都在这里。
+
+    `when` 参数保留只为兼容旧调用；v2 不再按天分库。
+    按天的文件夹仍由 `day_dir()` 管，只放截图 / 录屏 / 报告。
+    """
+    return DATA_ROOT / "learning.db"
 
 
 def ask_tmp_dir() -> pathlib.Path:

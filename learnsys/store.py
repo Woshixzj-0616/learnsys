@@ -1,87 +1,32 @@
-"""本地 SQLite 存储：会话 + 前台窗口事件 + 声音转写。"""
+"""本地 SQLite 存储：会话 + 前台窗口事件 + 声音转写。
+
+v2 起真正的表结构在 `learnsys/core/db.py`；这里保留原有函数名，
+让 app / record / liverec 不用一次性改完。写入时顺带维护全文索引。
+"""
 from __future__ import annotations
 
 import datetime as dt
+import json
 import pathlib
 import sqlite3
 import threading
 
 from learnsys import config
+from learnsys.core import db as core_db
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS sessions (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    started_at TEXT NOT NULL,
-    ended_at   TEXT
-);
-CREATE TABLE IF NOT EXISTS window_events (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id INTEGER NOT NULL,
-    ts         TEXT NOT NULL,
-    process    TEXT,
-    title      TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_window_events_session ON window_events (session_id, ts);
-CREATE TABLE IF NOT EXISTS transcripts (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id INTEGER NOT NULL,
-    ts_start   TEXT NOT NULL,
-    ts_end     TEXT NOT NULL,
-    text       TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_transcripts_session ON transcripts (session_id, ts_start);
-CREATE TABLE IF NOT EXISTS asks (
-    id       INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts       TEXT NOT NULL,
-    question TEXT NOT NULL,
-    answer   TEXT NOT NULL,
-    ms       INTEGER,
-    backend  TEXT,
-    kind     TEXT,          -- 'image' = 框了图再问 | 'text' = 纯文字问
-    image_path TEXT,        -- 有图时 = 归档截图的路径；纯文字为空
-    thread   TEXT,          -- 同一轮对话（同一张图的追问）共用一个号，方便复盘
-    starred  INTEGER DEFAULT 0,  -- 1 = 错题本里收藏了（导 Anki 用）
-    review_stage INTEGER DEFAULT 0,  -- 复习提醒次数（0~3，到 3 就不再提醒）
-    last_remind TEXT                 -- 上次提醒日期（1/3/7 天间隔按它算）
-);
-CREATE TABLE IF NOT EXISTS frame_text (
-    path TEXT PRIMARY KEY,      -- 快照文件路径
-    ts   TEXT NOT NULL,         -- 快照拍摄时刻
-    text TEXT NOT NULL          -- OCR 出来的文字
-);
-CREATE INDEX IF NOT EXISTS idx_frame_text_ts ON frame_text (ts);
-"""
-
-_KIND_COLS = ("kind", "image_path", "thread")
-
-
-def _migrate(conn: sqlite3.Connection) -> None:
-    """老库补列（CREATE IF NOT EXISTS 不会给已存在的表加字段）。"""
-    rows = conn.execute("PRAGMA table_info(asks)").fetchall()
-    have = {row[1] for row in rows}
-    for col in _KIND_COLS:
-        if col not in have:
-            conn.execute(f"ALTER TABLE asks ADD COLUMN {col} TEXT")
-    if "starred" not in have:
-        conn.execute("ALTER TABLE asks ADD COLUMN starred INTEGER DEFAULT 0")
-    if "review_stage" not in have:
-        conn.execute("ALTER TABLE asks ADD COLUMN review_stage INTEGER DEFAULT 0")
-    if "last_remind" not in have:
-        conn.execute("ALTER TABLE asks ADD COLUMN last_remind TEXT")
-    conn.commit()
+SCHEMA = core_db.SCHEMA
 
 _LOCK = threading.Lock()
 
 
 def connect(path=None) -> sqlite3.Connection:
     """注意：连接会被后台线程共用，所以关掉同线程检查，写操作用 _LOCK 串起来。"""
-    target = pathlib.Path(path) if path else config.db_path()
-    target.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(target, check_same_thread=False, timeout=15)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.executescript(SCHEMA)
-    _migrate(conn)
-    return conn
+    return core_db.connect(path)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """兼容旧调用：老库补列（真正的实现在 core.db）。"""
+    core_db._migrate_columns(conn)
 
 
 def now() -> str:
@@ -127,11 +72,13 @@ def add_window_event_at(conn: sqlite3.Connection, session_id: int, ts: str,
 
 def add_transcript(conn: sqlite3.Connection, session_id: int, ts_start: str, ts_end: str, text: str) -> None:
     with _LOCK:
-        conn.execute(
+        cur = conn.execute(
             "INSERT INTO transcripts (session_id, ts_start, ts_end, text) VALUES (?, ?, ?, ?)",
             (session_id, ts_start, ts_end, text),
         )
         conn.commit()
+        row_id = int(cur.lastrowid or 0)
+    core_db.index_row(conn, "transcript", row_id, ts_start, text)
 
 
 def session_stats(conn: sqlite3.Connection, session_id: int) -> dict:
@@ -252,23 +199,36 @@ def window_titles(conn: sqlite3.Connection, ts_from: str = "", ts_to: str = "", 
 
 def add_ask(conn: sqlite3.Connection, question: str, answer: str, ms: int, backend: str,
             kind: str = "text", image_path: str = "", thread: str = "",
-            starred: bool = False) -> int:
+            starred: bool = False, conversation_id: int | None = None) -> int:
     """记一次问答，返回这条的 id（收藏要用）。kind='image' 带框选图 | 'text' 纯文字；thread 分组同轮对话。"""
     kind = "image" if kind == "image" else "text"
+    stamp = now()
     with _LOCK:
         cur = conn.execute(
-            "INSERT INTO asks (ts, question, answer, ms, backend, kind, image_path, thread, starred) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (now(), question, answer, ms, backend, kind, image_path or "", thread or "",
-             1 if starred else 0),
+            "INSERT INTO asks (ts, question, answer, ms, backend, kind, image_path, thread, "
+            "starred, provider, model, conversation_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (stamp, question, answer, ms, backend, kind, image_path or "", thread or "",
+             1 if starred else 0, backend, backend, conversation_id),
         )
         conn.commit()
-        return int(cur.lastrowid or 0)
+        row_id = int(cur.lastrowid or 0)
+    core_db.index_row(conn, "ask", row_id, stamp, f"{question}\n{answer}")
+    return row_id
 
 
-def recent_asks(conn: sqlite3.Connection, limit: int = 8):
-    """最近问过的几条（新→旧）—— 带 kind/image_path/id，界面好区分图问/文问、好收藏。"""
+def recent_asks(conn: sqlite3.Connection, limit: int = 8, day: str = ""):
+    """最近问过的几条（新→旧）—— 带 kind/image_path/id，界面好区分图问/文问、好收藏。
+
+    `day` 传 'YYYY-MM-DD' 就只取那天的；统一库下「今天的对话笔记」必须带它。
+    """
     with _LOCK:
+        if day:
+            return conn.execute(
+                "SELECT ts, question, answer, kind, image_path, id FROM asks "
+                "WHERE ts LIKE ? ORDER BY id DESC LIMIT ?",
+                (f"{day}%", limit),
+            ).fetchall()
         return conn.execute(
             "SELECT ts, question, answer, kind, image_path, id FROM asks ORDER BY id DESC LIMIT ?",
             (limit,),
@@ -296,11 +256,12 @@ def starred_asks(conn: sqlite3.Connection):
         ).fetchall()
 
 
-def focus_stats(conn: sqlite3.Connection, until: str = "") -> dict:
+def focus_stats(conn: sqlite3.Connection, until: str = "", day: str = "") -> dict:
     """这一天的专注统计：记了多久、切了几次、各程序停留多久（前 5）。
 
     停留口径和 session_summary 一致：下一条事件的时间 − 这条的时间，末条算到结束时刻。
     未结束的 session 算到 until（缺省 = 现在）。
+    `day` = 'YYYY-MM-DD'：统一库下只统计那天的 session / 事件。
     """
     with _LOCK:
         sessions = conn.execute(
@@ -309,6 +270,10 @@ def focus_stats(conn: sqlite3.Connection, until: str = "") -> dict:
         events = conn.execute(
             "SELECT session_id, ts, process FROM window_events ORDER BY session_id, ts, id",
         ).fetchall()
+    if day:
+        sessions = [row for row in sessions if str(row[1]).startswith(day)]
+        keep = {row[0] for row in sessions}
+        events = [row for row in events if row[0] in keep]
     end_at = until or now()
     total = 0.0
     switches = 0
@@ -341,6 +306,7 @@ def add_frame_text(conn: sqlite3.Connection, path: str, ts: str, text: str) -> N
             (path, ts, text),
         )
         conn.commit()
+    core_db.index_row(conn, "frame", path, ts, text)
 
 
 def frame_text_between(conn: sqlite3.Connection, ts_from: str, ts_to: str, limit: int = 60):
@@ -383,3 +349,86 @@ def bump_review_stage(conn: sqlite3.Connection, ask_ids: list[int]) -> None:
             [(dt.date.today().isoformat(), i) for i in ask_ids],
         )
         conn.commit()
+
+
+# ---- v2 会话 / 消息（Web 工作台用）----
+
+def create_conversation(conn: sqlite3.Connection, title: str = "",
+                        module: str = "ask", mode: str = "explain") -> int:
+    stamp = now()
+    with _LOCK:
+        cur = conn.execute(
+            "INSERT INTO conversations (title, module, mode, started_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (title or "新对话", module, mode, stamp, stamp))
+        conn.commit()
+        return int(cur.lastrowid or 0)
+
+
+def touch_conversation(conn: sqlite3.Connection, conversation_id: int,
+                       title: str = "") -> None:
+    with _LOCK:
+        if title:
+            conn.execute(
+                "UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?",
+                (title, now(), conversation_id))
+        else:
+            conn.execute(
+                "UPDATE conversations SET updated_at = ? WHERE id = ?",
+                (now(), conversation_id))
+        conn.commit()
+
+
+def add_message(conn: sqlite3.Connection, conversation_id: int, role: str,
+                content, ts: str = "") -> int:
+    """content 可以是字符串或 dict/list；统一存 JSON。"""
+    payload = content if isinstance(content, str) else json.dumps(
+        content, ensure_ascii=False)
+    stamp = ts or now()
+    with _LOCK:
+        cur = conn.execute(
+            "INSERT INTO messages (conversation_id, role, content_json, ts) "
+            "VALUES (?, ?, ?, ?)",
+            (conversation_id, role, payload, stamp))
+        conn.execute(
+            "UPDATE conversations SET updated_at = ? WHERE id = ?",
+            (stamp, conversation_id))
+        conn.commit()
+        return int(cur.lastrowid or 0)
+
+
+def get_conversation(conn: sqlite3.Connection, conversation_id: int):
+    with _LOCK:
+        return conn.execute(
+            "SELECT id, title, module, mode, summary, started_at, updated_at "
+            "FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
+
+
+def list_conversations(conn: sqlite3.Connection, limit: int = 20) -> list[dict]:
+    with _LOCK:
+        rows = conn.execute(
+            "SELECT c.id, c.title, c.module, c.mode, c.started_at, c.updated_at, "
+            "(SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) "
+            "FROM conversations c ORDER BY c.updated_at DESC, c.id DESC LIMIT ?",
+            (limit,)).fetchall()
+    return [
+        {"id": row[0], "title": row[1] or "", "module": row[2] or "ask",
+         "mode": row[3] or "explain", "started_at": row[4] or "",
+         "updated_at": row[5] or "", "messages": int(row[6] or 0)}
+        for row in rows
+    ]
+
+
+def conversation_messages(conn: sqlite3.Connection, conversation_id: int) -> list[dict]:
+    with _LOCK:
+        rows = conn.execute(
+            "SELECT id, role, content_json, ts FROM messages "
+            "WHERE conversation_id = ? ORDER BY id", (conversation_id,)).fetchall()
+    out = []
+    for row in rows:
+        try:
+            content = json.loads(row[2])
+        except (json.JSONDecodeError, TypeError):
+            content = row[2]
+        out.append({"id": row[0], "role": row[1], "content": content, "ts": row[3]})
+    return out
