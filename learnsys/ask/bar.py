@@ -1451,10 +1451,10 @@ class AskBar(QtWidgets.QWidget):
     def _show_history(self) -> None:
         rows = self.history_provider() if self.history_provider else None
         menu = QtWidgets.QMenu(self)
-        menu.addAction("今天的问答（[图]=带截图 · [文]=纯文字 · 点开可收藏）").setEnabled(False)
+        menu.addAction("最近的问答（[图]=带截图 · [文]=纯文字 · 点开可收藏）").setEnabled(False)
         menu.addSeparator()
         if not rows:
-            menu.addAction("今天还没问过").setEnabled(False)
+            menu.addAction("还没有问过").setEnabled(False)
         today_db = ""
         if self.history_db_path_provider is not None:
             try:
