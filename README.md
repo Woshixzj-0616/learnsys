@@ -1,5 +1,9 @@
 # 问一问 · learnsys
 
+> **v2 开发中**：问一问已改为**独立 Agent 直连模型**，不再依赖 Codex；
+> 看图走「视觉模型优先 + OCR 兜底」；Web 学习工作台与统一后台在后续阶段。
+> 架构与施工单见 `docs/学习系统-v2-架构方案.md`、`docs/学习系统-v2-施工单.md`。
+
 **框一块屏幕 → 问 AI → 答案就出在屏幕顶上那条横栏里。** 不用切窗口、不用去别处找它。
 
 ![横栏](docs/bar.png)
@@ -39,42 +43,51 @@ python -m venv .venv
 
 我的环境：Windows 11 + Python 3.14 + PySide6 6.11.2（实测可用）。
 
-## 接哪个 AI（**用之前必看**）
+## 接哪个 AI（v2）
 
-这个工具自己不「会思考」—— 它只负责把「一张图 + 一句话」交给一个**能看图的 AI**。
+v2 起「问一问」用**独立 Agent 直连模型**，不再依赖 Codex，也不要求本机开着任何中转口。
 
-默认打的是**作者本机 Codex 的中转口**（`http://127.0.0.1:57321/v1`，1 秒级、不用 key）——
-那是开发时用的，**别人的电脑上没有这个东西**，所以你会看到「连不上」。
+配置优先级：
 
-第一次用请打开 **`D:\学习系统\设置.json`**（第一次启动会自动生成），填自己的：
+1. `D:\学习系统\设置.json` 的 `agent` 段（开源版的正式入口）；
+2. 环境变量 / `~/.claude/settings.json` 的 `env`（本机便利回退，免得同一把 key 填两处）；
+3. 都没有 → 界面提示「还没配置模型」，不会抛一堆英文异常。
+
+示例（第一次启动会自动生成模板，密钥留空）：
 
 ```json
 {
-  "api_base": "https://api.siliconflow.cn/v1",
-  "api_key": "sk-你的key",
-  "api_model": "Qwen/Qwen2.5-VL-32B-Instruct"
+  "agent": {
+    "base_url": "https://api.deepseek.com/anthropic",
+    "auth_token": "sk-你的key",
+    "model": "deepseek-v4-pro",
+    "fast_model": "deepseek-flash",
+    "max_tokens": 8192
+  },
+  "vision": {
+    "base_url": "https://open.bigmodel.cn/api/paas/v4",
+    "api_key": "你的视觉服务key",
+    "model": "glm-4v-flash"
+  }
 }
 ```
 
-**只要满足两条，任何服务都能用**：① OpenAI 兼容（`/chat/completions`）；② **支持图片输入**。
-文件里给了三个现成的例子：
+- **文本模型**：任何 Anthropic Messages 兼容服务（`/v1/messages`）。DeepSeek 直连已实测支持流式、工具调用、thinking。
+- **视觉模型**：可选，任何 OpenAI 兼容的视觉服务（`/chat/completions` + `image_url`）。
+- **没有视觉 key**：自动退回 RapidOCR，只读图中文字，并明确告诉你「这次没看到原图」；图表、箭头、颜色会弱。
+- **DeepSeek 官方 API 不支持图片输入**（实测返回 `[Unsupported Image]`），所以看图要单独配视觉 key，或接受 OCR 兜底。
 
-| 服务 | `api_base` | `api_model` 例子 |
-| --- | --- | --- |
-| 硅基流动 | `https://api.siliconflow.cn/v1` | `Qwen/Qwen2.5-VL-32B-Instruct` |
-| 智谱 GLM | `https://open.bigmodel.cn/api/paas/v4` | `glm-4v-plus` |
-| 通义千问 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-vl-max` |
-
-> ⚠️ DeepSeek 官方 API 目前**不支持图片输入**，拿它做「看图问答」不行。
-> 改完保存 → **重启问一问**生效。
+> 旧的 `api_base / api_key / api_model` 三项目前只被「学习报告 / 术语表」等旧路径使用，会在 v2 后续阶段迁移到同一个 Agent；问一问主问答已经不再读它们。
 
 ## 设置（都在 `D:\学习系统\设置.json`）
 
 | 键 | 作用 |
 | --- | --- |
-| `api_base` / `api_key` / `api_model` | 接哪个 AI（见上） |
+| `agent.base_url` / `agent.auth_token` / `agent.model` | v2 主模型（Anthropic Messages 协议） |
+| `agent.fast_model` / `agent.max_tokens` | 快模型 / 输出上限（默认 8192） |
+| `vision.base_url` / `vision.api_key` / `vision.model` | 可选视觉模型（OpenAI 兼容）；不填就走 OCR |
 | `hotkey` | 框选热键，默认 `alt+q` |
-| `api_style` | 留空就自动判断（本机地址走 Responses、其它走 OpenAI 兼容），一般不用填 |
+| `api_base` / `api_key` / `api_model` / `api_style` | 旧路径（学习报告 / 术语表）仍在使用，后续迁移 |
 
 数据根固定在 `D:\学习系统`（一天一个文件夹）。想挪地方，改 `learnsys/config.py` 里的 `DATA_ROOT`。
 源码跑时，横栏尺寸 / 数据根这些也都在 `learnsys/config.py` 里调。
@@ -103,7 +116,9 @@ python -m venv .venv
 | `learnsys/ask/app.py` | **入口**：托盘 + 全局热键 + 框选 → 横栏 |
 | `learnsys/ask/bar.py` | **屏幕上那条横栏**（唯一的界面） |
 | `learnsys/ask/overlay.py` | 全屏压暗 + 拖一个矩形框 |
-| `learnsys/ask/backend.py` | 把「一张图 + 一句话」交给 AI（**协议分派在这**） |
+| `learnsys/agent/` | **v2 独立 Agent**：配置、Anthropic 流式客户端、工具循环、提示词、视觉/OCR |
+| `learnsys/ask/backend.py` | 旧协议分派（报告 / 术语表还在用；主问答已切到 `agent/`） |
+| `tools/agent_cli.py` | 命令行跑一轮 Agent，验证模型接入（不启动界面） |
 | `learnsys/ask/identity.py` | 自己的任务栏身份（图标 / AUMID / 开始菜单快捷方式） |
 | `learnsys/ask/single.py` | 只留一个问一问：互斥体 + 本地套接字把横栏叫回来 |
 | `learnsys/ask/icon.py` | 画那张图标（蓝底白「问」） |
@@ -129,8 +144,8 @@ D:\学习系统\
 
 ## 已知限制
 
-- **只按图回答**：不带声音、不带上一题的上下文（v1 的录屏听声还没接回来）
-- 走本机 Codex 中转时**必须 Codex 开着**；换成自己的 key 就不依赖它
+- **没配视觉 key 时**：图片只能读 OCR 文字，图表/箭头/颜色会弱；回答会明确标注「没看到原图」。
+- **旧路径**：学习报告 / 术语表仍走旧的 `api_*` 配置，v2 后续会并入同一个 Agent。
 - 全局热键被别的程序占用时，托盘会弹提示（改 `hotkey` 即可）
 
 ## 许可
