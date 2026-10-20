@@ -117,6 +117,28 @@ class ServerTest(unittest.TestCase):
         context = self.client.get("/api/cet6/context", headers=AUTH).json()
         self.assertEqual(len(context["events"]), 1)
 
+    def test_cet6_import_roundtrip(self):
+        """file:// 推上来的 localStorage 快照，HTTP 首开要能原样读回去。"""
+        items = {
+            "listening_splitter_v1_卷一": '{"done":{"A-1":{"1":true}}}',
+            "listening_workbench_vocab_v1": '["rent","deposit"]',
+        }
+        saved = self.client.post("/api/cet6/import", json={"items": items}).json()
+        self.assertEqual(saved["count"], 2)
+        restored = self.client.get("/api/cet6/import").json()
+        self.assertEqual(restored["items"], items)
+
+    def test_today_cet6_returns_paper_dir_for_deeplink(self):
+        """时间线条目要带 paper_id（= 试卷目录名），前端才能 ?paper= 跳回去。"""
+        self.client.post("/api/cet6/sync", json={
+            "paper": "卷一", "paper_id": "卷一目录", "section": "Section A",
+            "item": "Conversation 1",
+            "sentences": [{"sentence": 1, "en": "hello", "tags": ["生词"]}],
+        })
+        today = self.client.get("/api/today", headers=AUTH).json()
+        row = next(item for item in today["cet6"] if item["paper"] == "卷一")
+        self.assertEqual(row["paper_id"], "卷一目录")
+
 
 if __name__ == "__main__":
     unittest.main()

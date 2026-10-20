@@ -92,15 +92,22 @@ async function navigate() {
 
   view.innerHTML = `<div class="empty">正在打开 ${escapeHtml(module.name)}…</div>`;
   try {
-    const html = await fetchPage(module);
-    if (ticket !== seq) return;
-    view.innerHTML = html;
-
+    // iframe 模块的 entry 是后端挂载的地址（如 /cet6/工作台/…），不是 /web/ 下的页面文件 ——
+    // 不能走 fetchPage，否则会去 /web/cet6/… 拿一个 404。
     if (module.type === "iframe") {
-      view.innerHTML = `<iframe src="${escapeHtml(module.entry)}" title="${escapeHtml(module.name)}"
+      // 路由里的 query 原样带给 iframe（今日页「六级断点」→ ?paper= 直接回到该卷）
+      const query = route.query.toString();
+      const src = query
+        ? `${module.entry}${module.entry.includes("?") ? "&" : "?"}${query}`
+        : module.entry;
+      view.innerHTML = `<iframe src="${escapeHtml(src)}" title="${escapeHtml(module.name)}"
         style="width:100%;height:100%;border:0;background:var(--bg)"></iframe>`;
       return;
     }
+
+    const html = await fetchPage(module);
+    if (ticket !== seq) return;
+    view.innerHTML = html;
 
     if (!module.script) return;
     const script = String(module.script).replace(/^\/+/, "");

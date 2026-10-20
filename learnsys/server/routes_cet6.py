@@ -1,15 +1,65 @@
-"""六级精听接口：AI 分析（兼容旧的 /analyze）+ 断点同步 + 旧进度迁移。"""
+"""六级精听：静态挂载 `/cet6/` + AI 分析（兼容旧 `/analyze`）+ 断点同步 + 旧进度迁移。"""
 from __future__ import annotations
 
 import json
 import re
+import urllib.parse
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from learnsys import agent, store
+from learnsys import agent, config, store
 
 router = APIRouter()
+
+ENTRY = "/cet6/工作台/精听工作台.html"
+
+
+def _missing_page() -> HTMLResponse:
+    """模块没装时给一张能读懂的中文说明（iframe 里直接显示 JSON 太难看）。"""
+    return HTMLResponse("""<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<title>六级精听 · 未安装</title>
+<style>body{background:#1b1e23;color:#dfe6ee;font-family:'Microsoft YaHei UI',sans-serif;
+padding:40px;line-height:1.8}code{color:#f5b74e}a{color:#6ea8ff}</style>
+<h2>还没装六级精听模块</h2>
+<p>把「六级精听」目录放到学习系统旁边，或在 <code>设置.json</code> 里填 <code>cet6_dir</code>，
+然后重启问一问。</p>
+<p>目录里需要有 <code>工作台\\精听工作台.html</code> 和 <code>试卷\\</code>。</p>
+</html>""", status_code=404)
+
+
+@router.get("/cet6", include_in_schema=False)
+@router.get("/cet6/", include_in_schema=False)
+def cet6_root():
+    """`/cet6` 直接进工作台；模块没装时给一句中文说明，别回一个空白 404。"""
+    if not config.cet6_workbench().exists():
+        return _missing_page()
+    return RedirectResponse(urllib.parse.quote(ENTRY, safe="/"), status_code=307)
+
+
+@router.get("/cet6/工作台/精听工作台.html", include_in_schema=False)
+def cet6_workbench_file():
+    """只放行工作台这一个 HTML（自包含），同目录的 .bat 不暴露。"""
+    path = config.cet6_workbench()
+    if not path.exists():
+        return _missing_page()
+    return FileResponse(path, media_type="text/html; charset=utf-8")
+
+
+def mount_static(app: FastAPI) -> bool:
+    """把六级试卷挂到 `/cet6/试卷/`（工作台用相对路径 `../试卷/` 找音频，路径不能变）。
+
+    只挂试卷：根目录的脚本、原始音频、工作台目录里的批处理都不进浏览器。
+    """
+    root = config.cet6_dir()
+    papers = root / "试卷"
+    if not (root / "工作台" / "精听工作台.html").exists():
+        return False
+    if papers.exists():
+        app.mount("/cet6/试卷", StaticFiles(directory=str(papers), html=True), name="cet6-papers")
+    return True
 
 SYSTEM = "你是严谨、具体的英语听力教练。你只输出 JSON，不输出解释或 Markdown。"
 
@@ -183,14 +233,18 @@ def cet6_sync(req: Cet6Sync):
         conn.close()
 
 
+def _ensure_imports(conn) -> None:
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS cet6_imports "
+        "(key TEXT PRIMARY KEY, value TEXT, ts TEXT)")
+
+
 @router.post("/api/cet6/import")
 def cet6_import(req: Cet6Import):
     """file:// 版工作台把 localStorage 快照送过来（P4 迁移桥用）。"""
     conn = store.connect()
     try:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS cet6_imports "
-            "(key TEXT PRIMARY KEY, value TEXT, ts TEXT)")
+        _ensure_imports(conn)
         stamp = store.now()
         for key, value in req.items.items():
             conn.execute(
@@ -199,5 +253,17 @@ def cet6_import(req: Cet6Import):
                 (key, value, stamp))
         conn.commit()
         return {"ok": True, "count": len(req.items)}
+    finally:
+        conn.close()
+
+
+@router.get("/api/cet6/import")
+def cet6_restore():
+    """HTTP 首开且 localStorage 为空时，把旧进度读回去（迁移桥另一端）。"""
+    conn = store.connect()
+    try:
+        _ensure_imports(conn)
+        rows = conn.execute("SELECT key, value FROM cet6_imports").fetchall()
+        return {"ok": True, "items": {row[0]: row[1] for row in rows}, "count": len(rows)}
     finally:
         conn.close()

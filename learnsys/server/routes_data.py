@@ -47,8 +47,8 @@ def today(_=Depends(require_token)):
         cet6 = []
         try:
             cet6 = conn.execute(
-                "SELECT paper_title, section, item, COUNT(*), MAX(ts) FROM cet6_events "
-                "WHERE ts LIKE ? GROUP BY paper_title, section, item "
+                "SELECT paper_title, section, item, COUNT(*), MAX(ts), MAX(paper_id) "
+                "FROM cet6_events WHERE ts LIKE ? GROUP BY paper_title, section, item "
                 "ORDER BY MAX(ts) DESC LIMIT 10", (f"{day}%",)).fetchall()
         except Exception:
             pass
@@ -65,7 +65,8 @@ def today(_=Depends(require_token)):
             "due_reviews": len(due),
             "cet6": [
                 {"paper": row[0] or "", "section": row[1] or "", "item": row[2] or "",
-                 "count": int(row[3] or 0), "last": row[4] or ""}
+                 "count": int(row[3] or 0), "last": row[4] or "",
+                 "paper_id": row[5] or row[0] or ""}
                 for row in cet6
             ],
         }

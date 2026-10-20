@@ -65,6 +65,9 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
     app.include_router(routes_upload.router)
     app.include_router(routes_ui.router)
 
+    # 六级精听（可选模块）：工作台 + 试卷挂到 /cet6/；没装就跳过，主功能不受影响
+    routes_cet6.mount_static(app)
+
     assets = web_dir()
     if (assets / "index.html").exists():
         app.mount("/web", StaticFiles(directory=str(assets), html=True), name="web")

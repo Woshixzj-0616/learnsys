@@ -29,8 +29,8 @@
       "type": "iframe",
       "entry": "/cet6/工作台/精听工作台.html",
       "order": 30,
-      "status": "planned",
-      "note": "P4 接入：原工作台嵌入，AI 分析并进统一后台"
+      "status": "ready",
+      "note": "原六级工作台原样嵌入；AI 分析走统一后台 /analyze"
     },
     {
       "id": "review",

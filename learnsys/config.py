@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import os
 import pathlib
 import sys
 import urllib.parse
@@ -72,6 +73,9 @@ SETTINGS_TEMPLATE = {
     "frame_seconds": 30,
     "_workbench_on_start": "打开问一问时，是否自动弹出学习台窗口（false = 只出快捷栏，从托盘再打开）",
     "workbench_on_start": True,
+    "_cet6_dir": "六级精听目录（可选模块；留空 = 自动找仓库旁边的「六级精听」）。"
+                 "目录里要有 工作台\\精听工作台.html 和 试卷\\",
+    "cet6_dir": "",
 }
 
 
@@ -136,6 +140,37 @@ def db_path(when=None) -> pathlib.Path:
     按天的文件夹仍由 `day_dir()` 管，只放截图 / 录屏 / 报告。
     """
     return DATA_ROOT / "learning.db"
+
+
+def cet6_dir_candidates() -> list[pathlib.Path]:
+    """六级精听目录的候选位置：设置 → 环境变量 → 仓库同级 / 可选模块。
+
+    开源仓库里不带真题音频，这个目录是**可选模块**：找不到时 `/cet6` 返回 404，
+    不影响问答主功能。
+    """
+    cands: list[pathlib.Path] = []
+    raw = str(USER.get("cet6_dir") or "").strip() or os.environ.get("LEARNSYS_CET6_DIR", "").strip()
+    if raw:
+        cands.append(pathlib.Path(raw).expanduser())
+    if FROZEN:                                  # exe 在 dist/问一问/ 里
+        cands.append(ROOT.parent.parent.parent / "六级精听")
+    else:                                       # 源码在 D:\Desktop\learnsys
+        cands.append(ROOT.parent / "六级精听")
+    cands.append(ROOT / "cet6")                 # 也可以把可选模块放进仓库
+    return cands
+
+
+def cet6_dir() -> pathlib.Path:
+    """六级精听根目录（含 `工作台\\精听工作台.html` 与 `试卷\\`）。"""
+    cands = cet6_dir_candidates()
+    for cand in cands:
+        if (cand / "工作台" / "精听工作台.html").exists():
+            return cand
+    return cands[0]
+
+
+def cet6_workbench() -> pathlib.Path:
+    return cet6_dir() / "工作台" / "精听工作台.html"
 
 
 def ask_tmp_dir() -> pathlib.Path:

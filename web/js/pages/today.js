@@ -128,9 +128,14 @@ function renderCet6(items) {
       <span>${escapeHtml(item.paper || "六级")} · ${escapeHtml(item.section || "")}${item.item ? " · " + escapeHtml(item.item) : ""}</span>
       <span>${item.count} 个断点</span>
     </div>`).join("");
-  body.querySelectorAll(".panel-row").forEach((row) => {
+  body.querySelectorAll(".panel-row").forEach((row, index) => {
+    const item = items[index] || {};
+    const paper = item.paper_id || item.paper || "";
     row.style.cursor = "pointer";
-    row.title = "P4 接入后可跳回这份试卷";
-    row.addEventListener("click", () => toast("P4 接入后，点这里能直接回到这份试卷"));
+    row.title = "回到这份试卷";
+    row.addEventListener("click", () => {
+      if (!paper) return;
+      location.hash = `#/cet6?paper=${encodeURIComponent(paper)}`;
+    });
   });
 }
