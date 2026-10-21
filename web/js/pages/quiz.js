@@ -8,6 +8,7 @@ let convId = null;
 let streaming = false;
 let controller = null;
 let quizEventSent = false;
+let pendingQuestion = "";       // 当前正在作答的题（从「【第N题】」标记里取）
 let nodes = {};
 
 export async function mount(ctx) {
@@ -103,7 +104,7 @@ async function startQuiz() {
     }).catch(() => {});
   }
   if (!nodes.thread.querySelector(".quiz-msg")) nodes.thread.innerHTML = "";
-  await runTurn(data.quiz_prompt, null, "正在出题…");
+  await runTurn(data.quiz_prompt, { note: "正在出题…" });
   nodes.state.textContent = "作答中：写答案，Enter 发送";
 }
 
@@ -121,10 +122,66 @@ async function sendAnswer() {
   nodes.input.value = "";
   nodes.input.style.height = "auto";
   addUserBlock(text);
-  await runTurn(text, null, "正在批改…");
+  await runTurn(text, {
+    note: "正在批改…",
+    isGrading: true,
+    question: pendingQuestion,
+    userAnswer: text,
+  });
 }
 
-async function runTurn(message, _userText, note) {
+/** 从「【第N题】」标记里取最后一道题；模型没按标记写就返回空串。 */
+function lastQuestion(text) {
+  const pattern = /【第(\d+)题】([\s\S]*?)(?=【第\d+题】|【批改】|$)/g;
+  let found = "";
+  for (const match of String(text || "").matchAll(pattern)) {
+    found = (match[2] || "").trim();
+  }
+  return found;
+}
+
+/** 批改正文：从「【批改】」到下一题之前，避免把下一题混进答案。 */
+function extractGrading(text) {
+  const match = String(text || "").match(/【批改】([\s\S]*?)(?=【第\d+题】|$)/);
+  return match ? match[1].trim() : "";
+}
+
+function attachWrongbookAction(block, payload, autoSaved) {
+  const row = document.createElement("div");
+  row.className = "quiz-msg-actions";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "btn";
+  button.disabled = Boolean(autoSaved);
+  button.textContent = autoSaved ? "已自动收进错题本" : "收进错题本";
+  const note = document.createElement("span");
+  note.className = "hint";
+  note.textContent = autoSaved ? "" : "AI 漏收时可以手动补";
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    try {
+      const data = await api.post("/api/wrongbook", {
+        source: "quiz",
+        conversation_id: payload.conversation_id,
+        question: payload.question,
+        answer: payload.answer,
+        my_answer: payload.user_answer,
+        tags: "测验",
+      });
+      button.textContent = "已收进错题本";
+      note.textContent = data?.created ? "已收进错题本" : "这道题已经在错题本里";
+      toast("错题已收进错题本", "ok");
+    } catch (error) {
+      button.disabled = false;
+      toast(error.message || "没收到错题本里", "err");
+    }
+  });
+  row.append(button, note);
+  block.appendChild(row);
+}
+
+async function runTurn(message, options = {}) {
+  const note = options.note || "";
   streaming = true;
   controller = new AbortController();
   nodes.start.disabled = true;
@@ -134,6 +191,8 @@ async function runTurn(message, _userText, note) {
   const block = addAssistantBlock();
   let text = "";
   let errorText = "";
+  let autoSaved = false;
+  let finished = false;
   try {
     await streamChat({
       message,
@@ -150,19 +209,40 @@ async function runTurn(message, _userText, note) {
         renderInto(block, text);
         scrollDown();
       } else if (event.kind === "tool_start") {
-        block.innerHTML = '<p class="hint">在查本地记录…</p>';
+        // 只动状态行：这里清空 block 会把已经流出的批改文字抹掉
+        nodes.state.textContent = event.data?.name === "save_wrongbook"
+          ? "正在收进错题本…" : "在查本地记录…";
+      } else if (event.kind === "tool_end") {
+        if (event.data?.name === "save_wrongbook") {
+          autoSaved = /收进错题本|已在错题本/.test(String(event.data?.preview || ""));
+          nodes.state.textContent = autoSaved
+            ? "已自动收进错题本" : "自动收录没成功，可以手动补收";
+        }
       } else if (event.kind === "done") {
         const finalText = String(event.data?.text || text || "");
         if (finalText) {
           text = finalText;
           renderInto(block, text);
         }
+        finished = true;
       } else if (event.kind === "error") {
         errorText = event.text || "模型没有回答";
       }
     }, controller.signal);
     if (errorText) throw new Error(errorText);
     if (!text.trim()) throw new Error("模型没有返回内容");
+    const next = lastQuestion(text);
+    if (options.isGrading && options.question) {
+      const analysis = extractGrading(text) || text;
+      attachWrongbookAction(block, {
+        conversation_id: convId,
+        question: options.question,
+        user_answer: options.userAnswer || "",
+        answer: analysis,
+      }, autoSaved);
+    }
+    if (next) pendingQuestion = next;
+    else if (finished) pendingQuestion = "";
   } catch (error) {
     if (error?.name === "AbortError") {
       block.innerHTML = `<p class="review-error">已停止，内容保留到中断处。</p>`;

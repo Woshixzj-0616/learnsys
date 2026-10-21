@@ -6,10 +6,10 @@
   "entry": "pages/quiz.html",
   "order": 50,
   "status": "ready",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "category": "练习",
   "home": true,
   "tagline": "让 AI 按你的记录出题、逐题批改",
-  "description": "基于今天的记录出 5 道自测题；在页面里逐题作答、即时批改，答题记录进时间线。",
+  "description": "基于今天的记录出 5 道自测题；一次一题、即时批改，答错自动收进错题本。",
   "script": "js/pages/quiz.js"
 }

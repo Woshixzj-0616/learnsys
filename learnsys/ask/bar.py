@@ -237,6 +237,7 @@ class _AskWorker(QtCore.QThread):
         self._mode = mode
         self._system_override = ""     # 电脑助手等非导师任务用
         self._use_tools = True
+        self._conversation_key = ""    # 同一轮对话的稳定号，测验收错题去重用
         self._cancelled = False
         self._abort = threading.Event()       # 传给 Agent：一置位就收摊
         self._sink: list = []                 # 底层响应，cancel 时 close 掐断连接
@@ -273,6 +274,7 @@ class _AskWorker(QtCore.QThread):
                 mode=self._mode,
                 system_override=self._system_override,
                 use_tools=self._use_tools,
+                conversation_key=self._conversation_key,
             )
             for event in agent.run(request, abort=self._abort, response_sink=self._sink):
                 if self._cancelled:
@@ -391,6 +393,7 @@ class AskBar(QtWidgets.QWidget):
         self._streaming = False
         self._activity = ""           # 状态行的一句话（看图 / 查记录 / 推理中）
         self.ask_mode = "explain"     # 讲解 / 引导 / 测验 / 速答（Web 工作台可改）
+        self.quiz_mode = False        # 托盘点「测验」后粘住，直到新会话/清空/换模式
         self._answer_start = None     # 答案区里「答案」从第几个字符开始（None = 这一轮还没开始）
         self._turn_seq = 0            # 第几轮（被掐掉的旧那一轮回来时靠它认出来，别写回界面）
         self._last_answer = ""        # 最近一次的**答案**原文（复制按钮只复制它，不带问题）
@@ -1021,6 +1024,7 @@ class AskBar(QtWidgets.QWidget):
         上一句还在写也照样开 —— 那一轮直接不要了（原来只是提示一句就 return，
         结果旧答案写完又被写回界面，看着就像「点了没反应、还多出一份」）。
         """
+        self.quiz_mode = False
         self._drop_running()
         self._turns = []
         self._thread = uuid.uuid4().hex[:12]
@@ -1032,6 +1036,7 @@ class AskBar(QtWidgets.QWidget):
 
     def clear_session(self) -> None:
         """清空：答案、截图、上下文都不要了（对话收尾）。还在写也照样清。"""
+        self.quiz_mode = False
         self._drop_running()
         self.set_idle()
         self.cleared.emit()
@@ -1046,6 +1051,7 @@ class AskBar(QtWidgets.QWidget):
 
     def set_shot(self, image_path: str, shot: QtGui.QPixmap) -> None:
         """刚框好一块屏 —— 缩略图挂上，可以问了。换了图 ⇒ 旧对话史清掉、开新轮。"""
+        self.quiz_mode = False
         self._drop_running()          # 旧那一轮（若有）别再往新图的界面上写
         self._image_path = image_path
         self._turns = []
@@ -1302,9 +1308,10 @@ class AskBar(QtWidgets.QWidget):
                                   context=context, extra_images=images)
         # 模式用属性给，不放进构造参数：旧测试里替换的 FakeWorker 只认旧签名，
         # 传 `mode=` 会直接 TypeError。属性赋值对新旧 worker 都无害。
-        self._worker._mode = mode or self.ask_mode
+        self._worker._mode = mode or ("quiz" if self.quiz_mode else self.ask_mode)
         self._worker._system_override = system_override
         self._worker._use_tools = use_tools
+        self._worker._conversation_key = self._thread
         self._workers.append(self._worker)       # 留着，退出时要 wait（shutdown）
         self._worker.finished.connect(self._reap_workers)
         if hasattr(self._worker, "activity"):
@@ -1486,6 +1493,7 @@ class AskBar(QtWidgets.QWidget):
         if mode not in MODE_LABELS:
             return
         self.ask_mode = mode
+        self.quiz_mode = mode == "quiz"
         label = MODE_LABELS[mode]
         self._set_status(f"回答模式：{label}")
         self.ask.setPlaceholderText(f"回答模式：{label} —— 直接打字问")

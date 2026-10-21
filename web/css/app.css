@@ -1528,3 +1528,155 @@
   .quiz-hero { flex-direction: column; }
   .quiz-hero-actions { align-items: flex-start; }
 }
+
+/* ---- 错题本 ---- */
+.wrongbook-page { max-width: var(--page-max); }
+.wrongbook-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s5);
+  align-items: flex-start;
+}
+.wrongbook-hero h2 { margin: 0 0 8px; font-size: 26px; font-weight: 650; }
+.wrongbook-hero-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s2);
+  flex: none;
+}
+.wrongbook-panel { margin-top: 22px; }
+.wrongbook-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+.wrongbook-tabs { display: flex; gap: 6px; }
+.wrong-tab { min-height: 32px; padding: 4px 14px; font-size: var(--fs-xs); }
+.wrong-tab.active {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.wrongbook-source { display: flex; align-items: center; gap: var(--s2); }
+.wrongbook-source select {
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--bg-input);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+}
+.wrong-stat.active { border-color: var(--accent-line); background: var(--accent-soft); }
+.wrongbook-list { display: flex; flex-direction: column; gap: 10px; }
+.wrong-card {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+.wrong-card.is-due { border-color: var(--mark-soft); }
+.wrong-card-head {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s3);
+  padding: 12px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.wrong-card-head:hover { background: var(--bg-raised); }
+.wrong-source {
+  padding: 1px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.wrong-source.quiz { border-color: var(--accent-line); color: var(--accent-strong); }
+.wrong-source.ask { border-color: var(--mark-soft); color: var(--mark); }
+.wrong-source.manual { border-color: var(--line-strong); color: var(--text-dim); }
+.wrong-question { font-size: var(--fs-base); line-height: 1.55; }
+.wrong-card-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  white-space: nowrap;
+}
+.wrong-badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 18px;
+}
+.wrong-badge.due { background: var(--mark-soft); color: var(--mark); }
+.wrong-badge.mastered { background: rgba(99, 192, 143, 0.14); color: var(--ok); }
+.wrong-card-body {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--line);
+}
+.wrong-block { margin-top: 12px; }
+.wrong-block h4 {
+  margin: 0 0 6px;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.wrong-answer { font-size: var(--fs-sm); line-height: 1.65; }
+.wrong-answer > :first-child { margin-top: 0; }
+.wrong-answer > :last-child { margin-bottom: 0; }
+.wrong-mine {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-input);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-xs);
+  white-space: pre-wrap;
+}
+.wrong-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 12px;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+.wrong-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.wrong-actions .btn { min-height: 32px; padding: 4px 14px; font-size: var(--fs-xs); }
+
+.quiz-msg-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+.quiz-msg-actions .btn { min-height: 30px; padding: 3px 12px; font-size: var(--fs-xs); }
+
+@media (max-width: 1024px) {
+  .wrongbook-hero { flex-direction: column; }
+  .wrongbook-hero-actions { flex-direction: row; align-items: center; }
+  .wrong-card-head { grid-template-columns: auto minmax(0, 1fr); }
+  .wrong-card-side { grid-column: 2; flex-direction: row; align-items: center; }
+}

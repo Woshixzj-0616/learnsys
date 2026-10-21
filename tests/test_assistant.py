@@ -215,7 +215,7 @@ class TestStoreFrameTextAndReview(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0][2], "覆盖更新")
 
-    def test_due_starred_1_3_7(self):
+    def test_due_wrong_items_1_3_7(self):
         conn = store.connect(":memory:")
         today = datetime.date.today()
         for days_ago in (0, 1, 3, 7):
@@ -223,11 +223,14 @@ class TestStoreFrameTextAndReview(unittest.TestCase):
             ts = (datetime.datetime.now() - datetime.timedelta(days=days_ago)
                   ).strftime("%Y-%m-%d %H:%M:%S")
             conn.execute("UPDATE asks SET ts = ? WHERE id = ?", (ts, ask_id))
+            conn.execute(
+                "UPDATE wrong_items SET ts = ? WHERE source = 'ask' AND source_id = ?",
+                (ts, f"ask:{ask_id}"))
         conn.commit()
         due = store.due_starred(conn, today)
-        self.assertEqual(len(due), 3, "今天问的不该提醒，1/3/7 天前的该提醒")
+        self.assertEqual(len(due), 3, "今天收的不该提醒，1/3/7 天前的该提醒")
         store.bump_review_stage(conn, due)
-        self.assertEqual(len(store.due_starred(conn, today)), 0, "提醒过推进度，不再重复")
+        self.assertEqual(len(store.due_starred(conn, today)), 0, "复习过推进度，不再重复")
 
 
 class TestBarAssistant(unittest.TestCase):

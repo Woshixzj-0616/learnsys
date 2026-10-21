@@ -150,23 +150,22 @@ class _StartupWorker(QtCore.QThread):
         newer = check_new_version()
         if newer:
             self.message.emit(f"发现新版本 {newer} —— 到 GitHub 的 Releases 页下载更新。")
-        # 错题本复习提醒（1/3/7 天节奏，跨所有日子查）
+        # 错题本复习提醒（1/3/7 天节奏，跨所有日子查）。
+        # 只提醒不推进度 —— 有没有复习由错题本页面「记住了 / 没记住」决定，
+        # 否则用户还没打开就被记成复习过一次。
         import datetime as _dt
         due_total = 0
         try:
             for _day, db_path in study.storage_dbs(self._data_root):
                 conn = store.connect(db_path)
                 try:
-                    due = store.due_starred(conn, _dt.date.today())
-                    if due:
-                        due_total += len(due)
-                    store.bump_review_stage(conn, due)
+                    due_total += len(store.wrong_due_items(conn, _dt.date.today()))
                 finally:
                     conn.close()
         except Exception:
             pass
         if due_total:
-            self.message.emit(f"错题本有 {due_total} 题到复习期了 —— 点开历史或来一场测验吧。")
+            self.message.emit(f"错题本有 {due_total} 题到复习期了 —— 打开工作台的「错题本」过一遍。")
 
 
 class _BackupWorker(QtCore.QThread):
@@ -826,9 +825,11 @@ class AskApp(QtCore.QObject):
             return ""                            # 上下文是锦上添花，坏了就纯问
 
     def _toggle_star(self, payload) -> None:
-        """收藏 / 取消收藏：落回那条问答所在的库，然后让按钮文字跟真实状态走。"""
+        """收藏 / 取消收藏 = 收进 / 移出统一错题本。"""
         try:
             db_path, ask_id = payload
+            if config.UNIFIED_DB:
+                db_path = config.db_path()       # 统一库下不认历史菜单里的旧路径
             if self.conn is not None and str(db_path) == str(self._conn_path):
                 conn = self.conn
                 one_off = False
@@ -858,24 +859,24 @@ class AskApp(QtCore.QObject):
         self.show_bar()
 
     def _export_anki(self) -> None:
-        """托盘「导出错题本」：把所有日子里收藏的问答导成 Anki 能导入的 CSV。"""
+        """托盘「导出错题本」：把统一错题本导成 Anki 能导入的 CSV。"""
         collected = []
         try:
-            for day, db_path in study.storage_dbs(config.DATA_ROOT):
+            for _day, db_path in study.storage_dbs(config.DATA_ROOT):
                 conn = store.connect(db_path)
                 try:
-                    collected.extend(store.starred_asks(conn))
+                    collected.extend(store.wrong_items(conn, status="all", limit=1000))
                 finally:
                     conn.close()
         except Exception as exc:
-            self._warn(f"读收藏失败：{exc}")
+            self._warn(f"读错题本失败：{exc}")
             return
         if not collected:
-            self._warn("错题本还是空的 —— 看历史时点「收藏」，想复习的题就攒下来了。")
+            self._warn("错题本还是空的 —— 测验答错会自动收进来，也可以在看历史时点「收藏」。")
             return
         dest = config.DATA_ROOT / f"错题本_{datetime.date.today():%Y%m%d}.csv"
         try:
-            count = study.export_anki_csv(collected, dest)
+            count = study.export_wrongbook_csv(collected, dest)
         except Exception as exc:
             self._warn(f"导出失败：{exc}")
             return
@@ -966,6 +967,7 @@ class AskApp(QtCore.QObject):
             self._warn("今天还没有可出题的素材 —— 先录一段课或问几个问题。")
             return
         summary_lines = []
+        conn = self._conn()
         for sid, started, _ended in sessions:
             info = store.session_summary(conn, sid)
             summary_lines.append(
@@ -973,14 +975,17 @@ class AskApp(QtCore.QObject):
         asks_preview = [f"问：{(r[1] or '')[:60]}" for r in asks[:10] if (r[1] or '').strip()]
         question = study.build_quiz_question(summary_lines, asks_preview,
                                              study.transcripts_digest(transcript_rows))
-        self.bar.ask_with_context(question, "测验：来 5 道题考考我")
+        self.bar.quiz_mode = True          # 作答那几轮也保持测验模式，判错才能自动收题
+        self.bar.ask_with_context(question, "测验：来 5 道题考考我", mode="quiz")
 
     def _generate_report(self) -> None:
         """生成今天的学习报告（Markdown，落当天文件夹）。AI 总结在后台线程补一段。"""
         import threading
         day = config.day_dir()
         sessions, transcript_rows, asks = self._today_data()
-        starred = len(store.starred_asks(conn)) if (conn := self._conn()) else 0
+        conn = self._conn()
+        starred = (store.wrong_counts(conn, datetime.date.today())["new_today"]
+                   if conn else 0)
         frames = len(list(liverec.frame_dir().glob("*.jpg")))
         summary_lines = []
         for sid, started, _ended in sessions:

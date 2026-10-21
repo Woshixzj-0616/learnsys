@@ -1,0 +1,41 @@
+<div class="wrongbook-page">
+  <section class="stage-hero wrongbook-hero">
+    <div>
+      <p class="stage-eyebrow">错题本 · 全部</p>
+      <h2>答错过的，才是真正要复习的。</h2>
+      <p class="stage-sub">问答收藏、测验错题、手动收录都在同一本。按 1 / 3 / 7 天节奏复习，
+        导出的 CSV 可以直接进 Anki。</p>
+      <div class="review-stats" id="wrong-stats">
+        <div class="review-chip"><span>待复习</span><strong>—</strong></div>
+      </div>
+    </div>
+    <div class="wrongbook-hero-actions">
+      <button class="btn btn-primary" type="button" id="wrong-export">导出 Anki CSV</button>
+      <a class="btn" href="#/quiz">去测验</a>
+    </div>
+  </section>
+
+  <section class="panel wrongbook-panel">
+    <div class="panel-head wrongbook-toolbar">
+      <div class="wrongbook-tabs" role="tablist" aria-label="错题筛选">
+        <button class="btn wrong-tab active" type="button" data-status="due">待复习</button>
+        <button class="btn wrong-tab" type="button" data-status="all">全部</button>
+        <button class="btn wrong-tab" type="button" data-status="mastered">已掌握</button>
+      </div>
+      <label class="wrongbook-source">
+        <span class="hint">来源</span>
+        <select id="wrong-source">
+          <option value="">全部</option>
+          <option value="ask">问答收藏</option>
+          <option value="quiz">测验错题</option>
+          <option value="manual">手动收录</option>
+        </select>
+      </label>
+    </div>
+    <div class="panel-body">
+      <div class="wrongbook-list" id="wrong-list">
+        <div class="empty">正在读错题本…</div>
+      </div>
+    </div>
+  </section>
+</div>

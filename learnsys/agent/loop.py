@@ -35,6 +35,8 @@ class AgentRequest:
     module: str = "ask"
     system_override: str = ""       # 非导师任务（如电脑助手出 JSON 计划）用
     use_tools: bool = True          # 纯生成任务别让它去查记录
+    conversation_id: int | None = None   # 测验自动收题的去重键要用
+    conversation_key: str = ""           # 快捷栏一轮对话的稳定 key
 
 
 @dataclass
@@ -81,6 +83,9 @@ def _tool_context(request: AgentRequest, cfg: AgentConfig) -> tools.ToolContext:
         data_root=pathlib.Path(cfg.data_root),
         attachment_name=request.attachment_name,
         attachment_text=request.attachment_text,
+        conversation_id=request.conversation_id,
+        conversation_key=request.conversation_key,
+        mode=request.mode,
     )
 
 
@@ -131,7 +136,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
 
     system = (request.system_override.strip()
               or prompts.build_system(request.mode, has_image=bool(image_paths), profile=profile))
-    tool_schemas = tools.TOOL_SCHEMAS if request.use_tools else None
+    tool_schemas = tools.schemas_for(request.mode, use_tools=request.use_tools)
     messages = _history_messages(request.history, image_text)
     current_text = prompts.build_user_text(
         request.message,

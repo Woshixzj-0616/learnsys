@@ -6,8 +6,10 @@ v2 起真正的表结构在 `learnsys/core/db.py`；这里保留原有函数名�
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import pathlib
+import re
 import sqlite3
 import threading
 
@@ -200,19 +202,28 @@ def window_titles(conn: sqlite3.Connection, ts_from: str = "", ts_to: str = "", 
 def add_ask(conn: sqlite3.Connection, question: str, answer: str, ms: int, backend: str,
             kind: str = "text", image_path: str = "", thread: str = "",
             starred: bool = False, conversation_id: int | None = None) -> int:
-    """记一次问答，返回这条的 id（收藏要用）。kind='image' 带框选图 | 'text' 纯文字；thread 分组同轮对话。"""
+    """记一次问答，返回这条的 id（收藏要用）。kind='image' 带框选图 | 'text' 纯文字；thread 分组同轮对话。
+
+    `starred=True` 直接收进统一错题本 —— `asks.starred` 是 v1 历史列，不再写 1。
+    """
     kind = "image" if kind == "image" else "text"
     stamp = now()
     with _LOCK:
         cur = conn.execute(
             "INSERT INTO asks (ts, question, answer, ms, backend, kind, image_path, thread, "
             "starred, provider, model, conversation_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
             (stamp, question, answer, ms, backend, kind, image_path or "", thread or "",
-             1 if starred else 0, backend, backend, conversation_id),
+             backend, backend, conversation_id),
         )
-        conn.commit()
         row_id = int(cur.lastrowid or 0)
+        if starred:
+            conn.execute(
+                "INSERT OR IGNORE INTO wrong_items "
+                "(ts, source, source_id, question, answer, auto) "
+                "VALUES (?, 'ask', ?, ?, ?, 0)",
+                (stamp, f"ask:{row_id}", question, answer))
+        conn.commit()
     core_db.index_row(conn, "ask", row_id, stamp, f"{question}\n{answer}")
     return row_id
 
@@ -240,25 +251,216 @@ def recent_asks(conn: sqlite3.Connection, limit: int = 8, day: str = "",
         ).fetchall()
 
 
-def toggle_star(conn: sqlite3.Connection, ask_id: int) -> bool:
-    """收藏 / 取消收藏一条问答，返回新状态（True = 已收藏）。"""
+# ---- 统一错题本 ----
+# 唯一来源是 wrong_items；asks.starred 只是 v1 的历史快照，迁移后不再读写。
+
+WRONG_SOURCES = ("ask", "quiz", "cet6", "manual")
+
+_WRONG_COLUMNS = (
+    "id, ts, source, source_id, question, answer, my_answer, tags, note, "
+    "auto, review_stage, last_review, mastered"
+)
+
+
+_QUESTION_NOISE = re.compile(
+    r"[\s，。！？；：、“”‘’（）【】《》〈〉「」『』…—～·]+", re.UNICODE)
+
+
+def wrong_fingerprint(question: str) -> str:
+    """题目指纹：去空白/中文标点、转小写后哈希。
+
+    只清中文标点和空白，**保留 `+ - * / = < >` 等数学符号** —— 否则
+    「a+b」和「a-b」会撞成同一道题。
+    """
+    text = str(question or "")
+    # 去掉题号前缀：「【第1题】」「第 2 题.」—— 自动工具和手动补收的题面才不会因前缀分家。
+    text = re.sub(r"^\s*【\s*第\s*\d+\s*题\s*】", "", text)
+    text = re.sub(r"^\s*第?\s*\d+\s*[题.、:：]\s*", "", text)
+    cleaned = _QUESTION_NOISE.sub("", text).lower()
+    return hashlib.sha1((cleaned or text).encode("utf-8")).hexdigest()[:16]
+
+
+def _next_review(ts: str, last_review: str, stage: int) -> str:
+    """下次复习日；练完 3 轮（stage=3）后返回空串。"""
+    if stage >= len(REVIEW_INTERVALS):
+        return ""
+    base = str(last_review or ts)[:10]
+    try:
+        day = dt.date.fromisoformat(base)
+    except ValueError:
+        return ""
+    return (day + dt.timedelta(days=REVIEW_INTERVALS[stage])).isoformat()
+
+
+def _wrong_dict(row) -> dict:
+    item = {
+        "id": int(row[0]), "ts": row[1] or "", "source": row[2] or "manual",
+        "source_id": row[3] or "", "question": row[4] or "", "answer": row[5] or "",
+        "my_answer": row[6] or "", "tags": row[7] or "", "note": row[8] or "",
+        "auto": bool(row[9]), "review_stage": int(row[10] or 0),
+        "last_review": row[11] or "", "mastered": bool(row[12]),
+    }
+    item["next_review"] = _next_review(item["ts"], item["last_review"],
+                                       item["review_stage"])
+    return item
+
+
+def add_wrong_item(conn: sqlite3.Connection, *, question: str, answer: str = "",
+                   my_answer: str = "", tags: str = "", note: str = "",
+                   source: str = "manual", source_id: str | None = None,
+                   auto: bool = False) -> tuple[int, bool]:
+    """收一道错题；返回 (id, 是否新建)。同 source+source_id 只留第一条。"""
+    question = str(question or "").strip()
+    if not question:
+        raise ValueError("错题的问题不能为空")
+    source = source if source in WRONG_SOURCES else "manual"
+    source_id = (str(source_id).strip() or None) if source_id else None
     with _LOCK:
-        row = conn.execute("SELECT starred FROM asks WHERE id = ?", (ask_id,)).fetchone()
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO wrong_items "
+            "(ts, source, source_id, question, answer, my_answer, tags, note, auto) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (now(), source, source_id, question, str(answer or ""),
+             str(my_answer or ""), str(tags or ""), str(note or ""),
+             1 if auto else 0))
+        created = cur.rowcount > 0
+        item_id = int(cur.lastrowid or 0) if created else 0
+        if not created and source_id:
+            row = conn.execute(
+                "SELECT id FROM wrong_items WHERE source = ? AND source_id = ?",
+                (source, source_id)).fetchone()
+            item_id = int(row[0]) if row else 0
+        conn.commit()
+    return item_id, created
+
+
+def toggle_ask_wrong(conn: sqlite3.Connection, ask_id: int) -> bool:
+    """问答「收藏 / 取消收藏」= 收进 / 移出统一错题本；返回新状态。"""
+    source_id = f"ask:{int(ask_id)}"
+    with _LOCK:
+        row = conn.execute(
+            "SELECT id FROM wrong_items WHERE source = 'ask' AND source_id = ?",
+            (source_id,)).fetchone()
+        if row is not None:
+            conn.execute("DELETE FROM wrong_items WHERE id = ?", (int(row[0]),))
+            conn.commit()
+            return False
+        ask = conn.execute(
+            "SELECT ts, question, answer FROM asks WHERE id = ?",
+            (int(ask_id),)).fetchone()
+        if ask is None:
+            return False
+        conn.execute(
+            "INSERT OR IGNORE INTO wrong_items "
+            "(ts, source, source_id, question, answer, auto) "
+            "VALUES (?, 'ask', ?, ?, ?, 0)",
+            (ask[0] or now(), source_id, ask[1] or "", ask[2] or ""))
+        conn.commit()
+        return True
+
+
+def toggle_star(conn: sqlite3.Connection, ask_id: int) -> bool:
+    """旧名字保留给快捷栏；语义已改为「收进 / 移出错题本」。"""
+    return toggle_ask_wrong(conn, ask_id)
+
+
+def get_wrong_item(conn: sqlite3.Connection, item_id: int) -> dict | None:
+    with _LOCK:
+        row = conn.execute(
+            f"SELECT {_WRONG_COLUMNS} FROM wrong_items WHERE id = ?",
+            (int(item_id),)).fetchone()
+    return _wrong_dict(row) if row else None
+
+
+def wrong_items(conn: sqlite3.Connection, *, status: str = "all",
+                source: str = "", limit: int = 200, today=None) -> list[dict]:
+    """错题列表。status：due 待复习 / mastered 已掌握 / all 全部（含已掌握）。"""
+    with _LOCK:
+        rows = conn.execute(
+            f"SELECT {_WRONG_COLUMNS} FROM wrong_items ORDER BY ts DESC, id DESC"
+        ).fetchall()
+    today = str(today or dt.date.today().isoformat())[:10]
+    items = [_wrong_dict(row) for row in rows]
+    if source in WRONG_SOURCES:
+        items = [item for item in items if item["source"] == source]
+    if status == "due":
+        items = [item for item in items
+                 if not item["mastered"] and item["next_review"]
+                 and item["next_review"] <= today]
+        items.sort(key=lambda item: item["next_review"])
+    elif status == "mastered":
+        items = [item for item in items if item["mastered"]]
+    limit = max(1, min(int(limit or 200), 1000))
+    return items[:limit]
+
+
+def wrong_due_items(conn: sqlite3.Connection, today=None) -> list[dict]:
+    """到复习期的错题（启动提醒和页面共用这一个口径）。"""
+    return wrong_items(conn, status="due", limit=1000, today=today)
+
+
+def wrong_counts(conn: sqlite3.Connection, today=None) -> dict:
+    day = str(today or dt.date.today().isoformat())[:10]
+    with _LOCK:
+        total, mastered, new_today = conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(mastered), 0), "
+            "COALESCE(SUM(ts LIKE ?), 0) FROM wrong_items",
+            (f"{day}%",)).fetchone()
+    return {"all": int(total or 0), "mastered": int(mastered or 0),
+            "due": len(wrong_due_items(conn)), "new_today": int(new_today or 0)}
+
+
+def review_wrong_item(conn: sqlite3.Connection, item_id: int, result: str) -> dict | None:
+    """复习一次：remember 推进 1/3/7；forgot 打回明天重来。"""
+    with _LOCK:
+        row = conn.execute(
+            f"SELECT {_WRONG_COLUMNS} FROM wrong_items WHERE id = ?",
+            (int(item_id),)).fetchone()
+        if row is None:
+            return None
+        item = _wrong_dict(row)
+        stage = item["review_stage"]
+        if result == "forgot":
+            stage, mastered = 0, 0
+        else:
+            stage = min(stage + 1, len(REVIEW_INTERVALS))
+            mastered = 1 if stage >= len(REVIEW_INTERVALS) else item["mastered"]
+        conn.execute(
+            "UPDATE wrong_items SET review_stage = ?, last_review = ?, mastered = ? "
+            "WHERE id = ?",
+            (stage, dt.date.today().isoformat(), mastered, int(item_id)))
+        conn.commit()
+        row = conn.execute(
+            f"SELECT {_WRONG_COLUMNS} FROM wrong_items WHERE id = ?",
+            (int(item_id),)).fetchone()
+    return _wrong_dict(row) if row else None
+
+
+def set_wrong_mastered(conn: sqlite3.Connection, item_id: int, mastered: bool) -> bool:
+    """手动标记 / 取消掌握。取消后从明天重新复习，别卡在 7 天后的空档。"""
+    with _LOCK:
+        row = conn.execute(
+            "SELECT review_stage FROM wrong_items WHERE id = ?",
+            (int(item_id),)).fetchone()
         if row is None:
             return False
-        new = 0 if row[0] else 1
-        conn.execute("UPDATE asks SET starred = ? WHERE id = ?", (new, ask_id))
+        if mastered:
+            conn.execute("UPDATE wrong_items SET mastered = 1 WHERE id = ?",
+                         (int(item_id),))
+        else:
+            conn.execute(
+                "UPDATE wrong_items SET mastered = 0, review_stage = 0, last_review = ? "
+                "WHERE id = ?",
+                (dt.date.today().isoformat(), int(item_id)))
         conn.commit()
-        return bool(new)
+        return True
 
 
-def starred_asks(conn: sqlite3.Connection):
-    """收藏了的问答（新→旧）—— 错题本导出用。"""
+def delete_wrong_item(conn: sqlite3.Connection, item_id: int) -> bool:
     with _LOCK:
-        return conn.execute(
-            "SELECT ts, question, answer, kind, image_path, id FROM asks "
-            "WHERE starred = 1 ORDER BY id DESC",
-        ).fetchall()
+        cur = conn.execute("DELETE FROM wrong_items WHERE id = ?", (int(item_id),))
+        conn.commit()
+        return bool(cur.rowcount)
 
 
 def focus_stats(conn: sqlite3.Connection, until: str = "", day: str = "") -> dict:
@@ -324,36 +526,28 @@ def frame_text_between(conn: sqlite3.Connection, ts_from: str, ts_to: str, limit
         ).fetchall()
 
 
-REVIEW_INTERVALS = (1, 3, 7)   # 收藏后第 1 / 3 / 7 天各提醒一次
+REVIEW_INTERVALS = (1, 3, 7)   # 收录后第 1 / 3 / 7 天各复习一次
+
+
+def starred_asks(conn: sqlite3.Connection):
+    """旧形状（ts, question, answer, kind, image_path, id）的收藏问答，兼容老调用。"""
+    with _LOCK:
+        return conn.execute(
+            "SELECT a.ts, a.question, a.answer, a.kind, a.image_path, a.id "
+            "FROM asks a JOIN wrong_items w "
+            "  ON w.source = 'ask' AND w.source_id = 'ask:' || a.id "
+            "ORDER BY a.id DESC").fetchall()
 
 
 def due_starred(conn: sqlite3.Connection, today) -> list[int]:
-    """错题本里「到该复习的日子」的问答 id（第 1/3/7 天各提醒一次，提醒过就推进度）。"""
-    rows = conn.execute(
-        "SELECT id, ts, review_stage, COALESCE(last_remind, '') FROM asks "
-        "WHERE starred = 1 ORDER BY id").fetchall()
-    due = []
-    for ask_id, ts, stage, last in rows:
-        if stage >= len(REVIEW_INTERVALS):
-            continue
-        base = last or str(ts)[:10]
-        try:
-            base_day = dt.datetime.strptime(base[:10], "%Y-%m-%d").date()
-        except ValueError:
-            continue
-        if (today - base_day).days >= REVIEW_INTERVALS[stage]:
-            due.append(int(ask_id))
-    return due
+    """兼容旧名字：返回错题本条目 id（不是 ask id）。"""
+    return [item["id"] for item in wrong_due_items(conn, today)]
 
-def bump_review_stage(conn: sqlite3.Connection, ask_ids: list[int]) -> None:
-    if not ask_ids:
-        return
-    with _LOCK:
-        conn.executemany(
-            "UPDATE asks SET review_stage = review_stage + 1, last_remind = ? WHERE id = ?",
-            [(dt.date.today().isoformat(), i) for i in ask_ids],
-        )
-        conn.commit()
+
+def bump_review_stage(conn: sqlite3.Connection, item_ids: list[int]) -> None:
+    """兼容旧名字：按「记住了」推进一轮。"""
+    for item_id in item_ids or []:
+        review_wrong_item(conn, int(item_id), "remember")
 
 
 # ---- v2 会话 / 消息（Web 工作台用）----

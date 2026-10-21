@@ -117,6 +117,25 @@ CREATE TABLE IF NOT EXISTS migrated_sources (
     migrated_at TEXT,
     counts_json TEXT
 );
+CREATE TABLE IF NOT EXISTS wrong_items (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts           TEXT NOT NULL,
+    source       TEXT NOT NULL DEFAULT 'manual',
+    source_id    TEXT,
+    question     TEXT NOT NULL,
+    answer       TEXT NOT NULL DEFAULT '',
+    my_answer    TEXT NOT NULL DEFAULT '',
+    tags         TEXT NOT NULL DEFAULT '',
+    note         TEXT NOT NULL DEFAULT '',
+    auto         INTEGER NOT NULL DEFAULT 0,
+    review_stage INTEGER NOT NULL DEFAULT 0,
+    last_review  TEXT NOT NULL DEFAULT '',
+    mastered     INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_wrong_ts ON wrong_items (ts);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wrong_source
+    ON wrong_items (source, source_id)
+    WHERE source_id IS NOT NULL AND source_id <> '';
 """
 
 FTS_SCHEMA = """
@@ -146,6 +165,7 @@ def connect(path=None) -> sqlite3.Connection:
     conn.executescript(SCHEMA)
     _migrate_columns(conn)
     _ensure_fts(conn)
+    _import_legacy_starred(conn)
     return conn
 
 
@@ -179,6 +199,45 @@ def _ensure_fts(conn: sqlite3.Connection) -> None:
         "CREATE TABLE IF NOT EXISTS search_idx "
         "(body TEXT, module TEXT, ref_id INTEGER, ts TEXT)")
     conn.commit()
+
+
+def _import_starred_rows(conn: sqlite3.Connection) -> int:
+    """把 `asks.starred=1` 补进统一错题本（`INSERT OR IGNORE`，可重复跑）。
+
+    v2 之前的「收藏」只存在 `asks.starred`。错题本改成独立表后，这一列只当
+    历史快照：这里只负责搬一次，之后代码不再读写它。
+    """
+    moved = 0
+    try:
+        rows = conn.execute(
+            "SELECT id, ts, question, answer FROM asks WHERE starred = 1").fetchall()
+        for ask_id, ts, question, answer in rows:
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO wrong_items "
+                "(ts, source, source_id, question, answer, auto) "
+                "VALUES (?, 'ask', ?, ?, ?, 0)",
+                (ts or now(), f"ask:{ask_id}", question or "", answer or ""))
+            moved += 1 if cur.rowcount else 0
+        conn.commit()
+    except sqlite3.Error:
+        pass
+    return moved
+
+
+def _import_legacy_starred(conn: sqlite3.Connection) -> None:
+    """首次打开统一库时做一次旧收藏迁移；meta 记过就不再跑，删掉的题不会复活。"""
+    try:
+        row = conn.execute(
+            "SELECT value FROM meta WHERE key = 'wrongbook_imported_at'").fetchone()
+        if row:
+            return
+        _import_starred_rows(conn)
+        conn.execute(
+            "INSERT OR REPLACE INTO meta (key, value) VALUES ('wrongbook_imported_at', ?)",
+            (now(),))
+        conn.commit()
+    except sqlite3.Error:
+        pass
 
 
 def fts_ready(conn: sqlite3.Connection) -> bool:
@@ -265,6 +324,7 @@ def counts(conn: sqlite3.Connection) -> dict:
         "frame_text": one("SELECT COUNT(*) FROM frame_text"),
         "cet6_events": one("SELECT COUNT(*) FROM cet6_events"),
         "messages": one("SELECT COUNT(*) FROM messages"),
+        "wrong_items": one("SELECT COUNT(*) FROM wrong_items"),
     }
 
 
@@ -322,6 +382,10 @@ def migrate_from_v1(data_root: pathlib.Path, target: pathlib.Path,
                 "INSERT OR REPLACE INTO migrated_sources (path, migrated_at, counts_json) "
                 "VALUES (?, ?, ?)",
                 (source_key, now(), json.dumps(source_counts, ensure_ascii=False)))
+            # 首次升级时 connect() 可能先于旧库迁移把 meta 标成已迁 —— 这里再补一次，
+            # 只补这次新迁进来的 starred 行；重复跑 migrate 时 sources 已跳过，不会复活删除项。
+            if source_counts.get("asks"):
+                _import_starred_rows(conn)
             conn.commit()
             report["sources"].append({"path": source_key, "counts": source_counts})
             if verbose:

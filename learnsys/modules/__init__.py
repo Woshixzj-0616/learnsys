@@ -50,7 +50,7 @@ def _read_manifest(path: pathlib.Path) -> dict | None:
     if not isinstance(data, dict) or not data.get("id"):
         return None
     data.setdefault("status", "ready")
-    data.setdefault("version", "2.0.0")
+    data.setdefault("version", "2.1.0")
     data.setdefault("category", "其他")
     data.setdefault("home", False)
     return data

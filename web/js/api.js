@@ -46,7 +46,23 @@ async function request(path, options = {}) {
 export const api = {
   get: (path) => request(path),
   post: (path, body) => request(path, { method: "POST", body: JSON.stringify(body ?? {}) }),
+  del: (path) => request(path, { method: "DELETE" }),
 };
+
+/** 带令牌下载文件（GET），成功后触发浏览器保存。 */
+export async function download(path, filename) {
+  const response = await fetch(path, { headers: headers() });
+  if (!response.ok) throw new Error(await parseError(response));
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename || "下载.csv";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 /** 文件 → base64 → /api/upload。图片返回 path，文档返回抽取的 text。 */
 export async function upload(file) {

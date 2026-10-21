@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import csv
 import datetime
+import io
 import pathlib
 
 REVIEW_DISPLAY = "复盘：我刚才学了什么？"      # 上屏显示的那句（真正发给 AI 的题在 study 里拼）
@@ -116,23 +117,53 @@ def focus_line(stats: dict) -> str:
     return line
 
 
-def export_anki_csv(rows, path: pathlib.Path) -> int:
-    """问答行 [(ts, q, a, kind, image, id), ...] → Anki 能直接导入的 CSV（正面=问题，背面=答案）。
+_WRONG_SOURCE_LABEL = {
+    "ask": "问答收藏", "quiz": "测验错题", "manual": "手动收录", "cet6": "六级断点",
+}
 
-    用 utf-8-sig：Excel 双击不乱码，Anki 也认。返回导出条数。
+
+def wrongbook_csv_text(items: list[dict]) -> str:
+    """错题条目 → Anki 可导入的 CSV 文本（不含 BOM，调用方决定）。
+
+    正面只放题目；背面把正确答案和解析拼起来，避免自测时被提示。
     """
-    count = 0
-    with open(path, "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.writer(f)
-        writer.writerow(["正面（问题）", "背面（答案）", "来源"])
-        for row in rows:
-            question = (row[1] or "").strip()
-            answer = (row[2] or "").strip()
-            if not question or not answer:
-                continue
-            writer.writerow([question, answer, str(row[0])[:16]])
-            count += 1
-    return count
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["正面（问题）", "背面（答案）", "我的作答", "来源", "知识点", "收录时间"])
+    for item in items:
+        question = str(item.get("question") or "").strip()
+        answer = str(item.get("answer") or "").strip()
+        note = str(item.get("note") or "").strip()
+        if not question:
+            continue
+        if note and note not in answer:
+            answer = (answer + "\n\n" + note).strip()
+        writer.writerow([
+            question, answer or "（还没有答案）",
+            str(item.get("my_answer") or "").strip(),
+            _WRONG_SOURCE_LABEL.get(str(item.get("source") or ""), "错题"),
+            str(item.get("tags") or "").strip(),
+            str(item.get("ts") or "")[:16],
+        ])
+    return out.getvalue()
+
+
+def export_wrongbook_csv(items: list[dict], path: pathlib.Path) -> int:
+    """写 utf-8-sig（Excel 双击不乱码，Anki 也认）；返回写入条数。"""
+    text = wrongbook_csv_text(items)
+    pathlib.Path(path).write_text("﻿" + text, encoding="utf-8")
+    # 用 csv 读回再数：答案里的换行在 CSV 里是同一行记录，不能按 splitlines 数。
+    rows = list(csv.reader(io.StringIO(text)))
+    return max(0, len(rows) - 1)
+
+
+def export_anki_csv(rows, path: pathlib.Path) -> int:
+    """旧调用壳：问答行 [(ts, q, a, kind, image, id), ...] → 统一错题 CSV。"""
+    items = [
+        {"question": row[1], "answer": row[2], "ts": row[0], "source": "ask"}
+        for row in rows
+    ]
+    return export_wrongbook_csv(items, path)
 
 
 # ---- 每日报告 / 测验 / 笔记导出 ----
@@ -166,8 +197,13 @@ def build_quiz_question(summary_lines: list[str], asks_preview: list[str],
     parts = [
         "以下是我今天学习的记录（窗口摘要 + 问过的问题 + 课堂转写）。",
         "请基于这些内容出 **5 道自测题** 考我，要求：",
-        "1. 只出题，先不要给答案；2. 题目从记录里的知识点来，别超纲；",
-        "3. 有简答也有选择；4. 我答一题你批一题，答错讲清楚错在哪。",
+        "1. 只出题，先不要给答案；**一次只出一题**，每道题以「【第N题】」开头；",
+        "2. 题目从记录里的知识点来，别超纲；",
+        "3. 有简答也有选择；4. 我答一题你批一题，批改以「【批改】」开头，答错讲清楚错在哪；",
+        "5. 只要我答错（含部分答错），先调用 save_wrongbook 工具："
+        "question=题目原文（别改写）、correct_answer=正确答案或关键解析、"
+        "my_answer=我的原话、tags=知识点；然后再批改、出下一题。"
+        "答对不要调用，同一题只调用一次。",
         "",
         "【窗口摘要】",
     ]

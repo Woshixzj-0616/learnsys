@@ -152,7 +152,7 @@ function renderStats(today) {
       label: "待复习",
       value: String(today.due_reviews ?? 0),
       unit: "条",
-      note: today.due_reviews ? "收藏后到期的问答" : "今天没有到期的",
+      note: today.due_reviews ? "错题本到复习期的题" : "今天没有到期的",
     },
   ];
   document.getElementById("today-stats").innerHTML = stats.map((stat) => `<div class="stat">

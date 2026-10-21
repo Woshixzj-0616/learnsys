@@ -76,8 +76,14 @@ class PluginApiTest(unittest.TestCase):
             cur = conn.execute("INSERT INTO sessions (started_at, ended_at) VALUES (?, ?)",
                                (start, stamp))
             sid = int(cur.lastrowid)
-            conn.execute("INSERT INTO asks (ts, question, answer, starred) VALUES (?, ?, ?, 1)",
-                         (stamp, "什么是子网掩码", "用来划分网络位和主机位"))
+            ask = conn.execute(
+                "INSERT INTO asks (ts, question, answer, starred) VALUES (?, ?, ?, 0)",
+                (stamp, "什么是子网掩码", "用来划分网络位和主机位"))
+            conn.execute(
+                "INSERT INTO wrong_items (ts, source, source_id, question, answer, auto) "
+                "VALUES (?, 'ask', ?, ?, ?, 0)",
+                (stamp, f"ask:{int(ask.lastrowid)}", "什么是子网掩码",
+                 "用来划分网络位和主机位"))
             conn.execute(
                 "INSERT INTO transcripts (session_id, ts_start, ts_end, text) VALUES (?, ?, ?, ?)",
                 (sid, start, stamp, "今天讲了子网划分"))

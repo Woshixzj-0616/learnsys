@@ -108,6 +108,9 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 attachment_name=req.attachment_name,
                 attachment_text=req.attachment_text,
                 mode=req.mode,
+                module=req.module,
+                conversation_id=conv_id,
+                conversation_key=str(conv_id),
             )
             for event in agent.run(request, cfg=cfg, abort=abort):
                 yield _sse(event.kind, event.text, event.data)

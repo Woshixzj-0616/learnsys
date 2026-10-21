@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime
 import pathlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from learnsys import config, store
 from learnsys.ask import study
@@ -70,11 +70,49 @@ TOOL_SCHEMAS = [
 ]
 
 
+SAVE_WRONGBOOK_SCHEMA = {
+    "name": "save_wrongbook",
+    "description": (
+        "把刚批改错的测验题收进错题本。只在用户答错或部分答错时调用；"
+        "同一道题只调用一次，答对不要调用。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "question": {"type": "string",
+                         "description": "完整题目原文，不要改写，不要带【第N题】前缀"},
+            "correct_answer": {"type": "string",
+                               "description": "正确答案；不确定可留空"},
+            "my_answer": {"type": "string",
+                          "description": "用户这题的作答原文"},
+            "tags": {"type": "string",
+                     "description": "知识点标签，逗号分隔"},
+        },
+        "required": ["question", "correct_answer", "my_answer"],
+    },
+}
+
+
+def schemas_for(mode: str = "explain", *, use_tools: bool = True):
+    """按模式给工具清单：错题本只写工具只在测验里暴露。"""
+    if not use_tools:
+        return None
+    schemas = list(TOOL_SCHEMAS)
+    if mode == "quiz":
+        schemas.append(SAVE_WRONGBOOK_SCHEMA)
+    return schemas
+
+
 @dataclass
 class ToolContext:
     data_root: pathlib.Path
     attachment_name: str = ""
     attachment_text: str = ""
+    db_path: pathlib.Path | None = None
+    conversation_id: int | None = None
+    conversation_key: str = ""
+    mode: str = ""
+    saved: set[str] = field(default_factory=set)
 
 
 def _one_line(text: str, cap: int = 300) -> str:
@@ -191,7 +229,7 @@ def today_summary(*, data_root: pathlib.Path | None = None) -> str:
         transcript_count, char_count = conn.execute(
             "SELECT COUNT(*), COALESCE(SUM(LENGTH(text)), 0) FROM transcripts "
             "WHERE ts_start LIKE ?", (f"{day_text}%",)).fetchone()
-        due = store.due_starred(conn, today)
+        due = store.wrong_due_items(conn, today)
     except Exception as exc:
         return f"统计今天的记录失败：{exc}"
     finally:
@@ -250,6 +288,38 @@ def ocr_image(path: str, *, ctx: ToolContext) -> str:
     return f"【OCR：{safe.name}】\n{text[:4000]}"
 
 
+def save_wrongbook(question: str, my_answer: str, correct_answer: str = "",
+                   tags: str = "", *, ctx: ToolContext) -> str:
+    """测验判错时把题收进错题本；同会话同题只收一次。"""
+    if ctx.mode != "quiz":
+        return "只有测验模式能自动收错题。"
+    question = str(question or "").strip()
+    my_answer = str(my_answer or "").strip()
+    if not question or not my_answer:
+        return "缺少题目或我的作答，没有保存。"
+    ref = str(ctx.conversation_id or ctx.conversation_key or "0")
+    fingerprint = store.wrong_fingerprint(question)
+    key = f"{ref}:{fingerprint}"
+    if key in ctx.saved:
+        return "这道题本轮已经收过了，不用重复收。"
+    conn = None
+    try:
+        conn = store.connect(ctx.db_path)
+        item_id, created = store.add_wrong_item(
+            conn, question=question, answer=correct_answer, my_answer=my_answer,
+            tags=tags, source="quiz", source_id=f"quiz:{ref}:{fingerprint}",
+            auto=True)
+    except Exception as exc:
+        return f"错题本保存失败：{exc}"
+    finally:
+        if conn is not None:
+            conn.close()
+    ctx.saved.add(key)
+    if created:
+        return f"已收进错题本（#{item_id}）。"
+    return f"这道题已经在错题本里（#{item_id}），没有重复添加。"
+
+
 def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str]:
     """执行工具，返回 (给模型看的内容, 给界面看的一句话摘要)。"""
     args = args if isinstance(args, dict) else {}
@@ -269,6 +339,20 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str]:
             return read_attachment(int(args.get("offset") or 0), ctx=ctx), "读了挂载文档"
         if name == "ocr_image":
             return ocr_image(str(args.get("path") or ""), ctx=ctx), "对截图做了 OCR"
+        if name == "save_wrongbook":
+            text = save_wrongbook(
+                str(args.get("question") or ""), str(args.get("my_answer") or ""),
+                str(args.get("correct_answer") or ""), str(args.get("tags") or ""),
+                ctx=ctx)
+            if text.startswith("已收进"):
+                preview = "已收进错题本"
+            elif text.startswith("这道题已经"):
+                preview = "错题已在错题本"
+            elif "失败" in text:
+                preview = "错题本保存失败"
+            else:
+                preview = "没有收进错题本"
+            return text, preview
     except Exception as exc:
         return f"工具执行失败：{exc}", "工具失败"
     return f"没有这个工具：{name}", "未知工具"
