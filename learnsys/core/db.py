@@ -63,7 +63,6 @@ CREATE TABLE IF NOT EXISTS asks (
     model          TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_asks_ts ON asks (ts);
-CREATE INDEX IF NOT EXISTS idx_asks_conversation ON asks (conversation_id);
 CREATE TABLE IF NOT EXISTS frame_text (
     path TEXT PRIMARY KEY,
     ts   TEXT NOT NULL,
@@ -154,7 +153,8 @@ CREATE TABLE IF NOT EXISTS wrong_items (
     auto         INTEGER NOT NULL DEFAULT 0,
     review_stage INTEGER NOT NULL DEFAULT 0,
     last_review  TEXT NOT NULL DEFAULT '',
-    mastered     INTEGER NOT NULL DEFAULT 0
+    mastered     INTEGER NOT NULL DEFAULT 0,
+    material_id  INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_wrong_ts ON wrong_items (ts);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_wrong_source
@@ -209,6 +209,16 @@ def _migrate_columns(conn: sqlite3.Connection) -> None:
     ):
         if column not in have:
             conn.execute(f"ALTER TABLE asks ADD COLUMN {column} {ddl}")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_asks_conversation ON asks (conversation_id)")
+    wrong_cols = {row[1] for row in conn.execute(
+        "PRAGMA table_info(wrong_items)").fetchall()}
+    if wrong_cols and "material_id" not in wrong_cols:
+        conn.execute(
+            "ALTER TABLE wrong_items ADD COLUMN material_id INTEGER NOT NULL DEFAULT 0")
+    if wrong_cols:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_wrong_material ON wrong_items (material_id)")
     conn.commit()
 
 

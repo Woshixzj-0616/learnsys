@@ -29,6 +29,7 @@ class ChatRequest(BaseModel):
     attachment_name: str = ""
     attachment_text: str = ""
     material_id: int | None = None   # 从资料库挂载：正文由后端按 id 取，前端不搬几十万字
+    attach_material: bool = True     # False = 只给错题归档用，不把正文塞进这一轮
     module: str = "ask"          # ask / review / quiz ...（会话分组用，不进入时间线标题）
     internal: bool = False       # 插件内部提示词：保留会话上下文，但不记成一条「问答」
 
@@ -90,14 +91,15 @@ def chat(req: ChatRequest, _=Depends(require_token)):
         if material_id:
             material = store.get_material(conn, material_id)
             if material is not None and material.get("status") == "active":
-                attachment_name = material["title"]
-                attachment_text = material["body"]
                 material_title = material["title"]
-                store.touch_material(conn, material_id)
-                if new_conv and not req.internal:
-                    store.add_event(conn, "materials", "ask", material_title,
-                                    {"material_id": material_id,
-                                     "conversation_id": conv_id})
+                if req.attach_material:
+                    attachment_name = material["title"]
+                    attachment_text = material["body"]
+                    store.touch_material(conn, material_id)
+                    if new_conv and not req.internal:
+                        store.add_event(conn, "materials", "ask", material_title,
+                                        {"material_id": material_id,
+                                         "conversation_id": conv_id})
             else:
                 material_id = None
         store.add_message(conn, conv_id, "user",
@@ -131,6 +133,7 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 module=req.module,
                 conversation_id=conv_id,
                 conversation_key=str(conv_id),
+                material_id=material_id or 0,
             )
             for event in agent.run(request, cfg=cfg, abort=abort):
                 yield _sse(event.kind, event.text, event.data)

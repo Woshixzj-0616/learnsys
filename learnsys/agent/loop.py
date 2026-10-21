@@ -37,6 +37,7 @@ class AgentRequest:
     use_tools: bool = True          # 纯生成任务别让它去查记录
     conversation_id: int | None = None   # 测验自动收题的去重键要用
     conversation_key: str = ""           # 快捷栏一轮对话的稳定 key
+    material_id: int = 0                 # 从资料出题时，错题按资料归档
 
 
 @dataclass
@@ -86,6 +87,7 @@ def _tool_context(request: AgentRequest, cfg: AgentConfig) -> tools.ToolContext:
         conversation_id=request.conversation_id,
         conversation_key=request.conversation_key,
         mode=request.mode,
+        material_id=request.material_id,
     )
 
 

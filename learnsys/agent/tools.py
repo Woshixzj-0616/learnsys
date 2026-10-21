@@ -144,6 +144,7 @@ class ToolContext:
     conversation_id: int | None = None
     conversation_key: str = ""
     mode: str = ""
+    material_id: int = 0          # 从资料出题时带上，错题按资料归档
     saved: set[str] = field(default_factory=set)
 
 
@@ -391,7 +392,7 @@ def save_wrongbook(question: str, my_answer: str, correct_answer: str = "",
         item_id, created = store.add_wrong_item(
             conn, question=question, answer=correct_answer, my_answer=my_answer,
             tags=tags, source="quiz", source_id=f"quiz:{ref}:{fingerprint}",
-            auto=True)
+            auto=True, material_id=ctx.material_id)
     except Exception as exc:
         return f"错题本保存失败：{exc}"
     finally:

@@ -129,7 +129,8 @@ def wrongbook_csv_text(items: list[dict]) -> str:
     """
     out = io.StringIO()
     writer = csv.writer(out)
-    writer.writerow(["正面（问题）", "背面（答案）", "我的作答", "来源", "知识点", "收录时间"])
+    writer.writerow(["正面（问题）", "背面（答案）", "我的作答", "来源",
+                     "资料", "知识点", "收录时间"])
     for item in items:
         question = str(item.get("question") or "").strip()
         answer = str(item.get("answer") or "").strip()
@@ -142,6 +143,7 @@ def wrongbook_csv_text(items: list[dict]) -> str:
             question, answer or "（还没有答案）",
             str(item.get("my_answer") or "").strip(),
             _WRONG_SOURCE_LABEL.get(str(item.get("source") or ""), "错题"),
+            str(item.get("material_title") or "").strip(),
             str(item.get("tags") or "").strip(),
             str(item.get("ts") or "")[:16],
         ])

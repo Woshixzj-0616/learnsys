@@ -6,7 +6,7 @@
   "entry": "pages/wrongbook.html",
   "order": 60,
   "status": "ready",
-  "version": "2.1.0",
+  "version": "2.4.0",
   "category": "回顾",
   "home": true,
   "tagline": "收藏、复习、导出 Anki",

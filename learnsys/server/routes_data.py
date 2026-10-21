@@ -414,6 +414,7 @@ def search(q: str = "", limit: int = 20, _=Depends(require_token)):
 class WrongAddIn(BaseModel):
     source: str = "manual"          # quiz / manual
     conversation_id: int | None = None
+    material_id: int = 0
     question: str = Field(min_length=1, max_length=4000)
     answer: str = Field(default="", max_length=8000)
     my_answer: str = Field(default="", max_length=4000)
@@ -431,12 +432,14 @@ class WrongMasterIn(BaseModel):
 
 @router.get("/api/wrongbook")
 def wrongbook(status: str = "all", source: str = "", limit: int = 200,
-              _=Depends(require_token)):
+              material_id: int = 0, _=Depends(require_token)):
     conn = _conn()
     try:
         return {
-            "items": store.wrong_items(conn, status=status, source=source, limit=limit),
+            "items": store.wrong_items(conn, status=status, source=source,
+                                       limit=limit, material_id=material_id),
             "counts": store.wrong_counts(conn),
+            "materials": store.wrong_material_facets(conn),
         }
     finally:
         conn.close()
@@ -456,7 +459,8 @@ def add_wrongbook(req: WrongAddIn, _=Depends(require_token)):
             source_id = f"manual:{store.wrong_fingerprint(question)}"
         item_id, created = store.add_wrong_item(
             conn, question=question, answer=req.answer, my_answer=req.my_answer,
-            tags=req.tags, note=req.note, source=source, source_id=source_id)
+            tags=req.tags, note=req.note, source=source, source_id=source_id,
+            material_id=req.material_id)
         return {"ok": True, "id": item_id, "created": created,
                 "item": store.get_wrong_item(conn, item_id)}
     except ValueError as exc:

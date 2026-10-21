@@ -133,6 +133,9 @@ async def upload_material(request: Request, name: str = "", course: str = "",
             stored.unlink(missing_ok=True)      # 同一份文件：保留已有原文
         item = store.get_material(conn, item_id, with_body=False)
         return {"ok": True, "created": created, "item": item}
+    except Exception:
+        stored.unlink(missing_ok=True)          # 入库失败不留孤儿原文
+        raise
     finally:
         conn.close()
 

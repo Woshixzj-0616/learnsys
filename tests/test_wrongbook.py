@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import pathlib
+import sqlite3
 import tempfile
 import unittest
 from unittest import mock
@@ -106,6 +107,33 @@ class TestWrongbookStore(unittest.TestCase):
         expected = (_today() + datetime.timedelta(days=1)).isoformat()
         self.assertEqual(item["next_review"], expected)
 
+    def test_material_id_and_facets(self):
+        material_id, _ = store.add_material(
+            self.conn, title="子网课件", kind="pdf", source="upload", body="正文")
+        item_id, _ = store.add_wrong_item(
+            self.conn, question="/27 可用主机", source="quiz",
+            source_id="quiz:1:x", material_id=material_id)
+        item = store.get_wrong_item(self.conn, item_id)
+        self.assertEqual(item["material_id"], material_id)
+        self.assertEqual(item["material_title"], "子网课件")
+        self.assertEqual(store.wrong_material_facets(self.conn),
+                         [{"material_id": material_id, "title": "子网课件", "count": 1}])
+        self.assertEqual(len(store.wrong_items(self.conn, material_id=material_id)), 1)
+        self.assertEqual(len(store.wrong_items(self.conn, material_id=999)), 0)
+
+    def test_old_wrong_table_gets_material_column(self):
+        old = sqlite3.connect(":memory:")
+        old.execute("CREATE TABLE asks (id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, "
+                    "question TEXT, answer TEXT, ms INTEGER, backend TEXT)")
+        old.execute("CREATE TABLE wrong_items (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    "ts TEXT, question TEXT, answer TEXT)")
+        old.commit()
+        core_db._migrate_columns(old)
+        cols = {row[1] for row in old.execute(
+            "PRAGMA table_info(wrong_items)").fetchall()}
+        self.assertIn("material_id", cols)
+        old.close()
+
     def test_master_and_delete(self):
         item_id, _ = store.add_wrong_item(self.conn, question="VLAN")
         self.assertTrue(store.set_wrong_mastered(self.conn, item_id, True))
@@ -151,6 +179,7 @@ class TestWrongbookCsv(unittest.TestCase):
             "question": "什么是 /27 的可用主机数", "answer": "30 个",
             "my_answer": "32 个", "note": "去掉网络地址和广播地址",
             "source": "quiz", "tags": "子网", "ts": "2026-10-20 10:00:00",
+            "material_title": "子网课件.pdf",
         }]
         with tempfile.TemporaryDirectory() as tmp:
             path = pathlib.Path(tmp) / "错题本.csv"
@@ -163,6 +192,7 @@ class TestWrongbookCsv(unittest.TestCase):
         self.assertIn("30 个", text)
         self.assertIn("去掉网络地址和广播地址", text)
         self.assertIn("测验错题", text)
+        self.assertIn("子网课件.pdf", text)
 
 
 class WrongbookApiTest(unittest.TestCase):
@@ -230,6 +260,26 @@ class WrongbookApiTest(unittest.TestCase):
         self.assertEqual(deleted.status_code, 200)
         self.assertEqual(self.client.get("/api/wrongbook", headers=AUTH)
                          .json()["items"], [])
+
+    def test_material_filter_and_facets(self):
+        conn = self._conn()
+        try:
+            material_id, _ = store.add_material(
+                conn, title="资料出题验收.md", kind="md", source="upload", body="正文")
+        finally:
+            conn.close()
+        added = self.client.post("/api/wrongbook", headers=AUTH, json={
+            "source": "quiz", "conversation_id": 3, "question": "/27 掩码是多少",
+            "answer": "224", "material_id": material_id,
+        }).json()
+        self.assertEqual(added["item"]["material_id"], material_id)
+        self.assertEqual(added["item"]["material_title"], "资料出题验收.md")
+
+        filtered = self.client.get(
+            f"/api/wrongbook?status=all&material_id={material_id}", headers=AUTH).json()
+        self.assertEqual(len(filtered["items"]), 1)
+        self.assertEqual(filtered["materials"][0]["title"], "资料出题验收.md")
+        self.assertEqual(filtered["materials"][0]["count"], 1)
 
     def test_toggle_ask_adds_to_wrongbook(self):
         conn = self._conn()
@@ -302,7 +352,7 @@ class TestWrongbookTool(unittest.TestCase):
     def test_save_and_dedupe(self):
         ctx = tools.ToolContext(
             data_root=pathlib.Path(self.tmp.name), db_path=self.db_path,
-            mode="quiz", conversation_id=7)
+            mode="quiz", conversation_id=7, material_id=42)
         text = tools.save_wrongbook(
             "【第1题】/27 有多少可用主机？", "32", "30", "子网", ctx=ctx)
         self.assertIn("已收进错题本", text)
@@ -311,7 +361,9 @@ class TestWrongbookTool(unittest.TestCase):
         self.assertIn("已经收过", again)
         conn = store.connect(self.db_path)
         try:
-            self.assertEqual(len(store.wrong_items(conn)), 1)
+            items = store.wrong_items(conn)
+            self.assertEqual(len(items), 1)
+            self.assertEqual(items[0]["material_id"], 42, "测验错题要带资料 id")
         finally:
             conn.close()
 

@@ -258,7 +258,7 @@ WRONG_SOURCES = ("ask", "quiz", "cet6", "manual")
 
 _WRONG_COLUMNS = (
     "id, ts, source, source_id, question, answer, my_answer, tags, note, "
-    "auto, review_stage, last_review, mastered"
+    "auto, review_stage, last_review, mastered, material_id"
 )
 
 
@@ -299,6 +299,7 @@ def _wrong_dict(row) -> dict:
         "my_answer": row[6] or "", "tags": row[7] or "", "note": row[8] or "",
         "auto": bool(row[9]), "review_stage": int(row[10] or 0),
         "last_review": row[11] or "", "mastered": bool(row[12]),
+        "material_id": int(row[13] or 0), "material_title": "",
     }
     item["next_review"] = _next_review(item["ts"], item["last_review"],
                                        item["review_stage"])
@@ -308,7 +309,7 @@ def _wrong_dict(row) -> dict:
 def add_wrong_item(conn: sqlite3.Connection, *, question: str, answer: str = "",
                    my_answer: str = "", tags: str = "", note: str = "",
                    source: str = "manual", source_id: str | None = None,
-                   auto: bool = False) -> tuple[int, bool]:
+                   auto: bool = False, material_id: int = 0) -> tuple[int, bool]:
     """收一道错题；返回 (id, 是否新建)。同 source+source_id 只留第一条。"""
     question = str(question or "").strip()
     if not question:
@@ -318,11 +319,11 @@ def add_wrong_item(conn: sqlite3.Connection, *, question: str, answer: str = "",
     with _LOCK:
         cur = conn.execute(
             "INSERT OR IGNORE INTO wrong_items "
-            "(ts, source, source_id, question, answer, my_answer, tags, note, auto) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "(ts, source, source_id, question, answer, my_answer, tags, note, "
+            "auto, material_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (now(), source, source_id, question, str(answer or ""),
              str(my_answer or ""), str(tags or ""), str(note or ""),
-             1 if auto else 0))
+             1 if auto else 0, int(material_id or 0)))
         created = cur.rowcount > 0
         item_id = int(cur.lastrowid or 0) if created else 0
         if not created and source_id:
@@ -364,16 +365,35 @@ def toggle_star(conn: sqlite3.Connection, ask_id: int) -> bool:
     return toggle_ask_wrong(conn, ask_id)
 
 
+def _attach_material_titles(conn: sqlite3.Connection, items: list[dict]) -> list[dict]:
+    ids = sorted({int(item.get("material_id") or 0) for item in items} - {0})
+    if not ids:
+        return items
+    marks = ",".join("?" for _ in ids)
+    try:
+        rows = conn.execute(
+            f"SELECT id, title FROM materials WHERE id IN ({marks})", ids).fetchall()
+    except sqlite3.Error:
+        return items
+    titles = {int(row[0]): row[1] or "" for row in rows}
+    for item in items:
+        item["material_title"] = titles.get(int(item.get("material_id") or 0), "")
+    return items
+
+
 def get_wrong_item(conn: sqlite3.Connection, item_id: int) -> dict | None:
     with _LOCK:
         row = conn.execute(
             f"SELECT {_WRONG_COLUMNS} FROM wrong_items WHERE id = ?",
             (int(item_id),)).fetchone()
-    return _wrong_dict(row) if row else None
+    if row is None:
+        return None
+    return _attach_material_titles(conn, [_wrong_dict(row)])[0]
 
 
 def wrong_items(conn: sqlite3.Connection, *, status: str = "all",
-                source: str = "", limit: int = 200, today=None) -> list[dict]:
+                source: str = "", limit: int = 200, today=None,
+                material_id: int = 0) -> list[dict]:
     """错题列表。status：due 待复习 / mastered 已掌握 / all 全部（含已掌握）。"""
     with _LOCK:
         rows = conn.execute(
@@ -383,6 +403,9 @@ def wrong_items(conn: sqlite3.Connection, *, status: str = "all",
     items = [_wrong_dict(row) for row in rows]
     if source in WRONG_SOURCES:
         items = [item for item in items if item["source"] == source]
+    if material_id:
+        items = [item for item in items
+                 if int(item.get("material_id") or 0) == int(material_id)]
     if status == "due":
         items = [item for item in items
                  if not item["mastered"] and item["next_review"]
@@ -391,7 +414,19 @@ def wrong_items(conn: sqlite3.Connection, *, status: str = "all",
     elif status == "mastered":
         items = [item for item in items if item["mastered"]]
     limit = max(1, min(int(limit or 200), 1000))
-    return items[:limit]
+    return _attach_material_titles(conn, items[:limit])
+
+
+def wrong_material_facets(conn: sqlite3.Connection) -> list[dict]:
+    """错题本里有题的资料，用于「按资料筛选」。"""
+    with _LOCK:
+        rows = conn.execute(
+            "SELECT w.material_id, COALESCE(m.title, ''), COUNT(*) "
+            "FROM wrong_items w LEFT JOIN materials m ON m.id = w.material_id "
+            "WHERE w.material_id > 0 GROUP BY w.material_id "
+            "ORDER BY COUNT(*) DESC, w.material_id DESC").fetchall()
+    return [{"material_id": int(row[0]), "title": row[1] or "资料",
+             "count": int(row[2] or 0)} for row in rows]
 
 
 def wrong_due_items(conn: sqlite3.Connection, today=None) -> list[dict]:

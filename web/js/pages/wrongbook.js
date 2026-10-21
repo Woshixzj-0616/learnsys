@@ -8,8 +8,10 @@ const STAGE_TEXT = ["还没复习", "复习过 1 轮", "复习过 2 轮", "练�
 
 let status = "due";
 let source = "";
+let materialFilter = 0;
 let items = [];
 let counts = { all: 0, due: 0, mastered: 0 };
+let materialFacets = [];
 let nodes = {};
 
 export async function mount(ctx) {
@@ -20,6 +22,7 @@ export async function mount(ctx) {
     stats: ctx.root.querySelector("#wrong-stats"),
     tabs: Array.from(ctx.root.querySelectorAll(".wrong-tab")),
     source: ctx.root.querySelector("#wrong-source"),
+    material: ctx.root.querySelector("#wrong-material"),
     export: ctx.root.querySelector("#wrong-export"),
   };
   nodes.tabs.forEach((tab) => tab.addEventListener("click", () => {
@@ -31,6 +34,10 @@ export async function mount(ctx) {
     source = nodes.source.value;
     load();
   });
+  nodes.material.addEventListener("change", () => {
+    materialFilter = Number(nodes.material.value || 0);
+    load();
+  });
   nodes.export.addEventListener("click", exportCsv);
   nodes.list.addEventListener("click", onListClick);
   await load();
@@ -39,10 +46,13 @@ export async function mount(ctx) {
 async function load() {
   try {
     const query = new URLSearchParams({ status, source, limit: "500" });
+    if (materialFilter) query.set("material_id", String(materialFilter));
     const data = await api.get(`/api/wrongbook?${query}`);
     items = Array.isArray(data.items) ? data.items : [];
     counts = data.counts || counts;
+    materialFacets = Array.isArray(data.materials) ? data.materials : [];
     renderStats();
+    renderMaterials();
     renderList();
   } catch (error) {
     nodes.list.innerHTML = `<div class="empty"><strong>错题本没读出来</strong>
@@ -60,6 +70,18 @@ function renderStats() {
       <span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong>
     </div>
   `).join("");
+}
+
+function renderMaterials() {
+  const options = ['<option value="0">全部资料</option>'];
+  for (const facet of materialFacets) {
+    options.push(`<option value="${facet.material_id}">${escapeHtml(facet.title)}（${facet.count}）</option>`);
+  }
+  nodes.material.innerHTML = options.join("");
+  if (materialFilter && !materialFacets.some((one) => one.material_id === materialFilter)) {
+    materialFilter = 0;
+  }
+  nodes.material.value = String(materialFilter || 0);
 }
 
 function dayOf(stamp) {
@@ -124,6 +146,7 @@ function renderList() {
             <pre class="wrong-mine">${escapeHtml(item.my_answer)}</pre>
           </div>` : ""}
           <div class="wrong-meta">
+            ${item.material_title ? `<span>资料：${escapeHtml(item.material_title)}</span>` : ""}
             ${item.tags ? `<span>知识点：${escapeHtml(item.tags)}</span>` : ""}
             <span>${escapeHtml(stage)}${next ? ` · ${escapeHtml(next)}` : ""}</span>
           </div>

@@ -380,6 +380,7 @@ class TestMaterialPlugin(unittest.TestCase):
         self.assertIn("quiz?material=", materials)
         self.assertIn("/quiz-prompt", quiz)
         self.assertIn("material_id", quiz)
+        self.assertIn("attach_material: false", quiz)
 
 
 if __name__ == "__main__":

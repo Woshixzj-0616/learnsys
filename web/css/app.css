@@ -1924,3 +1924,4 @@
   .materials-layout { grid-template-columns: minmax(0, 1fr); }
   .mat-body-reader { max-height: none; }
 }
+.wrongbook-filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

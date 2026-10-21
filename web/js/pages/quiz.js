@@ -227,6 +227,7 @@ function attachWrongbookAction(block, payload, autoSaved) {
         answer: payload.answer,
         my_answer: payload.user_answer,
         tags: "测验",
+        material_id: materialId || 0,
       });
       button.textContent = "已收进错题本";
       note.textContent = data?.created ? "已收进错题本" : "这道题已经在错题本里";
@@ -260,6 +261,8 @@ async function runTurn(message, options = {}) {
       mode: "quiz",
       module: "quiz",
       internal: true,
+      material_id: materialId || null,
+      attach_material: false,      // 只给错题归档用，不重复塞资料正文
     }, (event) => {
       if (event.kind === "start") {
         const id = Number(event.data?.conversation_id || 0);

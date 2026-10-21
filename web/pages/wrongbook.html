@@ -22,15 +22,23 @@
         <button class="btn wrong-tab" type="button" data-status="all">全部</button>
         <button class="btn wrong-tab" type="button" data-status="mastered">已掌握</button>
       </div>
-      <label class="wrongbook-source">
-        <span class="hint">来源</span>
-        <select id="wrong-source">
-          <option value="">全部</option>
-          <option value="ask">问答收藏</option>
-          <option value="quiz">测验错题</option>
-          <option value="manual">手动收录</option>
-        </select>
-      </label>
+      <div class="wrongbook-filters">
+        <label class="wrongbook-source">
+          <span class="hint">来源</span>
+          <select id="wrong-source">
+            <option value="">全部</option>
+            <option value="ask">问答收藏</option>
+            <option value="quiz">测验错题</option>
+            <option value="manual">手动收录</option>
+          </select>
+        </label>
+        <label class="wrongbook-source">
+          <span class="hint">资料</span>
+          <select id="wrong-material">
+            <option value="0">全部资料</option>
+          </select>
+        </label>
+      </div>
     </div>
     <div class="panel-body">
       <div class="wrongbook-list" id="wrong-list">
