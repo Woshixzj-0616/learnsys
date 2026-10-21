@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS asks (
     question       TEXT NOT NULL,
     answer         TEXT NOT NULL,
     ms             INTEGER,
+    first_ms       INTEGER,
     backend        TEXT,
     kind           TEXT,
     image_path     TEXT,
@@ -267,6 +268,7 @@ def _migrate_columns(conn: sqlite3.Connection) -> None:
         ("conversation_id", "INTEGER"),
         ("provider", "TEXT"),
         ("model", "TEXT"),
+        ("first_ms", "INTEGER"),
     ):
         if column not in have:
             conn.execute(f"ALTER TABLE asks ADD COLUMN {column} {ddl}")

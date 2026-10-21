@@ -139,6 +139,7 @@ def chat(req: ChatRequest, _=Depends(require_token)):
         final = ""
         error = ""
         thinking = ""
+        first_ms = None          # 首个可见片段（思考或正文）到达的耗时，闸门要量「首 token」
         try:
             yield _sse("start", data={"conversation_id": conv_id, "model": cfg.model})
             request = agent.AgentRequest(
@@ -157,6 +158,8 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 material_id=material_id or 0,
             )
             for event in agent.run(request, cfg=cfg, abort=abort):
+                if first_ms is None and event.kind in ("text", "thinking"):
+                    first_ms = int((time.monotonic() - started) * 1000)
                 yield _sse(event.kind, event.text, event.data)
                 if event.kind == "done":
                     final = str(event.data.get("text") or "")
@@ -179,7 +182,7 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                             conn, req.message, final, ms, cfg.model or "agent",
                             kind="image" if req.image_path else "text",
                             image_path=req.image_path or "", thread=str(conv_id),
-                            conversation_id=conv_id)
+                            conversation_id=conv_id, first_ms=first_ms)
                 elif error:
                     store.add_message(conn, conv_id, "assistant", {"error": error})
             except Exception:

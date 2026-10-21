@@ -201,7 +201,8 @@ def window_titles(conn: sqlite3.Connection, ts_from: str = "", ts_to: str = "", 
 
 def add_ask(conn: sqlite3.Connection, question: str, answer: str, ms: int, backend: str,
             kind: str = "text", image_path: str = "", thread: str = "",
-            starred: bool = False, conversation_id: int | None = None) -> int:
+            starred: bool = False, conversation_id: int | None = None,
+            first_ms: int | None = None) -> int:
     """记一次问答，返回这条的 id（收藏要用）。kind='image' 带框选图 | 'text' 纯文字；thread 分组同轮对话。
 
     `starred=True` 直接收进统一错题本 —— `asks.starred` 是 v1 历史列，不再写 1。
@@ -210,10 +211,12 @@ def add_ask(conn: sqlite3.Connection, question: str, answer: str, ms: int, backe
     stamp = now()
     with _LOCK:
         cur = conn.execute(
-            "INSERT INTO asks (ts, question, answer, ms, backend, kind, image_path, thread, "
-            "starred, provider, model, conversation_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
-            (stamp, question, answer, ms, backend, kind, image_path or "", thread or "",
+            "INSERT INTO asks (ts, question, answer, ms, first_ms, backend, kind, "
+            "image_path, thread, starred, provider, model, conversation_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+            (stamp, question, answer, ms,
+             None if first_ms is None else int(first_ms),
+             backend, kind, image_path or "", thread or "",
              backend, backend, conversation_id),
         )
         row_id = int(cur.lastrowid or 0)
