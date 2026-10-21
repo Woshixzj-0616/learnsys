@@ -93,6 +93,25 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
 
     index = web_dir() / "index.html"
 
+    @app.get("/manifest.webmanifest", include_in_schema=False)
+    def manifest():
+        """PWA 清单：显式 MIME，StaticFiles 对 .webmanifest 不一定认得。"""
+        path = web_dir() / "manifest.webmanifest"
+        if not path.exists():
+            return Response(status_code=204)
+        return FileResponse(path, media_type="application/manifest+json",
+                            headers={"Cache-Control": "no-store"})
+
+    @app.get("/sw.js", include_in_schema=False)
+    def service_worker():
+        """Service Worker 放根路径，作用域才是整个学习台（/web/sw.js 只能管 /web）。"""
+        path = web_dir() / "sw.js"
+        if not path.exists():
+            return Response(status_code=204)
+        return FileResponse(path, media_type="application/javascript",
+                            headers={"Service-Worker-Allowed": "/",
+                                     "Cache-Control": "no-store"})
+
     @app.get("/", response_class=HTMLResponse)
     def root():
         """Web 工作台；`web/` 还没放进来时退回一个能点的占位页。"""

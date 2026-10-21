@@ -203,5 +203,49 @@ function bindQuickbarTools() {
     "click", () => callQuickbar("pick"));
 }
 
+// ---- PWA：安装成独立窗口 + 离线壳 ----
+let installPrompt = null;
+
+function bindPwa() {
+  const button = document.getElementById("ui-install");
+  const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches
+    || window.navigator.standalone === true;
+  if (standalone) {
+    if (button) button.hidden = true;
+  }
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();          // 先拦住浏览器自带的小横幅，改由侧栏按钮触发
+    installPrompt = event;
+    if (button) button.hidden = false;
+  });
+
+  button?.addEventListener("click", async () => {
+    if (!installPrompt) {
+      toast("当前浏览器没有给出安装入口：用 Edge/Chrome 打开，地址栏右侧的「安装」图标可装。", "err");
+      return;
+    }
+    installPrompt.prompt();
+    try {
+      const choice = await installPrompt.userChoice;
+      if (choice?.outcome === "accepted") toast("已安装 —— 下次从开始菜单直接打开学习台", "ok");
+    } catch { /* 用户取消不算错误 */ }
+    installPrompt = null;
+    button.hidden = true;
+  });
+
+  window.addEventListener("appinstalled", () => {
+    installPrompt = null;
+    if (button) button.hidden = true;
+    toast("学习台已安装", "ok");
+  });
+
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    navigator.serviceWorker.register("/sw.js", { scope: "/" })
+      .catch((error) => console.warn("Service Worker 没注册上（不影响在线使用）：", error));
+  }
+}
+
 bindQuickbarTools();
+bindPwa();
 boot();

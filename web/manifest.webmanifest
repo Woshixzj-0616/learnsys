@@ -1,0 +1,48 @@
+{
+  "id": "/",
+  "name": "学习系统",
+  "short_name": "学习系统",
+  "description": "本地优先的学习舞台：问一问、网工训练场、六级精听都是插件。",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#1b1e23",
+  "theme_color": "#1b1e23",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/web/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/web/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/web/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "问一问",
+      "short_name": "问一问",
+      "url": "/#/ask",
+      "icons": [{"src": "/web/icons/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "网工训练场",
+      "short_name": "训练场",
+      "url": "/#/netlab",
+      "icons": [{"src": "/web/icons/icon-192.png", "sizes": "192x192"}]
+    }
+  ]
+}
