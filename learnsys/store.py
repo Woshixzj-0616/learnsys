@@ -391,7 +391,31 @@ def get_wrong_item(conn: sqlite3.Connection, item_id: int) -> dict | None:
             (int(item_id),)).fetchone()
     if row is None:
         return None
-    return _attach_material_titles(conn, [_wrong_dict(row)])[0]
+    item = _attach_review_states(conn, [_wrong_dict(row)])[0]
+    return _attach_material_titles(conn, [item])[0]
+
+
+def _attach_review_states(conn: sqlite3.Connection, items: list[dict]) -> list[dict]:
+    """把 FSRS 状态贴到错题上；没有状态的保留旧 1/3/7 的回退值。"""
+    if not items:
+        return items
+    ids = [item["id"] for item in items]
+    placeholders = ",".join("?" * len(ids))
+    with _LOCK:
+        state_rows = conn.execute(
+            "SELECT item_id, due, state, reps, lapses, scheduled_days "
+            "FROM review_state WHERE item_type = 'wrong' "
+            f"AND item_id IN ({placeholders})", ids).fetchall()
+    states = {int(row[0]): row for row in state_rows}
+    for item in items:
+        state = states.get(item["id"])
+        if state:
+            item["next_review"] = state[1] or item["next_review"]
+            item["review_state"] = state[2] or "new"
+            item["review_reps"] = int(state[3] or 0)
+            item["review_lapses"] = int(state[4] or 0)
+            item["scheduled_days"] = int(state[5] or 0)
+    return items
 
 
 def wrong_items(conn: sqlite3.Connection, *, status: str = "all",
@@ -403,7 +427,7 @@ def wrong_items(conn: sqlite3.Connection, *, status: str = "all",
             f"SELECT {_WRONG_COLUMNS} FROM wrong_items ORDER BY ts DESC, id DESC"
         ).fetchall()
     today = str(today or dt.date.today().isoformat())[:10]
-    items = [_wrong_dict(row) for row in rows]
+    items = _attach_review_states(conn, [_wrong_dict(row) for row in rows])
     if source in WRONG_SOURCES:
         items = [item for item in items if item["source"] == source]
     if material_id:
@@ -449,33 +473,19 @@ def wrong_counts(conn: sqlite3.Connection, today=None) -> dict:
 
 
 def review_wrong_item(conn: sqlite3.Connection, item_id: int, result: str) -> dict | None:
-    """复习一次：remember 推进 1/3/7；forgot 打回明天重来。"""
-    with _LOCK:
-        row = conn.execute(
-            f"SELECT {_WRONG_COLUMNS} FROM wrong_items WHERE id = ?",
-            (int(item_id),)).fetchone()
-        if row is None:
-            return None
-        item = _wrong_dict(row)
-        stage = item["review_stage"]
-        if result == "forgot":
-            stage, mastered = 0, 0
-        else:
-            stage = min(stage + 1, len(REVIEW_INTERVALS))
-            mastered = 1 if stage >= len(REVIEW_INTERVALS) else item["mastered"]
-        conn.execute(
-            "UPDATE wrong_items SET review_stage = ?, last_review = ?, mastered = ? "
-            "WHERE id = ?",
-            (stage, dt.date.today().isoformat(), mastered, int(item_id)))
-        conn.commit()
-        row = conn.execute(
-            f"SELECT {_WRONG_COLUMNS} FROM wrong_items WHERE id = ?",
-            (int(item_id),)).fetchone()
-    return _wrong_dict(row) if row else None
+    """兼容旧调用：remember → FSRS 评分 3，forgot → 评分 1。"""
+    from learnsys.services import review as review_service
+
+    rating = 1 if str(result or "").strip().lower() == "forgot" else 3
+    try:
+        review_service.review(conn, "wrong", int(item_id), rating)
+    except LookupError:
+        return None
+    return get_wrong_item(conn, int(item_id))
 
 
 def set_wrong_mastered(conn: sqlite3.Connection, item_id: int, mastered: bool) -> bool:
-    """手动标记 / 取消掌握。取消后从明天重新复习，别卡在 7 天后的空档。"""
+    """手动标记 / 取消掌握。取消后回到「新卡」，今天就能重新复习。"""
     with _LOCK:
         row = conn.execute(
             "SELECT review_stage FROM wrong_items WHERE id = ?",
@@ -485,18 +495,25 @@ def set_wrong_mastered(conn: sqlite3.Connection, item_id: int, mastered: bool) -
         if mastered:
             conn.execute("UPDATE wrong_items SET mastered = 1 WHERE id = ?",
                          (int(item_id),))
-        else:
-            conn.execute(
-                "UPDATE wrong_items SET mastered = 0, review_stage = 0, last_review = ? "
-                "WHERE id = ?",
-                (dt.date.today().isoformat(), int(item_id)))
+            conn.commit()
+            return True
+        conn.execute(
+            "UPDATE wrong_items SET mastered = 0, review_stage = 0, last_review = ? "
+            "WHERE id = ?", (dt.date.today().isoformat(), int(item_id)))
         conn.commit()
-        return True
+    save_review_state(
+        conn, "wrong", int(item_id), state="new",
+        due=dt.date.today().isoformat(), stability=1.0, difficulty=5.0,
+        reps=0, lapses=0, last_review="", scheduled_days=0, elapsed_days=0)
+    return True
 
 
 def delete_wrong_item(conn: sqlite3.Connection, item_id: int) -> bool:
     with _LOCK:
         cur = conn.execute("DELETE FROM wrong_items WHERE id = ?", (int(item_id),))
+        conn.execute(
+            "DELETE FROM review_state WHERE item_type = 'wrong' AND item_id = ?",
+            (int(item_id),))
         conn.commit()
         return bool(cur.rowcount)
 
@@ -583,7 +600,7 @@ def due_starred(conn: sqlite3.Connection, today) -> list[int]:
 
 
 def bump_review_stage(conn: sqlite3.Connection, item_ids: list[int]) -> None:
-    """兼容旧名字：按「记住了」推进一轮。"""
+    """兼容旧名字：按「记得」推进一次 FSRS。"""
     for item_id in item_ids or []:
         review_wrong_item(conn, int(item_id), "remember")
 
@@ -1141,3 +1158,193 @@ def import_vocab(conn: sqlite3.Connection, rows: list[dict]) -> dict:
 
 def export_vocab(conn: sqlite3.Connection, status: str = "active") -> list[dict]:
     return list_vocab(conn, limit=500, status=status)["items"]
+
+
+# ---------------------------------------------------------------------------
+# P14 复习调度：review_state 是唯一状态，review_log 是历史
+# ---------------------------------------------------------------------------
+
+REVIEW_ITEM_TYPES = ("wrong", "vocab")
+_REVIEW_STATE_COLUMNS = (
+    "item_type", "item_id", "state", "due", "stability", "difficulty",
+    "reps", "lapses", "last_review", "scheduled_days", "elapsed_days",
+    "updated_at",
+)
+_REVIEW_STATE_SELECT = ", ".join(_REVIEW_STATE_COLUMNS)
+
+
+def _review_state_dict(row) -> dict:
+    out = dict(zip(_REVIEW_STATE_COLUMNS, row))
+    out["item_id"] = int(out.get("item_id") or 0)
+    for key in ("reps", "lapses", "scheduled_days", "elapsed_days"):
+        out[key] = int(out.get(key) or 0)
+    for key in ("stability", "difficulty"):
+        out[key] = float(out.get(key) or 0)
+    return out
+
+
+def get_review_state(conn: sqlite3.Connection, item_type: str,
+                     item_id: int) -> dict | None:
+    row = conn.execute(
+        f"SELECT {_REVIEW_STATE_SELECT} FROM review_state "
+        "WHERE item_type = ? AND item_id = ?", (item_type, int(item_id))).fetchone()
+    return _review_state_dict(row) if row else None
+
+
+def save_review_state(conn: sqlite3.Connection, item_type: str, item_id: int,
+                      *, state: str, due: str, stability: float = 0,
+                      difficulty: float = 0, reps: int = 0, lapses: int = 0,
+                      last_review: str = "", scheduled_days: int = 0,
+                      elapsed_days: int = 0) -> dict:
+    stamp = now()
+    with _LOCK:
+        conn.execute(
+            "INSERT INTO review_state "
+            "(item_type, item_id, state, due, stability, difficulty, reps, lapses, "
+            " last_review, scheduled_days, elapsed_days, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(item_type, item_id) DO UPDATE SET "
+            "state=excluded.state, due=excluded.due, stability=excluded.stability, "
+            "difficulty=excluded.difficulty, reps=excluded.reps, "
+            "lapses=excluded.lapses, last_review=excluded.last_review, "
+            "scheduled_days=excluded.scheduled_days, "
+            "elapsed_days=excluded.elapsed_days, updated_at=excluded.updated_at",
+            (item_type, int(item_id), state, due, float(stability or 0),
+             float(difficulty or 0), int(reps or 0), int(lapses or 0),
+             last_review or "", int(scheduled_days or 0), int(elapsed_days or 0),
+             stamp))
+        conn.commit()
+        row = conn.execute(
+            f"SELECT {_REVIEW_STATE_SELECT} FROM review_state "
+            "WHERE item_type = ? AND item_id = ?", (item_type, int(item_id))).fetchone()
+    return _review_state_dict(row)
+
+
+def add_review_log(conn: sqlite3.Connection, *, item_type: str, item_id: int,
+                   rating: int, state_before: str = "", due_before: str = "",
+                   due_after: str = "", stability: float = 0,
+                   difficulty: float = 0, elapsed_days: int = 0,
+                   scheduled_days: int = 0) -> int:
+    with _LOCK:
+        cur = conn.execute(
+            "INSERT INTO review_log "
+            "(ts, item_type, item_id, rating, state_before, due_before, due_after, "
+            " stability, difficulty, elapsed_days, scheduled_days) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (now(), item_type, int(item_id), int(rating), state_before or "",
+             due_before or "", due_after or "", float(stability or 0),
+             float(difficulty or 0), int(elapsed_days or 0),
+             int(scheduled_days or 0)))
+        conn.commit()
+        return int(cur.lastrowid or 0)
+
+
+def seed_review_states(conn: sqlite3.Connection, today=None) -> int:
+    """把旧 1/3/7 错题转成 FSRS 初始状态；幂等。"""
+    day = str(today or dt.date.today().isoformat())[:10]
+    rows = conn.execute(
+        "SELECT w.id, w.ts, w.review_stage, w.last_review, w.mastered "
+        "FROM wrong_items w LEFT JOIN review_state r "
+        "ON r.item_type = 'wrong' AND r.item_id = w.id "
+        "WHERE r.item_id IS NULL").fetchall()
+    seeded = 0
+    for row in rows:
+        item_id, ts, stage, last_review, mastered = row
+        if mastered:
+            continue
+        stage = int(stage or 0)
+        # 新收的错题明天再出现，别在刚答错时立刻催复习（沿用旧版行为）
+        due = _next_review(ts, last_review or "", stage) or day
+        stability = max(1.0, float(REVIEW_INTERVALS[stage - 1])) if stage else 1.0
+        save_review_state(
+            conn, "wrong", int(item_id),
+            state="new" if stage == 0 else "review", due=due,
+            stability=stability, difficulty=5.0, reps=stage, lapses=0,
+            last_review=str(last_review or ""),
+            scheduled_days=int(stability) if stage else 0, elapsed_days=0)
+        seeded += 1
+    return seeded
+
+
+def _review_join_sql() -> str:
+    return (
+        "SELECT r.item_type, r.item_id, r.state, r.due, r.stability, r.difficulty, "
+        "r.reps, r.lapses, r.last_review, r.scheduled_days, "
+        "w.question, w.answer, w.my_answer, w.tags, w.note, w.material_id, "
+        "v.word, v.meaning, v.context, v.paper_title "
+        "FROM review_state r "
+        "LEFT JOIN wrong_items w ON r.item_type = 'wrong' AND w.id = r.item_id "
+        "LEFT JOIN vocab_items v ON r.item_type = 'vocab' AND v.id = r.item_id ")
+
+
+def _review_card(row) -> dict:
+    item = {
+        "item_type": row[0], "item_id": int(row[1]), "state": row[2],
+        "due": row[3] or "", "stability": float(row[4] or 0),
+        "difficulty": float(row[5] or 0), "reps": int(row[6] or 0),
+        "lapses": int(row[7] or 0), "last_review": row[8] or "",
+        "scheduled_days": int(row[9] or 0),
+        "question": row[10] or "", "answer": row[11] or "",
+        "my_answer": row[12] or "", "tags": row[13] or "", "note": row[14] or "",
+        "material_id": int(row[15] or 0),
+        "word": row[16] or "", "meaning": row[17] or "",
+        "context": row[18] or "", "paper_title": row[19] or "",
+    }
+    item["title"] = item["question"] if item["item_type"] == "wrong" else item["word"]
+    return item
+
+
+def due_review_items(conn: sqlite3.Connection, *, limit: int = 50,
+                     today=None, item_type: str = "") -> list[dict]:
+    day = str(today or dt.date.today().isoformat())[:10]
+    where = [
+        "r.due <= ?",
+        "(r.item_type <> 'wrong' OR (w.id IS NOT NULL AND w.mastered = 0))",
+        "(r.item_type <> 'vocab' OR (v.id IS NOT NULL AND v.status = 'active'))",
+    ]
+    args: list = [day]
+    if item_type in REVIEW_ITEM_TYPES:
+        where.insert(0, "r.item_type = ?")
+        args.insert(0, item_type)
+    sql = (_review_join_sql() + "WHERE " + " AND ".join(where)
+           + " ORDER BY r.due, r.item_type, r.item_id LIMIT ?")
+    args.append(max(1, min(int(limit or 50), 500)))
+    with _LOCK:
+        rows = conn.execute(sql, args).fetchall()
+    return [_review_card(row) for row in rows]
+
+
+def review_stats(conn: sqlite3.Connection, today=None) -> dict:
+    day = str(today or dt.date.today().isoformat())[:10]
+    with _LOCK:
+        total = conn.execute("SELECT count(*) FROM review_state").fetchone()[0]
+        new = conn.execute(
+            "SELECT count(*) FROM review_state WHERE state = 'new'").fetchone()[0]
+        reviewed = conn.execute(
+            "SELECT count(*) FROM review_log WHERE substr(ts, 1, 10) = ?",
+            (day,)).fetchone()[0]
+        next_row = conn.execute(
+            _review_join_sql() + "WHERE r.due > ? "
+            "AND (r.item_type <> 'wrong' OR (w.id IS NOT NULL AND w.mastered = 0)) "
+            "AND (r.item_type <> 'vocab' OR (v.id IS NOT NULL AND v.status = 'active')) "
+            "ORDER BY r.due LIMIT 1", (day,)).fetchone()
+    due = len(due_review_items(conn, limit=500, today=day))
+    return {"due": due, "new": int(new or 0), "total": int(total or 0),
+            "reviewed_today": int(reviewed or 0),
+            "next_due": (next_row[3] if next_row else "") or ""}
+
+
+def recent_review_log(conn: sqlite3.Connection, limit: int = 20) -> list[dict]:
+    with _LOCK:
+        rows = conn.execute(
+            "SELECT id, ts, item_type, item_id, rating, state_before, due_before, "
+            "due_after, stability, difficulty, elapsed_days, scheduled_days "
+            "FROM review_log ORDER BY id DESC LIMIT ?",
+            (max(1, min(int(limit or 20), 200)),)).fetchall()
+    return [{
+        "id": row[0], "ts": row[1], "item_type": row[2], "item_id": int(row[3]),
+        "rating": int(row[4]), "state_before": row[5] or "",
+        "due_before": row[6] or "", "due_after": row[7] or "",
+        "stability": float(row[8] or 0), "difficulty": float(row[9] or 0),
+        "elapsed_days": int(row[10] or 0), "scheduled_days": int(row[11] or 0),
+    } for row in rows]

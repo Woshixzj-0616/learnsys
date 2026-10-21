@@ -7,19 +7,20 @@ import {
 
 export async function mount(ctx) {
   ctx.setSub(todayLabel());
-  ctx.setActions('<a class="btn btn-primary" href="#/ask">新问题</a>');
+  ctx.setActions('<a class="btn btn-primary" href="#/ask">新问题</a><a class="btn" href="#/wrongbook">开始复习</a>');
 
-  const [overview, today, conversations, settings] = await Promise.all([
+  const [overview, today, conversations, settings, reviewStats] = await Promise.all([
     api.get("/api/overview"),
     api.get("/api/today"),
     api.get("/api/conversations?limit=8").catch(() => ({ items: [] })),
     api.get("/api/settings").catch(() => null),
+    api.get("/api/review/stats").catch(() => null),
   ]);
 
   renderOnboarding(settings);
   renderHero(overview);
   renderPlugins(ctx, overview, settings);
-  renderStats(today);
+  renderStats(today, reviewStats || {});
   renderWeek(overview.week || {});
   renderAchievements(overview.achievements || []);
   renderTimeline(today.asks || []);
@@ -125,7 +126,7 @@ function renderPlugins(ctx, overview, settings) {
   });
 }
 
-function renderStats(today) {
+function renderStats(today, reviewStats = {}) {
   const focus = minutesParts(today.focus?.minutes);
   const chars = charsParts(today.transcripts?.chars);
   const imageAsks = (today.asks || []).filter((ask) => ask.kind === "image").length;
@@ -149,10 +150,12 @@ function renderStats(today) {
       note: `${chars.value} ${chars.unit}`,
     },
     {
-      label: "待复习",
+      label: "今日计划",
       value: String(today.due_reviews ?? 0),
-      unit: "条",
-      note: today.due_reviews ? "错题本到复习期的题" : "今天没有到期的",
+      unit: "条到期",
+      note: reviewStats.reviewed_today
+        ? `今天已复习 ${reviewStats.reviewed_today} 条`
+        : (reviewStats.next_due ? `下张 ${reviewStats.next_due} 到期` : "今天没有到期的"),
     },
   ];
   document.getElementById("today-stats").innerHTML = stats.map((stat) => `<div class="stat">

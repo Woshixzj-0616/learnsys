@@ -240,6 +240,38 @@ CREATE TABLE IF NOT EXISTS vocab_items (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_vocab_word ON vocab_items (normalized);
 CREATE INDEX IF NOT EXISTS idx_vocab_recent
 ON vocab_items (status, updated_at DESC);
+CREATE TABLE IF NOT EXISTS review_state (
+    item_type      TEXT NOT NULL,
+    item_id        INTEGER NOT NULL,
+    state          TEXT NOT NULL DEFAULT 'new',
+    due            TEXT NOT NULL,
+    stability      REAL NOT NULL DEFAULT 0,
+    difficulty     REAL NOT NULL DEFAULT 0,
+    reps           INTEGER NOT NULL DEFAULT 0,
+    lapses         INTEGER NOT NULL DEFAULT 0,
+    last_review    TEXT NOT NULL DEFAULT '',
+    scheduled_days INTEGER NOT NULL DEFAULT 0,
+    elapsed_days   INTEGER NOT NULL DEFAULT 0,
+    updated_at     TEXT NOT NULL,
+    PRIMARY KEY (item_type, item_id)
+);
+CREATE INDEX IF NOT EXISTS idx_review_due ON review_state (due);
+CREATE TABLE IF NOT EXISTS review_log (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts             TEXT NOT NULL,
+    item_type      TEXT NOT NULL,
+    item_id        INTEGER NOT NULL,
+    rating         INTEGER NOT NULL,
+    state_before   TEXT NOT NULL DEFAULT '',
+    due_before     TEXT NOT NULL DEFAULT '',
+    due_after      TEXT NOT NULL DEFAULT '',
+    stability      REAL NOT NULL DEFAULT 0,
+    difficulty     REAL NOT NULL DEFAULT 0,
+    elapsed_days   INTEGER NOT NULL DEFAULT 0,
+    scheduled_days INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_review_log_item
+ON review_log (item_type, item_id, id DESC);
 """
 
 FTS_SCHEMA = """

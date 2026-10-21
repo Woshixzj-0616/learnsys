@@ -74,35 +74,36 @@ class TestWrongbookStore(unittest.TestCase):
         self.assertEqual(store.wrong_items(self.conn), [])
         self.assertFalse(store.toggle_star(self.conn, 999), "不存在的 id 别崩")
 
-    def test_review_1_3_7_and_master(self):
+    def test_fsrs_review_intervals_grow(self):
         item_id, _ = store.add_wrong_item(self.conn, question="CIDR 速算")
         _shift(self.conn, item_id, 1)
         due = store.wrong_due_items(self.conn)
         self.assertEqual([item["id"] for item in due], [item_id])
 
         item = store.review_wrong_item(self.conn, item_id, "remember")
-        self.assertEqual(item["review_stage"], 1)
+        self.assertEqual(item["review_reps"], 1)
         self.assertFalse(item["mastered"])
+        self.assertEqual(item["scheduled_days"], 3, "新卡「记得」= 3 天")
         self.assertEqual(store.wrong_due_items(self.conn), [])
 
-        _shift(self.conn, item_id, 3, last_review=(_today() - datetime.timedelta(days=3)).isoformat())
+        # 把到期日拨回今天，模拟 3 天后再复习
+        self.conn.execute(
+            "UPDATE review_state SET due = ? WHERE item_type = 'wrong' AND item_id = ?",
+            (_today().isoformat(), item_id))
+        self.conn.commit()
         self.assertEqual(len(store.wrong_due_items(self.conn)), 1)
         item = store.review_wrong_item(self.conn, item_id, "remember")
-        self.assertEqual(item["review_stage"], 2)
-
-        _shift(self.conn, item_id, 7, last_review=(_today() - datetime.timedelta(days=7)).isoformat())
-        self.assertEqual(len(store.wrong_due_items(self.conn)), 1)
-        item = store.review_wrong_item(self.conn, item_id, "remember")
-        self.assertEqual(item["review_stage"], 3)
-        self.assertTrue(item["mastered"])
-        self.assertEqual(item["next_review"], "")
-        self.assertEqual(store.wrong_due_items(self.conn), [])
+        self.assertEqual(item["review_reps"], 2)
+        self.assertGreater(item["scheduled_days"], 3, "间隔随历史变长")
+        self.assertFalse(item["mastered"], "FSRS 不自动判定掌握")
 
     def test_forgot_resets_to_tomorrow(self):
         item_id, _ = store.add_wrong_item(self.conn, question="路由汇总")
+        _shift(self.conn, item_id, 1)
         store.review_wrong_item(self.conn, item_id, "remember")
         item = store.review_wrong_item(self.conn, item_id, "forgot")
-        self.assertEqual(item["review_stage"], 0)
+        self.assertEqual(item["review_lapses"], 1)
+        self.assertEqual(item["scheduled_days"], 1)
         self.assertFalse(item["mastered"])
         expected = (_today() + datetime.timedelta(days=1)).isoformat()
         self.assertEqual(item["next_review"], expected)

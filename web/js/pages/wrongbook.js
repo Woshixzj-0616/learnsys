@@ -4,7 +4,7 @@ import { renderInto } from "../markdown.js";
 import { escapeHtml, toast } from "../ui.js";
 
 const SOURCE_LABEL = { ask: "问答收藏", quiz: "测验错题", manual: "手动收录", cet6: "六级断点" };
-const STAGE_TEXT = ["还没复习", "复习过 1 轮", "复习过 2 轮", "练完 3 轮"];
+const RATING_LABELS = { 1: "忘了", 2: "模糊", 3: "记得", 4: "简单" };
 
 let status = "due";
 let source = "";
@@ -15,7 +15,7 @@ let materialFacets = [];
 let nodes = {};
 
 export async function mount(ctx) {
-  ctx.setSub("答错的、收藏的，都在这本里；按 1 / 3 / 7 天复习");
+  ctx.setSub("答错的、收藏的，都在这本里；按记忆曲线（FSRS）安排复习");
   ctx.setActions('<a class="btn" href="#/quiz">去测验</a>');
   nodes = {
     list: ctx.root.querySelector("#wrong-list"),
@@ -125,8 +125,11 @@ function renderList() {
     return;
   }
   nodes.list.innerHTML = items.map((item) => {
-    const stage = item.mastered ? "已掌握" : (STAGE_TEXT[item.review_stage] || "还没复习");
-    const next = item.next_review ? `下次复习 ${item.next_review}` : "";
+    const reps = Number(item.review_reps || 0);
+    const lapses = Number(item.review_lapses || 0);
+    const stage = item.mastered ? "已掌握"
+      : (reps ? `复习 ${reps} 次${lapses ? ` · 遗忘 ${lapses} 次` : ""}` : "新卡");
+    const next = item.next_review ? `下次 ${item.next_review}` : "";
     return `
       <article class="wrong-card ${dueBadge(item) ? "is-due" : ""}" data-id="${item.id}">
         <button class="wrong-card-head" type="button" aria-expanded="false">
@@ -151,8 +154,8 @@ function renderList() {
             <span>${escapeHtml(stage)}${next ? ` · ${escapeHtml(next)}` : ""}</span>
           </div>
           <div class="wrong-actions">
-            <button class="btn btn-primary" type="button" data-act="remember">记住了</button>
-            <button class="btn" type="button" data-act="forgot">没记住</button>
+            ${[1, 2, 3, 4].map((rating) => `<button class="btn ${rating === 3 ? "btn-primary" : ""}"
+              type="button" data-act="rating" data-rating="${rating}">${RATING_LABELS[rating]}</button>`).join("")}
             <button class="btn btn-quiet" type="button" data-act="master">${item.mastered ? "取消掌握" : "标记掌握"}</button>
             <button class="btn btn-danger" type="button" data-act="delete">删除</button>
           </div>
@@ -188,12 +191,11 @@ function onListClick(event) {
 async function act(action, item, button) {
   button.disabled = true;
   try {
-    if (action === "remember" || action === "forgot") {
-      const data = await api.post(`/api/wrongbook/${item.id}/review`, { result: action });
-      const next = data.item?.next_review;
-      toast(action === "remember"
-        ? (next ? `记下了，下次 ${next} 再复习` : "这道题练完 3 轮，已标记掌握")
-        : "没关系，明天再来一次", "ok");
+    if (action === "rating") {
+      const rating = Number(button.dataset.rating || 3);
+      const data = await api.post(`/api/review/wrong/${item.id}`, { rating });
+      const days = Number(data.scheduled_days || 0);
+      toast(`${RATING_LABELS[rating]} · 下次 ${data.next_review}（${days} 天后）`, "ok");
     } else if (action === "master") {
       await api.post(`/api/wrongbook/${item.id}/master`, { mastered: !item.mastered });
       toast(item.mastered ? "已取消掌握" : "已标记掌握", "ok");

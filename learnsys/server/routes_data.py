@@ -13,6 +13,7 @@ from learnsys import store
 from learnsys.agent.config import load_config
 from learnsys.core import db as core_db
 from learnsys.server.security import require_token
+from learnsys.services import review as review_service
 
 router = APIRouter()
 
@@ -473,10 +474,13 @@ def add_wrongbook(req: WrongAddIn, _=Depends(require_token)):
 def review_wrongbook(item_id: int, req: WrongReviewIn, _=Depends(require_token)):
     conn = _conn()
     try:
-        item = store.review_wrong_item(conn, item_id, req.result)
-        if item is None:
-            raise HTTPException(status_code=404, detail="这道错题不在了")
-        return {"ok": True, "item": item}
+        rating = 1 if str(req.result or "").strip().lower() == "forgot" else 3
+        try:
+            state = review_service.review(conn, "wrong", item_id, rating)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail="这道错题不在了") from exc
+        item = store.get_wrong_item(conn, item_id)
+        return {"ok": True, "item": item, **state}
     finally:
         conn.close()
 
