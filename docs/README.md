@@ -4,11 +4,11 @@
 
 ## 当前状态
 
-- 版本：**2.8.0**
+- 版本：**2.9.0**
 - 分支：`v2`
-- 最近阶段：**P14 闭环 + FSRS**
-- 下一步：**P15 MCP 只读**（上下文、资料检索、到期复习、翻译、读资料段落）
-- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 405 OK；
+- 最近阶段：**P15 MCP 只读**
+- 下一步：**P16 可选增强**（BKT 掌握度、模型路由、深度分析、成本面板；有数据再定）
+- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 420 OK；
   前端 `node --test web/tests/context.test.mjs` → 6 通过
 
 ## 方向
@@ -25,10 +25,12 @@
 - [P12 六级上下文实验](施工单/P12-六级上下文实验.md)
 - [P13 Context / Service 薄抽象](施工单/P13-Context与Service.md)
 - [P14 闭环与 FSRS](施工单/P14-闭环与FSRS.md)
+- [P15 MCP 只读](施工单/P15-MCP只读.md)
 - [闸门：六级实验（已取消）](施工单/闸门-六级实验.md) · 报告 `tools/gate_report.py` 留作观测
 
 ## 验收
 
+- [P15 验收记录](P15-验收记录.md)
 - [P14 验收记录](P14-验收记录.md)
 - [P13 验收记录](P13-验收记录.md)
 - [P12 验收记录](P12-验收记录.md)
@@ -39,5 +41,6 @@
 ## 插件与发布
 
 - [插件开发规范](插件开发规范.md)
+- [MCP 接入](MCP接入.md)：Claude Code / Codex 的只读工具配置
 - `tools/release.py`：打 zip + SHA256
 - `打包.cmd`：PyInstaller 打包
