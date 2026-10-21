@@ -222,6 +222,24 @@ CREATE TABLE IF NOT EXISTS cet6_progress (
 );
 CREATE INDEX IF NOT EXISTS idx_cet6_progress_item
 ON cet6_progress (paper_id, section, item);
+CREATE TABLE IF NOT EXISTS vocab_items (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    word        TEXT NOT NULL,
+    normalized  TEXT NOT NULL,
+    meaning     TEXT NOT NULL DEFAULT '',
+    phonetic    TEXT NOT NULL DEFAULT '',
+    context     TEXT NOT NULL DEFAULT '',
+    paper_id    TEXT NOT NULL DEFAULT '',
+    paper_title TEXT NOT NULL DEFAULT '',
+    sentence    INTEGER NOT NULL DEFAULT 0,
+    source      TEXT NOT NULL DEFAULT 'cet6',
+    status      TEXT NOT NULL DEFAULT 'active',
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_vocab_word ON vocab_items (normalized);
+CREATE INDEX IF NOT EXISTS idx_vocab_recent
+ON vocab_items (status, updated_at DESC);
 """
 
 FTS_SCHEMA = """

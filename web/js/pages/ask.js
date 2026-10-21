@@ -1,5 +1,6 @@
 // 问一问：会话列表 + 流式对话 + 附件 + Markdown/公式/代码 + 工具轨迹。
 import { api, stopChat, streamChat, upload } from "../api.js";
+import { buildSnapshot } from "../context.js";
 import { renderInto } from "../markdown.js";
 import { escapeHtml, relative, toast } from "../ui.js";
 
@@ -575,6 +576,18 @@ function sendMessage() {
     attachment_name: state.material ? "" : (state.doc?.name || ""),
     attachment_text: state.material ? "" : (state.doc?.text || ""),
     material_id: state.material?.id || null,
+    surface: "ask",
+    context_snapshot: state.material ? buildSnapshot({
+      surface: "ask",
+      object_type: "material",
+      object_id: String(state.material.id),
+      title: state.material.title || "",
+      surrounding: {
+        kind: state.material.kind || "",
+        chars: state.material.chars || 0,
+      },
+      provenance: { page: "ask", via: "material-picker" },
+    }) : null,
   };
 
   if (state.messages.length === 0) dom.inner.innerHTML = "";

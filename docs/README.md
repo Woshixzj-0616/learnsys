@@ -4,11 +4,12 @@
 
 ## 当前状态
 
-- 版本：**2.6.0**
+- 版本：**2.7.0**
 - 分支：`v2`
-- 最近阶段：**P12 六级上下文实验**
-- 下一步：**闸门：六级实验连续 14 天真实使用**（达标才进 P13，不达标停止平台化）
-- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 361 OK
+- 最近阶段：**P13 Context / Service 薄抽象**
+- 下一步：**P14 闭环 + FSRS**（今日计划、统一复习队列、`review_log`）
+- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 388 OK；
+  前端 `node --test web/tests/context.test.mjs` → 6 通过
 
 ## 方向
 
@@ -22,10 +23,12 @@
 - [阶段总览与架构约定](施工单/00-阶段总览.md)
 - [P0 收尾](施工单/P0-收尾.md)
 - [P12 六级上下文实验](施工单/P12-六级上下文实验.md)
-- [闸门：六级实验（14 天）](施工单/闸门-六级实验.md) · 报告 `tools/gate_report.py`
+- [P13 Context / Service 薄抽象](施工单/P13-Context与Service.md)
+- [闸门：六级实验（已取消）](施工单/闸门-六级实验.md) · 报告 `tools/gate_report.py` 留作观测
 
 ## 验收
 
+- [P13 验收记录](P13-验收记录.md)
 - [P12 验收记录](P12-验收记录.md)
 - [P11 验收记录](P11-验收记录.md)
 - P1–P10 见同目录 `P*-验收记录.md`

@@ -129,6 +129,28 @@ def recover_orphans(conn: sqlite3.Connection) -> int:
     return int(cur.rowcount or 0)
 
 
+def list_results(conn: sqlite3.Connection, *, kind: str = "",
+                 target_type: str = "", target_id: str = "", scope: str = "",
+                 limit: int = 50) -> dict:
+    """按条件列结果资产（不含 superseded）；返回 `{items, count}`。"""
+    where = ["status <> 'superseded'"]
+    args: list = []
+    for column, value in (("kind", kind), ("target_type", target_type),
+                          ("target_id", target_id), ("scope", scope)):
+        if value:
+            where.append(f"{column} = ?")
+            args.append(value)
+    clause = " AND ".join(where)
+    limit = max(1, min(int(limit or 50), 200))
+    total = conn.execute(
+        f"SELECT count(*) FROM service_results WHERE {clause}", args).fetchone()[0]
+    rows = conn.execute(
+        f"SELECT {_SELECT} FROM service_results WHERE {clause} "
+        "ORDER BY updated_at DESC, id DESC LIMIT ?", [*args, limit]).fetchall()
+    return {"items": [to_public(_row_dict(row)) for row in rows],
+            "count": int(total)}
+
+
 def to_public(row: dict | None) -> dict | None:
     """给前端的结果：不暴露 input_json，content_json 解析成 content。"""
     if row is None:
