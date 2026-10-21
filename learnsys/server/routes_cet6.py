@@ -1,16 +1,19 @@
-"""六级精听：静态挂载 `/cet6/` + AI 分析（兼容旧 `/analyze`）+ 断点同步 + 旧进度迁移。"""
+"""六级精听：静态挂载 `/cet6/` + AI 分析任务 + 翻译 + 断点同步 + 旧接口兼容。"""
 from __future__ import annotations
 
+import hashlib
 import json
-import re
 import urllib.parse
 
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from learnsys import agent, config, store
+from learnsys import agent, config, store   # agent 保留：旧测试按 routes_cet6.agent.run 打桩
+from learnsys.core import db as core_db
+from learnsys.server.security import require_token
+from learnsys.services import analysis, observability, results, translate
 
 router = APIRouter()
 
@@ -61,38 +64,9 @@ def mount_static(app: FastAPI) -> bool:
         app.mount("/cet6/试卷", StaticFiles(directory=str(papers), html=True), name="cet6-papers")
     return True
 
-SYSTEM = "你是严谨、具体的英语听力教练。你只输出 JSON，不输出解释或 Markdown。"
-
-PROMPT_HEAD = """下面是一个学生在某段英语听力里的断点记录。
-每条包含：句子编号、他勾选的断点标签（生词/听不出/连读/句法/走神）、他自己写的原因、英文原句、循环回绕次数和总播放次数。
-「循环回绕」是他主动把这一句反复回绕播放的次数，是难度信号：回绕多的句子通常更难；没有勾标签但反复循环的句子也要特别留意。不要只凭次数下结论，要结合标签和原话。
-请做个性化分析，不要泛泛而谈：
-1. summary：2–3 句话概括他当前最主要的听力障碍。
-2. patterns：2–3 个问题模式；每个包含 name、evidence（引用他的原话、标签或循环次数）、advice（具体练法）。
-3. priority：最该优先回听的 2–3 句；包含 sentence（句子编号）和 reason。
-4. plan：3 条本周可执行的练习计划，每条不超过 2 句。
-只输出 JSON：
-{"summary":"...","patterns":[{"name":"...","evidence":"...","advice":"..."}],"priority":[{"sentence":3,"reason":"..."}],"plan":["...","..."]}
-
-学生记录：
-"""
-
-PROMPT_PAPER = """下面是一个学生在**整卷**英语听力里记录的全部断点（跨 Section A/B/C）。
-每条包含：所属 Section / 题型、句子编号、勾选的断点标签（生词/听不出/连读/句法/走神）、他自己写的原因、英文原句、循环回绕次数和总播放次数。
-「循环回绕」是他主动把这一句反复回绕播放的次数，是难度信号：回绕多的句子通常更难；没有勾标签但反复循环的句子也要特别留意。不要只凭次数下结论，要结合标签和原话。
-请做整卷级分析，按题型对比，不要泛泛而谈：
-1. summary：3 句话概括他整卷最主要的听力障碍，并指出最弱的题型。
-2. patterns：2–4 个跨段落反复出现的模式；每个包含 name、evidence（引用他的原话、标签或循环次数）、advice（具体练法）。
-3. priority：最该优先回听的 3–5 句；包含 sentence（句子编号）和 reason。
-4. plan：3 条本周可执行的练习计划，每条不超过 2 句。
-只输出 JSON：
-{"summary":"...","patterns":[{"name":"...","evidence":"...","advice":"..."}],"priority":[{"sentence":3,"reason":"..."}],"plan":["...","..."]}
-
-学生记录：
-"""
-
 
 class AnalyzeRequest(BaseModel):
+    """旧 `/analyze` 的形状；file:// 工作台仍在用。"""
     paper: str = ""
     paper_id: str = ""
     section: str = ""
@@ -117,78 +91,42 @@ class Cet6Sync(BaseModel):
     item: str = ""
     sentences: list[Cet6Sentence] = Field(default_factory=list)
     analysis: dict | None = None
+    done: list[int] | None = None   # None = 不碰完成状态；[...] = 该段完整状态
 
 
 class Cet6Import(BaseModel):
     items: dict[str, str] = Field(default_factory=dict)
 
 
-def parse_json_text(text: str) -> dict:
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```[a-zA-Z]*\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    try:
-        return json.loads(text)
-    except Exception:
-        pass
-    i, j = text.find("{"), text.rfind("}")
-    if i >= 0 and j > i:
-        return json.loads(text[i:j + 1])
-    raise ValueError("模型输出里没有 JSON")
+class AnalysisIn(BaseModel):
+    paper_id: str = ""
+    paper: str = ""
+    section: str = ""
+    item: str = ""
+    scope: str = "item"
+    sentences: list[Cet6Sentence] = Field(default_factory=list)
+    context: dict | None = None
+    force: bool = False
 
 
-def _run_text(prompt: str) -> str:
-    """让 Agent 用纯生成模式跑一段（不调工具、不用导师提示词）。"""
-    text = ""
-    error = ""
-    for event in agent.run(agent.AgentRequest(
-            prompt, system_override=SYSTEM, use_tools=False, mode="quick")):
-        if event.kind == "done":
-            text = str(event.data.get("text") or "")
-        elif event.kind == "error":
-            error = event.text
-    if error:
-        raise RuntimeError(error)
-    if not text.strip():
-        raise RuntimeError("模型没有返回文本")
-    return text
+class TranslateIn(BaseModel):
+    text: str = Field(min_length=1, max_length=1000)
+    kind: str = "word"
+    context: dict | None = None
 
 
-def analyze(record: AnalyzeRequest) -> dict:
-    rows = record.sentences or []
-    if not rows:
-        raise ValueError("没有可分析的记录")
-    scope = record.scope
-    limit = 120 if scope == "paper" else 80
-    head = PROMPT_PAPER if scope == "paper" else PROMPT_HEAD
-    lines = []
-    for s in rows[:limit]:
-        tags = "、".join(s.get("tags") or []) or "无"
-        note = (s.get("note") or "").strip() or "无"
-        en = (s.get("en") or "").strip()
-        loops = int(s.get("loops") or 0)
-        plays = int(s.get("plays") or 0)
-        where = ""
-        if s.get("section") or s.get("item"):
-            where = f"{s.get('section', '')} / {s.get('item', '')} · "
-        lines.append(
-            f"{where}第 {s.get('sentence')} 句 | 标签：{tags} | 循环回绕：{loops} 次"
-            f"（共播放 {plays} 次） | 我的原因：{note} | 英文：{en}")
-    prompt = (head + f"\n材料：{record.paper} / {record.section} / {record.item}\n"
-              + "\n".join(lines) + "\n\n只输出 JSON。")
-    text = _run_text(prompt)
-    obj = parse_json_text(text)
-    return obj
+class TranslateItemIn(BaseModel):
+    paper_id: str = ""
+    section: str = ""
+    item: str = ""
+    sentences: list[dict] = Field(default_factory=list)
 
 
 @router.post("/analyze")
 def analyze_compat(req: AnalyzeRequest):
-    """旧工作台硬编码的地址：保持返回形状不变。"""
+    """旧工作台硬编码的地址：保持返回形状不变，内部与任务队列共用一套提示词。"""
     try:
-        result = analyze(req)
-        from learnsys.agent.config import load_config
-        return {"analysis": result, "model": load_config().model}
+        return analysis.analyze_sync(req.model_dump())
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -198,34 +136,133 @@ def analyze_v2(req: AnalyzeRequest):
     return analyze_compat(req)
 
 
+@router.post("/api/cet6/analysis", status_code=202)
+def submit_analysis(req: AnalysisIn, _=Depends(require_token)):
+    try:
+        return analysis.submit(req.model_dump(), force=req.force)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"提交分析失败：{exc}") from exc
+
+
+@router.get("/api/cet6/analysis")
+def latest_analysis(paper_id: str = "", section: str = "", item: str = "",
+                    scope: str = "item", _=Depends(require_token)):
+    if scope not in ("item", "paper"):
+        scope = "item"
+    tid = analysis.target_id(paper_id, section, item, scope)
+    conn = store.connect()
+    try:
+        row = results.latest(conn, kind=analysis.ANALYSIS_KIND,
+                             target_type="paper" if scope == "paper" else "item",
+                             target_id=tid, scope=scope)
+        if not row:
+            return {"id": 0, "status": "none", "content": None}
+        return results.to_public(row)
+    finally:
+        conn.close()
+
+
+@router.get("/api/cet6/analysis/{result_id}")
+def get_analysis(result_id: int, _=Depends(require_token)):
+    conn = store.connect()
+    try:
+        row = results.get(conn, result_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="分析结果不存在")
+        return results.to_public(row)
+    finally:
+        conn.close()
+
+
+@router.post("/api/cet6/analysis/{result_id}/cancel")
+def cancel_analysis(result_id: int, _=Depends(require_token)):
+    return {"ok": analysis.cancel(result_id), "id": result_id}
+
+
+@router.post("/api/cet6/translate")
+def translate_text(req: TranslateIn, _=Depends(require_token)):
+    return translate.translate(req.text, kind=req.kind, context=req.context)
+
+
+@router.post("/api/cet6/translate-item")
+def translate_item(req: TranslateItemIn, _=Depends(require_token)):
+    return translate.translate_sentences(
+        req.sentences, paper_id=req.paper_id, section=req.section, item=req.item)
+
+
+@router.get("/api/runs")
+def runs(limit: int = 50, _=Depends(require_token)):
+    conn = store.connect()
+    try:
+        return {"items": observability.recent_runs(conn, limit=limit)}
+    finally:
+        conn.close()
+
+
+def _dedupe_key(req: Cet6Sync, item: Cet6Sentence) -> str:
+    payload = json.dumps({
+        "paper_id": req.paper_id or req.paper,
+        "section": req.section, "item": req.item,
+        "sentence": item.sentence, "tags": item.tags, "note": item.note,
+        "loops": item.loops, "plays": item.plays,
+    }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:16]
+
+
 @router.post("/api/cet6/sync")
 def cet6_sync(req: Cet6Sync):
-    """工作台分析完把断点送进学习工作台时间线。失败不影响工作台。"""
+    """工作台把逐句进度与分析结果送进学习工作台；失败不影响工作台。"""
+    paper_id = req.paper_id or req.paper
+    if not paper_id or not req.section or not req.item:
+        raise HTTPException(status_code=400, detail="缺少试卷 / Section / 题型")
     conn = store.connect()
     try:
         stamp = store.now()
+        store.upsert_cet6_progress(
+            conn, paper_id=paper_id, paper_title=req.paper,
+            section=req.section, item=req.item,
+            rows=[item.model_dump() for item in req.sentences], done=req.done)
         count = 0
         for item in req.sentences:
+            # 逐句进度全部写入 cet6_progress；时间线只收真正的断点，
+            # 否则每段几十句空记录会把「今日/学习点」撑爆。
+            if not (item.tags or item.note.strip() or item.loops > 0):
+                continue
+            key = _dedupe_key(req, item)
             tags = "、".join(item.tags or [])
             cur = conn.execute(
-                "INSERT INTO cet6_events (ts, paper_id, paper_title, section, item, sentence, "
-                "tags, note, loops, plays, analysis_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (stamp, req.paper_id, req.paper, req.section, req.item, item.sentence,
+                "INSERT OR IGNORE INTO cet6_events "
+                "(ts, paper_id, paper_title, section, item, sentence, tags, note, "
+                " loops, plays, analysis_json, dedupe_key) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (stamp, paper_id, req.paper, req.section, req.item, item.sentence,
                  tags, item.note, item.loops, item.plays,
-                 json.dumps(req.analysis, ensure_ascii=False) if req.analysis else ""))
-            from learnsys.core import db as core_db
-            core_db.index_row(
-                conn, "cet6", int(cur.lastrowid), stamp,
-                f"{req.paper} {req.section} {req.item} {item.en} {item.note} {tags}")
-            count += 1
-        conn.execute(
-            "INSERT INTO events (ts, module, kind, ref_id, title, meta_json) "
-            "VALUES (?, 'cet6', 'breakpoint', 0, ?, ?)",
-            (stamp, f"{req.paper} / {req.section} / {req.item}",
-             json.dumps({"count": count, "analysis": bool(req.analysis)},
-                        ensure_ascii=False)))
+                 json.dumps(req.analysis, ensure_ascii=False) if req.analysis else "",
+                 key))
+            if cur.rowcount:
+                count += 1
+                core_db.index_row(
+                    conn, "cet6", int(cur.lastrowid), stamp,
+                    f"{req.paper} {req.section} {req.item} {item.en} "
+                    f"{item.note} {tags}")
+            elif req.analysis:
+                conn.execute(
+                    "UPDATE cet6_events SET analysis_json = ? WHERE dedupe_key = ?",
+                    (json.dumps(req.analysis, ensure_ascii=False), key))
+        if count:
+            conn.execute(
+                "INSERT INTO events (ts, module, kind, ref_id, title, meta_json) "
+                "VALUES (?, 'cet6', 'breakpoint', 0, ?, ?)",
+                (stamp, f"{req.paper} / {req.section} / {req.item}",
+                 json.dumps({"count": count, "analysis": bool(req.analysis)},
+                            ensure_ascii=False)))
         conn.commit()
         return {"ok": True, "count": count}
+    except HTTPException:
+        conn.rollback()
+        raise
     except Exception as exc:
         conn.rollback()
         raise HTTPException(status_code=500, detail=str(exc)) from exc

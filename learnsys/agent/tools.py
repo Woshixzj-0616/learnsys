@@ -102,6 +102,26 @@ TOOL_SCHEMAS = [
 ]
 
 
+GET_CET6_CONTEXT_SCHEMA = {
+    "name": "get_cet6_context",
+    "description": (
+        "读取六级精听的当前进度：某份试卷 / Section / 题型单元的逐句标记、"
+        "循环次数、完成状态和最近一次 AI 分析。用户问「我刚才循环的那句」"
+        "「这段我标了什么」「上次分析怎么说」时使用。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "paper_id": {"type": "string", "description": "试卷 id；留空 = 最近一份"},
+            "section": {"type": "string", "description": "Section 名称；留空 = 最近一段"},
+            "item": {"type": "string", "description": "题型单元；留空 = 最近一段"},
+            "limit": {"type": "integer", "description": "最多返回多少句，默认 40"},
+        },
+    },
+}
+TOOL_SCHEMAS.append(GET_CET6_CONTEXT_SCHEMA)
+
+
 SAVE_WRONGBOOK_SCHEMA = {
     "name": "save_wrongbook",
     "description": (
@@ -404,6 +424,64 @@ def save_wrongbook(question: str, my_answer: str, correct_answer: str = "",
     return f"这道题已经在错题本里（#{item_id}），没有重复添加。"
 
 
+def get_cet6_context(paper_id: str = "", section: str = "", item: str = "",
+                     limit: int = 40, *, ctx: ToolContext | None = None) -> str:
+    """读六级逐句进度 + 最近分析；没记录就直说。"""
+    limit = max(1, min(int(limit or 40), 120))
+    conn = store.connect(ctx.db_path if ctx and ctx.db_path else None)
+    try:
+        if not paper_id:
+            row = conn.execute(
+                "SELECT paper_id, section, item FROM cet6_progress "
+                "ORDER BY updated_at DESC LIMIT 1").fetchone()
+            if not row:
+                return "还没有六级精听记录。"
+            paper_id, section, item = row[0], row[1], row[2]
+        elif not section or not item:
+            row = conn.execute(
+                "SELECT section, item FROM cet6_progress WHERE paper_id = ? "
+                "ORDER BY updated_at DESC LIMIT 1", (paper_id,)).fetchone()
+            if not row:
+                return "这份试卷还没有六级精听记录。"
+            section = section or row[0]
+            item = item or row[1]
+        rows = store.cet6_progress_item(
+            conn, paper_id=paper_id, section=section, item=item)
+        if not rows:
+            return "这一段还没有六级精听记录。"
+        title_row = conn.execute(
+            "SELECT MAX(paper_title) FROM cet6_progress WHERE paper_id = ?",
+            (paper_id,)).fetchone()
+        paper_title = (title_row[0] if title_row and title_row[0] else paper_id)
+        lines = [f"六级精听：{paper_title} / {section} / {item}（共 {len(rows)} 句）"]
+        for row in rows[:limit]:
+            line = [f"第 {row['sentence']} 句", "已完成" if row["done"] else "未完成"]
+            if row["tags"]:
+                line.append("标签：" + "、".join(row["tags"]))
+            if row["note"]:
+                line.append("我的原因：" + row["note"])
+            if row["loops"] or row["plays"]:
+                line.append(f"循环回绕 {row['loops']} 次 / 共播放 {row['plays']} 次")
+            lines.append(" | ".join(line))
+            if row["en"]:
+                lines.append("  " + row["en"])
+        if len(rows) > limit:
+            lines.append(f"（只显示前 {limit} 句，共 {len(rows)} 句）")
+        from learnsys.services import analysis, results
+        target = analysis.target_id(paper_id, section, item, "item")
+        latest = results.latest(
+            conn, kind=analysis.ANALYSIS_KIND, target_type="item",
+            target_id=target, scope="item")
+        if latest:
+            content = (results.to_public(latest) or {}).get("content") or {}
+            summary = str(content.get("summary") or "").strip()
+            if summary:
+                lines.append("最近一次分析：" + summary[:800])
+        return "\n".join(lines)
+    finally:
+        conn.close()
+
+
 def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str]:
     """执行工具，返回 (给模型看的内容, 给界面看的一句话摘要)。"""
     args = args if isinstance(args, dict) else {}
@@ -432,6 +510,11 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str]:
                                   int(args.get("offset") or 0),
                                   int(args.get("length") or 6000), ctx=ctx),
                     "读了资料正文")
+        if name == "get_cet6_context":
+            return (get_cet6_context(
+                str(args.get("paper_id") or ""), str(args.get("section") or ""),
+                str(args.get("item") or ""), int(args.get("limit") or 40), ctx=ctx),
+                "读了六级精听进度")
         if name == "save_wrongbook":
             text = save_wrongbook(
                 str(args.get("question") or ""), str(args.get("my_answer") or ""),

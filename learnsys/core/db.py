@@ -160,6 +160,67 @@ CREATE INDEX IF NOT EXISTS idx_wrong_ts ON wrong_items (ts);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_wrong_source
     ON wrong_items (source, source_id)
     WHERE source_id IS NOT NULL AND source_id <> '';
+CREATE TABLE IF NOT EXISTS service_results (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind           TEXT NOT NULL,
+    target_type    TEXT NOT NULL DEFAULT '',
+    target_id      TEXT NOT NULL DEFAULT '',
+    scope          TEXT NOT NULL DEFAULT '',
+    context_hash   TEXT NOT NULL DEFAULT '',
+    prompt_version TEXT NOT NULL DEFAULT '',
+    model          TEXT NOT NULL DEFAULT '',
+    status         TEXT NOT NULL DEFAULT 'pending',
+    input_json     TEXT NOT NULL DEFAULT '',
+    content_json   TEXT NOT NULL DEFAULT '',
+    error          TEXT NOT NULL DEFAULT '',
+    tokens_in      INTEGER NOT NULL DEFAULT 0,
+    tokens_out     INTEGER NOT NULL DEFAULT 0,
+    cache_hit      INTEGER NOT NULL DEFAULT 0,
+    ms             INTEGER NOT NULL DEFAULT 0,
+    created_at     TEXT NOT NULL,
+    updated_at     TEXT NOT NULL
+);
+-- 只约束「当前版本」：force 重分析时旧行变 superseded，允许同一键再建一行
+CREATE UNIQUE INDEX IF NOT EXISTS idx_service_results_key
+ON service_results (kind, target_type, target_id, scope, context_hash, prompt_version)
+WHERE status <> 'superseded';
+CREATE INDEX IF NOT EXISTS idx_service_results_latest
+ON service_results (kind, target_type, target_id, scope, updated_at DESC);
+CREATE TABLE IF NOT EXISTS service_runs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts         TEXT NOT NULL,
+    trace_id   TEXT NOT NULL DEFAULT '',
+    result_id  INTEGER,
+    surface    TEXT NOT NULL DEFAULT '',
+    kind       TEXT NOT NULL DEFAULT '',
+    model      TEXT NOT NULL DEFAULT '',
+    status     TEXT NOT NULL DEFAULT 'running',
+    ms         INTEGER NOT NULL DEFAULT 0,
+    tokens_in  INTEGER NOT NULL DEFAULT 0,
+    tokens_out INTEGER NOT NULL DEFAULT 0,
+    cache_hit  INTEGER NOT NULL DEFAULT 0,
+    error      TEXT NOT NULL DEFAULT '',
+    meta_json  TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_service_runs_ts ON service_runs (ts);
+CREATE INDEX IF NOT EXISTS idx_service_runs_result ON service_runs (result_id);
+CREATE TABLE IF NOT EXISTS cet6_progress (
+    paper_id    TEXT NOT NULL,
+    paper_title TEXT NOT NULL DEFAULT '',
+    section     TEXT NOT NULL,
+    item        TEXT NOT NULL,
+    sentence    INTEGER NOT NULL,
+    en          TEXT NOT NULL DEFAULT '',
+    tags        TEXT NOT NULL DEFAULT '',
+    note        TEXT NOT NULL DEFAULT '',
+    loops       INTEGER NOT NULL DEFAULT 0,
+    plays       INTEGER NOT NULL DEFAULT 0,
+    done        INTEGER NOT NULL DEFAULT 0,
+    updated_at  TEXT NOT NULL,
+    PRIMARY KEY (paper_id, section, item, sentence)
+);
+CREATE INDEX IF NOT EXISTS idx_cet6_progress_item
+ON cet6_progress (paper_id, section, item);
 """
 
 FTS_SCHEMA = """
@@ -219,6 +280,24 @@ def _migrate_columns(conn: sqlite3.Connection) -> None:
     if wrong_cols:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_wrong_material ON wrong_items (material_id)")
+    cet6_cols = {row[1] for row in conn.execute(
+        "PRAGMA table_info(cet6_events)").fetchall()}
+    if cet6_cols and "dedupe_key" not in cet6_cols:
+        conn.execute(
+            "ALTER TABLE cet6_events ADD COLUMN dedupe_key TEXT NOT NULL DEFAULT ''")
+    if cet6_cols:
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_cet6_dedupe "
+            "ON cet6_events (dedupe_key) WHERE dedupe_key <> ''")
+    service_index = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'index' "
+        "AND name = 'idx_service_results_key'").fetchone()
+    if service_index and "WHERE" not in str(service_index[0] or "").upper():
+        conn.execute("DROP INDEX idx_service_results_key")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_service_results_key "
+            "ON service_results (kind, target_type, target_id, scope, "
+            "context_hash, prompt_version) WHERE status <> 'superseded'")
     conn.commit()
 
 

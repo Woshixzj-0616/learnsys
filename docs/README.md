@@ -4,11 +4,11 @@
 
 ## 当前状态
 
-- 版本：**2.5.0**
+- 版本：**2.6.0**
 - 分支：`v2`
-- 最近阶段：**P11 改名 + 单一入口合并**
-- 下一步：**P12 六级上下文实验**
-- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 317 OK
+- 最近阶段：**P12 六级上下文实验**
+- 下一步：**闸门：六级实验连续 14 天真实使用**（达标才进 P13，不达标停止平台化）
+- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 361 OK
 
 ## 方向
 
@@ -25,6 +25,7 @@
 
 ## 验收
 
+- [P12 验收记录](P12-验收记录.md)
 - [P11 验收记录](P11-验收记录.md)
 - P1–P10 见同目录 `P*-验收记录.md`
 - [PWA 验收](PWA-验收记录.md)

@@ -29,6 +29,7 @@ class AgentRequest:
     image_path: str | None = None
     extra_images: list[str] | None = None
     context: str = ""
+    context_title: str = ""          # 上下文标题（六级传「当前学习上下文」）
     attachment_name: str = ""
     attachment_text: str = ""
     mode: str = "explain"
@@ -143,6 +144,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
     current_text = prompts.build_user_text(
         request.message,
         context=request.context,
+        context_title=request.context_title,
         image_text="" if messages else image_text,
         image_used_vision=used_vision,
         attachment_name=request.attachment_name,

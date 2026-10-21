@@ -1,6 +1,7 @@
 """Agent 接口：SSE 对话、停止、会话列表 / 历史。"""
 from __future__ import annotations
 
+import dataclasses
 import json
 import threading
 import time
@@ -11,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from learnsys import agent, store
 from learnsys.agent.config import load_config
+from learnsys.context import ContextSnapshot
 from learnsys.server.security import require_token
 
 router = APIRouter()
@@ -32,6 +34,8 @@ class ChatRequest(BaseModel):
     attach_material: bool = True     # False = 只给错题归档用，不把正文塞进这一轮
     module: str = "ask"          # ask / review / quiz ...（会话分组用，不进入时间线标题）
     internal: bool = False       # 插件内部提示词：保留会话上下文，但不记成一条「问答」
+    surface: str = "ask"         # ask / cet6 / materials ...
+    context_snapshot: dict | None = None   # 结构化上下文，<= 20KB
 
 
 class StopRequest(BaseModel):
@@ -73,6 +77,15 @@ def _load_history(conn, conversation_id: int, turns: int = 4) -> list[tuple[str,
 @router.post("/api/agent/chat")
 def chat(req: ChatRequest, _=Depends(require_token)):
     """一次对话；SSE 逐事件返回。客户端断开时生成器会关连接、DB 连接也会关。"""
+    snapshot = None
+    if req.context_snapshot:
+        try:
+            snapshot = ContextSnapshot.from_dict(req.context_snapshot)
+        except ValueError as exc:
+            raise HTTPException(status_code=413, detail=str(exc)) from exc
+    module = "cet6" if req.surface == "cet6" else (req.module or "ask")
+    context_text = snapshot.render_text() if snapshot else req.context
+    context_title = "当前学习上下文" if req.surface == "cet6" else ""
     conn = store.connect()
     try:
         conv_id = req.conversation_id
@@ -82,7 +95,7 @@ def chat(req: ChatRequest, _=Depends(require_token)):
         if conv_id is None:
             conv_id = store.create_conversation(
                 conn, title=req.message.strip()[:30] or "新对话",
-                module=req.module or "ask", mode=req.mode)
+                module=module, mode=req.mode)
         history = _load_history(conn, conv_id)       # 先取旧账，再记这一问
         material_id = req.material_id
         material_title = ""
@@ -102,13 +115,20 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                                          "conversation_id": conv_id})
             else:
                 material_id = None
-        store.add_message(conn, conv_id, "user",
-                          {"text": req.message, "material_id": material_id})
+        store.add_message(conn, conv_id, "user", {
+            "text": req.message,
+            "material_id": material_id,
+            "surface": req.surface,
+            "context_snapshot": req.context_snapshot,
+        })
     except Exception:
         conn.close()
         raise
 
     cfg = load_config()
+    if req.surface == "cet6":
+        # 六级里的「直接问」是精听现场提问，固定快模型；深度问答仍走主模型。
+        cfg = dataclasses.replace(cfg, model=cfg.fast_model or cfg.model)
     abort = threading.Event()
     key = str(conv_id)
     with _ACTIVE_LOCK:
@@ -126,11 +146,12 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 history=history,
                 image_path=req.image_path,
                 extra_images=list(req.extra_images or []),
-                context=req.context,
+                context=context_text,
+                context_title=context_title,
                 attachment_name=attachment_name,
                 attachment_text=attachment_text,
                 mode=req.mode,
-                module=req.module,
+                module=module,
                 conversation_id=conv_id,
                 conversation_key=str(conv_id),
                 material_id=material_id or 0,

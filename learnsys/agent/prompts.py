@@ -83,10 +83,10 @@ def build_system(mode: str = "explain", has_image: bool = False,
     return "\n\n".join(parts)
 
 
-def build_user_text(question: str, *, context: str = "", image_text: str = "",
-                    image_used_vision: bool = False, attachment_name: str = "",
-                    attachment_text: str = "") -> str:
-    """把「问题 + 截图转述/OCR + 课堂上下文 + 挂载文档」拼成一条用户消息。"""
+def build_user_text(question: str, *, context: str = "", context_title: str = "",
+                    image_text: str = "", image_used_vision: bool = False,
+                    attachment_name: str = "", attachment_text: str = "") -> str:
+    """把「问题 + 截图转述/OCR + 上下文 + 挂载文档」拼成一条用户消息。"""
     parts: list[str] = []
     if image_text.strip():
         parts.append(IMAGE_NOTE_VISION if image_used_vision else IMAGE_NOTE_OCR)
@@ -95,6 +95,7 @@ def build_user_text(question: str, *, context: str = "", image_text: str = "",
         name = attachment_name or "文档"
         parts.append(f"【参考文档：{name}】\n{attachment_text.strip()[:6000]}")
     if context.strip():
-        parts.append("【刚录到的课堂转写片段（供参考，可能不完整）】\n" + context.strip()[:2000])
+        label = context_title.strip() or "刚录到的课堂转写片段（供参考，可能不完整）"
+        parts.append(f"【{label}】\n" + context.strip()[:2000])
     parts.append("【问题】\n" + question.strip())
     return "\n\n".join(parts)
