@@ -1,4 +1,4 @@
-/* 学习系统工作台：壳层、今日、问一问、设置。 */
+/* 学习工作台：壳层、今日、问一问、设置。 */
 
 /* ---------- 壳层 ---------- */
 
@@ -7,6 +7,25 @@
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   height: 100vh;
   overflow: hidden;
+}
+
+/* 装成 PWA 后浏览器把标题栏让给网页（Window Controls Overlay），
+   只保留右上角系统按钮。这里补一条可拖拽的顶部条，否则整个窗口拖不动。
+   普通标签页里 display:none，不占位也不挡点击。 */
+.wco-drag { display: none; }
+
+@media (display-mode: window-controls-overlay) {
+  .wco-drag {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: env(titlebar-area-x, 0px);
+    width: env(titlebar-area-width, calc(100% - 140px));
+    height: max(env(titlebar-area-height, 0px), 32px);
+    z-index: 100;
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
 }
 
 .sidebar {

@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "学习系统",
-  "short_name": "学习系统",
-  "description": "本地优先的学习舞台：问一问、网工训练场、六级精听都是插件。",
+  "name": "学习工作台",
+  "short_name": "学习工作台",
+  "description": "本地优先的学习工作台：问一问、网工训练场、六级精听都是插件。",
   "lang": "zh-CN",
   "start_url": "/",
   "scope": "/",

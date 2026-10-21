@@ -1,6 +1,6 @@
 """插件清单与前端资源路径（源码 / PyInstaller 打包后都指向同一份）。
 
-v2 P5 起，学习系统把每个功能都当成插件：一个插件 = `learnsys/plugins/<id>/plugin.json`
+v2 P5 起，学习工作台把每个功能都当成插件：一个插件 = `learnsys/plugins/<id>/plugin.json`
 加它自己的入口（原生页 / iframe / 外部 URL）。前端只认 `/api/modules` 返回的清单，
 加插件不用改壳层代码。
 

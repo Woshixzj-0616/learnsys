@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-r"""把 dist\问一问\ 打成可发布的 zip，排除个人数据，并生成 SHA256。
+r"""把 dist\学习工作台\ 打成可发布的 zip，排除个人数据，并生成 SHA256。
 
 用法：
     .venv\\Scripts\\python.exe tools\\release.py
@@ -19,7 +19,7 @@ import sys
 import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-DIST = ROOT / "dist" / "问一问"
+DIST = ROOT / "dist" / "学习工作台"
 EXCLUDE_DIRS = {"data", "models", "截图", "问答截图", "录屏", "报告", "备份"}
 EXCLUDE_SUFFIXES = {".db", ".db-wal", ".db-shm", ".mp3", ".wav", ".m4a", ".log"}
 EXCLUDE_NAMES = {"设置.json", "界面设置.json", "学习档案.md"}
@@ -50,8 +50,8 @@ def main() -> int:
     args = parser.parse_args()
 
     base = pathlib.Path(args.dist)
-    if not (base / "问一问.exe").exists():
-        print(f"没找到打包产物：{base / '问一问.exe'}；先跑到 打包.cmd。")
+    if not (base / "学习工作台.exe").exists():
+        print(f"没找到打包产物：{base / '学习工作台.exe'}；先跑到 打包.cmd。")
         return 1
 
     files, skipped = [], []
@@ -74,7 +74,7 @@ def main() -> int:
         print(f"可发布文件：{len(files)} 个，共 {sum(p.stat().st_size for p in files) / 1048576:.1f} MB")
         return 0
 
-    out = ROOT / "dist" / f"问一问-v{args.version}-windows-x64.zip"
+    out = ROOT / "dist" / f"学习工作台-v{args.version}-windows-x64.zip"
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for path in files:
             zf.write(path, path.relative_to(base).as_posix())

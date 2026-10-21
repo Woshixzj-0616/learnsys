@@ -25,7 +25,7 @@ class PwaTest(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertIn("application/manifest+json", res.headers.get("content-type", ""))
         data = res.json()
-        self.assertEqual(data["name"], "学习系统")
+        self.assertEqual(data["name"], "学习工作台")
         self.assertEqual(data["start_url"], "/")
         self.assertEqual(data["scope"], "/")
         self.assertEqual(data["display"], "standalone")
@@ -52,10 +52,10 @@ class PwaTest(unittest.TestCase):
         index = (web_dir() / "index.html").read_text(encoding="utf-8")
         self.assertIn('rel="manifest"', index)
         self.assertIn("/manifest.webmanifest", index)
-        self.assertIn('id="ui-install"', index)
+        self.assertNotIn('id="ui-install"', index)          # 2.5.0 起不再宣传装成 PWA
         shell = (web_dir() / "js" / "shell.js").read_text(encoding="utf-8")
         self.assertIn('navigator.serviceWorker.register("/sw.js"', shell)
-        self.assertIn("beforeinstallprompt", shell)
+        self.assertNotIn("beforeinstallprompt", shell)
 
     def test_icons_exist(self):
         for name in ("icon-192.png", "icon-512.png", "icon-maskable-512.png",

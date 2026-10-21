@@ -62,7 +62,7 @@ class WebTest(unittest.TestCase):
 
         index = self.client.get("/")
         self.assertEqual(index.status_code, 200)
-        self.assertIn("学习系统", index.text)
+        self.assertIn("学习工作台", index.text)
         self.assertIn("/web/js/shell.js", index.text)
         self.assertEqual(self.client.get("/web/css/tokens.css").status_code, 200)
 

@@ -1,4 +1,4 @@
-"""学习系统本地服务：一个进程里同时提供 Agent、数据、六级分析。
+"""学习工作台本地服务：一个进程里同时提供 Agent、数据、六级分析。
 
 地址固定 127.0.0.1:8765 —— 六级工作台里硬编码的 `/analyze` 不用改。
 写接口要令牌；跨源按 Origin 白名单拦截；详情见 `security.py`。
@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from learnsys import config
+from learnsys import config, product
 from learnsys.agent.config import load_config
 from learnsys.ask import VERSION
 from learnsys.modules import web_dir
@@ -31,7 +31,7 @@ DEFAULT_PORT = 8765
 
 
 def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
-    app = FastAPI(title="学习系统", version=VERSION, docs_url="/docs", redoc_url=None)
+    app = FastAPI(title=product.PRODUCT_NAME, version=VERSION, docs_url="/docs", redoc_url=None)
     app.state.token = token or os.environ.get("LEARNSYS_TOKEN") or secrets.token_urlsafe(24)
     app.state.port = port
 
@@ -120,19 +120,19 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
         if index.exists():
             return FileResponse(index)
         return f"""<!doctype html><html lang="zh-CN"><meta charset="utf-8">
-<title>学习系统 · 后台</title>
+<title>{product.PRODUCT_NAME} · 后台</title>
 <style>body{{background:#1b1e23;color:#dfe6ee;font-family:'Microsoft YaHei UI',sans-serif;
 padding:40px;line-height:1.7}}a{{color:#6ea8ff}}</style>
-<h1>学习系统后台已启动</h1>
+<h1>{product.PRODUCT_NAME}后台已启动</h1>
 <p>版本 {VERSION} · 服务在 127.0.0.1:{port}</p>
 <p>没找到 <code>web/index.html</code>，Web 工作台还没装进来。</p>
 <ul><li><a href="/api/health">/api/health</a> —— 存活、模型、令牌</li></ul></html>"""
 
     @app.get("/favicon.ico", include_in_schema=False)
     def favicon():
-        icon = config.ROOT / "问一问.ico"
+        icon = config.ICON_PATH
         if icon.exists():
-            return FileResponse(icon)
+            return FileResponse(icon, headers={"Cache-Control": "no-store"})
         return Response(status_code=204)
 
     return app

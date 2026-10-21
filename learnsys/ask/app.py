@@ -1,6 +1,6 @@
-"""问一问 · 入口：托盘 + 全局热键 + 框选 + 顶部横栏。
+"""学习工作台 · 入口：托盘 + 全局热键 + 框选 + 顶部横栏（问答部分叫「问一问」）。
 
-双击「问一问.cmd」让它常驻：启动就在屏幕上方出一条横栏（上面写着本程序占了多少盘），
+双击「学习工作台.cmd」让它常驻：启动就在屏幕上方出一条横栏（上面写着本程序占了多少盘），
 按 Alt+Q（或点横栏上的「框选」）框一块屏幕，就在那条横栏里问它。
 数据存在 D 盘专用文件夹里、按天分：D:\学习系统\2026.10.2\（那天的库 + 那天的截图）；**打开 app 就先把当天的文件夹建出来**。
 """
@@ -18,11 +18,11 @@ import urllib.request
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from learnsys import config, record, store
+from learnsys import config, product, record, store
 from learnsys.ask import VERSION, backup, bar, hotkey as hotkey_mod, icon as icon_mod, study
-from learnsys.ask import backend, identity, liverec, ocr, ops, overlay, single, scheduler, workbench
+from learnsys.ask import backend, liverec, ocr, ops, overlay, shortcuts, single, scheduler, workbench
 
-LAUNCHER_NAME = "问一问.cmd"      # 源码运行时那个启动器：开机自启、开始菜单快捷方式都指向它
+LAUNCHER_NAME = product.LAUNCHER_NAME   # 源码运行时那个启动器：开始菜单快捷方式指向它
 NL = chr(92) + "n"               # 写进文件/字符串字面量里的「反斜杠+n」（换行转义）
 
 
@@ -37,7 +37,7 @@ def _server_info(port: int, timeout: float = 0.5) -> dict:
 
 
 def _server_healthy(port: int, timeout: float = 0.5) -> bool:
-    """端口上是不是已经有一个能用的学习系统后台（避免重复起、也避免误杀别人）。"""
+    """端口上是不是已经有一个能用的学习工作台后台（避免重复起、也避免误杀别人）。"""
     return bool(_server_info(port, timeout).get("ok"))
 
 
@@ -73,7 +73,7 @@ def newest_source_mtime(src_dir: pathlib.Path) -> float | None:
 
 
 def launcher_target() -> pathlib.Path:
-    """「问一问」是怎么被起来的：**打包后 = 它自己的 exe**；源码跑 = 项目里那个 .cmd。"""
+    """「学习工作台」是怎么被起来的：**打包后 = 它自己的 exe**；源码跑 = 项目里那个 .cmd。"""
     if config.FROZEN:
         return pathlib.Path(sys.executable).resolve()
     return config.ROOT / LAUNCHER_NAME
@@ -90,7 +90,7 @@ def _silence_windowed() -> None:
 
 
 def _pythonw() -> str:
-    """挑一个不弹黑框的解释器（跟 问一问.cmd 同一个顺序）。"""
+    """挑一个不弹黑框的解释器（跟 学习工作台.cmd 同一个顺序）。"""
     for candidate in (config.ROOT / ".venv" / "Scripts" / "pythonw.exe",
                       pathlib.Path(r"D:\Desktop\bilinote\asr-venv\Scripts\pythonw.exe"),
                       pathlib.Path(r"D:\python\pythonw.exe")):
@@ -193,9 +193,10 @@ class AskApp(QtCore.QObject):
     show_bar_requested = QtCore.Signal()
     pick_requested_ui = QtCore.Signal()
 
-    def __init__(self, app: QtWidgets.QApplication):
+    def __init__(self, app: QtWidgets.QApplication, background: bool = False):
         super().__init__()
         self.app = app
+        self.background = background        # --background：只起后台/横栏/托盘，不自动弹网页
         self.show_bar_requested.connect(self.show_bar)
         self.pick_requested_ui.connect(self.pick)
         try:
@@ -262,7 +263,7 @@ class AskApp(QtCore.QObject):
         self.record_action.setCheckable(True)
         self.record_action.triggered.connect(self._toggle_record)
         menu.addAction("展开横栏", self.show_bar)
-        menu.addAction("打开学习台（独立窗口）", self.open_web)
+        menu.addAction(f"打开{product.PRODUCT_NAME}（独立窗口）", self.open_web)
         menu.addAction("收起成小条", lambda: self.bar.set_collapsed(True))
         menu.addAction("回到屏幕上方居中", self.bar.center_top)
         menu.addAction("打开今天的数据文件夹", self.open_today)
@@ -274,8 +275,6 @@ class AskApp(QtCore.QObject):
         menu.addAction("生成今天的学习报告（Markdown）", self._generate_report)
         menu.addAction("导出今天的对话笔记（Markdown）", self._export_notes)
         menu.addAction("立即备份数据", self._backup_now)
-        menu.addAction("怎么固定到任务栏…", self._pin_help)
-        menu.addAction("修复任务栏固定（指回问一问）", self._fix_pin)
         menu.addSeparator()
         self.startup_action = menu.addAction("开机自启（跟着电脑一起起来）")
         self.startup_action.setCheckable(True)
@@ -285,7 +284,7 @@ class AskApp(QtCore.QObject):
         menu.addAction("退出", self.quit)
         tray.setContextMenu(menu)
         menu.setStyleSheet(bar.QSS)   # 托盘菜单也吃同一套深色样式 —— 不然弹出来是刺眼的白
-        tray.setToolTip(f"问一问 {version_line()}\n按 {self.hotkey.pretty} 框选屏幕；横栏能拖着挪、也能收成小条。")
+        tray.setToolTip(f"{product.PRODUCT_NAME} {version_line()}\n按 {self.hotkey.pretty} 框选屏幕；横栏能拖着挪、也能收成小条。")
         tray.activated.connect(self._tray_clicked)
         tray.show()
         return tray
@@ -323,7 +322,7 @@ class AskApp(QtCore.QObject):
                 if _server_has_ui(port):
                     self._web_port = port
                     self._web_external = True
-                    self.bar.show_message(f"学习系统后台已在运行：http://127.0.0.1:{port}/")
+                    self.bar.show_message(f"{product.PRODUCT_NAME}后台已在运行：http://127.0.0.1:{port}/")
                     return
                 # 单独起的开发后台：数据能用，但页面调不动快捷栏 → 另起一个带 UI 的
                 last_error = f"端口 {port} 有一个没接快捷栏的后台"
@@ -334,7 +333,7 @@ class AskApp(QtCore.QObject):
             try:
                 self._web_server = serve_in_thread(port)
                 self._web_port = port
-                self.bar.show_message(f"学习系统后台已启动：http://127.0.0.1:{port}/")
+                self.bar.show_message(f"{product.PRODUCT_NAME}后台已启动：http://127.0.0.1:{port}/")
                 return
             except Exception as exc:
                 last_error = str(exc)
@@ -357,39 +356,40 @@ class AskApp(QtCore.QObject):
         return f"http://127.0.0.1:{self._web_port}/" if self._web_port else ""
 
     def open_web(self) -> None:
-        """打开学习台：有窗口就聚焦，没有就开一个无地址栏的应用窗口。"""
+        """打开学习工作台：有窗口就聚焦，没有就开一个无地址栏的应用窗口。"""
         if not self._web_port:
             self.start_web()
         if not self._web_port:
-            self._warn("学习台打不开：本地服务没起来。")
+            self._warn(f"{product.PRODUCT_NAME}打不开：本地服务没起来。")
             return
-        self.bar.show_message(f"正在打开学习台：http://127.0.0.1:{self._web_port}/")
+        self.bar.show_message(f"正在打开{product.PRODUCT_NAME}：http://127.0.0.1:{self._web_port}/")
         how = workbench.open_or_focus(self.web_url())
         if how == "默认浏览器":
-            self._warn("没找到 Edge / Chrome，已改用默认浏览器打开学习台。")
+            self._warn(f"没找到 Edge / Chrome，已改用默认浏览器打开{product.PRODUCT_NAME}。")
 
     def start(self) -> None:
         day = self.prepare_today()          # 打开 app 就先把当天的文件夹建出来
-        self._install_identity()            # 给自己的任务栏身份收尾（别再被 Windows 当成 IDLE）
+        self._install_shortcuts()           # 开始菜单入口 + 清旧版残留
         ready = self.hotkey.register()      # 快捷键被占了也别把界面藏起来
         self.show_bar()
-        message = f"问一问 {version_line()} ｜ 今天的数据放这儿：{day}"
+        message = f"{product.PRODUCT_NAME} {version_line()} ｜ 今天的数据放这儿：{day}"
         if self._exe_is_stale():
-            # 「问一问.cmd」优先启动 dist 里的 exe —— 源码改了没重新打包时，
+            # 「学习工作台.cmd」优先启动 dist 里的 exe —— 源码改了没重新打包时，
             # 跑的还是旧版，测试结果会让人怀疑人生（真踩过）
             message += "\n⚠️ 源码比 exe 新 —— 现在跑的还是旧版，双击 打包.cmd 重新打包再测。"
         self.bar.show_message(message)
         self._startup_worker = _StartupWorker(config.DATA_ROOT, self._backup_dir, self)
         self._startup_worker.message.connect(
-            lambda m: self.tray.showMessage("问一问", m,
+            lambda m: self.tray.showMessage(product.PRODUCT_NAME, m,
                                             QtWidgets.QSystemTrayIcon.Information, 10000))
         self._startup_worker.start()        # 备份/清理/查新版本都在后台
-        if ready:
+        if ready and not self.background:
             self.tray.showMessage(
-                "问一问",
+                product.PRODUCT_NAME,
                 f"已就绪 —— 按 {self.hotkey.pretty} 框一块屏幕；横栏能拖着挪、也能收成小条。",
                 QtWidgets.QSystemTrayIcon.Information, 5000)
-        if config.WORKBENCH_ON_START:
+        # --background 只抑制网页窗口；后台、横栏、托盘照常
+        if config.WORKBENCH_ON_START and not self.background:
             # 等后台线程把 8765/8766 绑定好再开窗；页面自己也有重试，早了也不白屏
             QtCore.QTimer.singleShot(700, self.open_web)
 
@@ -397,7 +397,7 @@ class AskApp(QtCore.QObject):
         """打包出的 exe 是不是比仓库源码旧（只在「exe 就在仓库 dist 里」时才比得出）。"""
         if not config.FROZEN:
             return False
-        src_dir = config.ROOT.parent.parent / "learnsys"   # exe 在 dist/问一问/ 下
+        src_dir = config.ROOT.parent.parent / "learnsys"   # exe 在 dist/学习工作台/ 下
         newest = newest_source_mtime(src_dir)
         if newest is None:
             return False
@@ -407,40 +407,24 @@ class AskApp(QtCore.QObject):
             return False
         return newest > exe_mtime + 60      # 放 60 秒余量，打包尾动不动几秒
 
-    def _install_identity(self) -> None:
-        """任务栏身份收尾：自己的图标 + HKCU 注册 + 开始菜单快捷方式。"""
+    def _install_shortcuts(self) -> None:
+        """开始菜单入口收尾：补「学习工作台」快捷方式 + 清旧版残留。"""
         icon_path = icon_mod.ensure_ico()
         if icon_path is None:
             return
-        if identity.install(launcher_target(), icon_path)["shortcut"] is None:
-            print("开始菜单快捷方式没摆上 —— 固定到任务栏可能得手动来", file=sys.stderr)
-        # 每次启动顺手把任务栏那条固定修回来：Windows 是照「跑它的那个 exe」建的它
-        # （目标是裸 exe、图标空）⇒ 一启动就把它指回问一问 + 咱的图标。
-        identity.repair_taskbar_pins(launcher_target(), icon_path)
+        if shortcuts.install(launcher_target(), icon_path)["shortcut"] is None:
+            print("开始菜单快捷方式没摆上 —— 可以手动从桌面快捷方式启动", file=sys.stderr)
 
-    def _pin_help(self) -> None:
-        """「固定到任务栏」怎么才对：别再固定成 IDLE 那条。"""
-        text = identity.PIN_HELP_FROZEN if config.FROZEN else identity.PIN_HELP
-        self.tray.showMessage("问一问", text,
-                              QtWidgets.QSystemTrayIcon.Information, 12000)
-        self.bar.show_message(text.replace(chr(10), " "))
-        self.show_bar()
+    def _called_back(self, mode: str = "show") -> None:
+        """又点了一次「学习工作台」—— 正常调用：横栏露出来，工作台也打开/聚焦。
 
-    def _fix_pin(self) -> None:
-        """任务栏那条固定若指着裸 pythonw（点不开）—— 把它指回 问一问.cmd。"""
-        icon_path = icon_mod.ensure_ico()
-        if icon_path is None:
-            self._warn("图标还没生成，先放一放。")
+        Startup 的 --background 调用只保持后台，不抢焦点。
+        """
+        if mode == "background":
             return
-        fixed = identity.repair_taskbar_pins(launcher_target(), icon_path)
-        self._warn("修好了 %d 条任务栏固定。" % fixed if fixed
-                   else "没找到要修的（先在任务栏上固定一条，再点这个）。")
-
-    def _called_back(self) -> None:
-        """又点了一次「问一问」—— 横栏露出来，学习台也打开/聚焦。"""
         self.show_bar()
         self.open_web()
-        self.bar.show_message("问一问已经在跑了 —— 横栏和学习台都给你叫回来了。")
+        self.bar.show_message(f"{product.PRODUCT_NAME}已经在跑了 —— 横栏和工作台都给你叫回来了。")
 
     # ---- 采集层：开始 / 结束完整录制（声音 + 屏幕 + 窗口）----
 
@@ -494,7 +478,7 @@ class AskApp(QtCore.QObject):
 
     def _live_stopped(self, summary: dict) -> None:
         text = self._record_summary(summary)
-        self.tray.showMessage("问一问", text, QtWidgets.QSystemTrayIcon.Information, 12000)
+        self.tray.showMessage(product.PRODUCT_NAME, text, QtWidgets.QSystemTrayIcon.Information, 12000)
         self.bar.show_message(text.replace(chr(10), " "))
 
     def quit(self) -> None:
@@ -542,39 +526,38 @@ class AskApp(QtCore.QObject):
         except Exception as exc:
             self._warn(f"打不开文件夹：{exc}")
 
-    def _startup_dir(self) -> pathlib.Path:
-        base = os.environ.get("APPDATA") or str(pathlib.Path.home() / "AppData" / "Roaming")
-        return (pathlib.Path(base) / "Microsoft" / "Windows" / "Start Menu"
-                / "Programs" / "Startup")
-
     def _startup_on(self) -> bool:
         try:
-            return (self._startup_dir() / LAUNCHER_NAME).exists()
+            return (shortcuts.startup_dir() / product.STARTUP_LNK_NAME).exists()
         except Exception:
             return False
 
     def _toggle_startup(self) -> None:
-        target = self._startup_dir() / LAUNCHER_NAME
+        target = shortcuts.startup_dir() / product.STARTUP_LNK_NAME
         try:
             if target.exists():
                 target.unlink()
                 want = False
             else:
-                target.parent.mkdir(parents=True, exist_ok=True)
-                if config.FROZEN:      # 打包后：开机自启直接拉起 exe 自己
-                    lines = ["@echo off", f'start "" "{launcher_target()}"']
-                else:
-                    lines = ["@echo off",
-                             f'cd /d "{config.ROOT}"',
-                             f'start "" "{_pythonw()}" -m learnsys.ask.app']
-                target.write_text("\r\n".join(lines) + "\r\n", encoding="utf-8")
-                want = True
+                icon_path = icon_mod.ensure_ico()
+                if icon_path is None:
+                    self._warn("图标还没生成，开机自启先放一放。")
+                    return
+                if config.FROZEN:      # 打包后：Startup 直接拉起 exe 自己
+                    exe = launcher_target()
+                    arguments, workdir = "--background", exe.parent
+                else:                  # 源码：pythonw -m learnsys.ask.app --background
+                    exe = pathlib.Path(_pythonw())
+                    arguments, workdir = "-m learnsys.ask.app --background", config.ROOT
+                want = shortcuts.make_startup_shortcut(
+                    exe, icon_path, arguments=arguments, working_dir=workdir) is not None
         except Exception as exc:
             self._warn(f"改开机自启没成功：{exc}")
             return
         if hasattr(self, "startup_action"):
             self.startup_action.setChecked(want)
-        self._warn("已设为开机自启 —— 下次开机自动出横栏。" if want else "已关掉开机自启。")
+        self._warn(f"已设为开机自启 —— 下次开机自动起后台和横栏。" if want
+                   else "已关掉开机自启。")
 
     # ---- 框选 → 截图 → 横栏 ----
 
@@ -853,7 +836,7 @@ class AskApp(QtCore.QObject):
         except Exception as exc:
             self._warn(f"统计没算出来：{exc}")
             return
-        self.tray.showMessage("问一问 · 专注统计", line,
+        self.tray.showMessage(f"{product.PRODUCT_NAME} · 专注统计", line,
                               QtWidgets.QSystemTrayIcon.Information, 12000)
         self.bar.show_message(line)
         self.show_bar()
@@ -933,7 +916,7 @@ class AskApp(QtCore.QObject):
         if name.startswith("pomodoro"):
             text = "专注 25 分钟结束 —— 起来走两步，休息 5 分钟。"
             self.scheduler.after("pomodoro_break", 5 * 60, "休息结束 —— 继续加油！")
-        self.tray.showMessage("问一问 · 提醒", text,
+        self.tray.showMessage(f"{product.PRODUCT_NAME} · 提醒", text,
                               QtWidgets.QSystemTrayIcon.Information, 12000)
         self.bar.show_message("⏰ " + text)
         self.show_bar()
@@ -1013,7 +996,7 @@ class AskApp(QtCore.QObject):
                 dest.write_text(body, encoding="utf-8")
             except Exception:
                 return                  # AI 不在就保留纯数据版报告
-            self.tray.showMessage("问一问", f"报告写好了（含 AI 要点）：{dest}",
+            self.tray.showMessage(product.PRODUCT_NAME, f"报告写好了（含 AI 要点）：{dest}",
                                   QtWidgets.QSystemTrayIcon.Information, 10000)
 
         threading.Thread(target=ai_part, name="report", daemon=True).start()
@@ -1050,13 +1033,13 @@ class AskApp(QtCore.QObject):
             try:
                 terms = backend.ask(None, question, timeout=90)
             except Exception as exc:
-                self.tray.showMessage("问一问", f"术语表没成：{exc}",
+                self.tray.showMessage(product.PRODUCT_NAME, f"术语表没成：{exc}",
                                       QtWidgets.QSystemTrayIcon.Warning, 8000)
                 return
             dest = config.day_dir() / "术语表.md"
             dest.write_text(f"# 术语表 · {config.day_dir().name}" + NL + NL + terms,
                             encoding="utf-8")
-            self.tray.showMessage("问一问", f"术语表写好了：{dest}",
+            self.tray.showMessage(product.PRODUCT_NAME, f"术语表写好了：{dest}",
                                   QtWidgets.QSystemTrayIcon.Information, 10000)
 
         threading.Thread(target=run, name="glossary", daemon=True).start()
@@ -1110,7 +1093,7 @@ class AskApp(QtCore.QObject):
             self._warn(f"备份好了：{result}")
         else:
             self.tray.showMessage(
-                "问一问", f"自动备份完成：{result}（每周一次，可在 设置.json 里改 backup_dir 换地方）",
+                product.PRODUCT_NAME, f"自动备份完成：{result}（每周一次，可在 设置.json 里改 backup_dir 换地方）",
                 QtWidgets.QSystemTrayIcon.Information, 8000)
 
     def _shot_path(self) -> pathlib.Path:
@@ -1124,20 +1107,20 @@ class AskApp(QtCore.QObject):
             pass
 
     def _warn(self, message: str) -> None:
-        self.tray.showMessage("问一问", message, QtWidgets.QSystemTrayIcon.Warning, 6000)
+        self.tray.showMessage(product.PRODUCT_NAME, message, QtWidgets.QSystemTrayIcon.Warning, 6000)
         self.bar.show_message(message)
         self.show_bar()
 
 
 def main() -> int:
     _silence_windowed()                   # 无黑框模式：print 不能炸
-    identity.declare_process_identity()   # 必须在建窗口之前：Windows 认的是这个，不是 exe
+    background = "--background" in sys.argv[1:]   # 开机自启：只起后台/横栏，不弹工作台
     app = QtWidgets.QApplication(sys.argv)
-    if not single.claim():                # 已经有一个在跑了 → 叫它露个脸，自己退
-        return 0
+    if not single.claim("background" if background else "show"):
+        return 0                          # 已经有实例在跑 → 通知它后自己退
     app.setApplicationName("learnsys-ask")
     app.setQuitOnLastWindowClosed(False)
-    ask_app = AskApp(app)
+    ask_app = AskApp(app, background=background)
     ask_app.start_web()                 # 本地服务与快捷栏同一个进程
     app.aboutToQuit.connect(ask_app.hotkey.unregister)
     app.aboutToQuit.connect(ask_app.bar.shutdown)   # 兜底：走别的路径退出也先收线程

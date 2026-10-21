@@ -18,7 +18,9 @@ import time
 import webbrowser
 from ctypes import wintypes
 
-WINDOW_MARK = "· 学习系统"          # 页面 <title> 统一是「今日 · 学习系统」这种形状
+from learnsys import config, product
+
+WINDOW_MARK = f"· {product.PRODUCT_NAME}"   # 页面 <title> 统一是「今日 · 学习工作台」这种形状
 DEFAULT_SIZE = (1440, 900)
 
 
@@ -128,7 +130,7 @@ def fit_window(mark: str = WINDOW_MARK, preferred: tuple[int, int] = DEFAULT_SIZ
 
 
 def _windows_matching(mark: str = WINDOW_MARK) -> list[tuple[int, str]]:
-    """枚举可见顶层窗口，找出标题以「· 学习系统」结尾的。"""
+    """枚举可见顶层窗口，找出标题以「· 学习工作台」结尾的。"""
     if sys.platform != "win32":
         return []
     user32 = _user32()
@@ -155,7 +157,7 @@ def _windows_matching(mark: str = WINDOW_MARK) -> list[tuple[int, str]]:
 
 
 def focus_window(mark: str = WINDOW_MARK) -> bool:
-    """已有学习台窗口就把它提到前台；没有返回 False。"""
+    """已有学习工作台窗口就把它提到前台；没有返回 False。"""
     if sys.platform != "win32":
         return False
     user32 = _user32()
@@ -184,11 +186,50 @@ def _wait_for_window(mark: str = WINDOW_MARK, timeout: float = 4.0) -> bool:
     return False
 
 
+def _msedge_proxy() -> str | None:
+    """找 msedge_proxy.exe（Edge 已安装 PWA 的启动外壳）。"""
+    browser = find_browser()
+    if browser:
+        proxy = pathlib.Path(browser).with_name("msedge_proxy.exe")
+        try:
+            if proxy.is_file():
+                return str(proxy)
+        except OSError:
+            pass
+    return None
+
+
+def open_installed_app(url: str, size: tuple[int, int] = DEFAULT_SIZE) -> bool:
+    """拉起已安装的 PWA（有独立的任务栏身份/图标）。没配置或没装就返回 False。"""
+    app_id = config.PWA_APP_ID
+    if not app_id or ":8765" not in url:
+        return False
+    proxy = _msedge_proxy()
+    if not proxy:
+        return False
+    args = [
+        proxy,
+        "--profile-directory=Default",
+        f"--app-id={app_id}",
+        f"--app-url={url}",
+        "--app-launch-source=19",
+    ]
+    try:
+        subprocess.Popen(args, close_fds=True)
+    except OSError:
+        return False
+    if _wait_for_window():
+        fit_window(preferred=size)
+    return True
+
+
 def open_app_window(url: str, size: tuple[int, int] = DEFAULT_SIZE) -> str:
-    """用 Edge/Chrome 的应用模式打开；找不到浏览器就退回默认浏览器。
+    """优先拉起已安装的 PWA；否则用 Edge/Chrome 的应用模式打开；再不行退回默认浏览器。
 
     返回一句人能看懂的“用哪种窗口打开的”，启动提示会用它。
     """
+    if open_installed_app(url, size):
+        return "已安装的学习工作台"
     browser = find_browser()
     if not browser:
         webbrowser.open(url)
@@ -216,5 +257,5 @@ def open_or_focus(url: str, size: tuple[int, int] = DEFAULT_SIZE) -> str:
     """已经开着就聚焦，没开才新开一个应用窗口。"""
     if focus_window():
         fit_window(preferred=size)
-        return "已聚焦现有学习台"
+        return "已聚焦现有学习工作台"
     return open_app_window(url, size)

@@ -15,7 +15,7 @@ import uuid
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from learnsys import agent, config
+from learnsys import agent, config, product
 from learnsys.ask import icon as icon_mod, usage
 
 # 设计规范（改样式先看这里，别一处一处试）：
@@ -423,7 +423,7 @@ class AskBar(QtWidgets.QWidget):
         self._on_top = _as_bool(self._state.get("always_on_top", config.ASK_BAR_ALWAYS_ON_TOP),
                                 config.ASK_BAR_ALWAYS_ON_TOP)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
-        self.setWindowTitle("问一问 · 框选屏幕问 AI")
+        self.setWindowTitle(f"{product.PRODUCT_NAME} · {product.QNA_NAME}快捷栏")
         self.setWindowIcon(icon_mod.icon())
         self._apply_flags()
         self._build()
@@ -510,10 +510,11 @@ class AskBar(QtWidgets.QWidget):
     # ---- 置顶 / 任务栏 ----
 
     def _apply_flags(self) -> None:
-        # 用 Window（不是 Tool）才有任务栏按钮 —— 这样才能「固定到任务栏」。
+        # 用 Tool（不是 Window）：横栏不进任务栏、也不进 Alt+Tab。
+        # 统一入口是「学习工作台」快捷方式；横栏靠 Alt+Q / 托盘唤起，不需要任务栏按钮。
         # ⚠️ 只在建窗时调一次：`setWindowFlags` 会把窗口藏掉再重建（闪一下），
         # 置顶与否后面一律走 `_topmost`（SetWindowPos 只动层级、窗口本身不动）。
-        flags = QtCore.Qt.FramelessWindowHint | QtCore.Qt.Window
+        flags = QtCore.Qt.FramelessWindowHint | QtCore.Qt.Tool
         if self._on_top:
             flags |= QtCore.Qt.WindowStaysOnTopHint
         if int(self.windowFlags()) != int(flags):
@@ -544,8 +545,9 @@ class AskBar(QtWidgets.QWidget):
                 return
         except Exception:
             pass
-        # 兜底：改 Qt 窗口标志（窗口会重建、闪一下），位置先记下来再还原
-        flags = QtCore.Qt.FramelessWindowHint | QtCore.Qt.Window
+        # 兜底：改 Qt 窗口标志（窗口会重建、闪一下），位置先记下来再还原。
+        # ⚠️ 这里也必须用 Tool：若写回 Window，切一次置顶任务栏按钮就复现了。
+        flags = QtCore.Qt.FramelessWindowHint | QtCore.Qt.Tool
         if on:
             flags |= QtCore.Qt.WindowStaysOnTopHint
         if int(self.windowFlags()) != int(flags):
@@ -732,7 +734,7 @@ class AskBar(QtWidgets.QWidget):
         self.workbench_btn.setObjectName("tiny")
         self.workbench_btn.setText("工作台")
         self.workbench_btn.setCursor(QtCore.Qt.PointingHandCursor)
-        self.workbench_btn.setToolTip("在独立窗口里打开学习台：Markdown、公式、代码和工具轨迹都更完整")
+        self.workbench_btn.setToolTip(f"在独立窗口里打开{product.PRODUCT_NAME}：Markdown、公式、代码和工具轨迹都更完整")
         self.workbench_btn.clicked.connect(self.workbench_requested.emit)
 
         self.rec_btn = QtWidgets.QToolButton(card)
@@ -810,7 +812,7 @@ class AskBar(QtWidgets.QWidget):
         lay = QtWidgets.QHBoxLayout(pill)
         lay.setContentsMargins(14, 7, 14, 7)
         lay.setSpacing(10)
-        self.pill_title = QtWidgets.QLabel("问一问", pill)
+        self.pill_title = QtWidgets.QLabel(product.PRODUCT_NAME, pill)
         self.pill_title.setObjectName("pillTitle")
         self.pill_usage = QtWidgets.QLabel("", pill)
         self.pill_usage.setObjectName("pillUsage")

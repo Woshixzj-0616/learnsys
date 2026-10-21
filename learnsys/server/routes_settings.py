@@ -191,7 +191,7 @@ def save_settings(patch: SettingsPatch, _=Depends(require_token)):
     app_config.USER.update(data)
 
     return {"ok": True, "saved": changed, "restart_required": restart,
-            "message": "已保存" + ("；热键要重启问一问才生效" if restart else "")}
+            "message": "已保存" + ("；热键要重启学习工作台才生效" if restart else "")}
 
 
 class TestRequest(BaseModel):

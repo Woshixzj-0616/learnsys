@@ -1,6 +1,6 @@
 {
   "id": "today",
-  "name": "学习台",
+  "name": "今日",
   "icon": "◎",
   "type": "native-page",
   "entry": "pages/today.html",
@@ -11,5 +11,5 @@
   "category": "总览",
   "home": false,
   "tagline": "今天的进度、目标和所有插件入口",
-  "description": "学习系统的舞台首页：连续天数、学习点、今日目标、插件卡片、时间线与专注。"
+  "description": "学习工作台的舞台首页：连续天数、学习点、今日目标、插件卡片、时间线与专注。"
 }

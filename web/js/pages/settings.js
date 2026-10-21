@@ -137,7 +137,7 @@ async function save() {
     const result = await api.post("/api/settings", payload);
     dirty = false;
     note.textContent = result.restart_required?.length
-      ? `${result.message}（重启问一问后生效）`
+      ? `${result.message}（重启学习工作台后生效）`
       : "已保存。文本/视觉模型下一轮对话立即生效。";
     toast(result.message || "已保存", "ok");
     document.getElementById("agent-token").value = "";
@@ -145,7 +145,7 @@ async function save() {
     current = await api.get("/api/settings");
     fill(current);
     note.textContent = result.restart_required?.length
-      ? `${result.message}（重启问一问后生效）`
+      ? `${result.message}（重启学习工作台后生效）`
       : "已保存";
     window.dispatchEvent(new CustomEvent("learnsys:prefs", { detail: payload.modules }));
   } catch (error) {

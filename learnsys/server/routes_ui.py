@@ -20,9 +20,9 @@ def _call(name: str, message: str) -> dict:
 
 @router.post("/api/quickbar/show")
 def show_quickbar(_=Depends(require_token)):
-    return _call("show_bar", "快捷栏没在运行：先打开问一问")
+    return _call("show_bar", "快捷栏没在运行：先打开学习工作台")
 
 
 @router.post("/api/quickbar/pick")
 def pick_on_screen(_=Depends(require_token)):
-    return _call("pick", "快捷栏没在运行：先打开问一问")
+    return _call("pick", "快捷栏没在运行：先打开学习工作台")

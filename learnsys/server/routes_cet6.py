@@ -24,8 +24,8 @@ def _missing_page() -> HTMLResponse:
 <style>body{background:#1b1e23;color:#dfe6ee;font-family:'Microsoft YaHei UI',sans-serif;
 padding:40px;line-height:1.8}code{color:#f5b74e}a{color:#6ea8ff}</style>
 <h2>还没装六级精听模块</h2>
-<p>把「六级精听」目录放到学习系统旁边，或在 <code>设置.json</code> 里填 <code>cet6_dir</code>，
-然后重启问一问。</p>
+<p>把「六级精听」目录放到学习工作台旁边，或在 <code>设置.json</code> 里填 <code>cet6_dir</code>，
+然后重启学习工作台。</p>
 <p>目录里需要有 <code>工作台\\精听工作台.html</code> 和 <code>试卷\\</code>。</p>
 </html>""", status_code=404)
 
@@ -200,7 +200,7 @@ def analyze_v2(req: AnalyzeRequest):
 
 @router.post("/api/cet6/sync")
 def cet6_sync(req: Cet6Sync):
-    """工作台分析完把断点送进学习系统时间线。失败不影响工作台。"""
+    """工作台分析完把断点送进学习工作台时间线。失败不影响工作台。"""
     conn = store.connect()
     try:
         stamp = store.now()

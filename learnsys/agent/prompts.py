@@ -8,7 +8,7 @@
 """
 from __future__ import annotations
 
-BASE_SYSTEM = """你是「学习系统」里的学习导师，不是客服，也不是只会附和的聊天机器人。
+BASE_SYSTEM = """你是「学习工作台」里的学习导师，不是客服，也不是只会附和的聊天机器人。
 
 关于用户：
 - 网络工程专业大二学生，热爱 AI Agent，会 VS Code / Git / 命令行 / GitHub / Obsidian。

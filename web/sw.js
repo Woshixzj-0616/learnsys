@@ -1,9 +1,9 @@
-/* 学习台 Service Worker：只缓存「壳」，不碰 API / 六级 iframe / 音频。
+/* 学习工作台 Service Worker：只缓存「壳」，不碰 API / 六级 iframe / 音频。
  *
  * 目标：PWA 能装、断网时至少能打开壳并提示「后台未连接」；
  * 数据永远走本地 FastAPI，不在这里缓存。
  */
-const CACHE = "learnsys-web-v4";
+const CACHE = "learnsys-web-v5";
 const CORE = [
   "/",
   "/manifest.webmanifest",

@@ -1,8 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""把「问一问」打包成一个真正的 Windows 程序。
+"""把「学习工作台」打包成一个真正的 Windows 程序。
 
-用法：项目根目录下双击 `打包.cmd`（或者 `.venv\\Scripts\\python.exe -m PyInstaller 问一问.spec`）。
-产物：`dist\\问一问\\问一问.exe`（整个 `dist\\问一问\\` 文件夹一起拷走就能用）。
+用法：项目根目录下双击 `打包.cmd`（或者 `.venv\\Scripts\\python.exe -m PyInstaller 学习工作台.spec`）。
+产物：`dist\\学习工作台\\学习工作台.exe`（整个 `dist\\学习工作台\\` 文件夹一起拷走就能用）。
 """
 import os
 import sys
@@ -41,13 +41,13 @@ version = VSVersionInfo(
     kids=[
         StringFileInfo([
             StringTable("080404b0", [
-                StringStruct("CompanyName", "学习系统"),
-                StringStruct("FileDescription", "问一问"),
+                StringStruct("CompanyName", "学习工作台"),
+                StringStruct("FileDescription", "学习工作台"),
                 StringStruct("FileVersion", _vstr),
-                StringStruct("InternalName", "问一问"),
+                StringStruct("InternalName", "学习工作台"),
                 StringStruct("LegalCopyright", "MIT License"),
-                StringStruct("OriginalFilename", "问一问.exe"),
-                StringStruct("ProductName", "问一问"),
+                StringStruct("OriginalFilename", "学习工作台.exe"),
+                StringStruct("ProductName", "学习工作台"),
                 StringStruct("ProductVersion", _vstr),
             ])
         ]),
@@ -56,7 +56,7 @@ version = VSVersionInfo(
 )
 
 a = Analysis(
-    [os.path.join(SPECPATH, '问一问.py')],
+    [os.path.join(SPECPATH, '学习工作台.py')],
     pathex=[SPECPATH],
     binaries=[],
     datas=[
@@ -156,7 +156,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='问一问',
+    name='学习工作台',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -167,7 +167,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=os.path.join(SPECPATH, '问一问.ico'),
+    icon=os.path.join(SPECPATH, '学习工作台.ico'),
     version=version,
 )
 
@@ -178,5 +178,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name='问一问',
+    name='学习工作台',
 )

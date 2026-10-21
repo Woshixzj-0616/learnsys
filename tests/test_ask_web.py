@@ -1,4 +1,4 @@
-"""启动链路：复用/起 8765、被占退 8766、打开学习台窗口。"""
+"""启动链路：复用/起 8765、被占退 8766、打开学习工作台窗口。"""
 from __future__ import annotations
 
 import unittest
@@ -77,7 +77,7 @@ class StartWebTest(unittest.TestCase):
         with mock.patch.object(workbench, "open_or_focus", return_value="msedge.exe") as opened:
             app_mod.AskApp.open_web(obj)
         opened.assert_called_once_with("http://127.0.0.1:8765/")
-        self.assertIn("学习台", obj.bar.messages[-1])
+        self.assertIn("学习工作台", obj.bar.messages[-1])
 
 
 if __name__ == "__main__":

@@ -308,7 +308,7 @@ def ocr_image(path: str, *, ctx: ToolContext) -> str:
     """对数据目录里的图片做 OCR。"""
     safe = _safe_path(path, ctx.data_root)
     if safe is None:
-        return "这个路径不在学习系统的数据目录里，不能读。"
+        return "这个路径不在学习工作台的数据目录里，不能读。"
     if not safe.exists():
         return f"图片不存在：{safe.name}"
     try:

@@ -285,7 +285,7 @@ class TestTools(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             ctx = tools.ToolContext(data_root=pathlib.Path(tmp))
             text = tools.ocr_image("C:/Windows/win.ini", ctx=ctx)
-            self.assertIn("不在学习系统的数据目录", text)
+            self.assertIn("不在学习工作台的数据目录", text)
 
 
 class TestQuickbarMarkdown(unittest.TestCase):

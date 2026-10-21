@@ -1,4 +1,4 @@
-// 学习台：舞台首页 —— 学习点/连续天数/等级、插件卡片、时间线、专注、成就。
+// 今日：学习工作台首页 —— 学习点/连续天数/等级、插件卡片、时间线、专注、成就。
 import { api } from "../api.js";
 import { plain } from "../markdown.js";
 import {

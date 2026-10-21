@@ -43,6 +43,15 @@ class Test8TopmostSinglePath(unittest.TestCase):
         b.show()
         self.assertEqual(int(b.windowFlags()), before, "show() 不该改窗口标志")
 
+    def test_bar_is_tool_window_not_taskbar(self):
+        """2.5.0：横栏不进任务栏/Alt+Tab —— 窗口类型必须是 Qt.Tool。"""
+        _app()
+        b = bar.AskBar("Alt+Q")
+        self.addCleanup(b.shutdown)
+        self.addCleanup(b.deleteLater)
+        self.assertEqual(int(b.windowType()) & int(QtCore.Qt.WindowType_Mask),
+                         int(QtCore.Qt.Tool))
+
     def test_toggle_updates_state_and_text(self):
         """置顶开关：状态和按钮文字必须跟着翻。
 
@@ -85,6 +94,9 @@ class Test8TopmostSinglePath(unittest.TestCase):
             W.user32 = fake
             b._topmost(False)
         self.assertEqual(int(b.windowFlags()) & int(QtCore.Qt.WindowStaysOnTopHint), 0)
+        # 兜底重建也必须还是 Tool，否则切一次置顶任务栏按钮就复现
+        self.assertEqual(int(b.windowType()) & int(QtCore.Qt.WindowType_Mask),
+                         int(QtCore.Qt.Tool))
 
 
 class Test9ConfigWired(unittest.TestCase):

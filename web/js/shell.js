@@ -2,6 +2,8 @@
 import { api, initApi } from "./api.js";
 import { escapeHtml, setStatus, toast } from "./ui.js";
 
+const PRODUCT_NAME = "学习工作台";
+
 const view = document.getElementById("view");
 const nav = document.getElementById("nav");
 const titleNode = document.getElementById("page-title");
@@ -63,7 +65,7 @@ function setHeader(module) {
   titleNode.textContent = module.name;
   subNode.textContent = module.note || "";
   actions.innerHTML = "";
-  document.title = `${module.name} · 学习系统`;
+  document.title = `${module.name} · ${PRODUCT_NAME}`;
 }
 
 function renderPlanned(module) {
@@ -168,7 +170,7 @@ async function boot() {
     setStatus("后台未连接", "err");
     view.innerHTML = `<div class="empty"><strong>连不上本地服务</strong>
       ${escapeHtml(error?.message || error)}
-      <div class="hint" style="margin-top:8px">确认「问一问」还在运行；实在不行重启一次。</div>
+      <div class="hint" style="margin-top:8px">确认「学习工作台」还在运行；实在不行重启一次。</div>
       <div style="margin-top:14px"><button class="btn" id="retry-boot">重试</button></div></div>`;
     document.getElementById("retry-boot")?.addEventListener("click", boot);
     console.error(error);
@@ -203,43 +205,9 @@ function bindQuickbarTools() {
     "click", () => callQuickbar("pick"));
 }
 
-// ---- PWA：安装成独立窗口 + 离线壳 ----
-let installPrompt = null;
-
-function bindPwa() {
-  const button = document.getElementById("ui-install");
-  const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches
-    || window.navigator.standalone === true;
-  if (standalone) {
-    if (button) button.hidden = true;
-  }
-
-  window.addEventListener("beforeinstallprompt", (event) => {
-    event.preventDefault();          // 先拦住浏览器自带的小横幅，改由侧栏按钮触发
-    installPrompt = event;
-    if (button) button.hidden = false;
-  });
-
-  button?.addEventListener("click", async () => {
-    if (!installPrompt) {
-      toast("当前浏览器没有给出安装入口：用 Edge/Chrome 打开，地址栏右侧的「安装」图标可装。", "err");
-      return;
-    }
-    installPrompt.prompt();
-    try {
-      const choice = await installPrompt.userChoice;
-      if (choice?.outcome === "accepted") toast("已安装 —— 下次从开始菜单直接打开学习台", "ok");
-    } catch { /* 用户取消不算错误 */ }
-    installPrompt = null;
-    button.hidden = true;
-  });
-
-  window.addEventListener("appinstalled", () => {
-    installPrompt = null;
-    if (button) button.hidden = true;
-    toast("学习台已安装", "ok");
-  });
-
+// ---- 离线壳：只注册 Service Worker，不再宣传装成 PWA ----
+// 统一入口是桌面/开始菜单的「学习工作台」快捷方式；再装一个 PWA 会多出第二个窗口。
+function bindServiceWorker() {
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
     navigator.serviceWorker.register("/sw.js", { scope: "/" })
       .catch((error) => console.warn("Service Worker 没注册上（不影响在线使用）：", error));
@@ -247,5 +215,5 @@ function bindPwa() {
 }
 
 bindQuickbarTools();
-bindPwa();
+bindServiceWorker();
 boot();

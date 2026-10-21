@@ -1,7 +1,7 @@
 """学习记录器的可调参数。
 
 打包成 exe 之后**这个文件在 exe 里面、改不着** ⇒ 想改的行为放
-`D:/学习系统/设置.json`（第一次打开问一问会自己生成一份带说明的模板，填完重启就生效）。
+`D:/学习系统/设置.json`（第一次打开学习工作台会自己生成一份带说明的模板，填完重启就生效）。
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ UNIFIED_DB = True
 SETTINGS_FILE = DATA_ROOT / "设置.json"
 
 SETTINGS_TEMPLATE = {
-    "_说明": "问一问的设置。改完保存 → 重启问一问就生效；留空 = 用默认。",
+    "_说明": "学习工作台的设置。改完保存 → 重启学习工作台就生效；留空 = 用默认。",
     "_默认": "什么都不填 = 走本机 Codex 的中转口（不用 key，但要把 Codex 开着）。",
     "_自己填key": {
         "怎么填": "任何「OpenAI 兼容 + 能看图」的服务都行，下面三个是例子；填 api_key 就别留 api_base / api_model。",
@@ -82,8 +82,10 @@ SETTINGS_TEMPLATE = {
     "keep_days": 0,
     "_frame_seconds": "录制时每隔多少秒截一张全屏快照（最小 5）",
     "frame_seconds": 30,
-    "_workbench_on_start": "打开问一问时，是否自动弹出学习台窗口（false = 只出快捷栏，从托盘再打开）",
+    "_workbench_on_start": "打开学习工作台时，是否自动弹出网页工作台窗口（false = 只出快捷栏，从托盘再打开）",
     "workbench_on_start": True,
+    "_pwa_app_id": "可选：已安装 PWA 的 app-id。填了就用它打开工作台（任务栏有独立的「学习工作台」按钮）；留空 = Edge 应用窗口。",
+    "pwa_app_id": "",
     "_cet6_dir": "六级精听目录（可选模块；留空 = 自动找仓库旁边的「六级精听」）。"
                  "目录里要有 工作台\\精听工作台.html 和 试卷\\",
     "cet6_dir": "",
@@ -172,7 +174,7 @@ def cet6_dir_candidates() -> list[pathlib.Path]:
     raw = str(USER.get("cet6_dir") or "").strip() or os.environ.get("LEARNSYS_CET6_DIR", "").strip()
     if raw:
         cands.append(pathlib.Path(raw).expanduser())
-    if FROZEN:                                  # exe 在 dist/问一问/ 里
+    if FROZEN:                                  # exe 在 dist/学习工作台/ 里
         cands.append(ROOT.parent.parent.parent / "六级精听")
     else:                                       # 源码在 D:\Desktop\learnsys
         cands.append(ROOT.parent / "六级精听")
@@ -204,7 +206,7 @@ def ask_image_dir() -> pathlib.Path:
 
 
 SETTINGS_PATH = DATA_ROOT / "界面设置.json"   # 横栏的位置 / 收起状态
-ICON_PATH = ROOT / "问一问.ico"              # 托盘 / 窗口 / 任务栏的图标（首次启动自动生成）
+ICON_PATH = ROOT / "学习工作台.ico"          # 托盘 / 窗口 / favicon 的图标（首次启动自动生成）
 
 # ---- 前台窗口 ----
 WINDOW_SAMPLE_SECONDS = 1.0
@@ -220,7 +222,7 @@ SILENCE_RMS = 0.003         # 响度低于这个就跳过：静音不花算力�
 MIN_CHUNK_SECONDS = 2.0     # 短于这个的碎块直接丢掉
 
 def _model_dir() -> str:
-    """whisper 模型目录：源码在 ROOT/models；打包后 exe 在 dist/问一问/ 里，
+    """whisper 模型目录：源码在 ROOT/models；打包后 exe 在 dist/学习工作台/ 里，
     往上两级找仓库根的 models（拷出去没有模型 ⇒ 用默认路径，转写会报「加载失败」）。"""
     for cand in (ROOT / "models" / "small", ROOT.parent.parent / "models" / "small"):
         if (cand / "model.bin").exists():
@@ -238,6 +240,9 @@ ASR_VAD = True              # 静音切段；失败会自动退回 False
 ASK_HOTKEY = USER.get("hotkey") or "alt+q"   # 全局快捷键：修饰键(alt/ctrl/shift/win) + 主键
 # 启动时自动弹出学习台窗口（Edge/Chrome 的应用模式）；不想每次都弹就设 false
 WORKBENCH_ON_START = _user_bool("workbench_on_start", True)
+# 已安装的 PWA app-id（如 ndclga…）：有的话打开工作台直接拉起它 —— 任务栏才有独立的
+# 「学习工作台」按钮；留空 = 退回 Edge --app 窗口（会和普通 Edge 窗口分到一组）。
+PWA_APP_ID = str(USER.get("pwa_app_id") or os.environ.get("LEARNSYS_PWA_APP_ID") or "").strip()
 # 录制时每隔多少秒截一张全屏快照（设置.json 里 frame_seconds 可改，最小 5 秒）
 ASK_FRAME_SECONDS = max(5.0, float(_user_int("frame_seconds", 30)))
 ASK_TIMEOUT_SECONDS = 90.0      # 等 AI 回话的上限；超时就在横条里给中文提示，不装死
