@@ -49,6 +49,17 @@ export const api = {
   del: (path) => request(path, { method: "DELETE" }),
 };
 
+/** 资料上传：直接把 File 当 body 发（不 base64），参数走 query。 */
+export async function uploadRaw(path, file) {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/octet-stream", "X-Learnsys-Token": TOKEN },
+    body: file,
+  });
+  if (!response.ok) throw new Error(await parseError(response));
+  return response.json();
+}
+
 /** 带令牌下载文件（GET），成功后触发浏览器保存。 */
 export async function download(path, filename) {
   const response = await fetch(path, { headers: headers() });

@@ -9,6 +9,8 @@ const TOOL_NAMES = {
   today_summary: "看今日概览",
   read_attachment: "读文档",
   ocr_image: "OCR 看图",
+  search_materials: "搜资料库",
+  read_material: "读资料",
 };
 
 const state = {
@@ -21,6 +23,7 @@ const state = {
   timer: 0,
   image: null,
   doc: null,
+  material: null,
   mode: "explain",
   assistant: null,
   text: "",
@@ -45,6 +48,7 @@ function resetState() {
     timer: 0,
     image: null,
     doc: null,
+    material: null,
     mode: localStorage.getItem("learnsys_mode") || "explain",
     assistant: null,
     text: "",
@@ -75,6 +79,10 @@ export async function mount(ctx) {
     attachRow: ctx.root.querySelector("#attach-row"),
     fileImage: ctx.root.querySelector("#file-image"),
     fileDoc: ctx.root.querySelector("#file-doc"),
+    materialPicker: ctx.root.querySelector("#material-picker"),
+    materialList: ctx.root.querySelector("#material-list"),
+    materialSearch: ctx.root.querySelector("#material-search"),
+    materialClose: ctx.root.querySelector("#material-close"),
   };
 
   dom.mode.value = MODE_NAMES[state.mode] ? state.mode : "explain";
@@ -91,7 +99,19 @@ export async function mount(ctx) {
     setSubDefault();
   }
 
-  // 插件联动：`#/ask?prompt=...` 预填问题（网工训练场「开练」用），不自动发送，留给人改
+  // 插件联动：`#/ask?material=12` 从资料库挂载；`prompt=` 预填问题，不自动发送
+  const materialId = Number(ctx.query?.get("material") || 0);
+  if (materialId) {
+    try {
+      const data = await api.get(`/api/materials/${materialId}?body=0`);
+      state.material = { id: data.item.id, title: data.item.title, chars: data.item.chars };
+      renderAttachments();
+      updateSendButton();
+      dom.status.textContent = `已挂资料：${data.item.title}`;
+    } catch (error) {
+      toast(error.message || "资料没挂上", "err");
+    }
+  }
   const prompt = ctx.query?.get("prompt");
   if (prompt) {
     dom.input.value = prompt;
@@ -105,7 +125,9 @@ export function unmount() {
   state.mounted = false;
   state.controller?.abort();
   clearInterval(state.timer);
+  clearTimeout(state.pickerTimer);
   window.removeEventListener("learnsys:answer-think", onAnswerThink);
+  window.removeEventListener("keydown", onPickerKey);
 }
 
 function onAnswerThink() {
@@ -151,6 +173,7 @@ function bindEvents() {
 
   ctxRef.root.querySelector("#attach-image").addEventListener("click", () => dom.fileImage.click());
   ctxRef.root.querySelector("#attach-doc").addEventListener("click", () => dom.fileDoc.click());
+  ctxRef.root.querySelector("#attach-material").addEventListener("click", openMaterialPicker);
 
   dom.fileImage.addEventListener("change", () => pickFile(dom.fileImage, "image"));
   dom.fileDoc.addEventListener("change", () => pickFile(dom.fileDoc, "doc"));
@@ -160,13 +183,86 @@ function bindEvents() {
     if (!button) return;
     if (button.dataset.remove === "image") state.image = null;
     if (button.dataset.remove === "doc") state.doc = null;
+    if (button.dataset.remove === "material") state.material = null;
     renderAttachments();
   });
+
+  dom.materialClose.addEventListener("click", closeMaterialPicker);
+  dom.materialPicker.addEventListener("click", (event) => {
+    if (event.target === dom.materialPicker) closeMaterialPicker();
+  });
+  dom.materialSearch.addEventListener("input", () => {
+    clearTimeout(state.pickerTimer);
+    state.pickerTimer = setTimeout(() => loadMaterialPicker(dom.materialSearch.value), 220);
+  });
+  window.addEventListener("keydown", onPickerKey);
+  dom.materialList.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-material]");
+    if (!button) return;
+    state.material = {
+      id: Number(button.dataset.material),
+      title: button.dataset.title || "",
+      chars: Number(button.dataset.chars || 0),
+    };
+    state.doc = null;              // 资料库和一次性文档二选一，避免两段正文互相干扰
+    closeMaterialPicker();
+    renderAttachments();
+    updateSendButton();
+    dom.status.textContent = `已挂资料：${state.material.title}`;
+  });
+}
+
+function onPickerKey(event) {
+  if (event.key === "Escape" && !dom.materialPicker.hidden) closeMaterialPicker();
+}
+
+async function openMaterialPicker() {
+  if (state.streaming) {
+    toast("先等这一轮写完再挂资料");
+    return;
+  }
+  dom.materialPicker.hidden = false;
+  dom.materialSearch.value = "";
+  await loadMaterialPicker("");
+  dom.materialSearch.focus();
+}
+
+function closeMaterialPicker() {
+  dom.materialPicker.hidden = true;
+}
+
+async function loadMaterialPicker(query) {
+  dom.materialList.innerHTML = '<div class="empty">正在读资料库…</div>';
+  try {
+    const params = new URLSearchParams({ status: "active", limit: "50" });
+    if (query.trim()) params.set("q", query.trim());
+    const data = await api.get(`/api/materials?${params}`);
+    const items = Array.isArray(data.items) ? data.items : [];
+    if (!items.length) {
+      dom.materialList.innerHTML = `<div class="empty"><strong>资料库还是空的</strong>
+        去 <a href="#/materials">资料</a> 导入课件，或换个关键词。</div>`;
+      return;
+    }
+    dom.materialList.innerHTML = items.map((item) => `
+      <button class="material-pick" type="button"
+        data-material="${item.id}" data-title="${escapeHtml(item.title)}"
+        data-chars="${item.chars || 0}">
+        <span class="material-pick-icon">${escapeHtml(item.kind || "·")}</span>
+        <span class="material-pick-main">
+          <strong>${escapeHtml(item.title)}</strong>
+          <small>${escapeHtml(item.kind)} · ${escapeHtml(item.chars || 0)} 字${item.page ? ` · 第 ${item.page} 页` : ""}</small>
+          ${item.snippet ? `<em>${escapeHtml(item.snippet)}</em>` : ""}
+        </span>
+      </button>`).join("");
+  } catch (error) {
+    dom.materialList.innerHTML = `<div class="empty">${escapeHtml(error.message || error)}</div>`;
+  }
 }
 
 function updateSendButton() {
   const hasText = dom.input.value.trim().length > 0;
-  dom.send.disabled = state.streaming || (!hasText && !state.image && !state.doc);
+  dom.send.disabled = state.streaming
+    || (!hasText && !state.image && !state.doc && !state.material);
 }
 
 async function loadConversations() {
@@ -429,6 +525,7 @@ async function pickFile(input, kind) {
       state.image = { path: result.path, name: result.name || file.name };
       dom.status.textContent = "图片已挂上";
     } else {
+      state.material = null;       // 一次性文档和资料库二选一
       state.doc = {
         name: result.name || file.name,
         text: result.text || "",
@@ -455,6 +552,10 @@ function renderAttachments() {
     items.push(`<span class="attach-chip">文档 · ${escapeHtml(state.doc.name)} · ${state.doc.chars} 字
       <button type="button" data-remove="doc" aria-label="移除文档">×</button></span>`);
   }
+  if (state.material) {
+    items.push(`<span class="attach-chip">资料 · ${escapeHtml(state.material.title)} · ${state.material.chars} 字
+      <button type="button" data-remove="material" aria-label="移除资料">×</button></span>`);
+  }
   dom.attachRow.innerHTML = items.join("");
   dom.attachRow.hidden = items.length === 0;
 }
@@ -462,22 +563,25 @@ function renderAttachments() {
 function sendMessage() {
   if (state.streaming) return;
   const text = dom.input.value.trim();
-  if (!text && !state.image && !state.doc) return;
+  if (!text && !state.image && !state.doc && !state.material) return;
 
-  const message = text || (state.image ? "看看这张图" : "看看这份文档");
+  const message = text || (state.image ? "看看这张图"
+    : (state.material ? "看看这份资料" : "看看这份文档"));
   const payload = {
     message,
     conversation_id: state.convId,
     mode: state.mode,
     image_path: state.image?.path || null,
-    attachment_name: state.doc?.name || "",
-    attachment_text: state.doc?.text || "",
+    attachment_name: state.material ? "" : (state.doc?.name || ""),
+    attachment_text: state.material ? "" : (state.doc?.text || ""),
+    material_id: state.material?.id || null,
   };
 
   if (state.messages.length === 0) dom.inner.innerHTML = "";
   const shown = message
     + (state.image ? `\n［图片：${state.image.name}］` : "")
-    + (state.doc ? `\n［文档：${state.doc.name}］` : "");
+    + (state.doc ? `\n［文档：${state.doc.name}］` : "")
+    + (state.material ? `\n［资料：${state.material.title}］` : "");
   addUserBlock(shown);
   state.messages.push({ role: "user", content: { text: message } });
 
@@ -485,6 +589,7 @@ function sendMessage() {
   dom.input.style.height = "auto";
   state.image = null;
   state.doc = null;
+  state.material = null;
   renderAttachments();
   dom.status.textContent = "";
   scrollBottom(true);

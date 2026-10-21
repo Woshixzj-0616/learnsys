@@ -117,6 +117,30 @@ CREATE TABLE IF NOT EXISTS migrated_sources (
     migrated_at TEXT,
     counts_json TEXT
 );
+CREATE TABLE IF NOT EXISTS materials (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT NOT NULL,
+    kind        TEXT NOT NULL DEFAULT 'note',
+    source      TEXT NOT NULL DEFAULT 'note',
+    path        TEXT NOT NULL DEFAULT '',
+    body        TEXT NOT NULL DEFAULT '',
+    chars       INTEGER NOT NULL DEFAULT 0,
+    pages       INTEGER NOT NULL DEFAULT 0,
+    size        INTEGER NOT NULL DEFAULT 0,
+    sha256      TEXT,
+    course      TEXT NOT NULL DEFAULT '',
+    tags        TEXT NOT NULL DEFAULT '',
+    status      TEXT NOT NULL DEFAULT 'active',
+    meta_json   TEXT NOT NULL DEFAULT '{}',
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL,
+    last_opened TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_materials_status ON materials (status, updated_at);
+DROP INDEX IF EXISTS idx_materials_sha;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_materials_sha_active
+    ON materials (sha256)
+    WHERE sha256 IS NOT NULL AND sha256 <> '' AND status = 'active';
 CREATE TABLE IF NOT EXISTS wrong_items (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     ts           TEXT NOT NULL,
@@ -325,6 +349,7 @@ def counts(conn: sqlite3.Connection) -> dict:
         "cet6_events": one("SELECT COUNT(*) FROM cet6_events"),
         "messages": one("SELECT COUNT(*) FROM messages"),
         "wrong_items": one("SELECT COUNT(*) FROM wrong_items"),
+        "materials": one("SELECT COUNT(*) FROM materials"),
     }
 
 

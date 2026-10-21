@@ -1,0 +1,76 @@
+<div class="materials-page">
+  <section class="stage-hero materials-hero">
+    <div>
+      <p class="stage-eyebrow">资料 · 本地库</p>
+      <h2>课件、笔记、术语表，都变成可检索的上下文。</h2>
+      <p class="stage-sub">导入课件后自动抽正文；可以搜段落、挂到问一问、让 AI 从资料里生成术语表或提纲。
+        原文只存在本机数据目录，自动进备份。</p>
+      <div class="review-stats" id="mat-stats">
+        <div class="review-chip"><span>资料</span><strong>—</strong></div>
+      </div>
+    </div>
+    <div class="materials-hero-actions">
+      <button class="btn btn-primary" type="button" id="mat-import">导入资料</button>
+      <button class="btn" type="button" id="mat-new-note">新建笔记</button>
+      <input type="file" id="mat-file" multiple hidden
+             accept=".pdf,.docx,.pptx,.txt,.md">
+      <span class="hint" id="mat-status">支持 PDF / DOCX / PPTX / TXT / MD，单份 50MB 以内</span>
+    </div>
+  </section>
+
+  <section class="mat-drop" id="mat-drop" hidden>
+    <strong>松手导入</strong><span>文件会存进资料库并抽取正文</span>
+  </section>
+
+  <div class="materials-layout">
+    <section class="panel materials-list-panel">
+      <div class="panel-head materials-toolbar">
+        <input class="mat-search" id="mat-search" type="search"
+               placeholder="搜标题、正文、标签…" autocomplete="off">
+        <select class="mat-kind" id="mat-kind" aria-label="资料类型">
+          <option value="">全部类型</option>
+          <option value="pdf">PDF</option>
+          <option value="docx">Word</option>
+          <option value="pptx">PPT</option>
+          <option value="txt">TXT</option>
+          <option value="md">Markdown</option>
+          <option value="note">笔记</option>
+        </select>
+        <button class="btn wrong-tab" type="button" id="mat-trash-toggle">回收站</button>
+      </div>
+      <div class="panel-body">
+        <div class="materials-list" id="mat-list">
+          <div class="empty">正在读资料库…</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel materials-detail-panel">
+      <div class="panel-head">
+        <span>资料详情</span>
+        <span class="hint" id="mat-detail-state"></span>
+      </div>
+      <div class="panel-body">
+        <div class="materials-detail" id="mat-detail">
+          <div class="empty"><strong>选一份资料</strong>左边点一份课件或笔记，这里显示正文与操作。</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="material-picker" id="mat-gen-modal" hidden>
+  <div class="material-picker-card material-gen-card" role="dialog" aria-modal="true"
+       aria-label="AI 生成结果">
+    <div class="panel-head">
+      <span id="mat-gen-title">AI 生成</span>
+      <span class="mat-gen-actions">
+        <button class="btn btn-primary" type="button" id="mat-gen-save" disabled>保存为笔记</button>
+        <button class="btn btn-quiet" type="button" id="mat-gen-close">关闭</button>
+      </span>
+    </div>
+    <div class="material-picker-body">
+      <div class="mat-gen-result" id="mat-gen-result"></div>
+    </div>
+  </div>
+</div>

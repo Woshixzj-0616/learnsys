@@ -67,6 +67,38 @@ TOOL_SCHEMAS = [
             "required": ["path"],
         },
     },
+    {
+        "name": "search_materials",
+        "description": (
+            "在用户的资料库里搜课件和笔记，返回命中段、资料名和页码。"
+            "用户问「课件里怎么讲的」「哪份资料提到过 X」时先用它；"
+            "回答时标注资料名和页码，资料里没有就如实说没有。"
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "关键词，中文即可"},
+                "limit": {"type": "integer", "description": "最多返回几条，默认 5"},
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "read_material",
+        "description": (
+            "按资料 id 顺序读正文，分段返回。offset 是字符偏移；"
+            "先 search_materials 找到 id，再用它读上下文。"
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "material_id": {"type": "integer", "description": "资料 id"},
+                "offset": {"type": "integer", "description": "从第几个字符开始，默认 0"},
+                "length": {"type": "integer", "description": "读多少字符，默认 6000"},
+            },
+            "required": ["material_id"],
+        },
+    },
 ]
 
 
@@ -288,6 +320,57 @@ def ocr_image(path: str, *, ctx: ToolContext) -> str:
     return f"【OCR：{safe.name}】\n{text[:4000]}"
 
 
+def search_materials(query: str, limit: int = 5, *, ctx: ToolContext) -> str:
+    """搜资料库，返回带资料 id / 页码 / 命中段的文本。"""
+    from learnsys.materials import search as material_search
+    query = str(query or "").strip()
+    if not query:
+        return "搜索词是空的。"
+    conn = None
+    try:
+        conn = store.connect(ctx.db_path)
+        hits = material_search.search(conn, query, limit=max(1, min(int(limit or 5), 10)))
+    except Exception as exc:
+        return f"搜资料库失败：{exc}"
+    finally:
+        if conn is not None:
+            conn.close()
+    if not hits:
+        return f"资料库里没有和「{query}」相关的内容。"
+    lines = [f"资料库里找到 {len(hits)} 段和「{query}」相关的内容："]
+    for hit in hits:
+        page = f" · 第 {hit['page']} 页" if hit.get("page") else ""
+        lines.append(f"\n【资料 {hit['material_id']}：{hit['title']}{page}】\n{hit['snippet']}")
+    return "\n".join(lines)
+
+
+def read_material(material_id: int, offset: int = 0, length: int = 6000,
+                  *, ctx: ToolContext) -> str:
+    """按 id 分段读资料正文。"""
+    offset = max(0, int(offset or 0))
+    length = max(500, min(int(length or 6000), 20000))
+    conn = None
+    try:
+        conn = store.connect(ctx.db_path)
+        item = store.get_material(conn, material_id)
+        if item is None:
+            return f"没有 id={material_id} 这份资料。"
+        store.touch_material(conn, material_id)
+    except Exception as exc:
+        return f"读资料失败：{exc}"
+    finally:
+        if conn is not None:
+            conn.close()
+    body = str(item.get("body") or "")
+    piece = body[offset:offset + length]
+    head = (f"【{item['title']}】共 {len(body)} 字；"
+            f"本次读 {offset}–{offset + len(piece)} 字")
+    tail = "" if offset + len(piece) >= len(body) else (
+        f"\n（后面还有 {len(body) - offset - len(piece)} 字，offset="
+        f"{offset + len(piece)} 接着读）")
+    return head + "\n" + piece + tail
+
+
 def save_wrongbook(question: str, my_answer: str, correct_answer: str = "",
                    tags: str = "", *, ctx: ToolContext) -> str:
     """测验判错时把题收进错题本；同会话同题只收一次。"""
@@ -339,6 +422,15 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str]:
             return read_attachment(int(args.get("offset") or 0), ctx=ctx), "读了挂载文档"
         if name == "ocr_image":
             return ocr_image(str(args.get("path") or ""), ctx=ctx), "对截图做了 OCR"
+        if name == "search_materials":
+            return (search_materials(str(args.get("query") or ""),
+                                     int(args.get("limit") or 5), ctx=ctx),
+                    "搜了资料库")
+        if name == "read_material":
+            return (read_material(int(args.get("material_id") or 0),
+                                  int(args.get("offset") or 0),
+                                  int(args.get("length") or 6000), ctx=ctx),
+                    "读了资料正文")
         if name == "save_wrongbook":
             text = save_wrongbook(
                 str(args.get("question") or ""), str(args.get("my_answer") or ""),

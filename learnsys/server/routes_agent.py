@@ -28,6 +28,7 @@ class ChatRequest(BaseModel):
     context: str = ""
     attachment_name: str = ""
     attachment_text: str = ""
+    material_id: int | None = None   # 从资料库挂载：正文由后端按 id 取，前端不搬几十万字
     module: str = "ask"          # ask / review / quiz ...（会话分组用，不进入时间线标题）
     internal: bool = False       # 插件内部提示词：保留会话上下文，但不记成一条「问答」
 
@@ -81,7 +82,19 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 conn, title=req.message.strip()[:30] or "新对话",
                 module=req.module or "ask", mode=req.mode)
         history = _load_history(conn, conv_id)       # 先取旧账，再记这一问
-        store.add_message(conn, conv_id, "user", {"text": req.message})
+        material_id = req.material_id
+        attachment_name = req.attachment_name
+        attachment_text = req.attachment_text
+        if material_id:
+            material = store.get_material(conn, material_id)
+            if material is not None and material.get("status") == "active":
+                attachment_name = material["title"]
+                attachment_text = material["body"]
+                store.touch_material(conn, material_id)
+            else:
+                material_id = None
+        store.add_message(conn, conv_id, "user",
+                          {"text": req.message, "material_id": material_id})
     except Exception:
         conn.close()
         raise
@@ -105,8 +118,8 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 image_path=req.image_path,
                 extra_images=list(req.extra_images or []),
                 context=req.context,
-                attachment_name=req.attachment_name,
-                attachment_text=req.attachment_text,
+                attachment_name=attachment_name,
+                attachment_text=attachment_text,
                 mode=req.mode,
                 module=req.module,
                 conversation_id=conv_id,

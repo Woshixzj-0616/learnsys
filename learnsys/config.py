@@ -148,6 +148,11 @@ def day_dir(when=None) -> pathlib.Path:
     return DATA_ROOT / f"{moment.year}.{moment.month}.{moment.day}"
 
 
+def materials_dir() -> pathlib.Path:
+    """资料库根目录：原文与回收站都在这下面（自动进备份）。"""
+    return DATA_ROOT / "资料库"
+
+
 def db_path(when=None) -> pathlib.Path:
     """统一库：所有日子的问答、转写、窗口、会话都在这里。
 

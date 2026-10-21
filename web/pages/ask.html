@@ -25,6 +25,7 @@
           </select>
           <button type="button" class="btn btn-quiet" id="attach-image">图片</button>
           <button type="button" class="btn btn-quiet" id="attach-doc">文档</button>
+          <button type="button" class="btn btn-quiet" id="attach-material">资料库</button>
           <span class="composer-status" id="composer-status"></span>
           <button type="button" class="btn btn-danger" id="stop" hidden>停止</button>
           <button type="submit" class="btn btn-primary" id="send">发送</button>
@@ -34,4 +35,20 @@
       </form>
     </div>
   </section>
+</div>
+
+<div class="material-picker" id="material-picker" hidden>
+  <div class="material-picker-card" role="dialog" aria-modal="true" aria-label="从资料库挂载">
+    <div class="panel-head">
+      <span>从资料库挂载</span>
+      <button class="btn btn-quiet" type="button" id="material-close">关闭</button>
+    </div>
+    <div class="material-picker-body">
+      <input class="material-picker-search" id="material-search" type="search"
+             placeholder="搜标题、正文、标签…" autocomplete="off">
+      <div class="material-picker-list" id="material-list">
+        <div class="empty">正在读资料库…</div>
+      </div>
+    </div>
+  </div>
 </div>
