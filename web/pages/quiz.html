@@ -1,0 +1,31 @@
+<div class="quiz-page">
+  <section class="quiz-hero">
+    <div>
+      <p class="stage-eyebrow">测验 · 今日</p>
+      <h2>让 AI 按你今天的记录出 5 道题。</h2>
+      <p class="stage-sub">题目只从今天的窗口、问答、训练和六级断点里来；答一题、批一题。
+        开始测验 +20 学习点，每次作答按问答计。</p>
+      <div class="review-stats" id="quiz-stats"></div>
+    </div>
+    <div class="quiz-hero-actions">
+      <button class="btn btn-primary" type="button" id="quiz-start">出 5 道题</button>
+      <span class="hint" id="quiz-hint"></span>
+    </div>
+  </section>
+
+  <section class="panel quiz-chat">
+    <div class="panel-head">
+      <span>测验对话</span>
+      <span class="hint" id="quiz-state">还没开始</span>
+    </div>
+    <div class="quiz-thread" id="quiz-thread">
+      <div class="empty"><strong>先点「出 5 道题」</strong>
+        题目会出现在这里；你在下面作答，AI 当场批改。</div>
+    </div>
+    <form class="quiz-composer" id="quiz-form">
+      <textarea id="quiz-input" rows="1" placeholder="先出题；之后在这里写你的答案…"></textarea>
+      <button class="btn btn-primary" type="submit" id="quiz-send">发送</button>
+      <button class="btn btn-danger" type="button" id="quiz-stop" hidden>停止</button>
+    </form>
+  </section>
+</div>

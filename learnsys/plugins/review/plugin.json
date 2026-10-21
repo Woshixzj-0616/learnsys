@@ -5,10 +5,11 @@
   "type": "native-page",
   "entry": "pages/review.html",
   "order": 40,
-  "status": "planned",
-  "version": "0.1.0",
+  "status": "ready",
+  "version": "2.0.0",
   "category": "回顾",
-  "home": false,
+  "home": true,
   "tagline": "把今天学到的收成一张卡",
-  "description": "计划：今日/本周复盘、报告历史、自动总结。"
+  "description": "基于今天的录制、转写、问答和训练记录，让 AI 做一次复盘：学了什么、哪里没学进去、10 分钟怎么补。",
+  "script": "js/pages/review.js"
 }

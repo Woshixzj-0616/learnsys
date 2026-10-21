@@ -77,6 +77,25 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(roles, ["user", "assistant"])
         self.assertEqual(detail["messages"][1]["content"]["text"], "你好")
 
+    def test_internal_chat_not_counted_as_ask(self):
+        """复盘/测验的内部提示词只留会话上下文，不算「我问过什么」。"""
+        def fake_run(request, cfg=None, abort=None, **_kwargs):
+            yield AgentEvent("done", data={"text": "复盘结果"})
+
+        before = self.client.get("/api/today", headers=AUTH).json()["ask_count"]
+        with mock.patch.object(routes_agent.agent, "run", fake_run):
+            res = self.client.post("/api/agent/chat", headers=AUTH, json={
+                "message": "请帮我复盘今天", "module": "review", "internal": True})
+        self.assertEqual(res.status_code, 200)
+        after = self.client.get("/api/today", headers=AUTH).json()["ask_count"]
+        self.assertEqual(after, before, "internal 提示词被记成问答了")
+        self.assertEqual(self.client.get("/api/conversations", headers=AUTH)
+                         .json()["items"], [], "复盘会话不该混进问一问列表")
+        review_items = self.client.get(
+            "/api/conversations?module=review", headers=AUTH).json()["items"]
+        self.assertEqual(len(review_items), 1)
+        self.assertEqual(review_items[0]["module"], "review")
+
     def test_search_and_today(self):
         found = self.client.get("/api/search?q=二叉树", headers=AUTH).json()["results"]
         self.assertTrue(found)

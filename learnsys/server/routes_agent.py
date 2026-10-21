@@ -28,6 +28,8 @@ class ChatRequest(BaseModel):
     context: str = ""
     attachment_name: str = ""
     attachment_text: str = ""
+    module: str = "ask"          # ask / review / quiz ...（会话分组用，不进入时间线标题）
+    internal: bool = False       # 插件内部提示词：保留会话上下文，但不记成一条「问答」
 
 
 class StopRequest(BaseModel):
@@ -77,7 +79,7 @@ def chat(req: ChatRequest, _=Depends(require_token)):
         if conv_id is None:
             conv_id = store.create_conversation(
                 conn, title=req.message.strip()[:30] or "新对话",
-                module="ask", mode=req.mode)
+                module=req.module or "ask", mode=req.mode)
         history = _load_history(conn, conv_id)       # 先取旧账，再记这一问
         store.add_message(conn, conv_id, "user", {"text": req.message})
     except Exception:
@@ -125,11 +127,12 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                     ms = int((time.monotonic() - started) * 1000)
                     store.add_message(conn, conv_id, "assistant",
                                       {"text": final, "thinking": thinking})
-                    store.add_ask(
-                        conn, req.message, final, ms, cfg.model or "agent",
-                        kind="image" if req.image_path else "text",
-                        image_path=req.image_path or "", thread=str(conv_id),
-                        conversation_id=conv_id)
+                    if not req.internal:       # 复盘/测验的提示词不算「我问过什么」
+                        store.add_ask(
+                            conn, req.message, final, ms, cfg.model or "agent",
+                            kind="image" if req.image_path else "text",
+                            image_path=req.image_path or "", thread=str(conv_id),
+                            conversation_id=conv_id)
                 elif error:
                     store.add_message(conn, conv_id, "assistant", {"error": error})
             except Exception:
@@ -154,10 +157,11 @@ def stop(req: StopRequest, _=Depends(require_token)):
 
 
 @router.get("/api/conversations")
-def conversations(limit: int = 20, _=Depends(require_token)):
+def conversations(limit: int = 20, module: str = "ask", _=Depends(require_token)):
     conn = store.connect()
     try:
-        return {"items": store.list_conversations(conn, limit=limit)}
+        return {"items": store.list_conversations(
+            conn, limit=limit, module="" if module == "all" else module)}
     finally:
         conn.close()
 

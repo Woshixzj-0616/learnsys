@@ -117,6 +117,33 @@ class PluginApiTest(unittest.TestCase):
         self.assertEqual(overview["today"]["netlab"], 1)
         self.assertEqual(overview["today"]["xp"], 15)
 
+    def test_study_today_prompts_and_review_quiz_xp(self):
+        self._seed()
+        data = self.client.get("/api/study/today", headers=AUTH).json()
+        self.assertEqual(data["stats"]["cet6"], 1)
+        self.assertEqual(data["stats"]["transcripts"], 1)
+        self.assertTrue(any("六级精听" in line for line in data["summary_lines"]))
+        self.assertIn("请帮我复盘", data["review_prompt"])
+        self.assertIn("5 道自测题", data["quiz_prompt"])
+
+        self.client.post("/api/events", headers=AUTH, json={
+            "module": "review", "kind": "report", "title": "今日复盘", "meta": {}})
+        self.client.post("/api/events", headers=AUTH, json={
+            "module": "quiz", "kind": "quiz", "title": "今日测验", "meta": {}})
+        overview = self.client.get("/api/overview", headers=AUTH).json()
+        # 36（问答/收藏/转写/断点/专注）+ 复盘 25 + 测验 20
+        self.assertEqual(overview["today"]["xp"], 81)
+        earned = {a["id"] for a in overview["achievements"] if a["earned"]}
+        self.assertIn("review_1", earned)
+        self.assertIn("quiz_1", earned)
+
+    def test_review_and_quiz_plugins_ready(self):
+        modules = self.client.get("/api/modules", headers=AUTH).json()["modules"]
+        for pid in ("review", "quiz"):
+            mod = next(m for m in modules if m["id"] == pid)
+            self.assertEqual(mod["status"], "ready")
+            self.assertTrue(mod["home"])
+
     def test_plugin_toggle_persists(self):
         self.client.post("/api/settings", headers=AUTH, json={"modules": {"netlab": False}})
         settings = self.client.get("/api/settings", headers=AUTH).json()

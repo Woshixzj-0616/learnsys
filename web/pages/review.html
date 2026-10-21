@@ -1,0 +1,31 @@
+<div class="review-page">
+  <section class="review-hero">
+    <p class="stage-eyebrow">复盘 · 今日</p>
+    <h2>今天学了什么，哪里没学进去？</h2>
+    <p class="stage-sub">把今天的窗口、转写、问答和训练记录交给 AI，收成一张能带走的卡片。
+      复盘本身也算学习点（+25）。</p>
+    <div class="review-stats" id="review-stats"></div>
+  </section>
+
+  <div class="review-layout">
+    <section class="panel">
+      <div class="panel-head">今天的记录</div>
+      <div class="panel-body" id="review-material">
+        <div class="empty">正在读今天的记录…</div>
+      </div>
+    </section>
+
+    <section class="panel review-result-panel">
+      <div class="panel-head">
+        <span>AI 复盘</span>
+        <button class="btn btn-primary" type="button" id="review-run">开始复盘</button>
+      </div>
+      <div class="panel-body">
+        <div class="review-result" id="review-result">
+          <p class="hint">点「开始复盘」，AI 会读今天的记录，输出：在学什么 / 5 个要点 / 哪里没学进去 / 10 分钟复习建议。</p>
+        </div>
+        <div class="review-status hint" id="review-status"></div>
+      </div>
+    </section>
+  </div>
+</div>

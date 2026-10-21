@@ -98,6 +98,8 @@ function renderPlugins(ctx, overview, settings) {
     ask: `${today.asks || 0} 问`,
     netlab: `${today.netlab || 0} 个训练`,
     cet6: `${today.cet6 || 0} 个断点`,
+    review: `${today.review || 0} 次复盘`,
+    quiz: `${today.quiz || 0} 场测验`,
   };
   const plugins = (ctx.registry || [])
     .filter((m) => m.home && m.status === "ready" && prefs[m.id] !== false)

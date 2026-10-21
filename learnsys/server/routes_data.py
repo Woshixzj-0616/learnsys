@@ -21,6 +21,8 @@ XP_RULES = {
     "transcript": 5,    # 一段课堂转写
     "cet6": 8,          # 一条六级断点
     "netlab": 15,       # 完成一格网工训练
+    "review": 25,       # 完成一次今日复盘
+    "quiz": 20,         # 开始一场测验（内部对话不落成问答）
     "focus": 1,         # 专注 1 分钟
     "star": 3,          # 收藏一条
 }
@@ -89,6 +91,77 @@ def today(_=Depends(require_token)):
         conn.close()
 
 
+@router.get("/api/study/today")
+def study_today(_=Depends(require_token)):
+    """复盘 / 测验插件共用的今日素材与提示词（拼题口径只在 study.py 一处）。"""
+    from learnsys.ask import study as study_mod
+    conn = _conn()
+    try:
+        day = datetime.date.today().isoformat()
+        sessions = conn.execute(
+            "SELECT id, started_at, COALESCE(ended_at, '') FROM sessions "
+            "WHERE started_at LIKE ? ORDER BY id", (f"{day}%",)).fetchall()
+        summary_lines = []
+        for sid, started, _ended in sessions:
+            info = store.session_summary(conn, sid)
+            line = (f"{str(started)[11:16]} 起记了 {info.get('分钟', 0)} 分钟，"
+                    f"切了 {info.get('切换', 0)} 次窗口")
+            seen: list[str] = []
+            for _ts, _process, title in store.session_windows(conn, sid):
+                text = (title or "").strip()
+                if text and text not in seen:
+                    seen.append(text)
+                if len(seen) >= 8:
+                    break
+            if seen:
+                line += "。看过：" + "；".join(seen)
+            summary_lines.append(line)
+        try:
+            for (title,) in conn.execute(
+                    "SELECT title FROM events WHERE module='netlab' AND ts LIKE ? "
+                    "ORDER BY id DESC LIMIT 10", (f"{day}%",)).fetchall():
+                summary_lines.append(f"完成网工训练：{title}")
+            for paper, section, item, count in conn.execute(
+                    "SELECT paper_title, section, item, COUNT(*) FROM cet6_events "
+                    "WHERE ts LIKE ? GROUP BY paper_title, section, item "
+                    "ORDER BY MAX(ts) DESC LIMIT 10", (f"{day}%",)).fetchall():
+                summary_lines.append(
+                    f"六级精听：{paper} / {section} / {item}，{count} 个断点")
+        except Exception:
+            pass
+        transcripts = store.search_transcripts(
+            conn, ts_from=f"{day} 00:00:00", ts_to=f"{day} 23:59:59", limit=500)
+        digest = study_mod.transcripts_digest(transcripts)
+        asks = store.recent_asks(conn, limit=30, day=day)
+        asks_preview = [f"问：{(row[1] or '')[:60]}" for row in asks if (row[1] or "").strip()]
+        focus = store.focus_stats(conn, day=day)
+        trainings = int(conn.execute(
+            "SELECT COUNT(*) FROM events WHERE module='netlab' AND ts LIKE ?",
+            (f"{day}%",)).fetchone()[0] or 0)
+        breakpoints = int(conn.execute(
+            "SELECT COUNT(*) FROM cet6_events WHERE ts LIKE ?",
+            (f"{day}%",)).fetchone()[0] or 0)
+        return {
+            "date": day,
+            "summary_lines": summary_lines,
+            "transcript": digest[-4000:],
+            "transcript_chars": len(digest),
+            "asks": [_ask_dict(row) for row in asks],
+            "stats": {
+                "minutes": focus.get("分钟", 0),
+                "switches": focus.get("切换", 0),
+                "transcripts": len(transcripts),
+                "asks": len(asks),
+                "trainings": trainings,
+                "cet6": breakpoints,
+            },
+            "review_prompt": study_mod.build_review_question(summary_lines, digest),
+            "quiz_prompt": study_mod.build_quiz_question(summary_lines, asks_preview, digest),
+        }
+    finally:
+        conn.close()
+
+
 def _focus_minutes(conn, day: str = "") -> float:
     """专注分钟数：ended_at 缺失的 session 算到此刻（与 focus_stats 同口径）。"""
     end = store.now()
@@ -113,8 +186,14 @@ def _counts(conn, day: str = "") -> dict:
         "SELECT COUNT(*) FROM cet6_events WHERE ts LIKE ?", (like,)).fetchone()[0] or 0)
     netlab = int(conn.execute(
         "SELECT COUNT(*) FROM events WHERE module = 'netlab' AND ts LIKE ?", (like,)).fetchone()[0] or 0)
+    review = int(conn.execute(
+        "SELECT COUNT(*) FROM events WHERE module = 'review' AND kind = 'report' "
+        "AND ts LIKE ?", (like,)).fetchone()[0] or 0)
+    quiz = int(conn.execute(
+        "SELECT COUNT(*) FROM events WHERE module = 'quiz' AND kind = 'quiz' "
+        "AND ts LIKE ?", (like,)).fetchone()[0] or 0)
     return {"asks": asks, "starred": starred, "transcripts": transcripts,
-            "cet6": cet6, "netlab": netlab}
+            "cet6": cet6, "netlab": netlab, "review": review, "quiz": quiz}
 
 
 def _xp(counts: dict, focus_minutes: float) -> int:
@@ -122,6 +201,8 @@ def _xp(counts: dict, focus_minutes: float) -> int:
                + counts["transcripts"] * XP_RULES["transcript"]
                + counts["cet6"] * XP_RULES["cet6"]
                + counts["netlab"] * XP_RULES["netlab"]
+               + counts["review"] * XP_RULES["review"]
+               + counts["quiz"] * XP_RULES["quiz"]
                + int(focus_minutes) * XP_RULES["focus"]
                + counts["starred"] * XP_RULES["star"])
 
@@ -144,7 +225,8 @@ def _active_days(conn) -> set[str]:
         "SELECT DISTINCT substr(ts, 1, 10) FROM asks",
         "SELECT DISTINCT substr(ts_start, 1, 10) FROM transcripts",
         "SELECT DISTINCT substr(ts, 1, 10) FROM cet6_events",
-        "SELECT DISTINCT substr(ts, 1, 10) FROM events WHERE module = 'netlab'",
+        "SELECT DISTINCT substr(ts, 1, 10) FROM events "
+        "WHERE module IN ('netlab', 'review', 'quiz')",
         "SELECT DISTINCT substr(started_at, 1, 10) FROM sessions",
     )
     for sql in queries:
@@ -182,6 +264,8 @@ def _achievements(counts_all: dict, streak: int, focus_all: float) -> list[dict]
         ("focus_10h", "十小时专注", "累计专注 10 小时", int(focus_hours), 10),
         ("star_10", "收藏十题", "收藏 10 条问答", counts_all["starred"], 10),
         ("netlab_20", "训练场常客", "完成 20 个网工训练", counts_all["netlab"], 20),
+        ("review_1", "第一次复盘", "完成一次今日复盘", counts_all["review"], 1),
+        ("quiz_1", "第一次测验", "完成一场自测", counts_all["quiz"], 1),
     ]
     out = []
     for key, name, desc, value, target in defs:
@@ -231,6 +315,7 @@ def overview(_=Depends(require_token)):
                 "percent": round(min(today_xp, goal) * 100.0 / goal, 1),
                 "asks": today_counts["asks"], "minutes": today_focus,
                 "cet6": today_counts["cet6"], "netlab": today_counts["netlab"],
+                "review": today_counts["review"], "quiz": today_counts["quiz"],
             },
             "total": {"xp": total_xp, **level},
             "streak": streak,

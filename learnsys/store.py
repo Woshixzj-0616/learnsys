@@ -409,13 +409,20 @@ def get_conversation(conn: sqlite3.Connection, conversation_id: int):
             "FROM conversations WHERE id = ?", (conversation_id,)).fetchone()
 
 
-def list_conversations(conn: sqlite3.Connection, limit: int = 20) -> list[dict]:
+def list_conversations(conn: sqlite3.Connection, limit: int = 20,
+                       module: str = "ask") -> list[dict]:
+    """会话列表；`module` 默认只看问一问，插件内部会话（复盘/测验）不混进来。"""
+    where, args = "", []
+    if module:
+        where = "WHERE c.module = ?"
+        args.append(module)
+    args.append(limit)
     with _LOCK:
         rows = conn.execute(
             "SELECT c.id, c.title, c.module, c.mode, c.started_at, c.updated_at, "
             "(SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) "
-            "FROM conversations c ORDER BY c.updated_at DESC, c.id DESC LIMIT ?",
-            (limit,)).fetchall()
+            f"FROM conversations c {where} ORDER BY c.updated_at DESC, c.id DESC LIMIT ?",
+            args).fetchall()
     return [
         {"id": row[0], "title": row[1] or "", "module": row[2] or "ask",
          "mode": row[3] or "explain", "started_at": row[4] or "",

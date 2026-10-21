@@ -1392,3 +1392,139 @@
   .plugin-row-actions { grid-column: 2; justify-content: flex-start; }
   .nav-group-label { display: none; }
 }
+/* ---------- 复盘 / 测验（P6 插件） ---------- */
+
+.review-page, .quiz-page { max-width: var(--page-max); }
+
+.review-hero, .quiz-hero {
+  padding: 26px 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(900px 240px at 100% -30%, rgba(77, 139, 255, 0.14), transparent 60%),
+    linear-gradient(135deg, #232a36, var(--bg-raised) 60%, var(--bg-sunken));
+}
+
+.review-hero h2, .quiz-hero h2 { margin: 0 0 8px; font-size: 26px; font-weight: 650; }
+
+.quiz-hero { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
+.quiz-hero-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: none; }
+
+.review-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+
+.review-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(20, 24, 32, 0.5);
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+.review-chip strong { color: var(--text); font-size: var(--fs-sm); }
+
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 16px;
+  margin-top: 18px;
+  align-items: start;
+}
+
+.review-result-panel .panel-head { display: flex; align-items: center; justify-content: space-between; }
+.review-result-panel .panel-head .btn { min-height: 30px; padding: 3px 12px; font-size: var(--fs-xs); }
+
+.review-result { min-height: 180px; color: var(--text); font-size: var(--fs-sm); }
+.review-result .hint { margin: 0; }
+.review-status { margin-top: 10px; min-height: 18px; }
+.review-error { color: var(--err); }
+
+.material-block { margin-bottom: 18px; }
+.material-block:last-child { margin-bottom: 0; }
+.material-block h3 { margin: 0 0 8px; font-size: var(--fs-sm); font-weight: 600; }
+
+.material-list { margin: 0; padding-left: 18px; color: var(--text-dim); font-size: var(--fs-xs); }
+.material-list li { margin: 5px 0; }
+.material-time { color: var(--text-faint); font-family: var(--font-code); margin-right: 6px; }
+
+.material-transcript { margin-top: 6px; }
+.material-transcript summary { color: var(--accent-strong); font-size: var(--fs-xs); cursor: pointer; }
+.material-transcript pre {
+  max-height: 260px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  white-space: pre-wrap;
+}
+
+.quiz-chat { margin-top: 18px; }
+
+.quiz-thread {
+  min-height: 260px;
+  max-height: 58vh;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quiz-msg {
+  max-width: 86%;
+  padding: 11px 14px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+}
+.quiz-msg-ai {
+  align-self: flex-start;
+  border: 1px solid var(--line);
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+.quiz-msg-user {
+  align-self: flex-end;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--text);
+  white-space: pre-wrap;
+}
+.quiz-msg p { margin: 0 0 8px; }
+.quiz-msg p:last-child { margin-bottom: 0; }
+.quiz-msg pre { overflow-x: auto; }
+
+.quiz-composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--line);
+}
+.quiz-composer textarea {
+  flex: 1;
+  min-height: 38px;
+  max-height: 160px;
+  resize: none;
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--bg-input);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+.quiz-composer textarea:focus { border-color: var(--accent); outline: none; }
+.quiz-composer .btn { min-height: 38px; padding: 6px 16px; }
+
+@media (max-width: 1024px) {
+  .review-layout { grid-template-columns: minmax(0, 1fr); }
+  .quiz-hero { flex-direction: column; }
+  .quiz-hero-actions { align-items: flex-start; }
+}
