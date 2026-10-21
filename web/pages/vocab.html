@@ -1,0 +1,45 @@
+<div class="wrongbook-page vocab-page">
+  <section class="stage-hero wrongbook-hero">
+    <div>
+      <p class="stage-eyebrow">生词本 · FSRS</p>
+      <h2>把见过的词，复习到不会忘。</h2>
+      <p class="stage-sub">六级划词收藏和手动添加的词都在这里；按记忆曲线安排复习，
+        到期了就来过一遍。</p>
+      <div class="review-stats" id="vocab-stats">
+        <div class="review-chip"><span>待复习</span><strong>—</strong></div>
+        <div class="review-chip"><span>新词</span><strong>—</strong></div>
+        <div class="review-chip"><span>总数</span><strong>—</strong></div>
+      </div>
+    </div>
+    <div class="wrongbook-hero-actions">
+      <button class="btn btn-primary" type="button" id="vocab-review-start">开始复习</button>
+      <button class="btn" type="button" id="vocab-export">导出 CSV</button>
+    </div>
+  </section>
+
+  <section class="panel wrongbook-panel" id="vocab-review-panel" hidden>
+    <div class="panel-head">
+      <strong id="vocab-review-progress">复习</strong>
+      <button class="btn" type="button" id="vocab-review-close">退出复习</button>
+    </div>
+    <div class="panel-body" id="vocab-review-body"></div>
+  </section>
+
+  <section class="panel wrongbook-panel">
+    <div class="panel-head wrongbook-toolbar vocab-toolbar">
+      <input class="input vocab-search" type="search" id="vocab-search"
+             placeholder="搜单词 / 释义 / 上下文">
+      <input class="input vocab-new" type="text" id="vocab-new-word"
+             placeholder="加一个词">
+      <input class="input vocab-new" type="text" id="vocab-new-meaning"
+             placeholder="释义（可空）">
+      <button class="btn" type="button" id="vocab-add">添加</button>
+      <span class="hint" id="vocab-count"></span>
+    </div>
+    <div class="panel-body">
+      <div class="wrongbook-list" id="vocab-list">
+        <div class="empty">正在读生词本…</div>
+      </div>
+    </div>
+  </section>
+</div>

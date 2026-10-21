@@ -40,10 +40,10 @@ def submit_review(item_type: str, item_id: int, req: ReviewIn,
 
 
 @router.get("/api/review/stats")
-def review_stats(_=Depends(require_token)):
+def review_stats(item_type: str = "", _=Depends(require_token)):
     conn = store.connect()
     try:
-        return review.stats(conn)
+        return review.stats(conn, item_type=item_type)
     finally:
         conn.close()
 

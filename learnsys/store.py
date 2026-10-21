@@ -1034,6 +1034,7 @@ def add_vocab(conn: sqlite3.Connection, *, word: str, meaning: str = "",
         "paper_id": _clip(paper_id, 200),
         "paper_title": _clip(paper_title, 200),
     }
+    created = False
     with _LOCK:
         row = conn.execute(
             f"SELECT {_VOCAB_SELECT} FROM vocab_items WHERE normalized = ?",
@@ -1059,20 +1060,30 @@ def add_vocab(conn: sqlite3.Connection, *, word: str, meaning: str = "",
                     f"SELECT {_VOCAB_SELECT} FROM vocab_items WHERE id = ?",
                     (item["id"],)).fetchone()
                 item = _vocab_dict(row)
-            return item, False
-        cur = conn.execute(
-            "INSERT INTO vocab_items "
-            "(word, normalized, meaning, phonetic, context, paper_id, paper_title, "
-            " sentence, source, status, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
-            (word, normalized, incoming["meaning"], incoming["phonetic"],
-             incoming["context"], incoming["paper_id"], incoming["paper_title"],
-             int(sentence or 0), str(source or "cet6")[:20], stamp, stamp))
-        conn.commit()
-        row = conn.execute(
-            f"SELECT {_VOCAB_SELECT} FROM vocab_items WHERE id = ?",
-            (cur.lastrowid,)).fetchone()
-        return _vocab_dict(row), True
+        else:
+            cur = conn.execute(
+                "INSERT INTO vocab_items "
+                "(word, normalized, meaning, phonetic, context, paper_id, paper_title, "
+                " sentence, source, status, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)",
+                (word, normalized, incoming["meaning"], incoming["phonetic"],
+                 incoming["context"], incoming["paper_id"], incoming["paper_title"],
+                 int(sentence or 0), str(source or "cet6")[:20], stamp, stamp))
+            conn.commit()
+            row = conn.execute(
+                f"SELECT {_VOCAB_SELECT} FROM vocab_items WHERE id = ?",
+                (cur.lastrowid,)).fetchone()
+            item = _vocab_dict(row)
+            created = True
+
+    # 新词明天进复习队列；老词没有卡就今天补上（幂等）
+    if get_review_state(conn, "vocab", item["id"]) is None:
+        due = (dt.date.today() + dt.timedelta(days=1 if created else 0)).isoformat()
+        save_review_state(
+            conn, "vocab", item["id"], state="new", due=due, stability=1.0,
+            difficulty=5.0, reps=0, lapses=0, last_review="",
+            scheduled_days=0, elapsed_days=0)
+    return item, created
 
 
 def list_vocab(conn: sqlite3.Connection, *, query: str = "", limit: int = 200,
@@ -1093,13 +1104,37 @@ def list_vocab(conn: sqlite3.Connection, *, query: str = "", limit: int = 200,
             f"SELECT {_VOCAB_SELECT} FROM vocab_items WHERE {where} "
             "ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?",
             [*args, limit, offset]).fetchall()
-    return {"items": [_vocab_dict(row) for row in rows], "count": int(total)}
+    items = _attach_vocab_review(conn, [_vocab_dict(row) for row in rows])
+    return {"items": items, "count": int(total)}
+
+
+def _attach_vocab_review(conn: sqlite3.Connection, items: list[dict]) -> list[dict]:
+    """把 FSRS 状态贴到生词上（到期日、复习次数、遗忘次数）。"""
+    if not items:
+        return items
+    ids = [item["id"] for item in items]
+    placeholders = ",".join("?" * len(ids))
+    with _LOCK:
+        rows = conn.execute(
+            "SELECT item_id, due, state, reps, lapses, scheduled_days "
+            "FROM review_state WHERE item_type = 'vocab' "
+            f"AND item_id IN ({placeholders})", ids).fetchall()
+    states = {int(row[0]): row for row in rows}
+    for item in items:
+        state = states.get(item["id"])
+        if state:
+            item["next_review"] = state[1] or ""
+            item["review_state"] = state[2] or "new"
+            item["review_reps"] = int(state[3] or 0)
+            item["review_lapses"] = int(state[4] or 0)
+            item["scheduled_days"] = int(state[5] or 0)
+    return items
 
 
 def get_vocab(conn: sqlite3.Connection, item_id: int) -> dict | None:
     row = conn.execute(
         f"SELECT {_VOCAB_SELECT} FROM vocab_items WHERE id = ?", (item_id,)).fetchone()
-    return _vocab_dict(row) if row else None
+    return _attach_vocab_review(conn, [_vocab_dict(row)])[0] if row else None
 
 
 def update_vocab(conn: sqlite3.Connection, item_id: int, **fields) -> dict | None:
@@ -1130,6 +1165,9 @@ def update_vocab(conn: sqlite3.Connection, item_id: int, **fields) -> dict | Non
 def delete_vocab(conn: sqlite3.Connection, item_id: int) -> bool:
     with _LOCK:
         cur = conn.execute("DELETE FROM vocab_items WHERE id = ?", (item_id,))
+        conn.execute(
+            "DELETE FROM review_state WHERE item_type = 'vocab' AND item_id = ?",
+            (item_id,))
         conn.commit()
     return bool(cur.rowcount)
 
@@ -1263,6 +1301,16 @@ def seed_review_states(conn: sqlite3.Connection, today=None) -> int:
             last_review=str(last_review or ""),
             scheduled_days=int(stability) if stage else 0, elapsed_days=0)
         seeded += 1
+    vocab_rows = conn.execute(
+        "SELECT v.id FROM vocab_items v LEFT JOIN review_state r "
+        "ON r.item_type = 'vocab' AND r.item_id = v.id "
+        "WHERE r.item_id IS NULL AND v.status = 'active'").fetchall()
+    for (item_id,) in vocab_rows:
+        save_review_state(
+            conn, "vocab", int(item_id), state="new", due=day, stability=1.0,
+            difficulty=5.0, reps=0, lapses=0, last_review="",
+            scheduled_days=0, elapsed_days=0)
+        seeded += 1
     return seeded
 
 
@@ -1314,21 +1362,30 @@ def due_review_items(conn: sqlite3.Connection, *, limit: int = 50,
     return [_review_card(row) for row in rows]
 
 
-def review_stats(conn: sqlite3.Connection, today=None) -> dict:
+def review_stats(conn: sqlite3.Connection, today=None, item_type: str = "") -> dict:
     day = str(today or dt.date.today().isoformat())[:10]
+    filtered = item_type in REVIEW_ITEM_TYPES
+    type_sql = " AND item_type = ?" if filtered else ""
+    type_args = [item_type] if filtered else []
+    join_filter = " AND r.item_type = ?" if filtered else ""
+    join_args = [item_type] if filtered else []
     with _LOCK:
-        total = conn.execute("SELECT count(*) FROM review_state").fetchone()[0]
+        total = conn.execute(
+            "SELECT count(*) FROM review_state WHERE 1=1" + type_sql,
+            type_args).fetchone()[0]
         new = conn.execute(
-            "SELECT count(*) FROM review_state WHERE state = 'new'").fetchone()[0]
+            "SELECT count(*) FROM review_state WHERE state = 'new'" + type_sql,
+            type_args).fetchone()[0]
         reviewed = conn.execute(
-            "SELECT count(*) FROM review_log WHERE substr(ts, 1, 10) = ?",
-            (day,)).fetchone()[0]
+            "SELECT count(*) FROM review_log WHERE substr(ts, 1, 10) = ?" + type_sql,
+            [day, *type_args]).fetchone()[0]
         next_row = conn.execute(
             _review_join_sql() + "WHERE r.due > ? "
             "AND (r.item_type <> 'wrong' OR (w.id IS NOT NULL AND w.mastered = 0)) "
             "AND (r.item_type <> 'vocab' OR (v.id IS NOT NULL AND v.status = 'active')) "
-            "ORDER BY r.due LIMIT 1", (day,)).fetchone()
-    due = len(due_review_items(conn, limit=500, today=day))
+            + join_filter + " ORDER BY r.due LIMIT 1",
+            [day, *join_args]).fetchone()
+    due = len(due_review_items(conn, limit=500, today=day, item_type=item_type))
     return {"due": due, "new": int(new or 0), "total": int(total or 0),
             "reviewed_today": int(reviewed or 0),
             "next_due": (next_row[3] if next_row else "") or ""}

@@ -1,0 +1,15 @@
+{
+  "id": "vocab",
+  "name": "生词本",
+  "icon": "◇",
+  "type": "native-page",
+  "entry": "pages/vocab.html",
+  "script": "js/pages/vocab.js",
+  "order": 65,
+  "status": "ready",
+  "version": "2.10.0",
+  "category": "回顾",
+  "home": true,
+  "tagline": "划词收藏 + FSRS 复习",
+  "description": "六级划词与手动添加的生词统一进库；按记忆曲线安排复习，可导出 CSV。"
+}

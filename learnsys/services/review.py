@@ -62,9 +62,9 @@ def queue(conn, *, limit: int = 50, item_type: str = "") -> dict:
     return {"items": items, "count": len(items)}
 
 
-def stats(conn) -> dict:
+def stats(conn, item_type: str = "") -> dict:
     store.seed_review_states(conn)
-    return store.review_stats(conn)
+    return store.review_stats(conn, item_type=item_type)
 
 
 def recent_log(conn, limit: int = 20) -> dict:

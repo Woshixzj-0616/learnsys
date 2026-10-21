@@ -4,11 +4,11 @@
 
 ## 当前状态
 
-- 版本：**2.9.0**
+- 版本：**2.10.0**
 - 分支：`v2`
-- 最近阶段：**P15 MCP 只读**
+- 最近阶段：**P14.1 生词复习界面**
 - 下一步：**P16 可选增强**（BKT 掌握度、模型路由、深度分析、成本面板；有数据再定）
-- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 420 OK；
+- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 422 OK；
   前端 `node --test web/tests/context.test.mjs` → 6 通过
 
 ## 方向
@@ -30,6 +30,7 @@
 
 ## 验收
 
+- [P14.1 生词复习界面](P14.1-生词复习.md)
 - [P15 验收记录](P15-验收记录.md)
 - [P14 验收记录](P14-验收记录.md)
 - [P13 验收记录](P13-验收记录.md)

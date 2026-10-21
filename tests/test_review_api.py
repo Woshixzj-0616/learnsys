@@ -127,6 +127,19 @@ class ReviewApiTest(unittest.TestCase):
         self.assertEqual(body["count"], 1)
         self.assertEqual(body["items"][0]["word"], "subnet")
 
+    def test_vocab_stats_filter(self):
+        conn = self._orig(self.db_path)
+        self.addCleanup(conn.close)
+        store.add_vocab(conn, word="subnet", meaning="子网")
+        body = self.client.get(
+            "/api/review/stats?item_type=vocab", headers=AUTH).json()
+        self.assertEqual(body["total"], 1)
+        self.assertEqual(body["new"], 1)
+        self.assertEqual(body["due"], 0, "新词明天才到期")
+        wrong = self.client.get(
+            "/api/review/stats?item_type=wrong", headers=AUTH).json()
+        self.assertEqual(wrong["total"], 1, "错题卡不受生词影响")
+
     def test_seed_is_idempotent(self):
         self.client.get("/api/review/queue", headers=AUTH)
         self.client.get("/api/review/queue", headers=AUTH)

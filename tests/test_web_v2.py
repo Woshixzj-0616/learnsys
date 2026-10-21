@@ -55,7 +55,10 @@ class WebTest(unittest.TestCase):
         result = self.client.get("/api/modules", headers=AUTH)
         self.assertEqual(result.status_code, 200)
         modules = result.json()["modules"]
-        self.assertEqual(len(modules), 10)
+        ids = {item["id"] for item in modules}
+        self.assertGreaterEqual(len(modules), 10)
+        self.assertIn("vocab", ids)
+        self.assertEqual(len(ids), len(modules))
         self.assertEqual(modules[0]["id"], "today")
         self.assertEqual(modules[1]["id"], "ask")
         self.assertEqual(modules[-1]["id"], "plugins")
@@ -70,7 +73,8 @@ class WebTest(unittest.TestCase):
         initial = self.client.get("/api/settings", headers=AUTH).json()
         self.assertFalse(initial["agent"]["auth_token_set"])
         self.assertEqual(initial["agent"]["auth_token_mask"], "")
-        self.assertEqual(len(initial["modules"]), 10)
+        self.assertGreaterEqual(len(initial["modules"]), 10)
+        self.assertIn("vocab", initial["modules"])
 
         payload = {
             "agent": {"base_url": "https://example.test/anthropic",

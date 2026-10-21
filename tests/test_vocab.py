@@ -2,6 +2,7 @@
 """P13 生词统一表：去重、补空、搜索、改、删、导入、CSV。"""
 from __future__ import annotations
 
+import datetime as dt
 import pathlib
 import tempfile
 import unittest
@@ -61,6 +62,18 @@ class VocabStoreTest(unittest.TestCase):
         self.assertTrue(store.delete_vocab(self.conn, item["id"]))
         self.assertFalse(store.delete_vocab(self.conn, item["id"]))
         self.assertEqual(store.list_vocab(self.conn)["count"], 0)
+        self.assertIsNone(store.get_review_state(self.conn, "vocab", item["id"]))
+
+    def test_add_creates_review_state_due_tomorrow(self):
+        item, _ = store.add_vocab(self.conn, word="lease")
+        state = store.get_review_state(self.conn, "vocab", item["id"])
+        self.assertIsNotNone(state)
+        expected = (dt.date.today() + dt.timedelta(days=1)).isoformat()
+        self.assertEqual(state["due"], expected)
+        self.assertEqual(state["state"], "new")
+        listed = store.list_vocab(self.conn)["items"][0]
+        self.assertEqual(listed["next_review"], expected)
+        self.assertEqual(listed["review_state"], "new")
 
     def test_import_old_localstorage_shape_is_idempotent(self):
         rows = [
