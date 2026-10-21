@@ -9,9 +9,24 @@ let streaming = false;
 let controller = null;
 let quizEventSent = false;
 let pendingQuestion = "";       // 当前正在作答的题（从「【第N题】」标记里取）
+let materialInfo = null;        // 从资料出题时的资料元信息
+let materialId = 0;
 let nodes = {};
 
+function resetQuizState() {
+  data = null;
+  convId = null;
+  streaming = false;
+  controller = null;
+  quizEventSent = false;
+  pendingQuestion = "";
+  materialInfo = null;
+  materialId = 0;
+}
+
 export async function mount(ctx) {
+  resetQuizState();
+  materialId = Number(ctx.query?.get("material") || 0);
   ctx.setSub("按今天的记录出题，逐题批改");
   ctx.setActions('<a class="btn" href="#/review">去复盘</a>');
   nodes = {
@@ -24,23 +39,49 @@ export async function mount(ctx) {
     start: ctx.root.querySelector("#quiz-start"),
     hint: ctx.root.querySelector("#quiz-hint"),
     stats: ctx.root.querySelector("#quiz-stats"),
+    eyebrow: ctx.root.querySelector("#quiz-eyebrow"),
+    title: ctx.root.querySelector("#quiz-title"),
+    sub: ctx.root.querySelector("#quiz-sub"),
   };
-  try {
-    data = await api.get("/api/study/today");
-  } catch (error) {
-    nodes.thread.innerHTML = `<div class="empty">读不到今天的记录：${escapeHtml(error.message || error)}</div>`;
-    nodes.start.disabled = true;
-    return;
+  let hasData = false;
+  if (materialId) {
+    try {
+      const resp = await api.get(`/api/materials/${materialId}/quiz-prompt`);
+      materialInfo = resp.material;
+      data = { date: String(materialInfo.updated_at || "").slice(0, 10),
+               quiz_prompt: resp.prompt, stats: {}, summary_lines: [] };
+      hasData = true;
+      ctx.setSub(`按《${materialInfo.title}》出题，逐题批改`);
+      ctx.setActions('<a class="btn" href="#/materials">返回资料</a>');
+      nodes.eyebrow.textContent = "测验 · 资料";
+      nodes.title.textContent = `用《${materialInfo.title}》出 5 道题。`;
+      nodes.sub.textContent = "题目只从这份资料里来；一次一题，答一题、批一题。答错自动进错题本。";
+      nodes.start.textContent = "从这份资料出 5 道题";
+    } catch (error) {
+      nodes.thread.innerHTML = `<div class="empty">读不到这份资料：${escapeHtml(error.message || error)}</div>`;
+      nodes.start.disabled = true;
+      return;
+    }
+  } else {
+    try {
+      data = await api.get("/api/study/today");
+    } catch (error) {
+      nodes.thread.innerHTML = `<div class="empty">读不到今天的记录：${escapeHtml(error.message || error)}</div>`;
+      nodes.start.disabled = true;
+      return;
+    }
+    hasData = (data.stats?.minutes || 0) > 0
+      || (data.stats?.transcripts || 0) > 0
+      || (data.stats?.asks || 0) > 0
+      || (data.stats?.trainings || 0) > 0
+      || (data.stats?.cet6 || 0) > 0
+      || (data.summary_lines || []).length > 0;
   }
   renderStats(data.stats || {});
-  const hasData = (data.stats?.minutes || 0) > 0
-    || (data.stats?.transcripts || 0) > 0
-    || (data.stats?.asks || 0) > 0
-    || (data.stats?.trainings || 0) > 0
-    || (data.stats?.cet6 || 0) > 0
-    || (data.summary_lines || []).length > 0;
   nodes.start.disabled = !hasData;
-  nodes.hint.textContent = hasData ? "题目只来自今天的记录" : "今天还没有可出题的素材";
+  nodes.hint.textContent = hasData
+    ? (materialId ? "题目只来自这份资料" : "题目只来自今天的记录")
+    : "今天还没有可出题的素材";
   nodes.start.addEventListener("click", startQuiz);
   nodes.form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -60,6 +101,18 @@ export async function mount(ctx) {
 }
 
 function renderStats(stats) {
+  if (materialInfo) {
+    const scale = `${materialInfo.chars || 0} 字`
+      + (materialInfo.pages ? ` / ${materialInfo.pages} 页` : "");
+    nodes.stats.innerHTML = [
+      ["资料", materialInfo.title],
+      ["类型", materialInfo.kind || "资料"],
+      ["规模", scale],
+    ].map(([label, value]) => `
+      <div class="review-chip"><span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong></div>`).join("");
+    return;
+  }
   const items = [
     ["专注", `${Number(stats.minutes || 0).toFixed(0)} 分钟`],
     ["问答", `${stats.asks || 0} 条`],
@@ -99,9 +152,16 @@ async function startQuiz() {
   if (!quizEventSent) {
     quizEventSent = true;
     api.post("/api/events", {
-      module: "quiz", kind: "quiz", title: "今日测验",
-      meta: { date: data.date },
+      module: "quiz", kind: "quiz",
+      title: materialInfo ? `资料测验：${materialInfo.title}` : "今日测验",
+      meta: { date: data.date, material_id: materialId || null },
     }).catch(() => {});
+    if (materialId) {
+      api.post("/api/events", {
+        module: "materials", kind: "quiz", title: materialInfo?.title || "资料",
+        meta: { material_id: materialId, source: "quiz" },
+      }).catch(() => {});
+    }
   }
   if (!nodes.thread.querySelector(".quiz-msg")) nodes.thread.innerHTML = "";
   await runTurn(data.quiz_prompt, { note: "正在出题…" });

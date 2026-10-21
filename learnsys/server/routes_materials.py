@@ -193,6 +193,22 @@ def get_material(item_id: int, body: int = 1, _=Depends(require_token)):
         conn.close()
 
 
+@router.get("/api/materials/{item_id}/quiz-prompt")
+def material_quiz_prompt(item_id: int, _=Depends(require_token)):
+    """从一份资料出题的提示词；正文按页截前 12000 字，其余交给 read_material。"""
+    conn = store.connect()
+    try:
+        item = store.get_material(conn, item_id)
+        if item is None or item.get("status") != "active":
+            raise HTTPException(status_code=404, detail="这份资料不在了")
+        prompt = study.build_material_quiz_question(item)
+        store.touch_material(conn, item_id)
+        meta = store.get_material(conn, item_id, with_body=False)
+        return {"material": meta, "prompt": prompt}
+    finally:
+        conn.close()
+
+
 @router.post("/api/materials/{item_id}")
 def update_material(item_id: int, req: MaterialUpdateIn, _=Depends(require_token)):
     conn = store.connect()
@@ -296,6 +312,8 @@ def open_material(item_id: int, _=Depends(require_token)):
         if path is None or not path.exists():
             raise HTTPException(status_code=404, detail="原文文件不在了（笔记没有原文）")
         store.touch_material(conn, item_id)
+        store.add_event(conn, "materials", "open", item["title"],
+                        {"material_id": item_id})
         try:
             if hasattr(os, "startfile"):
                 os.startfile(str(path))       # noqa: S606 —— 本地用户自己的文件

@@ -190,6 +190,7 @@ function matActions(item) {
   }
   if (item.status === "active") {
     actions.push('<button class="btn" type="button" data-act="ask">问这份资料</button>');
+    actions.push('<button class="btn" type="button" data-act="quiz">用这份资料出题</button>');
     actions.push('<button class="btn" type="button" data-act="glossary">生成术语表</button>');
     actions.push('<button class="btn" type="button" data-act="outline">生成提纲</button>');
     actions.push('<button class="btn btn-quiet" type="button" data-act="export">导出 MD</button>');
@@ -274,6 +275,7 @@ async function onDetailClick(event) {
   const action = button.dataset.act;
   if (action === "open") return openOriginal();
   if (action === "ask") return askAbout();
+  if (action === "quiz") return quizFromMaterial();
   if (action === "glossary") return generate("glossary");
   if (action === "outline") return generate("outline");
   if (action === "export") return exportMaterial();
@@ -304,6 +306,10 @@ async function exportMaterial() {
 function askAbout() {
   const prompt = "先讲清这份资料的整体结构，再指出最该记住的 5 个点。";
   location.hash = `#/ask?material=${selected.id}&prompt=${encodeURIComponent(prompt)}`;
+}
+
+function quizFromMaterial() {
+  location.hash = `#/quiz?material=${selected.id}`;
 }
 
 async function trashMaterial() {

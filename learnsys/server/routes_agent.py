@@ -77,12 +77,14 @@ def chat(req: ChatRequest, _=Depends(require_token)):
         conv_id = req.conversation_id
         if conv_id is not None and store.get_conversation(conn, conv_id) is None:
             conv_id = None
+        new_conv = conv_id is None
         if conv_id is None:
             conv_id = store.create_conversation(
                 conn, title=req.message.strip()[:30] or "新对话",
                 module=req.module or "ask", mode=req.mode)
         history = _load_history(conn, conv_id)       # 先取旧账，再记这一问
         material_id = req.material_id
+        material_title = ""
         attachment_name = req.attachment_name
         attachment_text = req.attachment_text
         if material_id:
@@ -90,7 +92,12 @@ def chat(req: ChatRequest, _=Depends(require_token)):
             if material is not None and material.get("status") == "active":
                 attachment_name = material["title"]
                 attachment_text = material["body"]
+                material_title = material["title"]
                 store.touch_material(conn, material_id)
+                if new_conv and not req.internal:
+                    store.add_event(conn, "materials", "ask", material_title,
+                                    {"material_id": material_id,
+                                     "conversation_id": conv_id})
             else:
                 material_id = None
         store.add_message(conn, conv_id, "user",

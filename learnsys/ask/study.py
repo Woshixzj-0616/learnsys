@@ -216,6 +216,55 @@ def build_quiz_question(summary_lines: list[str], asks_preview: list[str],
     return "\n".join(parts)
 
 
+def _paged_preview(text: str, cap: int) -> tuple[str, bool]:
+    """按页截取正文：PDF 的 `\\f` 换成「--- 第 N 页 ---」，超出 cap 截断。"""
+    text = str(text or "")
+    pages = text.split("\f") if "\f" in text else [text]
+    pieces, used = [], 0
+    truncated = False
+    for index, page in enumerate(pages, 1):
+        chunk = (f"--- 第 {index} 页 ---\n" if len(pages) > 1 else "") + page
+        left = cap - used
+        if left <= 0:
+            truncated = True
+            break
+        if len(chunk) > left:
+            pieces.append(chunk[:left])
+            truncated = True
+            break
+        pieces.append(chunk)
+        used += len(chunk)
+    return "\n\n".join(pieces).strip(), truncated
+
+
+def build_material_quiz_question(material: dict, cap: int = 12000) -> str:
+    """从一份资料出题的提示词：只基于资料，一次一题；不够就 read_material 继续读。"""
+    title = str(material.get("title") or "资料")
+    body = str(material.get("body") or "")
+    preview, truncated = _paged_preview(body, cap)
+    size = f"{material.get('chars') or len(body)} 字"
+    if material.get("pages"):
+        size += f" / {material.get('pages')} 页"
+    parts = [
+        f"以下是我资料库里的《{title}》（资料 id={material.get('id')}，{size}）。",
+        "请**只基于这份资料**出 **5 道自测题** 考我，要求：",
+        "1. 只出题，先不要给答案；**一次只出一题**，每道题以「【第N题】」开头；",
+        "2. 覆盖资料里的不同章节，优先定义、计算、易错点，别出资料里没有的内容；",
+        "3. 有简答也有选择；我答一题你批一题，批改以「【批改】」开头；",
+        "4. 如果给出的正文不够，调用 `read_material(material_id="
+        f"{material.get('id')})` 继续读；找关键词也可以 `search_materials`；",
+        "5. 只要我答错（含部分答错），先调用 save_wrongbook："
+        "question=题目原文、correct_answer=正确答案或关键解析、my_answer=我的原话、tags=知识点；"
+        "答对不要调用，同一题只调用一次。",
+        "",
+        "【资料正文】",
+        preview or "（这份资料还没有正文）",
+    ]
+    if truncated:
+        parts += ["", f"（正文只给了前 {cap} 字，其余请用 read_material 继续读。）"]
+    return "\n".join(parts)
+
+
 def export_day_notes_md(asks: list, path: pathlib.Path, title: str) -> int:
     """问答行 → Markdown 笔记（一问一段）。返回写入条数。"""
     count = 0

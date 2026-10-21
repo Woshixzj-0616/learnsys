@@ -44,6 +44,7 @@ function renderStats(root, stats) {
     ["转写", `${stats.transcripts || 0} 段`],
     ["网工训练", `${stats.trainings || 0} 格`],
     ["六级断点", `${stats.cet6 || 0} 个`],
+    ["资料", `${stats.materials || 0} 次`],
   ];
   root.querySelector("#review-stats").innerHTML = items.map(([label, value]) => `
     <div class="review-chip"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>

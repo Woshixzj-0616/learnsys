@@ -57,6 +57,13 @@ class TestMaterialStore(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(len(store.list_materials(self.conn)), 1)
 
+    def test_add_event(self):
+        event_id = store.add_event(self.conn, "materials", "open", "课件",
+                                   {"material_id": 3})
+        row = self.conn.execute(
+            "SELECT module, kind, title FROM events WHERE id = ?", (event_id,)).fetchone()
+        self.assertEqual(row, ("materials", "open", "课件"))
+
     def test_status_and_delete(self):
         item_id, _ = store.add_material(self.conn, title="临时", body="内容")
         self.assertTrue(store.set_material_status(self.conn, item_id, "trashed"))
@@ -240,6 +247,30 @@ class MaterialApiTest(unittest.TestCase):
         self.assertEqual(self.client.get("/api/materials", headers=AUTH)
                          .json()["items"], [])
 
+    def test_material_quiz_prompt(self):
+        item = self._note()
+        result = self.client.get(
+            f"/api/materials/{item['id']}/quiz-prompt", headers=AUTH).json()
+        self.assertEqual(result["material"]["id"], item["id"])
+        prompt = result["prompt"]
+        self.assertIn(item["title"], prompt)
+        self.assertIn(f"资料 id={item['id']}", prompt)
+        self.assertIn("一次只出一题", prompt)
+        self.assertIn("read_material", prompt)
+
+    def test_material_events_in_study_today(self):
+        self.client.post("/api/events", headers=AUTH, json={
+            "module": "materials", "kind": "open", "title": "子网课件",
+            "meta": {"material_id": 1},
+        })
+        self.client.post("/api/events", headers=AUTH, json={
+            "module": "materials", "kind": "quiz", "title": "子网课件",
+            "meta": {"material_id": 1},
+        })
+        data = self.client.get("/api/study/today", headers=AUTH).json()
+        self.assertEqual(data["stats"]["materials"], 2)
+        self.assertTrue(any(line.startswith("资料：子网课件") for line in data["summary_lines"]))
+
     def test_material_attached_to_ask(self):
         item = self._note()
         conn = self._conn()
@@ -267,6 +298,29 @@ class MaterialApiTest(unittest.TestCase):
     def test_requires_token(self):
         self.assertEqual(self.client.get("/api/materials").status_code, 403)
         self.assertEqual(self.client.post("/api/materials/note", json={}).status_code, 403)
+
+
+class TestMaterialQuizPrompt(unittest.TestCase):
+    def test_builder_mentions_material_and_tools(self):
+        from learnsys.ask import study
+
+        prompt = study.build_material_quiz_question({
+            "id": 7, "title": "子网课件", "body": "第一页\f/27 可用主机 30 个。",
+            "chars": 24, "pages": 2,
+        })
+        self.assertIn("《子网课件》", prompt)
+        self.assertIn("资料 id=7", prompt)
+        self.assertIn("--- 第 2 页 ---", prompt)
+        self.assertIn("read_material(material_id=7)", prompt)
+        self.assertIn("save_wrongbook", prompt)
+
+    def test_builder_truncates_long_body(self):
+        from learnsys.ask import study
+
+        prompt = study.build_material_quiz_question({
+            "id": 8, "title": "长资料", "body": "字" * 500, "chars": 500,
+        }, cap=100)
+        self.assertIn("正文只给了前 100 字", prompt)
 
 
 class TestMaterialTools(unittest.TestCase):
@@ -317,6 +371,15 @@ class TestMaterialPlugin(unittest.TestCase):
         text = (root / "web" / "sw.js").read_text(encoding="utf-8")
         self.assertIn("/web/pages/materials.html", text)
         self.assertIn("/web/js/pages/materials.js", text)
+
+    def test_material_quiz_entry_exists(self):
+        root = pathlib.Path(__file__).resolve().parents[1]
+        materials = (root / "web" / "js" / "pages" / "materials.js").read_text(encoding="utf-8")
+        quiz = (root / "web" / "js" / "pages" / "quiz.js").read_text(encoding="utf-8")
+        self.assertIn("用这份资料出题", materials)
+        self.assertIn("quiz?material=", materials)
+        self.assertIn("/quiz-prompt", quiz)
+        self.assertIn("material_id", quiz)
 
 
 if __name__ == "__main__":

@@ -117,6 +117,7 @@ def study_today(_=Depends(require_token)):
             if seen:
                 line += "。看过：" + "；".join(seen)
             summary_lines.append(line)
+        materials_count = 0
         try:
             for (title,) in conn.execute(
                     "SELECT title FROM events WHERE module='netlab' AND ts LIKE ? "
@@ -128,6 +129,14 @@ def study_today(_=Depends(require_token)):
                     "ORDER BY MAX(ts) DESC LIMIT 10", (f"{day}%",)).fetchall():
                 summary_lines.append(
                     f"六级精听：{paper} / {section} / {item}，{count} 个断点")
+            labels = {"open": "打开原文", "ask": "问资料", "quiz": "资料出题"}
+            for kind, title, count in conn.execute(
+                    "SELECT kind, title, COUNT(*) FROM events WHERE module='materials' "
+                    "AND ts LIKE ? GROUP BY kind, title ORDER BY MAX(id) DESC LIMIT 10",
+                    (f"{day}%",)).fetchall():
+                materials_count += int(count or 0)
+                summary_lines.append(
+                    f"资料：{title}（{labels.get(kind, kind)} {int(count or 0)} 次）")
         except Exception:
             pass
         transcripts = store.search_transcripts(
@@ -155,6 +164,7 @@ def study_today(_=Depends(require_token)):
                 "asks": len(asks),
                 "trainings": trainings,
                 "cet6": breakpoints,
+                "materials": materials_count,
             },
             "review_prompt": study_mod.build_review_question(summary_lines, digest),
             "quiz_prompt": study_mod.build_quiz_question(summary_lines, asks_preview, digest),
@@ -229,7 +239,7 @@ def _active_days(conn) -> set[str]:
         "SELECT DISTINCT substr(ts_start, 1, 10) FROM transcripts",
         "SELECT DISTINCT substr(ts, 1, 10) FROM cet6_events",
         "SELECT DISTINCT substr(ts, 1, 10) FROM events "
-        "WHERE module IN ('netlab', 'review', 'quiz')",
+        "WHERE module IN ('netlab', 'review', 'quiz', 'materials')",
         "SELECT DISTINCT substr(started_at, 1, 10) FROM sessions",
         "SELECT DISTINCT substr(last_review, 1, 10) FROM wrong_items "
         "WHERE last_review <> ''",
@@ -356,13 +366,10 @@ def add_event(req: EventIn, _=Depends(require_token)):
     conn = _conn()
     try:
         stamp = store.now()
-        cur = conn.execute(
-            "INSERT INTO events (ts, module, kind, ref_id, title, meta_json) "
-            "VALUES (?, ?, ?, 0, ?, ?)",
-            (stamp, req.module.strip(), req.kind.strip() or "note", req.title.strip(),
-             json.dumps(req.meta, ensure_ascii=False)))
-        conn.commit()
-        return {"ok": True, "id": int(cur.lastrowid or 0), "ts": stamp}
+        event_id = store.add_event(
+            conn, req.module.strip(), req.kind.strip() or "note",
+            req.title.strip(), req.meta)
+        return {"ok": True, "id": event_id, "ts": stamp}
     finally:
         conn.close()
 
