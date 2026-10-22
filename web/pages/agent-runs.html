@@ -1,0 +1,49 @@
+<div class="runs-page">
+  <section class="stage-hero runs-hero">
+    <div>
+      <p class="stage-eyebrow">Agent 运行 · 一份流水</p>
+      <h2>每次调用，都能对上账。</h2>
+      <p class="stage-sub">模型、首 token、总耗时、工具调用、token 与成本估算都在同一张表里；
+        出现失败或自检不通过，会单独列出来。</p>
+      <div class="review-stats runs-stats" id="run-stats">
+        <div class="review-chip"><span>正在读流水…</span><strong>—</strong></div>
+      </div>
+    </div>
+    <div class="runs-hero-actions">
+      <label class="runs-filter">
+        <span class="hint">范围</span>
+        <select class="select" id="run-days">
+          <option value="7">最近 7 天</option>
+          <option value="30">最近 30 天</option>
+          <option value="0">全部</option>
+        </select>
+      </label>
+      <button class="btn" type="button" id="run-refresh">刷新</button>
+    </div>
+  </section>
+
+  <section class="panel runs-panel">
+    <div class="panel-head"><h3>按工具聚合</h3><span class="hint" id="run-tool-note"></span></div>
+    <div class="panel-body" id="run-tools"><div class="empty">正在读…</div></div>
+  </section>
+
+  <section class="panel runs-panel">
+    <div class="panel-head"><h3>异常</h3><span class="hint">失败、超时、自检不通过</span></div>
+    <div class="panel-body" id="run-anomalies"><div class="empty">正在读…</div></div>
+  </section>
+
+  <section class="panel runs-panel">
+    <div class="panel-head"><h3>最近运行</h3><span class="hint">点一行展开逐事件回放</span></div>
+    <div class="panel-body runs-table-wrap">
+      <table class="runs-table">
+        <thead>
+          <tr>
+            <th>时间</th><th>问题</th><th>模型</th><th>首字</th><th>总耗时</th>
+            <th>工具</th><th>Tokens</th><th>成本</th><th>状态</th>
+          </tr>
+        </thead>
+        <tbody id="run-recent"><tr><td colspan="9" class="empty">正在读…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</div>

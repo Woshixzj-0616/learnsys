@@ -32,7 +32,7 @@ function moduleById(id) {
   return registry.find((item) => item.id === id) || null;
 }
 
-const SYSTEM_PLUGINS = new Set(["settings", "plugins"]);
+const SYSTEM_PLUGINS = new Set(["settings", "plugins", "agentruns"]);
 
 function navItem(module, activeId) {
   const active = module.id === activeId ? " active" : "";

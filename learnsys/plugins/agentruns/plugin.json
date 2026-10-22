@@ -1,0 +1,15 @@
+{
+  "id": "agentruns",
+  "name": "运行记录",
+  "icon": "◷",
+  "type": "native-page",
+  "entry": "pages/agent-runs.html",
+  "order": 95,
+  "status": "ready",
+  "version": "2.11.0",
+  "category": "系统",
+  "home": false,
+  "tagline": "Agent 调用、耗时与成本",
+  "description": "每次运行的模型、首 token、总耗时、工具调用、token 与成本估算；按工具聚合、异常列表，可逐条回放。",
+  "script": "js/pages/agent-runs.js"
+}

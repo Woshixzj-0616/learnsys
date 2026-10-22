@@ -30,6 +30,10 @@ function fill(data) {
   setValue("agent-fast", data.agent?.fast_model);
   setValue("agent-tokens", data.agent?.max_tokens);
   setValue("agent-speed", data.agent?.speed || "balanced");
+  setValue("price-input", data.agent?.price_input ?? "");
+  setValue("price-output", data.agent?.price_output ?? "");
+  setValue("price-cache", data.agent?.price_cache_read ?? "");
+  setValue("price-currency", data.agent?.currency || "USD");
   document.getElementById("agent-token").value = "";
   document.getElementById("agent-token-hint").textContent = keyHint(
     data.agent?.auth_token_set, data.agent?.auth_token_mask, data.agent?.auth_token_source);
@@ -183,6 +187,14 @@ function collect() {
   };
   const tokens = Number(valueOf("agent-tokens"));
   if (Number.isFinite(tokens) && tokens > 0) agent.max_tokens = Math.round(tokens);
+  for (const [id, key] of [["price-input", "price_input"],
+    ["price-output", "price_output"], ["price-cache", "price_cache_read"]]) {
+    const raw = valueOf(id);
+    const value = Number(raw);
+    if (raw !== "" && Number.isFinite(value) && value >= 0) agent[key] = value;
+  }
+  const currency = valueOf("price-currency");
+  if (currency) agent.currency = currency;
   const token = valueOf("agent-token");
   if (token) agent.auth_token = token;
 

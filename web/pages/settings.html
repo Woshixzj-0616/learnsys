@@ -71,6 +71,28 @@
   </section>
 
   <section class="settings-section">
+    <h2>成本估算</h2>
+    <p class="hint">填每 100 万 token 的单价（按你的服务商账单填）。不填就只统计 token，不猜价格；
+      运行记录页会按这里的单价估算每次对话的成本。</p>
+    <div class="setting-row">
+      <label class="setting-label" for="price-input">输入单价<small>每 100 万 token，缓存未命中</small></label>
+      <div class="setting-control"><input class="input" id="price-input" type="number" min="0" step="0.001"></div>
+    </div>
+    <div class="setting-row">
+      <label class="setting-label" for="price-output">输出单价<small>每 100 万 token</small></label>
+      <div class="setting-control"><input class="input" id="price-output" type="number" min="0" step="0.001"></div>
+    </div>
+    <div class="setting-row">
+      <label class="setting-label" for="price-cache">缓存命中单价<small>每 100 万 token，可留空</small></label>
+      <div class="setting-control"><input class="input" id="price-cache" type="number" min="0" step="0.001"></div>
+    </div>
+    <div class="setting-row">
+      <label class="setting-label" for="price-currency">币种<small>例如 USD / CNY，只用于显示</small></label>
+      <div class="setting-control"><input class="input" id="price-currency" maxlength="12" placeholder="USD"></div>
+    </div>
+  </section>
+
+  <section class="settings-section">
     <h2>视觉模型</h2>
     <p class="hint">DeepSeek 直连不支持图片。这里填一个 OpenAI 兼容的视觉模型，截图会先转述成文字；不填就退回 OCR。</p>
 

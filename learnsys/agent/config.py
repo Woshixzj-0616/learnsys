@@ -65,6 +65,14 @@ def _as_bool(value, default: bool) -> bool:
     return str(value).strip().lower() not in ("0", "false", "no", "off", "关", "否")
 
 
+def _as_float(value, default: float = 0.0) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    return number if number >= 0 else default
+
+
 @dataclass(frozen=True)
 class AgentConfig:
     # 文本主模型（Anthropic Messages 协议）
@@ -87,6 +95,12 @@ class AgentConfig:
     # 回答速度档：fast = 轻量模型不思考；balanced = 主模型不思考；deep = 主模型思考
     speed: str = "balanced"
 
+    # 成本估算：每 100 万 token 的单价；0 = 未配置（不猜价格）
+    price_input: float = 0.0
+    price_output: float = 0.0
+    price_cache_read: float = 0.0
+    currency: str = "USD"
+
     @property
     def ready(self) -> bool:
         """文本问答能不能用。"""
@@ -107,6 +121,10 @@ class AgentConfig:
             "base_url": self.base_url,
             "max_tokens": self.max_tokens,
             "speed": self.speed,
+            "price_input": self.price_input,
+            "price_output": self.price_output,
+            "price_cache_read": self.price_cache_read,
+            "currency": self.currency,
             "vision_model": self.vision_model if self.vision_ready else "",
         }
 
@@ -155,4 +173,8 @@ def load_config() -> AgentConfig:
         data_root=data_root,
         profile_path=data_root / "学习档案.md",
         speed=speed,
+        price_input=_as_float(agent.get("price_input")),
+        price_output=_as_float(agent.get("price_output")),
+        price_cache_read=_as_float(agent.get("price_cache_read")),
+        currency=str(agent.get("currency") or "USD").strip()[:12] or "USD",
     )

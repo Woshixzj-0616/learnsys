@@ -284,7 +284,12 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     usage_json      TEXT NOT NULL DEFAULT '{}',
     trace_json      TEXT NOT NULL DEFAULT '[]',
     check_ok        INTEGER,
-    error           TEXT NOT NULL DEFAULT ''
+    error           TEXT NOT NULL DEFAULT '',
+    tool_count      INTEGER NOT NULL DEFAULT 0,
+    model_calls     INTEGER NOT NULL DEFAULT 0,
+    error_count     INTEGER NOT NULL DEFAULT 0,
+    cost            REAL NOT NULL DEFAULT 0,
+    currency        TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_agent_runs_conversation
     ON agent_runs (conversation_id, id DESC);
@@ -364,6 +369,17 @@ def _migrate_columns(conn: sqlite3.Connection) -> None:
     if wrong_cols:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_wrong_material ON wrong_items (material_id)")
+    run_cols = {row[1] for row in conn.execute(
+        "PRAGMA table_info(agent_runs)").fetchall()}
+    for column, ddl in (
+        ("tool_count", "INTEGER NOT NULL DEFAULT 0"),
+        ("model_calls", "INTEGER NOT NULL DEFAULT 0"),
+        ("error_count", "INTEGER NOT NULL DEFAULT 0"),
+        ("cost", "REAL NOT NULL DEFAULT 0"),
+        ("currency", "TEXT NOT NULL DEFAULT ''"),
+    ):
+        if run_cols and column not in run_cols:
+            conn.execute(f"ALTER TABLE agent_runs ADD COLUMN {column} {ddl}")
     cet6_cols = {row[1] for row in conn.execute(
         "PRAGMA table_info(cet6_events)").fetchall()}
     if cet6_cols and "dedupe_key" not in cet6_cols:

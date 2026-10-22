@@ -80,6 +80,10 @@ def get_settings(_=Depends(require_token)):
             "max_tokens": cfg.max_tokens,
             "thinking": cfg.thinking,
             "speed": cfg.speed,
+            "price_input": cfg.price_input,
+            "price_output": cfg.price_output,
+            "price_cache_read": cfg.price_cache_read,
+            "currency": cfg.currency,
             "ready": cfg.ready,
             "auth_token_set": bool(cfg.auth_token),
             "auth_token_mask": _mask(cfg.auth_token),
@@ -110,6 +114,10 @@ class AgentPatch(BaseModel):
     max_tokens: int | None = Field(default=None, ge=64, le=131072)
     thinking: bool | None = None
     speed: str | None = None
+    price_input: float | None = Field(default=None, ge=0, le=100000)
+    price_output: float | None = Field(default=None, ge=0, le=100000)
+    price_cache_read: float | None = Field(default=None, ge=0, le=100000)
+    currency: str | None = Field(default=None, max_length=12)
 
 
 class VisionPatch(BaseModel):
@@ -145,9 +153,12 @@ def save_settings(patch: SettingsPatch, _=Depends(require_token)):
         # 密钥空串 = 不改（界面拿不到明文，回填不了）
         if not str(agent.get("auth_token") or "").strip():
             agent.pop("auth_token", None)
-        for key in ("base_url", "model", "fast_model"):
+        for key in ("base_url", "model", "fast_model", "currency"):
             if key in agent:
                 agent[key] = str(agent[key]).strip()
+        for key in ("price_input", "price_output", "price_cache_read"):
+            if key in agent:
+                agent[key] = max(0.0, float(agent[key]))
         if "speed" in agent:
             speed = str(agent["speed"]).strip().lower()
             if speed not in ("fast", "balanced", "deep"):

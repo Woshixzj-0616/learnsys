@@ -8,6 +8,7 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 import threading
+import time
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -53,6 +54,19 @@ class _RunState:
     plan: list[dict] = field(default_factory=list)
     evidence: selfcheck.Evidence = field(default_factory=selfcheck.Evidence)
     denied_writes: list[str] = field(default_factory=list)
+    model_calls: int = 0
+    tool_calls: int = 0
+
+
+def _merge_usage(target: dict, update) -> None:
+    """多轮模型调用的 token 要相加，不能后一轮覆盖前一轮。"""
+    if not isinstance(update, dict):
+        return
+    for key, value in update.items():
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            target[key] = target.get(key, 0) + value
+        else:
+            target.setdefault(key, value)
 
 
 def _read_profile(cfg: AgentConfig) -> str:
@@ -120,6 +134,7 @@ def _rewrite_answer(provider, cfg: AgentConfig, state: _RunState, answer: str,
     messages = [{"role": "user", "content": [{"type": "text", "text": user}]}]
     parts: list[str] = []
     result: ProviderResult | None = None
+    state.model_calls += 1
     for event in provider.stream_messages(
             rewrite_cfg, selfcheck.REWRITE_SYSTEM, messages, None,
             abort=abort, response_sink=None):
@@ -128,7 +143,7 @@ def _rewrite_answer(provider, cfg: AgentConfig, state: _RunState, answer: str,
         elif event.kind == "done":
             result = event.result
     if result is not None and result.usage:
-        state.usage.update(result.usage)
+        _merge_usage(state.usage, result.usage)
     text = (result.text if result is not None and result.text
             else "".join(parts)).strip()
     return text
@@ -216,6 +231,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
     try:
         for step in range(max(1, int(max_steps))):
             state.steps = step + 1
+            state.model_calls += 1
             result: ProviderResult | None = None
             for event in provider.stream_messages(
                     cfg, system, messages, tool_schemas,
@@ -235,7 +251,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
             if result.thinking:
                 state.thinking += result.thinking
             if result.usage:
-                state.usage.update(result.usage)
+                _merge_usage(state.usage, result.usage)
             if result.stop_reason == "aborted":
                 yield AgentEvent("done", data={
                     "text": state.text, "thinking": state.thinking,
@@ -287,6 +303,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
                         yield AgentEvent("plan_update", data={
                             "index": step_index, "status": "doing",
                             "steps": state.plan})
+                    state.tool_calls += 1
                     yield AgentEvent("tool_start", data={
                         "name": call.name, "input": call.input,
                         "goal": goal, "step": step_index})
@@ -332,7 +349,9 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
                                     "steps": state.plan})
                             continue
 
+                    tool_started = time.monotonic()
                     content, preview, ok, raw = _execute_tool(call, ctx)
+                    tool_ms = int((time.monotonic() - tool_started) * 1000)
                     # 代码运行的输出即使失败（编译错误 / 超时）也是可引用的证据；
                     # 写入失败则不是，不能拿来当来源。
                     if ok or call.name == "run_code":
@@ -344,7 +363,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
                             "status": "done" if ok else "failed",
                             "steps": state.plan})
                     end_data = {"name": call.name, "preview": preview, "ok": ok,
-                                "goal": goal, "step": step_index}
+                                "goal": goal, "step": step_index, "ms": tool_ms}
                     if call.name == "run_code":
                         # 审计要看到真实输出与退出码，而不只是一句「运行成功」
                         end_data["output"] = raw[:12000]
@@ -369,6 +388,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
                 and (abort is None or not abort.is_set())):
             retry_cfg = dataclasses.replace(cfg, thinking=False)
             retry_result = None
+            state.model_calls += 1
             yield AgentEvent("activity", text="模型只输出了思考，正在改用快答重试…")
             for event in provider.stream_messages(
                     retry_cfg, system, messages, None,
@@ -383,7 +403,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
                 if retry_result.text:
                     state.text = retry_result.text
                 if retry_result.usage:
-                    state.usage.update(retry_result.usage)
+                    _merge_usage(state.usage, retry_result.usage)
             state.steps += 1
             final_text = state.text.strip()
 
@@ -456,6 +476,8 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
             "thinking": state.thinking,
             "usage": state.usage,
             "steps": state.steps,
+            "model_calls": state.model_calls,
+            "tool_calls": state.tool_calls,
             "stop_reason": state.stop_reason or "end_turn",
             "truncated": state.stop_reason == "max_tokens",
         })

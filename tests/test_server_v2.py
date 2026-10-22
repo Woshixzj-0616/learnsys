@@ -148,6 +148,52 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(expired.status_code, 404)
         self.assertIn("过期", expired.json()["detail"])
 
+    def test_agent_stats_aggregates_tools_and_anomalies(self):
+        conn = store.connect(self.db_path)
+        try:
+            store.add_agent_run(
+                conn, run_id="ok-run", conversation_id=1, question="正常一轮",
+                model="test-model", mode="explain", started_at=store.now(),
+                first_ms=100, total_ms=1000, steps=2,
+                usage={"input_tokens": 100, "output_tokens": 50},
+                trace=[
+                    {"kind": "tool_start", "data": {"name": "today_summary"}},
+                    {"kind": "tool_end", "data": {"name": "today_summary",
+                                                 "ok": True, "ms": 120}},
+                    {"kind": "check", "data": {"ok": True, "issues": []}},
+                ],
+                check_ok=True, tool_count=1, model_calls=2,
+                cost=0.001, currency="USD")
+            store.add_agent_run(
+                conn, run_id="bad-run", conversation_id=2, question="失败一轮",
+                model="test-model", mode="explain", started_at=store.now(),
+                first_ms=200, total_ms=2000, steps=3, error="模型超时",
+                trace=[
+                    {"kind": "tool_start", "data": {"name": "today_summary"}},
+                    {"kind": "tool_end", "data": {"name": "today_summary",
+                                                 "ok": False, "ms": 80}},
+                    {"kind": "check", "data": {"ok": False,
+                                               "issues": ["资料 #9 没读过"]}},
+                ],
+                check_ok=False, tool_count=1, model_calls=1,
+                error_count=2, cost=0.002, currency="USD")
+        finally:
+            conn.close()
+        stats = self.client.get("/api/agent/stats?days=7", headers=AUTH).json()
+        self.assertEqual(stats["runs"], 2)
+        self.assertEqual(stats["errors"], 1)
+        self.assertEqual(stats["totals"]["completion_tokens"], 50)
+        self.assertEqual(stats["totals"]["total_tokens"], 150)
+        self.assertAlmostEqual(stats["totals"]["cost"], 0.003)
+        tool = stats["by_tool"][0]
+        self.assertEqual(tool["name"], "today_summary")
+        self.assertEqual(tool["calls"], 2)
+        self.assertEqual(tool["failures"], 1)
+        self.assertEqual(tool["avg_ms"], 100)
+        self.assertEqual(len(stats["anomalies"]), 1)
+        self.assertIn("资料 #9", "；".join(stats["anomalies"][0]["issues"]))
+        self.assertEqual(stats["by_model"][0]["runs"], 2)
+
     def test_search_and_today(self):
         found = self.client.get("/api/search?q=二叉树", headers=AUTH).json()["results"]
         self.assertTrue(found)
