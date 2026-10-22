@@ -4,12 +4,13 @@
 
 ## 当前状态
 
-- 版本：**2.11.0**（P16 完成，待发版）
+- 版本：**2.11.0**（本地发版完成，未 push）
 - 分支：`v2`
-- 最近阶段：**P16.4 真实任务 A/B 评测**
-- 下一步：发版（exe / zip / tag 由负责人确认）
+- 最近阶段：**P16 四阶段完成 + 2.11.0 发布**
+- 下一步：push / GitHub Release 等负责人发话；或开始下一阶段
 - 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 496 OK；
   前端 `node --test web/tests/context.test.mjs` → 6 通过
+- 发布说明：[2.11.0-发布说明](2.11.0-发布说明.md)
 
 ## 方向
 
