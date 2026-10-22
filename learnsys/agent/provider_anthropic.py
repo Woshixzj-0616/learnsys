@@ -129,6 +129,10 @@ def _read_http_error(exc: urllib.error.HTTPError) -> str:
     return f"模型服务回了 {exc.code}" + (f"：{detail}" if detail else "")
 
 
+def _is_deepseek(base: str) -> bool:
+    return "deepseek" in str(base or "").lower()
+
+
 def _body(cfg: AgentConfig, system: str, messages: list, tools: list | None, stream: bool) -> dict:
     body = {
         "model": cfg.model,
@@ -137,6 +141,11 @@ def _body(cfg: AgentConfig, system: str, messages: list, tools: list | None, str
         "messages": messages,
         "stream": stream,
     }
+    # DeepSeek 的 Anthropic 兼容口默认 **开启** 思考；不显式发这个参数，
+    # 设置页里的「思考模式」就是个摆设（曾经确实是）。budget_tokens 在 DeepSeek
+    # 被忽略，所以只发 type。其它服务商保持原行为，避免不认识这个字段的中转直接 400。
+    if _is_deepseek(cfg.base_url):
+        body["thinking"] = {"type": "enabled" if cfg.thinking else "disabled"}
     if tools:
         body["tools"] = tools
     return body

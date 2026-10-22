@@ -93,6 +93,19 @@ export async function upload(file) {
   });
 }
 
+/** 写操作确认：原生确认框 → 告诉后台允许/拒绝。四个页面共用这一处。 */
+function askWriteConfirm(data) {
+  const summary = String(data.summary || "这次写入");
+  const allowed = window.confirm(`${summary}\n\n允许这次写入吗？`);
+  api.post("/api/agent/confirm", {
+    run_id: data.run_id || "",
+    request_id: data.request_id || "",
+    approve: allowed,
+  }).catch((error) => {
+    console.warn("写入确认没有送到后台（可能已超时）", error);
+  });
+}
+
 /**
  * 发一轮对话，按 SSE 事件回调。
  * onEvent({kind, text, data})；调用方用 AbortController 停止。
@@ -118,10 +131,22 @@ export async function streamChat(body, onEvent, signal) {
       .map((line) => line.slice(5).trimStart())
       .join("\n");
     if (!data) return;
+    let event;
     try {
-      onEvent(JSON.parse(data));
+      event = JSON.parse(data);
     } catch (error) {
       console.warn("SSE 解析失败", error, data);
+      return;
+    }
+    // 写操作确认：所有页面共用这一处弹窗，避免某个页面悄悄写入。
+    if (event.kind === "confirm") {
+      askWriteConfirm(event.data || {});
+      return;
+    }
+    try {
+      onEvent(event);
+    } catch (error) {
+      console.warn("SSE 回调失败", error, event);
     }
   };
 

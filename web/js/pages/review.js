@@ -95,6 +95,10 @@ async function run(root, button) {
         text += event.text || "";
         renderInto(result, text);
         status.textContent = "正在写…";
+      } else if (event.kind === "rewrite") {
+        text = String(event.data?.text || text);
+        renderInto(result, text);
+        status.textContent = "已按自检结果重写";
       } else if (event.kind === "tool_start") {
         status.textContent = "在查本地记录…";
       } else if (event.kind === "done") {

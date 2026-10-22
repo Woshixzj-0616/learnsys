@@ -378,9 +378,10 @@ class TestWrongbookTool(unittest.TestCase):
         ctx = tools.ToolContext(
             data_root=pathlib.Path(self.tmp.name), db_path=self.db_path,
             mode="quiz", conversation_id=8)
-        content, preview = tools.execute("save_wrongbook", {
+        content, preview, ok = tools.execute("save_wrongbook", {
             "question": "第 2 题", "my_answer": "错", "correct_answer": "对",
         }, ctx)
+        self.assertTrue(ok)
         self.assertIn("已收进错题本", content)
         self.assertEqual(preview, "已收进错题本")
 

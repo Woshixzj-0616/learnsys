@@ -97,7 +97,9 @@ class RegistryTest(unittest.TestCase):
         data = load_registry()
         mod = next(m for m in data["modules"] if m["id"] == "cet6")
         self.assertEqual(mod["status"], "ready")
-        self.assertEqual(mod["entry"], "/cet6/工作台/精听工作台.html")
+        # entry 允许带 ?v=… 缓存版本（工作台前端改版时用），路径本身必须锁死
+        self.assertEqual(mod["entry"].split("?", 1)[0],
+                         "/cet6/工作台/精听工作台.html")
 
     def test_iframe_branch_does_not_fetch_web_page(self):
         """iframe 的 entry 是 /cet6/…，不能先去 /web/cet6/… 拿页面（真踩过 404）。"""

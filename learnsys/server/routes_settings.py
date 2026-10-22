@@ -79,6 +79,7 @@ def get_settings(_=Depends(require_token)):
             "fast_model": cfg.fast_model,
             "max_tokens": cfg.max_tokens,
             "thinking": cfg.thinking,
+            "speed": cfg.speed,
             "ready": cfg.ready,
             "auth_token_set": bool(cfg.auth_token),
             "auth_token_mask": _mask(cfg.auth_token),
@@ -108,6 +109,7 @@ class AgentPatch(BaseModel):
     fast_model: str | None = None
     max_tokens: int | None = Field(default=None, ge=64, le=131072)
     thinking: bool | None = None
+    speed: str | None = None
 
 
 class VisionPatch(BaseModel):
@@ -146,6 +148,14 @@ def save_settings(patch: SettingsPatch, _=Depends(require_token)):
         for key in ("base_url", "model", "fast_model"):
             if key in agent:
                 agent[key] = str(agent[key]).strip()
+        if "speed" in agent:
+            speed = str(agent["speed"]).strip().lower()
+            if speed not in ("fast", "balanced", "deep"):
+                raise HTTPException(status_code=400,
+                                    detail="回答速度只能是 fast / balanced / deep")
+            agent["speed"] = speed
+            # speed 是唯一口径：别再让 thinking 旧字段和它打架
+            agent["thinking"] = speed == "deep"
         _put(data, "agent", agent)
         changed.extend(f"agent.{k}" for k in agent)
 

@@ -23,7 +23,7 @@ from learnsys.agent.config import load_config
 from learnsys.ask import VERSION
 from learnsys.modules import web_dir
 from learnsys.server import (routes_agent, routes_cet6, routes_data, routes_materials,
-                             routes_results, routes_review, routes_services,
+                             routes_memory, routes_results, routes_review, routes_services,
                              routes_settings, routes_ui, routes_upload, routes_vocab,
                              routes_web, runtime)
 from learnsys.server.security import origin_allowed
@@ -72,6 +72,7 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
     app.include_router(routes_review.router)
     app.include_router(routes_web.router)
     app.include_router(routes_settings.router)
+    app.include_router(routes_memory.router)
     app.include_router(routes_upload.router)
     app.include_router(routes_ui.router)
 

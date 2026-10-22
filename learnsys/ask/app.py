@@ -20,7 +20,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from learnsys import config, product, record, store
 from learnsys.ask import VERSION, backup, bar, hotkey as hotkey_mod, icon as icon_mod, study
-from learnsys.ask import backend, liverec, ocr, ops, overlay, shortcuts, single, scheduler, workbench
+from learnsys.ask import backend, guard, liverec, ocr, ops, overlay, shortcuts, single, scheduler, workbench
 
 LAUNCHER_NAME = product.LAUNCHER_NAME   # 源码运行时那个启动器：开始菜单快捷方式指向它
 NL = chr(92) + "n"               # 写进文件/字符串字面量里的「反斜杠+n」（换行转义）
@@ -87,6 +87,13 @@ def _silence_windowed() -> None:
                 setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))
             except OSError:
                 pass
+
+
+def watchdog_command() -> str:
+    """后台守护的计划任务每分钟跑这一条。"""
+    if config.FROZEN:
+        return f'"{launcher_target()}" --watchdog'
+    return f'"{config.ROOT / LAUNCHER_NAME}" --watchdog'
 
 
 def _pythonw() -> str:
@@ -280,6 +287,10 @@ class AskApp(QtCore.QObject):
         self.startup_action.setCheckable(True)
         self.startup_action.setChecked(self._startup_on())
         self.startup_action.triggered.connect(self._toggle_startup)
+        self.guard_action = menu.addAction("后台守护（掉线一分钟内自动拉起）")
+        self.guard_action.setCheckable(True)
+        self.guard_action.setChecked(guard.task_installed())
+        self.guard_action.triggered.connect(self._toggle_guard)
         menu.addSeparator()
         menu.addAction("退出", self.quit)
         tray.setContextMenu(menu)
@@ -482,6 +493,7 @@ class AskApp(QtCore.QObject):
         self.bar.show_message(text.replace(chr(10), " "))
 
     def quit(self) -> None:
+        guard.mark_quit()        # 告诉后台守护：这次是用户自己关的，别自动拉回来
         try:
             from learnsys.server import runtime as web_runtime
             web_runtime.clear_ui()   # 退出后别再让页面点「快捷栏」打到空处
@@ -558,6 +570,20 @@ class AskApp(QtCore.QObject):
             self.startup_action.setChecked(want)
         self._warn(f"已设为开机自启 —— 下次开机自动起后台和横栏。" if want
                    else "已关掉开机自启。")
+
+    def _toggle_guard(self) -> None:
+        """后台守护：Windows 计划任务每分钟检查一次，后台掉了就拉起来。"""
+        try:
+            if guard.task_installed():
+                ok, message = guard.remove_task()
+            else:
+                ok, message = guard.install_task(watchdog_command())
+        except Exception as exc:
+            self._warn(f"改后台守护没成功：{exc}")
+            return
+        if hasattr(self, "guard_action"):
+            self.guard_action.setChecked(guard.task_installed())
+        self._warn(message)
 
     # ---- 框选 → 截图 → 横栏 ----
 
@@ -1114,7 +1140,17 @@ class AskApp(QtCore.QObject):
 
 def main() -> int:
     _silence_windowed()                   # 无黑框模式：print 不能炸
-    background = "--background" in sys.argv[1:]   # 开机自启：只起后台/横栏，不弹工作台
+    argv = sys.argv[1:]
+    background = "--background" in argv   # 开机自启：只起后台/横栏，不弹工作台
+    if "--watchdog" in argv:
+        # 计划任务每分钟来一次。用户手动退出过、或后台还活着 → 当场走人；
+        # 先判断再建 Qt，闲着的时候只花一次健康探测的钱。
+        if not guard.should_start(quit_requested=guard.quit_requested(),
+                                  healthy=_server_healthy(8765) or _server_healthy(8766)):
+            return 0
+        background = True                 # 被守护拉起时别抢焦点
+    else:
+        guard.clear_quit()                # 任何正常启动都代表「这次我想让它跑」
     app = QtWidgets.QApplication(sys.argv)
     if not single.claim("background" if background else "show"):
         return 0                          # 已经有实例在跑 → 通知它后自己退

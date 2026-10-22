@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import html as html_mod
 import json
 import pathlib
 import re
@@ -16,6 +17,7 @@ import uuid
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from learnsys import agent, config, product
+from learnsys.agent import tools as agent_tools
 from learnsys.ask import icon as icon_mod, usage
 
 # 设计规范（改样式先看这里，别一处一处试）：
@@ -133,6 +135,9 @@ MOVE_SLOP = 4                     # 拖动超过这么多像素才算「拖」�
 _LINE_HEIGHT_PROPORTIONAL = 1     # QTextBlockFormat.ProportionalHeight（PySide6 里 int(枚举) 会报错）
 _USAGE_TTL_SECONDS = 300.0        # 占用数字缓存多久：横栏每次露出来都触发，不缓存就是每次全盘 walk
 _SCROLL_SLACK = 8                 # 滚动条离底部不足这么多像素 = 「正跟着看最新」
+# 流式时多久重排一次 Markdown。太快会跟每个 token 抢 CPU；太慢看起来像卡住。
+# 0.12 秒 ≈ 8 帧/秒：字一直在长，格式也一直是好的，不会先吐 `**` 再突然变粗体。
+_STREAM_RENDER_SECONDS = 0.12
 
 
 def _as_bool(value, default: bool) -> bool:
@@ -221,10 +226,12 @@ class _UsageWorker(QtCore.QThread):
 
 
 class _AskWorker(QtCore.QThread):
-    chunk = QtCore.Signal(str, bool)  # 流式：(新到的字, True = 整段替换/ False = 追加)
-    done = QtCore.Signal(str)        # 完整答案（含已流出的部分）
-    failed = QtCore.Signal(str)      # 失败原因（若已有部分文本，界面会留着）
-    activity = QtCore.Signal(str)    # 状态行的一句话：看图 / 查记录 / 推理中
+    chunk = QtCore.Signal(str, bool)      # 流式：(新到的字, True = 整段替换/ False = 追加)
+    thinking = QtCore.Signal(str)         # 思考过程增量（横栏可以点开看）
+    done = QtCore.Signal(str)             # 完整答案（含已流出的部分）
+    failed = QtCore.Signal(str)           # 失败原因（若已有部分文本，界面会留着）
+    activity = QtCore.Signal(str)         # 状态行的一句话：看图 / 查记录 / 推理中
+    confirm_needed = QtCore.Signal(object)   # 写操作要确认：{request_id, tool, summary}
 
     def __init__(self, image_path: str, question: str, history, parent=None, context: str = "",
                  extra_images: list[str] | None = None, mode: str = "explain"):
@@ -242,6 +249,18 @@ class _AskWorker(QtCore.QThread):
         self._abort = threading.Event()       # 传给 Agent：一置位就收摊
         self._sink: list = []                 # 底层响应，cancel 时 close 掐断连接
         self._last_activity = ""              # 同一句话只发一次（思考增量每片都来，别刷屏）
+        self._confirm_slot: dict | None = None
+
+    def _confirm_write(self, request_id: str, tool_name: str, args: dict) -> bool:
+        """写操作：发到主线程弹窗，等用户点「允许 / 拒绝」（120 秒超时=拒绝）。"""
+        slot = {"event": threading.Event(), "ok": False}
+        self._confirm_slot = slot
+        self.confirm_needed.emit({
+            "request_id": request_id, "tool": tool_name,
+            "summary": agent_tools.write_summary(tool_name, args),
+        })
+        slot["event"].wait(120)
+        return bool(slot["ok"])
 
     def _say(self, text: str) -> None:
         text = str(text or "")
@@ -276,7 +295,8 @@ class _AskWorker(QtCore.QThread):
                 use_tools=self._use_tools,
                 conversation_key=self._conversation_key,
             )
-            for event in agent.run(request, abort=self._abort, response_sink=self._sink):
+            for event in agent.run(request, abort=self._abort, response_sink=self._sink,
+                                   confirm=self._confirm_write):
                 if self._cancelled:
                     return
                 if event.kind == "text":
@@ -284,6 +304,37 @@ class _AskWorker(QtCore.QThread):
                     self.chunk.emit(event.text, False)
                 elif event.kind == "thinking":
                     self._say("正在推理…")
+                    if event.text:
+                        self.thinking.emit(event.text)
+                elif event.kind == "plan":
+                    steps = event.data.get("steps") or []
+                    self._say("计划：" + "；".join(
+                        f"{index + 1}) {step.get('title', '')}"
+                        for index, step in enumerate(steps[:6])))
+                elif event.kind == "plan_update":
+                    steps = event.data.get("steps") or []
+                    index = int(event.data.get("index") or 0)
+                    if 0 <= index < len(steps):
+                        mark = {"done": "完成", "failed": "失败", "doing": "进行中",
+                                "skipped": "跳过"}.get(
+                                    str(event.data.get("status")), "")
+                        self._say(f"第 {index + 1} 步{mark}：{steps[index].get('title', '')}")
+                elif event.kind == "confirm":
+                    self._say("等你确认写入…")
+                elif event.kind == "check":
+                    issues = event.data.get("issues") or []
+                    self._say("自检通过" if event.data.get("ok")
+                              else f"自检发现 {len(issues)} 处引用问题")
+                elif event.kind == "rewrite":
+                    text = str(event.data.get("text") or "")
+                    if text:
+                        parts.clear()
+                        parts.append(text)
+                        self.chunk.emit(text, True)
+                        self._say("已按自检结果重写")
+                elif event.kind == "activity":
+                    if event.text:
+                        self._say(event.text)
                 elif event.kind == "vision":
                     if event.text:
                         self._say(event.text)
@@ -397,6 +448,15 @@ class AskBar(QtWidgets.QWidget):
         self._answer_start = None     # 答案区里「答案」从第几个字符开始（None = 这一轮还没开始）
         self._turn_seq = 0            # 第几轮（被掐掉的旧那一轮回来时靠它认出来，别写回界面）
         self._last_answer = ""        # 最近一次的**答案**原文（复制按钮只复制它，不带问题）
+        self._stream_text = ""        # 这一轮流式累积的答案原文
+        self._thinking_text = ""      # 这一轮流式累积的思考原文
+        self._last_thinking = ""      # 最近一轮的思考（点「查看思考过程」用）
+        self._answer_view = "answer"  # answer / thinking —— 答案面板现在显示哪一面
+        self._view_pinned = False     # 用户手动点过切换：别被流式自动切回去
+        self._last_render_at = 0.0
+        self._render_timer = QtCore.QTimer(self)
+        self._render_timer.setSingleShot(True)
+        self._render_timer.timeout.connect(self._flush_stream_render)
         self._showing_history = False # 答案区现在显示的是历史记录（不是当前对话）
         self._follow = True           # 流式时视图跟着最新内容走；用户往上翻了就停（见 _on_chunk）
         self._usage_cache = None      # 最近一次算好的占用（Usage）—— 5 分钟内直接用，别反复 walk 盘
@@ -784,7 +844,8 @@ class AskBar(QtWidgets.QWidget):
         # 答案面板：高度固定（可拖底边），内容多了在面板内滚动 —— 流式期间不再长高
         self.answer = QtWidgets.QTextBrowser(card)
         self.answer.setObjectName("answer")
-        self.answer.setOpenExternalLinks(True)
+        self.answer.setOpenExternalLinks(False)   # 自己处理：think: 切视图，http 交给系统浏览器
+        self.answer.anchorClicked.connect(self._on_answer_anchor)
         self.answer.setFixedHeight(self._answer_h)
         self.answer.setVisible(False)
         box.addWidget(self.answer)
@@ -1078,6 +1139,13 @@ class AskBar(QtWidgets.QWidget):
         self._activity = ""
         self._answer_start = None
         self._last_answer = ""
+        self._stream_text = ""
+        self._thinking_text = ""
+        self._last_thinking = ""
+        self._answer_view = "answer"
+        self._view_pinned = False
+        if self._render_timer.isActive():
+            self._render_timer.stop()
         self._showing_history = False
         self._follow = False       # 内容都清了，没什么可跟随的
         self._starrable = None     # 当前内容没了，「收藏」跟着灭
@@ -1222,6 +1290,8 @@ class AskBar(QtWidgets.QWidget):
         新一轮（还没写过 / 刚清空 / 刚开新会话）就先清掉旧的；
         追问就接在上一轮答案后面写，像聊天记录一样往下长。
         """
+        if self._render_timer.isActive():
+            self._render_timer.stop()         # 上一轮排的帧不许写进这一轮
         if self._answer_start is None:
             self.answer.clear()
             self._showing_history = False     # 新问起手，历史视图已经不在了
@@ -1238,6 +1308,12 @@ class AskBar(QtWidgets.QWidget):
         self._answer_start = cursor.position()
         self._last_answer = ""     # 每一轮的答案区都是从头算的 —— 不清的话，流式期间
                                    # 复制会把上一轮答案拼进来，中断时上下文也会被污染
+        self._stream_text = ""
+        self._thinking_text = ""
+        self._last_thinking = ""
+        self._answer_view = "answer"
+        self._view_pinned = False
+        self._last_render_at = 0.0
         self._follow = True        # 新一轮从跟随最新内容开始（用户上翻就停，见 _on_chunk）
         cursor.setCharFormat(_answer_char())     # 答案用正常颜色，别接着用蓝底那块的白字
         self.answer.setTextCursor(cursor)
@@ -1318,7 +1394,11 @@ class AskBar(QtWidgets.QWidget):
         self._worker.finished.connect(self._reap_workers)
         if hasattr(self._worker, "activity"):
             self._worker.activity.connect(self._on_activity)
+        if hasattr(self._worker, "confirm_needed"):
+            self._worker.confirm_needed.connect(self._on_confirm_write)
         self._worker.chunk.connect(lambda piece, replace, s=seq: self._on_chunk(piece, replace, s))
+        if hasattr(self._worker, "thinking"):
+            self._worker.thinking.connect(lambda piece, s=seq: self._on_thinking(piece, s))
         self._worker.done.connect(
             lambda text, s=seq, k=kind, p=image_path: self._finish(display_text, text, None, s, k, p))
         self._worker.failed.connect(
@@ -1329,6 +1409,21 @@ class AskBar(QtWidgets.QWidget):
         """后台线程发来的一句话：看图 / 查记录 / 推理中。只更新状态行，不动布局。"""
         self._activity = str(text or "")
 
+    def _on_confirm_write(self, payload) -> None:
+        """写操作确认：横栏弹一个原生对话框；后台线程正卡在同一个 slot 上等。"""
+        payload = payload if isinstance(payload, dict) else {}
+        summary = str(payload.get("summary") or "这次写入")
+        answer = QtWidgets.QMessageBox.question(
+            self, "需要你确认", f"{summary}\n\n允许这次写入吗？",
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No)
+        worker = self._worker
+        slot = getattr(worker, "_confirm_slot", None) if worker is not None else None
+        if isinstance(slot, dict):
+            slot["ok"] = answer == QtWidgets.QMessageBox.StandardButton.Yes
+            slot["event"].set()
+
     def _tick(self) -> None:
         self._dots = (self._dots + 1) % 4
         # 有更具体的动作（查记录 / 看图）就显示它；否则按「先想后写」显示
@@ -1337,9 +1432,10 @@ class AskBar(QtWidgets.QWidget):
                          + f"  {time.monotonic() - self._started_at:.0f} 秒")
 
     def _on_chunk(self, piece: str, replace: bool = False, seq: int = 0) -> None:
-        """流式：字一到就往答案区追加（已经洗过 Markdown 噪声了）。
+        """流式正文：先攒原文，再按 8 帧/秒重排 Markdown。
 
-        问题那一行是 `_start_turn` 写好的，这里**只动答案那一段**，不能整段清掉。
+        以前是「逐字 insertText，最后一次性 setMarkdown」—— 用户会先看到满屏 `**`、
+        `##`，等结束再突然变格式。现在每一帧看到的都是渲染后的样子。
         `seq` 是这一轮的号 —— 被掐掉的旧轮（清空/新会话/换图）流回来的碎片一律不进界面。
         """
         if seq != self._turn_seq:
@@ -1352,57 +1448,123 @@ class AskBar(QtWidgets.QWidget):
         self._streaming = True
         self._set_copy_enabled(True)
         if replace:
-            self._set_answer_part(piece)
+            self._stream_text = piece
+            self._last_answer = piece
         else:
-            # 用文档光标插入，**不走** moveCursor —— 那个会顺带把视图拽到底，
-            # 用户上翻看旧内容时就被打断（跟随与否交给 _scroll_follow）
-            cursor = self.answer.textCursor()
-            cursor.movePosition(QtGui.QTextCursor.End)
-            cursor.insertText(piece)
-            # 追加也要记进 _last_answer：复制按钮只认它，不认整篇文档（不然连「我：」那行一起拷）
+            self._stream_text += piece
             self._last_answer += piece
-        # 面板高度固定 ⇒ 没有重排：只把在底部的人的视图滚到最新
-        self._scroll_follow()
+        # 正文来了：自动从「思考」切回「答案」，但用户手动点过就尊重他的选择
+        if not self._view_pinned:
+            self._answer_view = "answer"
+        self._schedule_render()
+
+    def _on_thinking(self, piece: str, seq: int = 0) -> None:
+        """思考增量：横栏也能看见推理在推进，而不是只有一个「在想」。"""
+        if seq != self._turn_seq or not piece:
+            return
+        if self._state_name not in (STATE_THINKING, STATE_STREAMING):
+            return                              # 已经 done/error 的迟到碎片不要
+        self._thinking_text += piece
+        if not self._view_pinned and not self._stream_text:
+            self._answer_view = "thinking"
+        self._schedule_render()
+
+    def _schedule_render(self) -> None:
+        """合并短时间内的很多 chunk，只排一次重排。"""
+        if self._render_timer.isActive():
+            return
+        wait = max(0.0, _STREAM_RENDER_SECONDS - (time.monotonic() - self._last_render_at))
+        self._render_timer.start(max(1, int(wait * 1000)))
+
+    def _flush_stream_render(self) -> None:
+        if self._state_name not in (STATE_THINKING, STATE_STREAMING):
+            return
+        self._render_answer_view()
+        self._last_render_at = time.monotonic()
+
+    def _header_link(self, target: str, label: str) -> str:
+        return ('<p style="margin:0 0 6px 0">'
+                f'<a href="think:{target}" style="color:#6ea8ff;text-decoration:none">'
+                f'{html_mod.escape(label)}</a></p>')
+
+    def _thinking_html(self) -> str:
+        body = html_mod.escape(self._thinking_text or "（这一轮没有思考过程）")
+        body = body.replace("\n", "<br>")
+        return ('<div style="color:#aeb7c2;font-size:14px;line-height:1.55">'
+                + body + "</div>")
+
+    def _render_answer_view(self) -> None:
+        """把「答案」那一段换成当前视图（答案 Markdown / 思考过程）。
+
+        只动答案段，上面的问题气泡不动；面板高度固定，窗口几何不变。
+        """
+        if self._answer_start is None:
+            return
+        sb = self.answer.verticalScrollBar()
+        value = sb.value()
+        follow = self._follow
+        cursor = self.answer.textCursor()
+        cursor.setPosition(self._answer_start)
+        cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.KeepAnchor)
+        if self._answer_view == "thinking":
+            cursor.insertHtml(self._header_link("answer", "← 回到答案"))
+            cursor.insertHtml(self._thinking_html())
+        else:
+            if self._thinking_text.strip():
+                cursor.insertHtml(self._header_link(
+                    "thinking", f"💭 查看思考过程（{len(self._thinking_text)} 字）"))
+            document = QtGui.QTextDocument()
+            # Qt 的 toHtml() 会按文档默认字体写死 font-size；不设就会从 15px 缩回 9pt。
+            font = QtGui.QFont("Microsoft YaHei UI")
+            font.setPixelSize(15)
+            document.setDefaultFont(font)
+            document.setDocumentMargin(0)
+            document.setDefaultStyleSheet(
+                "body { color: #dce4ee; }"
+                "h1,h2,h3,h4 { color: #f1f3f4; }"
+                "code, pre { color: #f5b74e; font-family: 'Cascadia Mono','Consolas',monospace; }"
+                "a { color: #6ea8ff; }"
+                "blockquote { color: #aeb7c2; }"
+            )
+            document.setMarkdown(_markdown_bold_for_qt(self._stream_text))
+            cursor.insertHtml(document.toHtml())
+            if self._thinking_text.strip():
+                # 流式时视图跟着底部走，顶部的开关会滚出屏幕 —— 底部再放一个
+                cursor.insertHtml(self._header_link(
+                    "thinking", f"💭 查看思考过程（{len(self._thinking_text)} 字）"))
+        if follow:
+            sb.setValue(sb.maximum())
+        else:
+            sb.setValue(min(value, sb.maximum()))
+        self._set_copy_enabled(bool(self._last_answer.strip()))
+
+    def _on_answer_anchor(self, url: QtCore.QUrl) -> None:
+        text = url.toString()
+        if text.startswith("think:"):
+            target = text.split(":", 1)[1]
+            if target in ("answer", "thinking"):
+                self._answer_view = target
+                self._view_pinned = True
+                self._render_answer_view()
+            return
+        if url.scheme() in ("http", "https"):
+            QtGui.QDesktopServices.openUrl(url)
 
     def _set_answer_part(self, text: str) -> None:
         """只替换「答案」那一段 —— 「我：」那一行留在上面不动。"""
         if self._answer_start is None:
             return
-        cursor = self.answer.textCursor()
-        cursor.setPosition(self._answer_start)
-        cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.KeepAnchor)
-        cursor.insertText(text, _answer_char())
+        self._stream_text = text
         self._last_answer = text
-        self._set_copy_enabled(bool(text.strip()))
+        self._render_answer_view()
 
     def _set_answer_markdown(self, text: str) -> None:
-        """把答案那一段换成 Markdown 渲染后的富文本。
-
-        流式期间按原文追加（能看见字在长），结束时只重排「答案」这一段，
-        上面的问题气泡不动。颜色用深色主题的正文色，避免默认黑色看不清。
-        """
-        if self._answer_start is None:
-            return
-        cursor = self.answer.textCursor()
-        cursor.setPosition(self._answer_start)
-        cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.KeepAnchor)
-        document = QtGui.QTextDocument()
-        # Qt 的 toHtml() 会按文档默认字体写死 font-size；不设就会从 15px 缩回 9pt。
-        font = QtGui.QFont("Microsoft YaHei UI")
-        font.setPixelSize(15)
-        document.setDefaultFont(font)
-        document.setDocumentMargin(0)
-        document.setDefaultStyleSheet(
-            "body { color: #dce4ee; }"
-            "h1,h2,h3,h4 { color: #f1f3f4; }"
-            "code, pre { color: #f5b74e; font-family: 'Cascadia Mono','Consolas',monospace; }"
-            "a { color: #6ea8ff; }"
-            "blockquote { color: #aeb7c2; }"
-        )
-        document.setMarkdown(_markdown_bold_for_qt(text))
-        cursor.insertHtml(document.toHtml())
+        """兼容旧调用：把答案段按 Markdown 重排一次。"""
+        self._stream_text = text
         self._last_answer = text
-        self._set_copy_enabled(bool(text.strip()))
+        if not self._view_pinned:
+            self._answer_view = "answer"
+        self._render_answer_view()
 
     def _finish(self, question: str, text: str, error, seq: int = 0,
                 kind: str = "text", image_path: str = "") -> None:
@@ -1426,6 +1588,10 @@ class AskBar(QtWidgets.QWidget):
             partial = self._last_answer.strip()
             if partial:
                 # 流到一半断了：留着已写出的，底下标一句
+                self._last_thinking = self._thinking_text
+                if not self._view_pinned:
+                    self._answer_view = "answer"
+                self._render_answer_view()
                 self.set_state(STATE_ERROR, status=f"回答中断 —— {error}")
                 # 已写出的那段也算上下文 —— 不然追问「继续」时 AI 记不得自己说过啥
                 self._turns.append((question, partial))
@@ -1433,7 +1599,11 @@ class AskBar(QtWidgets.QWidget):
                 self._set_answer_part(error)
                 self.set_state(STATE_ERROR, status="没成功 —— 改一下再问")
         else:
-            self._set_answer_markdown(text)      # 完整答案用 Markdown 渲染一次
+            self._stream_text = text
+            self._last_thinking = self._thinking_text
+            if not self._view_pinned:
+                self._answer_view = "answer"
+            self._set_answer_markdown(text)      # 最后一帧：保证完整答案用 Markdown 渲染
             self._turns.append((question, text))
             if kind == "image":
                 status = f"用了 {ms / 1000:.1f} 秒 · 还想追问就直接再打字（看的还是这张图）"

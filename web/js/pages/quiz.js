@@ -271,6 +271,10 @@ async function runTurn(message, options = {}) {
         text += event.text || "";
         renderInto(block, text);
         scrollDown();
+      } else if (event.kind === "rewrite") {
+        text = String(event.data?.text || text);
+        renderInto(block, text);
+        scrollDown();
       } else if (event.kind === "tool_start") {
         // 只动状态行：这里清空 block 会把已经流出的批改文字抹掉
         nodes.state.textContent = event.data?.name === "save_wrongbook"

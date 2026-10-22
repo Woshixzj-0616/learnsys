@@ -8,10 +8,15 @@ const MODE_NAMES = { explain: "讲解", guide: "引导", quiz: "测验", quick: 
 const TOOL_NAMES = {
   search_records: "查本地记录",
   today_summary: "看今日概览",
+  recent_wrong_items: "查错题本",
   read_attachment: "读文档",
   ocr_image: "OCR 看图",
   search_materials: "搜资料库",
   read_material: "读资料",
+  get_cet6_context: "读六级进度",
+  save_wrongbook: "收错题",
+  save_memory: "记长期偏好",
+  forget_memory: "忘掉记忆",
 };
 
 const state = {
@@ -30,9 +35,11 @@ const state = {
   text: "",
   thinking: "",
   startedAt: 0,
+  runId: "",
   usedTools: new Set(),
   usedVision: false,
   stopped: false,
+  thinkingDirty: false,
 };
 
 let ctxRef = null;
@@ -55,9 +62,11 @@ function resetState() {
     text: "",
     thinking: "",
     startedAt: 0,
+    runId: "",
     usedTools: new Set(),
     usedVision: false,
     stopped: false,
+    thinkingDirty: false,
   });
 }
 
@@ -389,6 +398,7 @@ function renderThread() {
           block.thinkingPre.textContent = thinking;
         }
         dom.inner.appendChild(block.wrap);
+        if (message.content?.run_id) attachReplay(block, message.content.run_id);
       } else if (message.content?.error) {
         const block = createAssistantBlock();
         block.error.hidden = false;
@@ -417,6 +427,10 @@ function createAssistantBlock() {
   status.className = "assistant-status";
   status.hidden = true;
 
+  const planEl = document.createElement("div");
+  planEl.className = "plan-card";
+  planEl.hidden = true;
+
   const thinkingEl = document.createElement("details");
   thinkingEl.className = "thinking";
   thinkingEl.hidden = true;
@@ -437,6 +451,10 @@ function createAssistantBlock() {
   body.className = "md";
   body.hidden = true;
 
+  const checkEl = document.createElement("div");
+  checkEl.className = "check-strip";
+  checkEl.hidden = true;
+
   const error = document.createElement("div");
   error.className = "error-bar";
   error.hidden = true;
@@ -444,12 +462,94 @@ function createAssistantBlock() {
   const sources = document.createElement("div");
   sources.className = "sources";
 
-  wrap.append(status, thinkingEl, toolsEl, body, error, sources);
+  wrap.append(status, planEl, thinkingEl, toolsEl, body, checkEl, error, sources);
   dom.inner.appendChild(wrap);
   return {
-    wrap, status, thinkingEl, thinkingPre, toolsEl, toolsSummary, toolsBody,
-    body, error, sources,
+    wrap, status, planEl, thinkingEl, thinkingPre, toolsEl, toolsSummary, toolsBody,
+    body, checkEl, error, sources,
   };
+}
+
+const PLAN_MARKS = { pending: "○", doing: "▸", done: "✓", failed: "✗", skipped: "–" };
+
+function renderPlan(block, steps, truncated = false) {
+  if (!block || !Array.isArray(steps) || !steps.length) return;
+  block.planEl.hidden = false;
+  block.planEl.innerHTML = `<div class="plan-head">计划${truncated ? "（超过 6 步已截断）" : ""}</div>`
+    + steps.map((step) => `
+      <div class="plan-step ${escapeHtml(step.status || "pending")}">
+        <span class="plan-mark">${PLAN_MARKS[step.status] || "○"}</span>
+        <span class="plan-title">${escapeHtml(step.title || "")}</span>
+        ${step.tool ? `<span class="plan-tool">${escapeHtml(TOOL_NAMES[step.tool] || step.tool)}</span>` : ""}
+      </div>`).join("");
+}
+
+function showCheck(block, data) {
+  if (!block) return;
+  const issues = Array.isArray(data?.issues) ? data.issues : [];
+  block.checkEl.hidden = false;
+  block.checkEl.classList.toggle("bad", !data?.ok);
+  if (data?.ok) {
+    block.checkEl.textContent = data.rewritten
+      ? "自检通过：已按工具证据重写"
+      : `自检通过 · 已核对 ${Number(data.checked || 0)} 条工具结果`;
+  } else {
+    block.checkEl.textContent = "自检未通过：" + (issues.join("；") || "引用无法核对");
+  }
+}
+
+function renderRunTrace(trace) {
+  if (!Array.isArray(trace) || !trace.length) {
+    return '<div class="hint">这次运行没有可回放的事件</div>';
+  }
+  const lines = [];
+  for (const item of trace) {
+    const data = item.data || {};
+    if (item.kind === "plan") {
+      lines.push(`<div class="run-line"><b>计划</b> ${(data.steps || []).map(
+        (step, index) => `${index + 1}. ${escapeHtml(step.title || "")}`).join("；")}</div>`);
+    } else if (item.kind === "tool_start") {
+      lines.push(`<div class="run-line"><b>调用</b> ${escapeHtml(TOOL_NAMES[data.name] || data.name || "")}`
+        + `${data.goal ? ` · 目标：${escapeHtml(data.goal)}` : ""}</div>`);
+    } else if (item.kind === "tool_end") {
+      lines.push(`<div class="run-line ${data.ok === false ? "bad" : ""}"><b>${data.ok === false ? "失败" : "结果"}</b> `
+        + `${escapeHtml(data.preview || "")}${data.denied ? "（用户拒绝）" : ""}</div>`);
+    } else if (item.kind === "confirm") {
+      lines.push(`<div class="run-line"><b>确认</b> ${escapeHtml(data.summary || "")}</div>`);
+    } else if (item.kind === "check") {
+      const issues = Array.isArray(data.issues) ? data.issues : [];
+      lines.push(`<div class="run-line ${data.ok ? "" : "bad"}"><b>自检</b> `
+        + `${data.ok ? "通过" : escapeHtml(issues.join("；"))}</div>`);
+    } else if (item.kind === "rewrite") {
+      lines.push('<div class="run-line"><b>重写</b> 按自检结果替换了正文</div>');
+    } else if (item.kind === "error") {
+      lines.push(`<div class="run-line bad"><b>错误</b> ${escapeHtml(item.text || "")}</div>`);
+    }
+  }
+  return lines.join("") || '<div class="hint">这次运行没有可展示的步骤</div>';
+}
+
+function attachReplay(block, runId) {
+  if (!block || !runId) return;
+  const details = document.createElement("details");
+  details.className = "run-replay";
+  const summary = document.createElement("summary");
+  summary.textContent = "运行回放";
+  const body = document.createElement("div");
+  body.className = "run-body";
+  details.append(summary, body);
+  details.addEventListener("toggle", async () => {
+    if (!details.open || details.dataset.loaded) return;
+    details.dataset.loaded = "1";
+    body.innerHTML = '<div class="hint">正在读运行记录…</div>';
+    try {
+      const run = await api.get(`/api/agent/runs/${encodeURIComponent(runId)}`);
+      body.innerHTML = renderRunTrace(run.trace);
+    } catch (error) {
+      body.innerHTML = `<div class="hint">${escapeHtml(error.message || "运行记录没读到")}</div>`;
+    }
+  });
+  block.wrap.insertBefore(details, block.sources);
 }
 
 function setAssistantStatus(block, text, spinning = false) {
@@ -461,6 +561,12 @@ function paintAssistant(force = false) {
   const block = state.assistant;
   if (!block) return;
   const stick = nearBottom();
+  if (state.thinkingDirty) {
+    block.thinkingPre.textContent = state.thinking;
+    block.thinkingEl.querySelector("summary").textContent =
+      state.text ? `思考过程 · ${state.thinking.length} 字` : `思考过程 · ${state.thinking.length} 字`;
+    state.thinkingDirty = false;
+  }
   renderInto(block.body, state.text);
   block.body.hidden = !state.text;
   if (force || stick) scrollBottom();
@@ -475,12 +581,14 @@ function scrollBottom(force = false) {
   else if (nearBottom()) dom.thread.scrollTop = dom.thread.scrollHeight;
 }
 
-function addToolRow(block, name, input) {
+function addToolRow(block, name, input, goal = "", step = null) {
   if (block.toolsEl.hidden) block.toolsEl.hidden = false;
   const row = document.createElement("div");
   row.className = "tool-row";
   row.dataset.name = name;
-  row.innerHTML = `<span class="tool-name">${escapeHtml(TOOL_NAMES[name] || name)}</span>
+  if (step !== null && step !== undefined) row.dataset.step = String(step);
+  const label = goal ? `${goal} · ${TOOL_NAMES[name] || name}` : (TOOL_NAMES[name] || name);
+  row.innerHTML = `<span class="tool-name">${escapeHtml(label)}</span>
     <span class="tool-preview">${escapeHtml(toolInputPreview(input))}</span>`;
   block.toolsBody.appendChild(row);
   const count = block.toolsBody.children.length;
@@ -491,14 +599,26 @@ function addToolRow(block, name, input) {
 function toolInputPreview(input) {
   if (!input || typeof input !== "object") return "";
   if (input.query) return String(input.query);
+  if (input.material_id) return `资料 #${input.material_id}`;
   if (input.offset) return `从第 ${input.offset} 字`;
+  if (input.content) return String(input.content).slice(0, 60);
   return "";
 }
 
-function updateToolPreview(block, name, preview) {
-  const rows = [...block.toolsBody.querySelectorAll(".tool-row")];
-  const row = rows.reverse().find((item) => item.dataset.name === name);
+function updateToolPreview(block, name, preview, ok = true, step = null) {
+  let row = null;
+  if (step !== null && step !== undefined) {
+    const matches = [...block.toolsBody.querySelectorAll(".tool-row")]
+      .filter((item) => item.dataset.step === String(step));
+    row = matches[matches.length - 1] || null;
+  }
+  if (!row) {
+    const rows = [...block.toolsBody.querySelectorAll(".tool-row")];
+    row = rows.reverse().find((item) => item.dataset.name === name
+      && !item.classList.contains("done") && !item.classList.contains("bad"));
+  }
   if (!row) return;
+  row.classList.add(ok ? "done" : "bad");
   const slot = row.querySelector(".tool-preview");
   if (slot) slot.textContent = String(preview || "").slice(0, 90);
 }
@@ -615,8 +735,10 @@ async function startStreaming(payload) {
   state.stopped = false;
   state.text = "";
   state.thinking = "";
+  state.runId = "";
   state.usedTools = new Set();
   state.usedVision = false;
+  state.thinkingDirty = false;
   state.startedAt = Date.now();
   state.assistant = createAssistantBlock();
   setAssistantStatus(state.assistant, "思考中", true);
@@ -649,24 +771,52 @@ async function startStreaming(payload) {
       if (!block) return;
       if (event.kind === "start") {
         const id = Number(event.data?.conversation_id || 0);
+        state.runId = String(event.data?.run_id || "");
         if (id && state.convId !== id) {
           state.convId = id;
           history.replaceState(null, "", `#/ask/${id}`);
         }
+      } else if (event.kind === "plan") {
+        renderPlan(block, event.data?.steps || [], !!event.data?.truncated);
+        setAssistantStatus(block, "按计划执行", true);
+      } else if (event.kind === "plan_update") {
+        renderPlan(block, event.data?.steps || []);
+      } else if (event.kind === "check") {
+        showCheck(block, event.data || {});
+      } else if (event.kind === "rewrite") {
+        state.text = String(event.data?.text || "");
+        block.body.hidden = !state.text;
+        paintAssistant(true);
+        setAssistantStatus(block, "自检后已重写", true);
       } else if (event.kind === "thinking") {
         state.thinking += event.text || "";
-        block.thinkingEl.hidden = false;
-        block.thinkingPre.textContent = state.thinking;
+        state.thinkingDirty = true;
+        if (block.thinkingEl.hidden) {
+          block.thinkingEl.hidden = false;
+          block.thinkingEl.open = true;     // 先展开：让人看到推理在推进
+        }
         setAssistantStatus(block, "思考中", true);
+        schedulePaint();
+      } else if (event.kind === "activity") {
+        if (event.text) setAssistantStatus(block, event.text, true);
       } else if (event.kind === "text") {
+        const firstText = !state.text;
         state.text += event.text || "";
+        if (firstText && state.thinking) {
+          block.thinkingEl.open = false;    // 正文开始：思考收起成一行，不挤占答案
+        }
         setAssistantStatus(block, state.text ? "正在写" : "思考中", true);
         schedulePaint();
       } else if (event.kind === "tool_start") {
-        addToolRow(block, event.data?.name || "tool", event.data?.input || {});
-        setAssistantStatus(block, "在查本地记录", true);
+        addToolRow(block, event.data?.name || "tool", event.data?.input || {},
+          event.data?.goal || "", event.data?.step);
+        setAssistantStatus(block, event.data?.goal || "在查本地记录", true);
       } else if (event.kind === "tool_end") {
-        updateToolPreview(block, event.data?.name || "", event.data?.preview || "");
+        updateToolPreview(block, event.data?.name || "", event.data?.preview || "",
+          event.data?.ok !== false, event.data?.step);
+        if (event.data?.ok === false) {
+          setAssistantStatus(block, "这步没成功，正在换路", true);
+        }
       } else if (event.kind === "vision") {
         if (typeof event.data?.used_vision === "boolean") {
           state.usedVision = event.data.used_vision;
@@ -676,8 +826,14 @@ async function startStreaming(payload) {
       } else if (event.kind === "done") {
         const finalText = String(event.data?.text || state.text || "");
         if (finalText) state.text = finalText;
-        if (event.data?.thinking) state.thinking = String(event.data.thinking);
+        if (event.data?.thinking) {
+          state.thinking = String(event.data.thinking);
+          state.thinkingDirty = true;
+        }
         paintAssistant(true);
+        if (event.data?.truncated) {
+          setAssistantStatus(block, "回答达到上限，末尾可能被截断");
+        }
         finishStreaming(block, true);
       } else if (event.kind === "error") {
         showStreamError(block, event.text || "模型没有回答");
@@ -715,13 +871,16 @@ function finishStreaming(block, ok, note = "") {
     for (const name of state.usedTools) addSource(block, TOOL_NAMES[name] || name);
     if (state.usedVision) addSource(block, "视觉模型");
     if (state.text) {
-      state.messages.push({ role: "assistant", content: { text: state.text, thinking: state.thinking } });
+      state.messages.push({ role: "assistant", content: {
+        text: state.text, thinking: state.thinking, run_id: state.runId || undefined } });
     }
+    if (state.runId) attachReplay(block, state.runId);
   } else {
     setAssistantStatus(block, note || "已停止");
     if (state.text) {
       paintAssistant(true);
-      state.messages.push({ role: "assistant", content: { text: state.text, thinking: state.thinking } });
+      state.messages.push({ role: "assistant", content: {
+        text: state.text, thinking: state.thinking, run_id: state.runId || undefined } });
     }
   }
 

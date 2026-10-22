@@ -21,6 +21,7 @@ export async function mount(ctx) {
   }
   fill(current);
   bind();
+  loadMemories();
 }
 
 function fill(data) {
@@ -28,7 +29,7 @@ function fill(data) {
   setValue("agent-model", data.agent?.model);
   setValue("agent-fast", data.agent?.fast_model);
   setValue("agent-tokens", data.agent?.max_tokens);
-  document.getElementById("agent-thinking").checked = !!data.agent?.thinking;
+  setValue("agent-speed", data.agent?.speed || "balanced");
   document.getElementById("agent-token").value = "";
   document.getElementById("agent-token-hint").textContent = keyHint(
     data.agent?.auth_token_set, data.agent?.auth_token_mask, data.agent?.auth_token_source);
@@ -94,6 +95,83 @@ function bind() {
   ctxRef.root.querySelector("#test-text").addEventListener("click", () => test("text"));
   ctxRef.root.querySelector("#test-vision").addEventListener("click", () => test("vision"));
   ctxRef.root.querySelector("#backup-now").addEventListener("click", backup);
+
+  document.getElementById("memory-add").addEventListener("click", addMemory);
+  const input = document.getElementById("memory-input");
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addMemory();
+    }
+  });
+  document.getElementById("memory-list").addEventListener("click", onMemoryAction);
+  document.getElementById("memory-list").addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || !event.target.matches(".memory-text")) return;
+    event.preventDefault();          // 别让回车顺手提交整页设置
+    event.target.closest(".memory-row")?.querySelector("[data-act='save']")?.click();
+  });
+}
+
+async function loadMemories() {
+  const list = document.getElementById("memory-list");
+  if (!list) return;
+  try {
+    const data = await api.get("/api/memory");
+    const items = Array.isArray(data.items) ? data.items : [];
+    if (!items.length) {
+      list.innerHTML = '<div class="hint">还没有记忆。Agent 听到「以后都…」会自动记；也可以在上面手动加。</div>';
+      return;
+    }
+    list.innerHTML = items.map((item) => `
+      <div class="memory-row" data-id="${item.id}">
+        <input class="input memory-text" value="${escapeHtml(item.content)}" maxlength="500">
+        <button class="btn btn-quiet" type="button" data-act="save">保存</button>
+        <button class="btn btn-quiet" type="button" data-act="del">删除</button>
+      </div>`).join("");
+  } catch (error) {
+    list.innerHTML = `<div class="empty">记忆没读出来：${escapeHtml(error.message || error)}</div>`;
+  }
+}
+
+async function addMemory() {
+  const input = document.getElementById("memory-input");
+  const content = input.value.trim();
+  if (!content) return;
+  try {
+    const result = await api.post("/api/memory", { content });
+    input.value = "";
+    toast(result.message || "已记住", "ok");
+    await loadMemories();
+  } catch (error) {
+    toast(error.message || "没记住", "err");
+  }
+}
+
+async function onMemoryAction(event) {
+  const button = event.target.closest("button[data-act]");
+  if (!button) return;
+  const row = button.closest(".memory-row");
+  const id = Number(row?.dataset.id || 0);
+  if (!id) return;
+  if (button.dataset.act === "del") {
+    try {
+      const result = await api.del(`/api/memory/${id}`);
+      toast(result.message || "已忘掉", "ok");
+      await loadMemories();
+    } catch (error) {
+      toast(error.message || "删除失败", "err");
+    }
+    return;
+  }
+  const content = row.querySelector(".memory-text")?.value.trim() || "";
+  if (!content) return;
+  try {
+    const result = await api.post(`/api/memory/${id}`, { content });
+    toast(result.message || "已更新", "ok");
+    await loadMemories();
+  } catch (error) {
+    toast(error.message || "更新失败", "err");
+  }
 }
 
 function collect() {
@@ -101,7 +179,7 @@ function collect() {
     base_url: valueOf("agent-base"),
     model: valueOf("agent-model"),
     fast_model: valueOf("agent-fast"),
-    thinking: document.getElementById("agent-thinking").checked,
+    speed: valueOf("agent-speed") || "balanced",
   };
   const tokens = Number(valueOf("agent-tokens"));
   if (Number.isFinite(tokens) && tokens > 0) agent.max_tokens = Math.round(tokens);

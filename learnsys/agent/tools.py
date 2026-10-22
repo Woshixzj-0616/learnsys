@@ -145,14 +145,119 @@ SAVE_WRONGBOOK_SCHEMA = {
 }
 
 
+SAVE_MEMORY_SCHEMA = {
+    "name": "save_memory",
+    "description": (
+        "把用户强调的**跨会话**偏好或规矩写进长期记忆（数据库，下一轮及以后都生效）。"
+        "用户说「记住 / 以后 / 每次 / 永远 / 不要再 / 我习惯 / 回答用…」时必须先调用它。"
+        "一条记忆只写一条独立规矩，写成完整句子；不要记这一题的临时要求或当天安排。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "content": {"type": "string",
+                        "description": "完整的一句话，例如「回答和思考一律用中文」"},
+            "kind": {"type": "string", "enum": ["preference", "rule", "identity"],
+                     "description": "preference=偏好，rule=硬规矩，identity=关于用户的事实"},
+        },
+        "required": ["content"],
+    },
+}
+
+FORGET_MEMORY_SCHEMA = {
+    "name": "forget_memory",
+    "description": (
+        "删除一条长期记忆。用户说「忘掉那条 / 取消 / 以后不用…了」时调用；"
+        "memory_id 用长期记忆列表里的编号。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "memory_id": {"type": "integer", "description": "要删除的记忆编号（# 后面的数字）"},
+        },
+        "required": ["memory_id"],
+    },
+}
+
+MAKE_PLAN_SCHEMA = {
+    "name": "make_plan",
+    "description": (
+        "复杂任务的计划。需要 2 次以上工具调用、或要跨问答记录 / 资料库 / 错题本"
+        "多个来源时，**先调用它**再逐步执行；普通知识问题不要调用。"
+        "最多 6 步，每一步写清做什么、准备用哪个工具。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "steps": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string",
+                                  "description": "这一步要做什么，一句话"},
+                        "tool": {"type": "string",
+                                 "description": "预计使用的工具名；不需要工具可留空"},
+                    },
+                    "required": ["title"],
+                },
+                "description": "2–6 步；按执行顺序排列",
+            },
+        },
+        "required": ["steps"],
+    },
+}
+
+RECENT_WRONG_ITEMS_SCHEMA = {
+    "name": "recent_wrong_items",
+    "description": (
+        "读最近的错题（新→旧），返回错题编号、题目、正确答案、我的作答、标签和"
+        "归档的资料名。用户问「我最近错了哪些题」「把错题找出来出变式」时先用它。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "limit": {"type": "integer", "description": "最多返回几题，默认 8"},
+            "days": {"type": "integer", "description": "只看最近几天；0 = 不限"},
+            "material_id": {"type": "integer",
+                            "description": "只看归档到这份资料的错题；0 = 不限"},
+        },
+    },
+}
+
+WRITE_TOOLS = {"save_wrongbook", "save_memory", "forget_memory"}
+
+WRITE_LABELS = {
+    "save_wrongbook": "收进错题本",
+    "save_memory": "写进长期记忆",
+    "forget_memory": "删除长期记忆",
+}
+
+
 def schemas_for(mode: str = "explain", *, use_tools: bool = True):
-    """按模式给工具清单：错题本只写工具只在测验里暴露。"""
+    """按模式给工具清单：错题本只写工具只在测验里暴露；记忆工具所有模式都有。"""
     if not use_tools:
         return None
-    schemas = list(TOOL_SCHEMAS)
+    schemas = [MAKE_PLAN_SCHEMA, RECENT_WRONG_ITEMS_SCHEMA] + list(TOOL_SCHEMAS)
+    schemas += [SAVE_MEMORY_SCHEMA, FORGET_MEMORY_SCHEMA]
     if mode == "quiz":
         schemas.append(SAVE_WRONGBOOK_SCHEMA)
     return schemas
+
+
+def write_summary(name: str, args: dict) -> str:
+    """写操作确认框里给人看的一句话。用户要能一眼看出会改什么。"""
+    args = args if isinstance(args, dict) else {}
+    label = WRITE_LABELS.get(name, name)
+    if name == "save_memory":
+        content = " ".join(str(args.get("content") or "").split())[:120]
+        return f"{label}：「{content}」"
+    if name == "forget_memory":
+        return f"{label}：编号 #{args.get('memory_id')}"
+    if name == "save_wrongbook":
+        question = " ".join(str(args.get("question") or "").split())[:80]
+        return f"{label}：「{question}」"
+    return label
 
 
 @dataclass
@@ -384,7 +489,13 @@ def read_material(material_id: int, offset: int = 0, length: int = 6000,
             conn.close()
     body = str(item.get("body") or "")
     piece = body[offset:offset + length]
-    head = (f"【{item['title']}】共 {len(body)} 字；"
+    page_info = ""
+    if "\f" in body:
+        start_page = body[:offset].count("\f") + 1
+        end_page = body[:offset + len(piece)].count("\f") + 1
+        page_info = (f"第 {start_page} 页" if start_page == end_page
+                     else f"第 {start_page}–{end_page} 页") + "；"
+    head = (f"【{item['title']}】共 {len(body)} 字；{page_info}"
             f"本次读 {offset}–{offset + len(piece)} 字")
     tail = "" if offset + len(piece) >= len(body) else (
         f"\n（后面还有 {len(body) - offset - len(piece)} 字，offset="
@@ -482,8 +593,91 @@ def get_cet6_context(paper_id: str = "", section: str = "", item: str = "",
         conn.close()
 
 
-def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str]:
-    """执行工具，返回 (给模型看的内容, 给界面看的一句话摘要)。"""
+def save_memory(content: str, kind: str = "preference", *, ctx: ToolContext) -> str:
+    """写一条跨会话记忆；同内容不重复记。"""
+    text = " ".join(str(content or "").split())
+    if len(text) < 2:
+        return "记忆内容太短，没有保存。请写成完整的一句话。"
+    if len(text) > 500:
+        text = text[:500]
+    kind = kind if kind in ("preference", "rule", "identity") else "preference"
+    conn = None
+    try:
+        conn = store.connect(ctx.db_path)
+        memory_id, created = store.add_memory(conn, text, kind=kind)
+    except Exception as exc:
+        return f"长期记忆保存失败：{exc}"
+    finally:
+        if conn is not None:
+            conn.close()
+    if created:
+        return f"已记住（#{memory_id}）：{text}。以后每轮都会带上；用户说忘掉时用 forget_memory。"
+    return f"这条已经在长期记忆里（#{memory_id}）：{text}。"
+
+
+def forget_memory(memory_id: int, *, ctx: ToolContext) -> str:
+    """按编号删除一条长期记忆。"""
+    try:
+        memory_id = int(memory_id)
+    except (TypeError, ValueError):
+        return "memory_id 不是整数，没有删除。"
+    conn = None
+    try:
+        conn = store.connect(ctx.db_path)
+        deleted = store.delete_memory(conn, memory_id)
+    except Exception as exc:
+        return f"删除长期记忆失败：{exc}"
+    finally:
+        if conn is not None:
+            conn.close()
+    if deleted:
+        return f"已忘掉 #{memory_id}，以后不再生效。"
+    return f"没有找到启用中的 #{memory_id}（可能已经删过了）。"
+
+
+def recent_wrong_items(limit: int = 8, days: int = 0, material_id: int = 0,
+                       *, ctx: ToolContext) -> str:
+    """读最近的错题；编号就是错题本的 #id，回答可以直接引用。"""
+    limit = max(1, min(int(limit or 8), 20))
+    days = max(0, min(int(days or 0), 3650))
+    material_id = max(0, int(material_id or 0))
+    conn = None
+    try:
+        conn = store.connect(ctx.db_path)
+        items = store.wrong_items(conn, status="all", limit=500,
+                                  material_id=material_id)
+    except Exception as exc:
+        return f"读错题本失败：{exc}"
+    finally:
+        if conn is not None:
+            conn.close()
+    if days:
+        cutoff = (datetime.date.today() - datetime.timedelta(days=days)).isoformat()
+        items = [item for item in items if str(item.get("ts") or "")[:10] >= cutoff]
+    if not items:
+        return "错题本里还没有符合条件的题。"
+    lines = [f"最近的错题（新→旧，最多 {limit} 题；编号可直接引用）："]
+    for item in items[:limit]:
+        material = (f" ｜ 资料：{item['material_title']}"
+                    if item.get("material_title") else "")
+        tags = f" ｜ 标签：{item['tags']}" if item.get("tags") else ""
+        state = "已掌握" if item.get("mastered") else "待复习"
+        lines.append(
+            f"\n错题 #{item['id']} ｜ {_stamp(item.get('ts'))} ｜ {state}"
+            f"{material}{tags}\n"
+            f"题目：{_one_line(item.get('question'), 300)}\n"
+            f"正确答案：{_one_line(item.get('answer'), 200)}\n"
+            f"我的作答：{_one_line(item.get('my_answer'), 200)}")
+    lines.append("（以上是错题本原文，不要改写题目；引用时写「错题 #编号」。）")
+    return "\n".join(lines)
+
+
+def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
+    """执行工具，返回 (给模型看的内容, 给界面看的一句话摘要, 是否成功)。
+
+    `ok=False` 表示这次调用没拿到结果（参数错、库读失败、OCR 失败等）：
+    内容仍原样回给模型换路，界面也会标红，不静默跳过。
+    """
     args = args if isinstance(args, dict) else {}
     try:
         if name == "search_records":
@@ -494,27 +688,48 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str]:
                 int(args.get("limit") or 8),
                 data_root=ctx.data_root,
             )
-            return text, "查了本地学习记录"
+            return text, "查了本地学习记录", True
         if name == "today_summary":
-            return today_summary(data_root=ctx.data_root), "看了今天的学习概况"
+            text = today_summary(data_root=ctx.data_root)
+            ok = not text.startswith(("读今天的记录失败", "统计今天的记录失败"))
+            return text, "看了今天的学习概况", ok
+        if name == "recent_wrong_items":
+            return (recent_wrong_items(int(args.get("limit") or 8),
+                                       int(args.get("days") or 0),
+                                       int(args.get("material_id") or 0), ctx=ctx),
+                    "读了最近的错题", True)
         if name == "read_attachment":
-            return read_attachment(int(args.get("offset") or 0), ctx=ctx), "读了挂载文档"
+            return read_attachment(int(args.get("offset") or 0), ctx=ctx), "读了挂载文档", True
         if name == "ocr_image":
-            return ocr_image(str(args.get("path") or ""), ctx=ctx), "对截图做了 OCR"
+            text = ocr_image(str(args.get("path") or ""), ctx=ctx)
+            ok = not text.startswith(("这个路径不在", "图片不存在", "OCR 没成功"))
+            return text, "对截图做了 OCR", ok
         if name == "search_materials":
-            return (search_materials(str(args.get("query") or ""),
-                                     int(args.get("limit") or 5), ctx=ctx),
-                    "搜了资料库")
+            text = search_materials(str(args.get("query") or ""),
+                                    int(args.get("limit") or 5), ctx=ctx)
+            ok = not text.startswith(("搜索词是空的", "搜资料库失败"))
+            return text, "搜了资料库", ok
         if name == "read_material":
-            return (read_material(int(args.get("material_id") or 0),
-                                  int(args.get("offset") or 0),
-                                  int(args.get("length") or 6000), ctx=ctx),
-                    "读了资料正文")
+            text = read_material(int(args.get("material_id") or 0),
+                                 int(args.get("offset") or 0),
+                                 int(args.get("length") or 6000), ctx=ctx)
+            ok = not text.startswith(("读资料失败", "没有 id="))
+            return text, "读了资料正文", ok
         if name == "get_cet6_context":
             return (get_cet6_context(
                 str(args.get("paper_id") or ""), str(args.get("section") or ""),
                 str(args.get("item") or ""), int(args.get("limit") or 40), ctx=ctx),
-                "读了六级精听进度")
+                "读了六级精听进度", True)
+        if name == "save_memory":
+            text = save_memory(str(args.get("content") or ""),
+                               str(args.get("kind") or "preference"), ctx=ctx)
+            return text, ("记住了这条长期偏好" if text.startswith("已记住")
+                          else "长期记忆已在" if text.startswith("这条已经")
+                          else "长期记忆没保存"), text.startswith(("已记住", "这条已经"))
+        if name == "forget_memory":
+            text = forget_memory(int(args.get("memory_id") or 0), ctx=ctx)
+            return text, ("忘掉了一条长期记忆" if text.startswith("已忘掉")
+                          else "没找到那条记忆"), text.startswith("已忘掉")
         if name == "save_wrongbook":
             text = save_wrongbook(
                 str(args.get("question") or ""), str(args.get("my_answer") or ""),
@@ -528,7 +743,8 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str]:
                 preview = "错题本保存失败"
             else:
                 preview = "没有收进错题本"
-            return text, preview
+            ok = text.startswith(("已收进", "这道题已经"))
+            return text, preview, ok
     except Exception as exc:
-        return f"工具执行失败：{exc}", "工具失败"
-    return f"没有这个工具：{name}", "未知工具"
+        return f"工具执行失败：{exc}", "工具失败", False
+    return f"没有这个工具：{name}", "未知工具", False

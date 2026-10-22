@@ -55,7 +55,8 @@ SETTINGS_TEMPLATE = {
         "model": "",
         "fast_model": "",
         "max_tokens": 8192,
-        "thinking": True,
+        "thinking": False,
+        "speed": "balanced",
     },
     "_vision": "可选：看图用的 OpenAI 兼容视觉模型（如智谱 GLM-4V-Flash）。留空 = 退回 OCR，只读图中文字。",
     "vision": {

@@ -152,7 +152,62 @@ async function navigate() {
   }
 }
 
+// 后台没起来时：自动重试 + 「启动后台」按钮（发 learnsys:// 给 Windows，由本机程序接手）。
+// PWA 壳是浏览器页面，自己起不了进程；这里能做的是把「没有后台」从死路变成一秒之内有救。
+const RETRY_SECONDS = 3;
+let retryTimer = null;
+let booting = false;
+
+function stopRetry() {
+  if (retryTimer) {
+    clearTimeout(retryTimer);
+    retryTimer = null;
+  }
+}
+
+function startRetry() {
+  stopRetry();
+  let left = RETRY_SECONDS;
+  const tick = () => {
+    const node = document.getElementById("retry-left");
+    if (node) node.textContent = String(left);
+    if (left <= 0) {
+      retryTimer = null;
+      boot();
+      return;
+    }
+    left -= 1;
+    retryTimer = setTimeout(tick, 1000);
+  };
+  retryTimer = setTimeout(tick, 1000);
+}
+
+function showOffline(error) {
+  setStatus("后台未连接", "err");
+  view.innerHTML = `<div class="empty"><strong>连不上本地服务</strong>
+    ${escapeHtml(error?.message || error)}
+    <div class="hint" style="margin-top:8px">本地后台没在跑。点「启动后台」会拉起本机的学习工作台
+      （第一次会问一次“是否允许打开”）；也可以双击桌面图标。</div>
+    <div class="hint" style="margin-top:8px">正在自动重试：<span id="retry-left">${RETRY_SECONDS}</span> 秒</div>
+    <div style="margin-top:14px">
+      <button class="btn" id="retry-boot">立即重试</button>
+      <button class="btn" id="launch-backend">启动后台</button>
+    </div></div>`;
+  document.getElementById("retry-boot")?.addEventListener("click", () => {
+    stopRetry();
+    boot();
+  });
+  document.getElementById("launch-backend")?.addEventListener("click", (event) => {
+    event.currentTarget.disabled = true;
+    location.href = "learnsys://start";   // 没注册这个协议就什么也不会发生，下面的重试兜底
+  });
+  startRetry();
+}
+
 async function boot() {
+  if (booting) return;
+  booting = true;
+  stopRetry();
   try {
     const health = await initApi();
     document.getElementById("version").textContent = health.version || "";
@@ -167,13 +222,10 @@ async function boot() {
     }
     await navigate();
   } catch (error) {
-    setStatus("后台未连接", "err");
-    view.innerHTML = `<div class="empty"><strong>连不上本地服务</strong>
-      ${escapeHtml(error?.message || error)}
-      <div class="hint" style="margin-top:8px">确认「学习工作台」还在运行；实在不行重启一次。</div>
-      <div style="margin-top:14px"><button class="btn" id="retry-boot">重试</button></div></div>`;
-    document.getElementById("retry-boot")?.addEventListener("click", boot);
+    showOffline(error);
     console.error(error);
+  } finally {
+    booting = false;
   }
 }
 

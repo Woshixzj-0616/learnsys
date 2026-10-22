@@ -637,6 +637,70 @@
 
 .tool-name { color: var(--text-dim); flex: none; }
 .tool-preview { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tool-row.bad { border-left-color: var(--err); }
+.tool-row.bad .tool-name { color: var(--err); }
+
+.plan-card {
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-soft, rgba(255, 255, 255, 0.02));
+  font-size: var(--fs-sm);
+}
+
+.plan-head {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.plan-step {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+  color: var(--text-dim);
+}
+
+.plan-step.done { color: var(--text); }
+.plan-step.failed { color: var(--err); }
+.plan-step.doing { color: var(--accent); }
+.plan-step.skipped { color: var(--text-faint); text-decoration: line-through; }
+.plan-mark { width: 14px; flex: none; text-align: center; }
+.plan-title { flex: 1; }
+.plan-tool { color: var(--text-faint); font-size: 11px; flex: none; }
+
+.check-strip {
+  margin: 10px 0 2px;
+  padding: 6px 10px;
+  border-left: 2px solid var(--ok);
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+.check-strip.bad { border-left-color: var(--err); color: var(--err); }
+
+.run-replay {
+  margin-top: 10px;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.run-replay summary { cursor: pointer; user-select: none; }
+
+.run-body {
+  margin-top: 6px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.run-line b { color: var(--text-dim); margin-right: 4px; }
+.run-line.bad, .run-line.bad b { color: var(--err); }
 
 .sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 
@@ -729,7 +793,10 @@
 
 /* ---------- Markdown ---------- */
 
-.md { overflow-wrap: anywhere; line-height: 1.68; }
+/* 公式（KaTeX）和代码复制按钮里有 position:absolute 的后代。
+   没有定位祖先时，它们相对**初始包含块**定位，会把整个文档的 scrollHeight 撑长 ——
+   表现就是「会话历史里整个工作台能上下滚、下面全是空白」。 */
+.md { position: relative; overflow-wrap: anywhere; line-height: 1.68; }
 .md > :first-child { margin-top: 0; }
 .md > :last-child { margin-bottom: 0; }
 .md p { margin: 0 0 12px; }
@@ -836,6 +903,15 @@
 /* ---------- 设置 ---------- */
 
 .settings-page { max-width: 780px; }
+
+.memory-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+
+.memory-row { display: flex; align-items: center; gap: 8px; }
+.memory-row .memory-text { flex: 1; min-width: 0; }
+.memory-row .btn { flex: none; padding: 0 10px; font-size: 12px; }
+
+.memory-add { display: flex; gap: 8px; }
+.memory-add .input { flex: 1; }
 
 .settings-section { margin-bottom: 36px; }
 

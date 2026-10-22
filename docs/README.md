@@ -4,11 +4,11 @@
 
 ## 当前状态
 
-- 版本：**2.10.0**
+- 版本：**2.11.0**（P16 进行中；P16.1 已提交，P16.2–P16.4 待做）
 - 分支：`v2`
-- 最近阶段：**P14.1 生词复习界面**
-- 下一步：**P16 可选增强**（BKT 掌握度、模型路由、深度分析、成本面板；有数据再定）
-- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 422 OK；
+- 最近阶段：**P16.1 计划 → 执行 → 自检**
+- 下一步：**P16.2 文件 / 资料写入 + 代码运行沙箱**
+- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 468 OK；
   前端 `node --test web/tests/context.test.mjs` → 6 通过
 
 ## 方向
@@ -26,10 +26,12 @@
 - [P13 Context / Service 薄抽象](施工单/P13-Context与Service.md)
 - [P14 闭环与 FSRS](施工单/P14-闭环与FSRS.md)
 - [P15 MCP 只读](施工单/P15-MCP只读.md)
+- [P16 Agent 升级](施工单/P16-Agent升级.md)
 - [闸门：六级实验（已取消）](施工单/闸门-六级实验.md) · 报告 `tools/gate_report.py` 留作观测
 
 ## 验收
 
+- [P16.1 计划 → 执行 → 自检](P16.1-验收记录.md)
 - [P14.1 生词复习界面](P14.1-生词复习.md)
 - [P15 验收记录](P15-验收记录.md)
 - [P14 验收记录](P14-验收记录.md)

@@ -42,14 +42,31 @@
     </div>
 
     <div class="setting-row">
-      <label class="setting-label">思考模式<small>模型是否先推理再回答</small></label>
+      <label class="setting-label" for="agent-speed">回答速度<small>质量 / 等待时间取舍</small></label>
       <div class="setting-control">
-        <label class="toggle-row"><input type="checkbox" id="agent-thinking"> 允许思考过程</label>
+        <select class="select" id="agent-speed">
+          <option value="fast">快 · 轻量模型不思考（实测约 7 秒）</option>
+          <option value="balanced">平衡 · 主模型不思考（实测约 10–20 秒）</option>
+          <option value="deep">深入 · 主模型思考（约 30 秒以上，复杂推导用）</option>
+        </select>
+        <span class="hint">「速答」模式永远走最快档；横栏和工作台共用这一档。</span>
         <div class="inline">
           <button class="btn" type="button" id="test-text">测试文本连接</button>
           <span class="test-result" id="test-text-result"></span>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h2>Agent 记忆</h2>
+    <p class="hint">你强调过的跨会话规矩（比如「回答用中文」「示例代码用 C++」）。
+      Agent 每轮都会带上；这里也能自己加、改、删。</p>
+    <div id="memory-list" class="memory-list"><div class="hint">正在读记忆…</div></div>
+    <div class="memory-add">
+      <input class="input" id="memory-input" maxlength="500"
+             placeholder="例如：回答和思考一律用中文">
+      <button class="btn" type="button" id="memory-add">记下来</button>
     </div>
   </section>
 

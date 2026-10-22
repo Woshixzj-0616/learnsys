@@ -24,6 +24,10 @@ SHCNE_UPDATEITEM = 0x00002000
 SHCNF_PATHW = 0x0005
 SHCNF_FLUSH = 0x1000
 
+# 网页上的「启动后台」按钮跳 learnsys://start，Windows 按这个协议找到本机程序。
+# 浏览器不能启动本地进程，协议是唯一不需要装扩展的办法。
+PROTOCOL = "learnsys"
+
 
 def notify_shell_changed(*paths: object) -> None:
     """告诉 Explorer「这些文件（快捷方式 / 图标）变了，重读一下」。
@@ -119,6 +123,33 @@ def make_startup_shortcut(target: pathlib.Path, icon_path: pathlib.Path, *,
                          working_dir=working_dir)
 
 
+def protocol_command(target: pathlib.Path, arguments: str = "--background") -> str:
+    """协议被调用时 Windows 执行的命令行；URL 本身会追加在后面，入口函数忽略它。"""
+    return f'"{target}" {arguments}'.strip()
+
+
+def register_protocol(target: pathlib.Path, icon_path: pathlib.Path | None = None,
+                      arguments: str = "--background") -> bool:
+    """把 learnsys:// 登记到当前用户（HKCU，不需要管理员）。幂等，坏了不影响启动。"""
+    base = "Software" + chr(92) + "Classes" + chr(92) + PROTOCOL
+    try:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base) as key:
+            winreg.SetValueEx(key, "", 0, winreg.REG_SZ, f"URL:{product.PRODUCT_NAME}")
+            winreg.SetValueEx(key, "URL Protocol", 0, winreg.REG_SZ, "")
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER,
+                              base + chr(92) + "DefaultIcon") as key:
+            if icon_path is not None:
+                winreg.SetValueEx(key, "", 0, winreg.REG_SZ, f"{icon_path},0")
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER,
+                              base + chr(92) + "shell" + chr(92) + "open"
+                              + chr(92) + "command") as key:
+            winreg.SetValueEx(key, "", 0, winreg.REG_SZ,
+                              protocol_command(target, arguments))
+        return True
+    except OSError:
+        return False
+
+
 def remove_legacy() -> None:
     """一次性清理旧版：开始菜单「问一问.lnk」+ 旧 AUMID 注册键。幂等。"""
     legacy = start_menu_dir() / LEGACY_START_MENU
@@ -138,5 +169,6 @@ def install(target: pathlib.Path, icon_path: pathlib.Path) -> dict:
     """启动时跑一遍：补开始菜单快捷方式 + 清旧项。坏了也不影响主流程。"""
     remove_legacy()
     shortcut = make_start_menu_shortcut(target, icon_path)
+    register_protocol(target, icon_path)
     notify_shell_changed(shortcut, icon_path, target)
     return {"shortcut": shortcut}

@@ -84,6 +84,9 @@ class AgentConfig:
     data_root: pathlib.Path
     profile_path: pathlib.Path
 
+    # 回答速度档：fast = 轻量模型不思考；balanced = 主模型不思考；deep = 主模型思考
+    speed: str = "balanced"
+
     @property
     def ready(self) -> bool:
         """文本问答能不能用。"""
@@ -103,6 +106,7 @@ class AgentConfig:
             "fast_model": self.fast_model,
             "base_url": self.base_url,
             "max_tokens": self.max_tokens,
+            "speed": self.speed,
             "vision_model": self.vision_model if self.vision_ready else "",
         }
 
@@ -131,16 +135,24 @@ def load_config() -> AgentConfig:
 
     data_root = pathlib.Path(agent.get("data_root") or app_config.DATA_ROOT)
 
+    # 旧配置只有 thinking 开关，没有 speed：true 视作 deep，false 视作 balanced。
+    # 这样老用户的设置不会被悄悄改掉；新 UI 写 speed 后以 speed 为准。
+    thinking = _as_bool(agent.get("thinking"), True)
+    speed = str(agent.get("speed") or "").strip().lower()
+    if speed not in ("fast", "balanced", "deep"):
+        speed = "deep" if thinking else "balanced"
+
     return AgentConfig(
         base_url=base,
         auth_token=token,
         model=model,
         fast_model=fast,
         max_tokens=_as_int(agent.get("max_tokens"), DEFAULT_MAX_TOKENS),
-        thinking=_as_bool(agent.get("thinking"), True),
+        thinking=thinking or speed == "deep",
         vision_base_url=str(vision.get("base_url") or "").strip().rstrip("/"),
         vision_api_key=str(vision.get("api_key") or "").strip(),
         vision_model=str(vision.get("model") or DEFAULT_VISION_MODEL).strip(),
         data_root=data_root,
         profile_path=data_root / "学习档案.md",
+        speed=speed,
     )

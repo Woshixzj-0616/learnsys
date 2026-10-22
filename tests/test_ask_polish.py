@@ -73,8 +73,10 @@ class TestStreamingFollowScroll(unittest.TestCase):
             self._feed()
 
     def _feed(self):
-        # 面板高度固定；_on_chunk 内部只追加文本 + 按 _follow 滚到底，不重排窗口
+        # 面板高度固定；_on_chunk 只攒原文、按 120ms 排帧。测试里手动渲染一帧，
+        # 等价于事件循环里定时器触发（不依赖真实时钟）。
         self.b._on_chunk(self.piece, replace=False, seq=self.seq)
+        self.b._render_answer_view()
 
     def test_answer_reaches_cap_with_scrollbar(self):
         self.assertGreater(self.b.answer.verticalScrollBar().maximum(), 0,

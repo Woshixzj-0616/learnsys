@@ -421,6 +421,9 @@ function generate(kindName) {
     if (event.kind === "text") {
       genText += event.text || "";
       renderInto(nodes.genResult, genText);
+    } else if (event.kind === "rewrite") {
+      genText = String(event.data?.text || genText);
+      renderInto(nodes.genResult, genText);
     } else if (event.kind === "done") {
       const final = String(event.data?.text || genText || "");
       if (final) {

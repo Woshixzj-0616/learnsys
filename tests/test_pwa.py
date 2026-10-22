@@ -57,6 +57,13 @@ class PwaTest(unittest.TestCase):
         self.assertIn('navigator.serviceWorker.register("/sw.js"', shell)
         self.assertNotIn("beforeinstallprompt", shell)
 
+    def test_offline_page_retries_and_can_launch_backend(self):
+        """后台没起来不能是死路：自动重试 + learnsys:// 拉本机程序。"""
+        shell = (web_dir() / "js" / "shell.js").read_text(encoding="utf-8")
+        self.assertIn("learnsys://start", shell)
+        self.assertIn("RETRY_SECONDS", shell)
+        self.assertIn("启动后台", shell)
+
     def test_icons_exist(self):
         for name in ("icon-192.png", "icon-512.png", "icon-maskable-512.png",
                      "apple-touch-icon.png"):

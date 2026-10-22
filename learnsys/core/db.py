@@ -256,6 +256,38 @@ CREATE TABLE IF NOT EXISTS review_state (
     PRIMARY KEY (item_type, item_id)
 );
 CREATE INDEX IF NOT EXISTS idx_review_due ON review_state (due);
+CREATE TABLE IF NOT EXISTS agent_memories (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    content    TEXT NOT NULL,
+    kind       TEXT NOT NULL DEFAULT 'preference',
+    status     TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_content
+    ON agent_memories (content) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_memory_status
+    ON agent_memories (status, updated_at DESC);
+CREATE TABLE IF NOT EXISTS agent_runs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id          TEXT NOT NULL UNIQUE,
+    conversation_id INTEGER NOT NULL DEFAULT 0,
+    question        TEXT NOT NULL DEFAULT '',
+    model           TEXT NOT NULL DEFAULT '',
+    mode            TEXT NOT NULL DEFAULT '',
+    started_at      TEXT NOT NULL DEFAULT '',
+    finished_at     TEXT NOT NULL DEFAULT '',
+    first_ms        INTEGER,
+    total_ms        INTEGER NOT NULL DEFAULT 0,
+    steps           INTEGER NOT NULL DEFAULT 0,
+    stop_reason     TEXT NOT NULL DEFAULT '',
+    usage_json      TEXT NOT NULL DEFAULT '{}',
+    trace_json      TEXT NOT NULL DEFAULT '[]',
+    check_ok        INTEGER,
+    error           TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_agent_runs_conversation
+    ON agent_runs (conversation_id, id DESC);
 CREATE TABLE IF NOT EXISTS review_log (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     ts             TEXT NOT NULL,

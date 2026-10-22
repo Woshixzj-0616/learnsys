@@ -96,6 +96,58 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(len(review_items), 1)
         self.assertEqual(review_items[0]["module"], "review")
 
+    def test_chat_persists_agent_run_for_replay(self):
+        def fake_run(request, cfg=None, abort=None, **_kwargs):
+            yield AgentEvent("plan", data={"steps": [
+                {"index": 0, "title": "看记录", "tool": "today_summary",
+                 "status": "pending"}]})
+            yield AgentEvent("tool_start", data={
+                "name": "today_summary", "input": {}, "goal": "看记录", "step": 0})
+            yield AgentEvent("tool_end", data={
+                "name": "today_summary", "preview": "看了今天的学习概况",
+                "ok": True, "goal": "看记录", "step": 0})
+            yield AgentEvent("check", data={"ok": True, "issues": [], "checked": 1})
+            yield AgentEvent("done", data={
+                "text": "今天学了二叉树。", "usage": {"input_tokens": 3,
+                                                    "output_tokens": 5},
+                "steps": 2, "stop_reason": "end_turn"})
+
+        with mock.patch.object(routes_agent.agent, "run", fake_run):
+            response = self.client.post(
+                "/api/agent/chat", json={"message": "我今天学了什么"}, headers=AUTH)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('"run_id"', response.text)
+
+        items = self.client.get("/api/conversations", headers=AUTH).json()["items"]
+        detail = self.client.get(
+            f"/api/conversations/{items[0]['id']}", headers=AUTH).json()
+        run_id = detail["messages"][1]["content"]["run_id"]
+        run = self.client.get(f"/api/agent/runs/{run_id}", headers=AUTH).json()
+        kinds = [item["kind"] for item in run["trace"]]
+        self.assertEqual(kinds, ["plan", "tool_start", "tool_end", "check"])
+        self.assertEqual(run["usage"]["output_tokens"], 5)
+        self.assertTrue(run["check_ok"])
+        listed = self.client.get(
+            f"/api/agent/runs?conversation_id={items[0]['id']}",
+            headers=AUTH).json()["items"]
+        self.assertEqual(listed[0]["id"], run_id)
+
+    def test_confirm_endpoint_allows_and_expires(self):
+        import threading
+        slot = {"event": threading.Event(), "approved": False}
+        routes_agent._CONFIRM["run-x:req-1"] = slot
+        self.addCleanup(lambda: routes_agent._CONFIRM.pop("run-x:req-1", None))
+        result = self.client.post("/api/agent/confirm", headers=AUTH, json={
+            "run_id": "run-x", "request_id": "req-1", "approve": True}).json()
+        self.assertTrue(result["approved"])
+        self.assertTrue(slot["event"].is_set())
+        self.assertTrue(slot["approved"])
+
+        expired = self.client.post("/api/agent/confirm", headers=AUTH, json={
+            "run_id": "run-x", "request_id": "not-there", "approve": True})
+        self.assertEqual(expired.status_code, 404)
+        self.assertIn("过期", expired.json()["detail"])
+
     def test_search_and_today(self):
         found = self.client.get("/api/search?q=二叉树", headers=AUTH).json()["results"]
         self.assertTrue(found)

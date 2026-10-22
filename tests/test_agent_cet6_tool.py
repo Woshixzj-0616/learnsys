@@ -46,10 +46,11 @@ class GetCet6ContextTest(unittest.TestCase):
         self.assertIn("Hello.", text)
 
     def test_execute_routes_to_tool(self):
-        text, preview = tools.execute(
+        text, preview, ok = tools.execute(
             "get_cet6_context", {}, self.ctx)
         self.assertIn("六级", text)
         self.assertEqual(preview, "读了六级精听进度")
+        self.assertTrue(ok)
 
 
 if __name__ == "__main__":

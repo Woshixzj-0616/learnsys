@@ -61,6 +61,7 @@ class Test1StaleTurnCannotWrite(AskBarFixture):
     def test_chunk_from_old_seq_is_ignored(self):
         self.bar._start_turn("第一问")
         self.bar._on_chunk("旧答案碎片", replace=False, seq=self.bar._turn_seq)
+        self.bar._render_answer_view()      # 流式每 120ms 渲染一帧；测试里手动补一帧
         self.assertIn("旧答案碎片", self.bar.answer.toPlainText())
 
         self.bar.new_session()            # 轮次号 +1，旧 seq 作废
