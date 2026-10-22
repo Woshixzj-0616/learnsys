@@ -33,10 +33,11 @@ class ServicesApiTest(unittest.TestCase):
     def test_token_required(self):
         self.assertEqual(self.client.get("/api/services").status_code, 403)
 
-    def test_catalog_lists_three_services(self):
+    def test_catalog_lists_services(self):
         body = self.client.get("/api/services", headers=AUTH).json()
         kinds = {item["kind"] for item in body["items"]}
-        self.assertEqual(kinds, {"translate", "translate_items", "cet6_analyze"})
+        self.assertEqual(kinds, {"translate", "define", "explain", "summarize",
+                                 "translate_items", "cet6_analyze"})
         translate = next(item for item in body["items"] if item["kind"] == "translate")
         self.assertEqual(translate["mode"], "sync")
         self.assertIn("text", translate["params"])
@@ -64,6 +65,37 @@ class ServicesApiTest(unittest.TestCase):
         fake.assert_called_once()
         self.assertEqual(fake.call_args.args[0], "hello")
         self.assertEqual(fake.call_args.kwargs["kind"], "word")
+
+    def test_define_reuses_translate_with_word_kind(self):
+        with mock.patch(
+                "learnsys.services.translate.translate",
+                return_value={"translation": "你好"}) as fake:
+            response = self.client.post(
+                "/api/services/define",
+                json={"text": "hello", "context": "say hello"}, headers=AUTH)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["translation"], "你好")
+        self.assertEqual(fake.call_args.args[0], "hello")
+        self.assertEqual(fake.call_args.kwargs["kind"], "word")
+
+    def test_explain_dispatches_to_textops(self):
+        with mock.patch(
+                "learnsys.services.textops.complete",
+                return_value={"text": "这句话在讲因果", "kind": "explain"}) as fake:
+            response = self.client.post(
+                "/api/services/explain",
+                json={"text": "because it rained", "context": "grammar"},
+                headers=AUTH)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["text"], "这句话在讲因果")
+        fake.assert_called_once()
+        self.assertEqual(fake.call_args.args[0], "explain")
+
+    def test_summarize_requires_text(self):
+        response = self.client.post(
+            "/api/services/summarize", json={}, headers=AUTH)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("text", response.json()["detail"])
 
     def test_analyze_dispatches_to_job_submit(self):
         with mock.patch(

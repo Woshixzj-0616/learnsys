@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import pathlib
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from learnsys import config as app_config
 
@@ -101,6 +101,15 @@ class AgentConfig:
     price_cache_read: float = 0.0
     currency: str = "USD"
 
+    # 任务 → 模型（可选）。为空 = 全部走现有 speed 档，行为不变。
+    # 键：explain / guide / quiz / quick / translate / analyze / review
+    routes: dict[str, str] = field(default_factory=dict)
+
+    def model_for(self, task: str, default: str = "") -> str:
+        """按任务取模型；没配置就返回 default（调用方再退 fast_model / model）。"""
+        value = (self.routes or {}).get(str(task or ""))
+        return clean_model(value) if value else default
+
     @property
     def ready(self) -> bool:
         """文本问答能不能用。"""
@@ -125,6 +134,7 @@ class AgentConfig:
             "price_output": self.price_output,
             "price_cache_read": self.price_cache_read,
             "currency": self.currency,
+            "routes": dict(self.routes or {}),
             "vision_model": self.vision_model if self.vision_ready else "",
         }
 
@@ -160,6 +170,13 @@ def load_config() -> AgentConfig:
     if speed not in ("fast", "balanced", "deep"):
         speed = "deep" if thinking else "balanced"
 
+    raw_routes = agent.get("routes")
+    routes = {
+        str(key): clean_model(str(value))
+        for key, value in (raw_routes.items() if isinstance(raw_routes, dict) else [])
+        if str(value or "").strip()
+    }
+
     return AgentConfig(
         base_url=base,
         auth_token=token,
@@ -177,4 +194,5 @@ def load_config() -> AgentConfig:
         price_output=_as_float(agent.get("price_output")),
         price_cache_read=_as_float(agent.get("price_cache_read")),
         currency=str(agent.get("currency") or "USD").strip()[:12] or "USD",
+        routes=routes,
     )

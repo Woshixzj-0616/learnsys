@@ -50,7 +50,8 @@ def _hash(value: str) -> str:
 
 def _fast_cfg(cfg, max_tokens: int = 600):
     return dataclasses.replace(
-        cfg, model=cfg.fast_model or cfg.model, max_tokens=max_tokens)
+        cfg, model=cfg.model_for("translate") or cfg.fast_model or cfg.model,
+        max_tokens=max_tokens)
 
 
 def _run_text(prompt: str, cfg, max_tokens: int = 600) -> tuple[str, str, dict]:
@@ -126,6 +127,18 @@ def translate(text: str, *, kind: str = "word", context: dict | None = None) -> 
     target_id, scope = _cache_key(text, kind, context)
     conn = store.connect()
     try:
+        # 本地优先：自己生词本里已经有释义的词，不再花一次模型调用。
+        if kind == "word":
+            row = conn.execute(
+                "SELECT id, meaning, phonetic FROM vocab_items "
+                "WHERE normalized = ? AND status = 'active'",
+                (text.strip().lower(),)).fetchone()
+            if row is not None and str(row[1] or "").strip():
+                meaning = str(row[1]).strip()
+                return {"translation": meaning, "meaning": meaning,
+                        "phonetic": str(row[2] or ""), "cached": True,
+                        "source": "vocab", "vocab_id": int(row[0]),
+                        "result_id": 0}
         cached = _cached(conn, kind=kind, target_id=target_id, scope=scope)
         if cached:
             out = dict(cached)

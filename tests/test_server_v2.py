@@ -200,6 +200,49 @@ class ServerTest(unittest.TestCase):
         today = self.client.get("/api/today", headers=AUTH).json()
         self.assertGreaterEqual(today["ask_count"], 1)
 
+    def test_chat_message_keeps_result_id_reference(self):
+        """消息只记结果资产的 id，不复制正文；结果正文留在 service_results。"""
+        def fake_run(request, cfg=None, abort=None, **_kwargs):
+            yield AgentEvent("done", data={"text": "这是引用结果"})
+
+        with mock.patch.object(routes_agent.agent, "run", fake_run):
+            response = self.client.post(
+                "/api/agent/chat", headers=AUTH,
+                json={"message": "接着上次分析", "result_id": 42})
+        self.assertEqual(response.status_code, 200)
+        conversations = self.client.get(
+            "/api/conversations", headers=AUTH).json()["items"]
+        detail = self.client.get(
+            f"/api/conversations/{conversations[0]['id']}", headers=AUTH).json()
+        user = next(item for item in detail["messages"] if item["role"] == "user")
+        self.assertEqual(user["result_id"], 42)
+        self.assertNotIn("content_json", user)
+
+    def test_today_actions_are_three_cards_at_most(self):
+        """今日页三张行动卡：到期错题 / 昨日六级断点或资料 / 薄弱点去测验。"""
+        import datetime
+        yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+        conn = self._orig_connect(self.db_path)
+        conn.execute(
+            "INSERT INTO cet6_events (ts, paper_id, paper_title, section, item, sentence) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (f"{yesterday} 20:00:00", "paper-1", "英语六级强化刷题卷三",
+             "Conversation 1", "精听", 3))
+        conn.commit()
+        conn.close()
+        conn = self._orig_connect(self.db_path)
+        store.add_wrong_item(conn, question="虚拟语气怎么判断", answer="看 if 从句时态")
+        conn.close()
+
+        actions = self.client.get("/api/today", headers=AUTH).json()["actions"]
+        self.assertLessEqual(len(actions), 3)
+        kinds = [item["kind"] for item in actions]
+        self.assertIn("cet6", kinds, actions)
+        self.assertIn("weak", kinds, actions)
+        cet6 = next(item for item in actions if item["kind"] == "cet6")
+        self.assertIn("paper-1", cet6["href"])
+        self.assertTrue(cet6["detail"])
+
     def test_wrongbook_toggle(self):
         asks = self.client.get("/api/today", headers=AUTH).json()["asks"]
         ask_id = asks[0]["id"]

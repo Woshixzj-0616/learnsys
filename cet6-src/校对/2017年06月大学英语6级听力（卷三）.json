@@ -1,0 +1,20 @@
+{
+  "paper": "2017年06月大学英语6级听力（卷三）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "卷三与卷二为同一套音频，按可可英语 2017 年 6 月六级听力第 2 套原文逐段校对；文本以线上原文为线索、以音频为准。只改明确的错词、漏词和影响理解的标点。",
+  "sources": [
+    "https://m.kekenet.com/cet6/201711/530691.shtml",
+    "https://m.kekenet.com/cet6/201711/530876.shtml",
+    "https://m.kekenet.com/cet6/201711/531040.shtml",
+    "https://m.kekenet.com/cet6/201711/531320.shtml",
+    "https://m.kekenet.com/cet6/201711/531511.shtml",
+    "https://m.kekenet.com/cet6/201711/531780.shtml",
+    "https://m.kekenet.com/cet6/201711/531787.shtml"
+  ],
+  "items": {
+    "Recording 2": {
+      "12": "So if you are a student who always reviews over black coffee, perhaps it would be sensible to prime yourself with a cup before the exam."
+    }
+  }
+}

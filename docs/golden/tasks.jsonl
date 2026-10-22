@@ -1,0 +1,20 @@
+{"id":"net-01","category":"netlab","prompt":"用三句话解释 TCP 三次握手，必须出现 SYN 和 ACK。","must_all":["SYN","ACK"],"manual":false}
+{"id":"net-02","category":"netlab","prompt":"说出三种动态路由协议，并各用一句话说明适用场景。","must_all":["RIP","OSPF","BGP"],"manual":false}
+{"id":"net-03","category":"netlab","prompt":"一个 /24 网段最多有多少个可用主机地址？怎么算的？","must_any":["254"],"manual":false}
+{"id":"net-04","category":"translate","prompt":"把这句话翻译成中文：The quick brown fox jumps over the lazy dog.","must_any":["狐狸","狗"],"manual":false}
+{"id":"net-05","category":"translate","prompt":"翻译单词 subnetting，给出音标和中文释义。","must_any":["子网"],"manual":false}
+{"id":"net-06","category":"netlab","prompt":"ARP 是干什么的？它解决什么问题？","must_any":["IP","MAC"],"manual":false}
+{"id":"net-07","category":"netlab","prompt":"DNS 的递归查询和迭代查询有什么区别？","must_all":["递归","迭代"],"manual":false}
+{"id":"net-08","category":"netlab","prompt":"VLAN 主要解决什么问题？举两个使用场景。","must_any":["广播域","隔离","安全"],"manual":false}
+{"id":"quiz-01","category":"quiz","prompt":"出 3 道关于 CSMA/CD 的选择题，先只给题目，不要给答案。","must_any":["CSMA/CD","冲突"],"manual":false}
+{"id":"net-09","category":"netlab","prompt":"NAT 和 PAT 的区别是什么？","must_any":["端口","地址"],"manual":false}
+{"id":"record-01","category":"records","prompt":"我最近错题本里有哪些题？如果为空就直说没有。","must_any":["错题","没有","暂无"],"manual":true}
+{"id":"record-02","category":"records","prompt":"帮我看看今天的学习概况。","must_any":["今天","专注","问答","转写","没有"],"manual":true}
+{"id":"material-01","category":"materials","prompt":"我的资料库里有没有讲 TCP 的内容？没有就直说。","must_any":["TCP","没有","未找到","找不到"],"manual":true}
+{"id":"cet6-01","category":"cet6","prompt":"六级精听最近有哪些断点？没有就直说。","must_any":["六级","断点","没有","暂无"],"manual":true}
+{"id":"plan-01","category":"plan","prompt":"给我做一个 30 分钟的计算机网络复习计划，最多 4 步。","must_any":["分钟","复习"],"manual":true}
+{"id":"net-10","category":"netlab","prompt":"冲突域和广播域有什么区别？","must_all":["冲突域","广播域"],"manual":false}
+{"id":"translate-02","category":"translate","prompt":"把这句话翻译成中文：Because it rained, the match was canceled.","must_any":["雨","取消"],"manual":false}
+{"id":"net-11","category":"netlab","prompt":"IPv4 和 IPv6 的三点主要区别。","must_any":["地址","32","128"],"manual":false}
+{"id":"net-12","category":"netlab","prompt":"HTTPS 握手时证书起什么作用？","must_any":["身份","公钥","证书"],"manual":false}
+{"id":"record-03","category":"records","prompt":"我最近问过哪些问题？没有记录就直说。","must_any":["问过","记录","没有","暂无"],"manual":true}

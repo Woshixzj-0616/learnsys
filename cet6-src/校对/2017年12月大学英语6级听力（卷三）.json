@@ -1,0 +1,30 @@
+{
+  "paper": "2017年12月大学英语6级听力（卷三）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "卷三与卷二为同一套音频，按可可英语 2017 年 12 月六级听力第 2 套原文逐段校对；文本以线上原文为线索、以音频为准。只改明确的错词、漏词、重复词和影响理解的标点。",
+  "sources": [
+    "https://m.kekenet.com/cet6/201806/556622.shtml",
+    "https://m.kekenet.com/cet6/201806/556624.shtml",
+    "https://m.kekenet.com/cet6/201806/556625.shtml",
+    "https://m.kekenet.com/cet6/201806/556626.shtml",
+    "https://m.kekenet.com/cet6/201806/556628.shtml",
+    "https://m.kekenet.com/cet6/201806/556629.shtml",
+    "https://m.kekenet.com/cet6/201806/556630.shtml"
+  ],
+  "items": {
+    "Conversation 1": {
+      "32": "I mentioned the interesting facts, referred to the excellent slides, and then finished up by saying, 'We'd all like to thank Miss Bligh for blowing out her slides.'"
+    },
+    "Passage 1": {
+      "1": "A report on sleep and nutrition released this month found that people who consistently went to bed earlier than 11 p.m. took in fewer calories and ate more healthy food.",
+      "9": "It is as yet a challenge to explain the cause and effect relationship between sleep and nutrition."
+    },
+    "Passage 2": {
+      "6": "The film industry still functions as a straight white boys club."
+    },
+    "Recording 1": {
+      "20": "When considering the amount of insurance for the mother with dependent children, substitute child care is a need that should be planned for until the children can care for themselves."
+    }
+  }
+}

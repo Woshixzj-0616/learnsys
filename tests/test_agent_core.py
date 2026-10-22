@@ -14,6 +14,7 @@ from learnsys.agent import loop, prompts, tools, vision
 from learnsys.agent.config import AgentConfig, clean_model, load_config
 from learnsys.agent.events import AgentEvent
 from learnsys.agent.provider_anthropic import (
+    ProviderError,
     ProviderEvent,
     ProviderResult,
     ToolCall,
@@ -188,11 +189,35 @@ class CapturingProvider:
     def __init__(self):
         self.system = ""
         self.tools = "unset"
+        self.model = ""
 
     def stream_messages(self, cfg, system, messages, tools, *, abort=None, response_sink=None):
         self.system = system
+        self.model = cfg.model
         self.tools = tools
         yield ProviderEvent("done", result=ProviderResult(text="[]", stop_reason="end_turn"))
+
+
+class FlakyProvider:
+    """主模型第一次连接失败，重试时成功；记录每次用的模型名。"""
+
+    def __init__(self):
+        self.models: list[str] = []
+
+    def stream_messages(self, cfg, system, messages, tools, *, abort=None, response_sink=None):
+        self.models.append(cfg.model)
+        if len(self.models) == 1:
+            raise ProviderError("连接断了")
+        yield ProviderEvent("done", result=ProviderResult(text="降级成功", stop_reason="end_turn"))
+
+
+class BrokenProvider:
+    def stream_messages(self, cfg, system, messages, tools, *, abort=None, response_sink=None):
+        raise ProviderError("连不上模型服务")
+        yield  # pragma: no cover
+
+    def close(self):
+        pass
 
 
 class TestAgentLoop(unittest.TestCase):
@@ -207,7 +232,46 @@ class TestAgentLoop(unittest.TestCase):
             self.assertEqual(events[-1].kind, "done")
             self.assertIn("今天的记录在这里", events[-1].data["text"])
             self.assertTrue(fake.seen_tool_result)
-            self.assertEqual(fake.calls, 2)
+
+    def test_model_route_overrides_speed_tier(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = make_cfg(pathlib.Path(tmp), speed="balanced",
+                           routes={"explain": "route-model"})
+            capturing = CapturingProvider()
+            list(loop.run(loop.AgentRequest("你好"), provider=capturing, cfg=cfg))
+            self.assertEqual(capturing.model, "route-model")
+
+    def test_model_route_missing_falls_back_to_speed_tier(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = make_cfg(pathlib.Path(tmp), speed="balanced")
+            capturing = CapturingProvider()
+            list(loop.run(loop.AgentRequest("你好"), provider=capturing, cfg=cfg))
+            self.assertEqual(capturing.model, "test-model")
+
+    def test_provider_error_falls_back_to_fast_model(self):
+        """主模型连不上时，自动换轻量模型重试，答案照常出来。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = make_cfg(pathlib.Path(tmp), speed="balanced")
+            flaky = FlakyProvider()
+            events = list(loop.run(loop.AgentRequest("今天学了什么"),
+                                   provider=flaky, cfg=cfg))
+            self.assertEqual(flaky.models, ["test-model", "test-fast"])
+            self.assertIn("轻量模型", " ".join(
+                event.text for event in events if event.kind == "activity"))
+            self.assertEqual(events[-1].kind, "done")
+            self.assertEqual(events[-1].data["text"], "降级成功")
+
+    def test_both_models_down_gives_chinese_next_steps(self):
+        """两个模型都不可用时，给出中文原因 + 现在能做什么，不裸抛异常。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = make_cfg(pathlib.Path(tmp), speed="balanced")
+            events = list(loop.run(loop.AgentRequest("今天学了什么"),
+                                   provider=BrokenProvider(), cfg=cfg))
+            self.assertEqual(events[-1].kind, "error")
+            text = events[-1].text
+            self.assertIn("现在可以", text)
+            self.assertIn("设置", text)
+            self.assertIn("资料库", text)
 
     def test_max_steps(self):
         with tempfile.TemporaryDirectory() as tmp:

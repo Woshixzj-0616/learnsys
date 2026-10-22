@@ -1,0 +1,14 @@
+{
+  "paper": "2016年12月大学英语6级听力（卷三）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "卷三与卷二为同一套音频、不同切句；按懒笔记 2016 年 12 月第 2 套原文核对，再用 base.en 回听。只改明确错词；英式/美式拼写、数字写法未动。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/sections/listening/2016-12-2/"
+  ],
+  "items": {
+    "Passage 1": {
+      "10": "Salmon also carry dangerous chemicals as the fish migrate between rivers and the sea."
+    }
+  }
+}

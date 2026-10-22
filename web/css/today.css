@@ -40,6 +40,71 @@
 
 .stat-note { margin-top: 2px; color: var(--text-faint); font-size: 11.5px; }
 
+/* 今天最值得做的三件事 */
+.action-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.action-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-raised);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.action-card:hover {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.action-no {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 22px;
+  text-align: center;
+}
+
+.action-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.action-title { font-size: var(--fs-sm); font-weight: 600; }
+.action-detail {
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.action-label {
+  flex: none;
+  margin-left: auto;
+  align-self: center;
+  color: var(--accent-strong);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .action-cards { grid-template-columns: 1fr; }
+}
+
 .today-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 292px;

@@ -54,10 +54,13 @@ claude mcp add learnsys -- "D:\Desktop\learnsys\.venv\Scripts\python.exe" -m lea
 [mcp_servers.learnsys]
 command = 'D:\Desktop\learnsys\.venv\Scripts\python.exe'
 args = ["-m", "learnsys.mcp_server"]
-env = { PYTHONPATH = 'D:\Desktop\learnsys', LEARNSYS_MCP_URL = 'http://127.0.0.1:8765' }
+startup_timeout_sec = 30
+[mcp_servers.learnsys.env]
+PYTHONPATH = 'D:\Desktop\learnsys'
+LEARNSYS_MCP_URL = "http://127.0.0.1:8765"
 ```
 
-用 `codex mcp list` 确认。
+用 `codex mcp list` 确认。2.12.0 起本机已注册（`learnsys` 显示 enabled）。
 
 ## 5. 排错
 

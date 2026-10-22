@@ -7,7 +7,7 @@
   "script": "js/pages/ask/index.js",
   "order": 20,
   "status": "ready",
-  "version": "2.0.0",
+  "version": "2.12.0",
   "category": "对话",
   "home": true,
   "tagline": "屏幕上的问题，直接问出去",

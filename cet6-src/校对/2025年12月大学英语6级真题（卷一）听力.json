@@ -1,0 +1,20 @@
+{
+  "paper": "2025年12月大学英语6级真题（卷一）听力",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按新东方精校版（长对话）与懒笔记（讲座）逐段校对；文本以线上原文为线索、以音频为准。只改明确的漏词/错词。",
+  "sources": [
+    "https://mtoutiao.xdf.cn/cet4-6/202512/15047615.html",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-12-1/part2-section-a-1/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-12-1/part2-section-a-2/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-12-1/part2-section-c/"
+  ],
+  "items": {
+    "Conversation 1": {
+      "8": "It looks like the government of Winopia seems to be undergoing some sort of crisis of legitimacy, and an interim administration has been transitionally established until a head of state is agreed on."
+    },
+    "Recording 1": {
+      "8": "Each airport has its own way of allotting how much time a bag needs to move in transit."
+    }
+  }
+}

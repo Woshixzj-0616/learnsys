@@ -1,0 +1,38 @@
+{
+  "paper": "2016年06月大学英语6级听力（卷三）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "卷三与卷二为同一套音频、不同切句；按懒笔记 2016 年 6 月第 2 套原文核对，再用 base.en 回听。只改人名、公司名、明确错词和漏掉的整句。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/sections/listening/2016-06-2/",
+    "https://3g.kekenet.com/cet6/201609/466995.shtml"
+  ],
+  "items": {
+    "Conversation 1": {
+      "1": "So, Mike, you managed the innovation project at CucinTech.",
+      "7": "I really helped things turn around at CucinTech.",
+      "12": "CucinTech was a company who were very much following the pack, doing what everyone else was doing, and getting rapidly left behind."
+    },
+    "Passage 1": {
+      "8": "Lead author, Liat Tikotzky, wrote in an email that the research team also didn't measure father's sleep, so it's possible that their sleep patterns could also be causing the sleep disruptions for mums."
+    },
+    "Passage 2": {
+      "2": "We need more funding and more effort to return these languages to everyday use, says Fred Nawusky of the National Museum of the American Indian.",
+      "6": "But progress is being made through immersion schools, because if you teach children when they're young, it will stay with them as adults, and that's the future, says Mr. Nawusky, a Comanche Indian.",
+      "7": "Such schools have become a model in Hawaii, but the islanders' local language is still classed by UNESCO as critically endangered because only 1,000 people speak it."
+    },
+    "Recording 1": {
+      "15": "So here's the job opening, here's the job seeker, match them together under one roof, she says."
+    },
+    "Recording 2": {
+      "2": {
+        "en": "Well, we've been led to believe that we would encounter a good proportion of this older, thicker, technically multi-year ice that's been around for a few years and just gets thicker and thicker. We actually found there wasn't any multi-year ice at all.",
+        "end": 1176.1
+      }
+    },
+    "Recording 3": {
+      "7": "Terrie Moffitt of Duke University and her research colleagues found that kids with self-control issues tended to grow up to become adults with a far more troubling set of issues to deal with.",
+      "20": "Terrie Moffitt's paper on the link between childhood self-control and adult status decades later is published in the Proceedings of the National Academy of Sciences."
+    }
+  }
+}

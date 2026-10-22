@@ -350,6 +350,17 @@
 
 .attach-chip button:hover { color: var(--err); }
 
+.attach-chip button[data-pin]:hover { color: var(--accent-strong); }
+
+.attach-chip.is-pinned {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.attach-chip.is-pinned .attach-kind { color: var(--accent-strong); }
+
+.attach-kind { color: var(--text-faint); }
+
 .composer textarea {
   display: block;
   width: 100%;

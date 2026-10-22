@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS messages (
     conversation_id INTEGER NOT NULL,
     role            TEXT NOT NULL,
     content_json    TEXT NOT NULL,
-    ts              TEXT NOT NULL
+    ts              TEXT NOT NULL,
+    result_id       INTEGER NOT NULL DEFAULT 0   -- 引用 service_results，不复制正文
 );
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages (conversation_id, id);
 CREATE TABLE IF NOT EXISTS cet6_events (

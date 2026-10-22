@@ -1,0 +1,30 @@
+{
+  "paper": "2021年06月大学英语6级听力（卷二）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按可可英语 2021 年 6 月六级听力第 2 套原文逐篇校对；文本以线上原文为线索、以音频为准。拼写风格差异不改。",
+  "sources": [
+    "https://m.kekenet.com/cet6/202202/652740.shtml",
+    "https://m.kekenet.com/cet6/202202/652742.shtml",
+    "https://m.kekenet.com/cet6/202202/652743.shtml",
+    "https://m.kekenet.com/cet6/202202/652744.shtml",
+    "https://m.kekenet.com/cet6/202202/652746.shtml",
+    "https://m.kekenet.com/cet6/202202/652747.shtml",
+    "https://m.kekenet.com/cet6/202202/652749.shtml"
+  ],
+  "items": {
+    "Passage 2": {
+      "15": "Over time, Goddard's rockets grew more sophisticated and included the installation of instruments."
+    },
+    "Recording 1": {
+      "9": "What becomes set in the firm's culture is a contagious collection of affirmative and positive emotions which are usually shared among the team.",
+      "20": "Likewise, the second, the passion for founding the venture doesn't necessarily translate into great success."
+    },
+    "Recording 2": {
+      "9": "Researchers also know, to an extent, what causes aging."
+    },
+    "Recording 3": {
+      "7": "But according to recent research conducted in Australia, it looks like it's not the employees' fault but the managers'."
+    }
+  }
+}

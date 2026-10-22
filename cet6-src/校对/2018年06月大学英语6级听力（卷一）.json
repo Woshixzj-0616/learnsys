@@ -1,0 +1,37 @@
+{
+  "paper": "2018年06月大学英语6级听力（卷一）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按懒笔记（lazynote）对应套数的逐段听力原文校对；文本以线上原文为线索，有歧义处用 base.en 重听音频，音频优先。只改明确错误，不动句子数量、题目和 Section 结构。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/sections/listening/2018-06-1/"
+  ],
+  "items": {
+    "Recording 1": {
+      "4": "It is the only paved road discovered in ancient Egypt, said geologist Thomas Bown of the United States Geological Survey.",
+      "5": "He reported the discovery on Friday.",
+      "6": "The road probably doesn't rank with the pyramids as a construction feat, but it is a major engineering achievement, said his colleague, geologist James Harrell of the University of Toledo.",
+      "9": "The first evidence that the Egyptians used rock saws.",
+      "10": "This is the oldest example of saws being used for cutting stone, said Bown's colleague, James Hoffmeier, of Wheaton College in Illinois.",
+      "11": "\"That's two technologies we didn't know they had,\" Harrell said.",
+      "13": {
+        "en": "The road was discovered in the Faiyum Depression, about forty-five miles southwest of Cairo.",
+        "start": 965.2,
+        "end": 970.64
+      },
+      "19": "When it was built, its terminal was a dock on the shore of Lake Moeris, which had an elevation of about 66 feet above sea level, the same as the dock.",
+      "20": "Lake Moeris received its water from the annual floods of the Nile.",
+      "21": "At the time of the floods, the river and lake were at the same level and connected through a gap in the hills, near the modern villages of el-Lahun and Hawara.",
+      "22": "Harrell and Bown believed that blocks were loaded onto barges during the dry season, then floated over to the Nile during the floods to be shipped off to the monument sites at Giza and Saqqara."
+    },
+    "Recording 2": {
+      "11": "I took the subway to Gong's second-floor office, marked with a hand-painted sign.",
+      "28": "Nobody really knows what's happening, says Paul Zmiewski, a PhD in Chinese studies who practices acupuncture in Philadelphia."
+    },
+    "Recording 3": {
+      "1": "Ronald and Lois, married for two decades, consider themselves a happy couple, but in the early years of their marriage both were disturbed by persistent arguments that seemed to fade away without ever being truly resolved.",
+      "3": "Ronald and Lois are only children, and onlys grow up accustomed to being the apple of their parents' eyes.",
+      "9": "The worst match is with another oldest, since the two will be too sovereign to share a household comfortably."
+    }
+  }
+}

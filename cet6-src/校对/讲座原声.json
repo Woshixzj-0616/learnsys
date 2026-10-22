@@ -1,0 +1,16 @@
+{
+  "paper": "讲座原声",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "讲座原声与 2021 年 6 月第 2 套 Recording 1 同源；按该套线上原文核对，再用 base.en 回听。只改明确错词和漏词。",
+  "sources": [
+    "https://m.kekenet.com/cet6/202202/652746.shtml"
+  ],
+  "items": {
+    "Item 1": {
+      "8": "The celebration of milestones may prompt staff to be more grateful about their own accomplishments and privileges.",
+      "10": "Science has already done a good job of proving the results that follow.",
+      "20": "Likewise, the second, a passion for founding the venture, doesn't necessarily translate into great success."
+    }
+  }
+}

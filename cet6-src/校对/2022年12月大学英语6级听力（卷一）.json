@@ -1,0 +1,22 @@
+{
+  "paper": "2022年12月大学英语6级听力（卷一）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按可可英语 2022 年 12 月六级听力（第2套）逐段校对；文本以线上原文为线索、以音频为准。只改文本，不动句子切分结构和题目。",
+  "sources": [
+    "https://m.kekenet.com/cet6/202303/667844.shtml",
+    "https://m.kekenet.com/cet6/202303/667846.shtml",
+    "https://m.kekenet.com/cet6/202303/667847.shtml",
+    "https://m.kekenet.com/cet6/202303/667848.shtml",
+    "https://m.kekenet.com/cet6/202303/667849.shtml",
+    "https://m.kekenet.com/cet6/202303/667850.shtml",
+    "https://m.kekenet.com/cet6/202303/667851.shtml"
+  ],
+  "items": {
+    "Recording 3": {
+      "1": "Throwing spare change into a fountain is a time-honored ritual.",
+      "19": "Tens of thousands of dollars in coins removed from wishing wells, fountains, and ponds in Florida's Walt Disney World are donated each year to support foster children living in the state.",
+      "6": "In New York City, for example, coins collected from fountains and public parks often go towards the fountains' maintenance itself, though entrepreneurs who don't mind getting their hands wet often get to it first."
+    }
+  }
+}

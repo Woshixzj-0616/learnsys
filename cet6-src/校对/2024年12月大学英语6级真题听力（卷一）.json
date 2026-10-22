@@ -1,0 +1,31 @@
+{
+  "paper": "2024年12月大学英语6级真题听力（卷一）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "逐段按可可英语线上原文核对，再以音频重转写确认；只改明确的错词、漏词、重复和起点切错，不动句子数量与题目。",
+  "sources": [
+    "https://m.kekenet.com/cet6/202503/701072.shtml",
+    "https://m.kekenet.com/cet6/202503/701073.shtml",
+    "https://m.kekenet.com/cet6/202503/701075.shtml",
+    "https://m.kekenet.com/cet6/202503/701076.shtml",
+    "https://m.kekenet.com/cet6/202503/701077.shtml",
+    "https://m.kekenet.com/cet6/202503/701078.shtml",
+    "https://m.kekenet.com/cet6/202503/701079.shtml"
+  ],
+  "items": {
+    "Conversation 1": {
+      "12": "Furthermore you have strong analytical skills and attention to detail."
+    },
+    "Conversation 2": {
+      "8": {
+        "en": "I guess I was also immensely fortunate to have good teachers and friends around me.",
+        "start": 381.12,
+        "end": 385.66
+      },
+      "26": "Our entrance exam is, to use your own words, no picnic."
+    },
+    "Recording 2": {
+      "9": "In a 1980s study, for example, test participants were asked to name the flavor of the beverage they were drinking, without being able to see that beverage."
+    }
+  }
+}

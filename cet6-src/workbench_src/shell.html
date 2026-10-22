@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>听力精听工作台</title>
+<style>
+{{WB_CSS}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="topbar-head">
+      <div class="topbar-title">
+        <span class="eyebrow">精听工作台</span>
+        <h1 id="paperTitle">听力精听工作台</h1>
+        <p class="topbar-sub" id="paperMeta">正在读取试卷索引……</p>
+      </div>
+      <button id="recentBtn" type="button" class="topbar-recent" aria-expanded="false" title="最近听过的试卷">最近</button>
+    </div>
+
+    <div class="paper-picker">
+      <label for="paperSelect" class="picker-label">试卷</label>
+      <select id="paperSelect" disabled></select>
+      <input id="paperSearch" type="search" placeholder="搜索试卷" autocomplete="off" aria-label="搜索试卷">
+      <span id="paperIndexTime" class="index-time"></span>
+    </div>
+    <div id="recentPanel" class="recent-panel hidden"></div>
+    <div id="launchMsg" class="launch-msg hidden" role="alert"></div>
+
+    <div class="player-bar">
+      <div class="player-main">
+        <button id="playPauseBtn" type="button" class="player-btn" aria-label="播放 / 暂停">▶</button>
+        <span id="playerCur" class="player-time">0:00</span>
+        <input id="playerSeek" type="range" class="player-seek" min="0" max="1000" value="0"
+          tabindex="-1" aria-label="音频进度">
+        <span id="playerDur" class="player-time">0:00</span>
+        <span id="playerRateBadge" class="player-rate">1×</span>
+      </div>
+      <audio id="player" preload="metadata"></audio>
+      <p class="status" id="audioStatus">正在加载音频……</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="side-title">题型导航</div>
+      <input id="sentenceSearch" class="side-search" type="search" placeholder="搜索本卷句子（≥2 字）" autocomplete="off">
+      <div id="searchResults" class="search-results hidden"></div>
+      <div id="nav"></div>
+    </aside>
+
+    <main>
+      <div id="itemHeader"></div>
+      <div id="warnings"></div>
+      <div class="toolbar">
+        <div class="tool-group">
+          <span class="tool-label">播放</span>
+          <span class="speed-group" role="group" aria-label="播放速度">
+            <button type="button" data-rate="0.75">0.75×</button>
+            <button type="button" data-rate="0.9">0.9×</button>
+            <button type="button" data-rate="1">1×</button>
+            <button type="button" data-rate="1.25">1.25×</button>
+            <button type="button" data-rate="1.5">1.5×</button>
+          </span>
+        </div>
+        <div class="tool-group">
+          <span class="tool-label">本段</span>
+          <button id="playItem" title="连续播放本段正文和题目；界面会跟着当前句滚动">整段播放</button>
+          <button id="playQuestions">播放题目</button>
+        </div>
+        <div class="tool-group">
+          <span class="tool-label">工具</span>
+          <button id="statsBtn">学习统计</button>
+          <button id="vocabBtn">生词本</button>
+          <button id="exportBtn" title="导出本段的断点与原因">导出错因</button>
+          <button id="exportAllBtn" title="导出全部学习数据（完成、标签、笔记、分析）">导出数据</button>
+          <button id="importAllBtn" title="导入之前导出的学习数据">导入数据</button>
+          <input id="importFile" type="file" accept=".json,application/json" class="hidden">
+        </div>
+      </div>
+      <div class="progress-label"><span>本段进度</span><span id="progressText">0 / 0</span></div>
+      <div class="progress"><i id="progressBar"></i></div>
+
+      <div id="sentenceBar" class="sentence-bar">
+        <span id="sentenceBarText" class="sb-text">当前句：未选中（点 ▶ 或按 ↑ ↓）</span>
+        <button id="followResume" type="button" class="hidden" title="恢复自动跟随当前播放句">回到当前句</button>
+        <span class="sb-hint">←/→ 1 秒 · Shift 5 秒</span>
+      </div>
+
+      <div id="statsPanel" class="panel stats hidden">
+        <div class="analysis-head">
+          <b>学习统计 · 本卷</b>
+          <button id="closeStats">收起</button>
+        </div>
+        <div id="statsBody"></div>
+      </div>
+
+      <div id="vocabPanel" class="panel vocab hidden">
+        <div class="analysis-head">
+          <b>生词本</b>
+          <span class="head-actions">
+            <button id="vocabAddBtn" title="先在原文里选中一个词">收藏选中的词</button>
+            <button id="exportVocab">导出 CSV</button>
+            <button id="closeVocab">收起</button>
+          </span>
+        </div>
+        <div id="vocabBody"></div>
+      </div>
+
+      <div id="sentences"></div>
+
+      <details class="panel" id="questionsPanel">
+        <summary>本段题目文本（点开）</summary>
+        <div id="questions"></div>
+      </details>
+    </main>
+  </div>
+
+  <footer>本地文件 · 进度和断点只存在你的浏览器里 · 刷新不丢</footer>
+</div>
+<button id="selVocabBtn" type="button" class="sel-vocab hidden">＋ 生词</button>
+<button id="selTranslateBtn" type="button" class="sel-vocab sel-translate hidden">翻译</button>
+<button id="selAskBtn" type="button" class="sel-vocab sel-ask hidden">问 AI</button>
+<div id="translationPop" class="translation-pop hidden"></div>
+
+<button id="askBtn" type="button" class="ai-fab" aria-expanded="false"
+  title="AI 助手（Ctrl+J）· 自动带上当前试卷 / 题型 / 当前句">AI</button>
+
+<aside id="askPanel" class="ai-dock hidden" aria-label="AI 助手">
+  <div class="ai-head">
+    <div class="ai-title">
+      <b>AI 助手</b>
+      <span id="askModel" class="ai-model">deepseek-flash</span>
+    </div>
+    <span class="ai-head-actions">
+      <button id="askNew" type="button">新对话</button>
+      <button id="askClose" type="button">收起</button>
+    </span>
+  </div>
+  <div id="askTabs" class="ai-tabs" role="tablist">
+    <button type="button" data-ask-tab="chat" class="on" role="tab">对话</button>
+    <button type="button" data-ask-tab="analysis" role="tab">分析<span id="analysisDot" class="dot hidden"></span></button>
+    <button type="button" data-ask-tab="history" role="tab">历史</button>
+  </div>
+
+  <div id="askChatView" class="ai-view">
+    <div id="askBody" class="ask-body ai-messages"></div>
+    <div id="askSuggest" class="ai-suggest"></div>
+    <div class="ask-input-row">
+      <textarea id="askInput" rows="2"
+        placeholder="直接问；Enter 发送，Shift+Enter 换行"></textarea>
+      <button id="askSend" class="primary" type="button">发送</button>
+      <button id="askStop" class="hidden" type="button">停止</button>
+    </div>
+  </div>
+
+  <div id="askAnalysisView" class="ai-view hidden">
+    <div class="ai-analysis-tools">
+      <button id="aiAnalyzeItem" type="button" class="primary"
+        title="只发送你勾选的标签、笔记和文字，不发送音频">分析本段</button>
+      <button id="aiAnalyzePaper" type="button"
+        title="汇总本卷所有断点后分析">分析整卷</button>
+    </div>
+    <div id="analysisPanel" class="panel analysis hidden">
+      <div id="analysisBody"></div>
+    </div>
+    <p id="analysisEmpty" class="status">选「分析本段」会结合断点、笔记和循环次数给出结构化分析；也可以直接在「对话」里自由问。</p>
+  </div>
+
+  <div id="askHistoryView" class="ai-view hidden">
+    <input id="askHistorySearch" type="search" class="ai-history-search"
+      placeholder="搜对话标题" autocomplete="off">
+    <div id="askHistoryList" class="ai-history-list"></div>
+  </div>
+</aside>
+
+<script>
+function showLaunchError(message){
+  const box = document.getElementById("launchMsg");
+  if(box){
+    box.textContent = message;
+    box.classList.remove("hidden");
+  }
+  const meta = document.getElementById("paperMeta");
+  if(meta) meta.textContent = "工作台未启动。";
+}
+</script>
+{{WB_JS}}
+</body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "paper": "2025年06月大学英语6级真题（卷二）听力",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "逐段按懒笔记线上原文核对，再以音频重转写确认；重点修了 mise-en-place 术语、分段重复和若干漏词/错词，不动句子数量与题目。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-2/part2-section-a/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-2/part2-section-a-2/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-2/part2-section-b/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-2/part2-section-b-2/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-2/part2-section-c/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-2/part2-section-c-2/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-2/part2-section-c-3/"
+  ],
+  "items": {
+    "Conversation 1": {
+      "33": "Ah, well, if there's a tie and we can't come to an agreement, then we'll take it to John and let him cast the deciding vote."
+    },
+    "Recording 1": {
+      "16": "One of the other things is, rather than just taking one perspective."
+    },
+    "Recording 2": {
+      "4": "According to market data enterprises, Americans spend nearly $10 billion a year on self-help and personal organization products.",
+      "7": "Perhaps the principles of cooking organization can be extended to help even those of us who aren't top chefs.",
+      "8": "The system that makes kitchens function is called mise-en-place, or literally put in place.",
+      "16": "They mise-en-place their life.",
+      "22": "Mise-en-place forces cooks to account for every minute of their time and every movement.",
+      "23": "Every component of one single dish is in one single corner, so their hand literally moves inches, explains Dwayne Lipuma, an instructor at the Culinary Institute of America.",
+      "24": {
+        "en": "Once students set up their station, I should be able to cover up their eyes, and they should know that their knives are always here, their oil is always right here, their salt and pepper is always right here.",
+        "end": 1245.9
+      },
+      "25": {
+        "en": "But, practiced at its highest level, mise-en-place says that time is precious. Resources are precious. Space is precious. Your self-respects and the respect of others are precious. Use them wisely.",
+        "start": 1246.6,
+        "end": 1260.79
+      }
+    },
+    "Recording 3": {
+      "7": "Instead of feeling confidence, happiness, and satisfaction from achieving our goals, we feel we are always falling short."
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "paper": "2026年06月大学英语6级真题（卷二）听力",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按懒笔记 2026 年 6 月第 2 套听力原文逐段校对；文本以线上原文为线索、以音频为准。只改明确的多词、重复词、错词与人名拼写。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/sections/listening/2026-06-2/"
+  ],
+  "items": {
+    "Passage 2": {
+      "5": "A pattern in nature is any regularly repeated arrangement of shapes or colours."
+    },
+    "Recording 1": {
+      "17": "The most important thing to note is that there is some tipping point at which new habits become more or less automatic."
+    },
+    "Recording 2": {
+      "4": "The planet also had an atmosphere much cooler than earlier estimates, topping out at minus 333.4 degrees Fahrenheit.",
+      "6": "A computer model developed by planetary scientist Xi Zhang and colleagues shows the haze of tiny droplets in the upper atmosphere is likely scattering light from the Sun, preventing heat from reaching the planet below.",
+      "18": "That observatory can detect different spectrums of light, which the hazy Plutonian atmosphere would be positively glowing with, as it scattered sunlight."
+    },
+    "Recording 3": {
+      "3": "Dr. Hauke Egermann, a lecturer in music at the University of York, carried out a literature review into more than a dozen studies looking at parental musical influence.",
+      "11": "Dr. Egermann claims introducing children to a variety of musical styles is the key to fostering good taste in later life.",
+      "14": "Dr. Egermann advises parents not to push their favorite music too hard on their children, but instead play it as background music while a child is playing."
+    }
+  }
+}

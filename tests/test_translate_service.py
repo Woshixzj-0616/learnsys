@@ -2,6 +2,7 @@
 """翻译服务：单词/句子解析、缓存命中、批量、失败降级。"""
 from __future__ import annotations
 
+import dataclasses
 import json
 import pathlib
 import tempfile
@@ -53,6 +54,45 @@ class TranslateServiceTest(unittest.TestCase):
             "subnetting", kind="word",
             context={"sentence": "Subnetting divides a network."})
         self.assertTrue(second["cached"])
+
+    def test_translate_honours_route_model(self):
+        from learnsys.agent.config import AgentConfig
+        cfg = AgentConfig(
+            base_url="http://x", auth_token="t", model="main-model",
+            fast_model="fast-model", max_tokens=1000, thinking=False,
+            vision_base_url="", vision_api_key="", vision_model="v",
+            data_root=pathlib.Path(self.tmp.name), profile_path=pathlib.Path("p"),
+            routes={"translate": "route-model"})
+        self.assertEqual(translate._fast_cfg(cfg).model, "route-model")
+        plain = dataclasses.replace(cfg, routes={})
+        self.assertEqual(translate._fast_cfg(plain).model, "fast-model")
+
+    def test_vocab_book_hits_before_model(self):
+        """查词先查自己的生词本：有释义就不再调模型。"""
+        conn = store.connect(self.db_path)
+        try:
+            store.add_vocab(conn, word="subnetting", meaning="子网划分",
+                            phonetic="/ˈsʌbnetɪŋ/", context="Subnetting divides a network.",
+                            source="manual")
+        finally:
+            conn.close()
+        with mock.patch.object(translate, "_run_text") as fake_model:
+            result = translate.translate("Subnetting", kind="word")
+        self.assertEqual(result["translation"], "子网划分")
+        self.assertEqual(result["phonetic"], "/ˈsʌbnetɪŋ/")
+        self.assertTrue(result["cached"])
+        self.assertEqual(result["source"], "vocab")
+        self.assertGreater(result["vocab_id"], 0)
+        fake_model.assert_not_called()
+
+    def test_vocab_without_meaning_still_asks_model(self):
+        conn = store.connect(self.db_path)
+        try:
+            store.add_vocab(conn, word="ephemeral", meaning="", source="manual")
+        finally:
+            conn.close()
+        result = translate.translate("ephemeral", kind="word")
+        self.assertEqual(result["translation"], "子网划分")
 
     def test_context_changes_word_cache_key(self):
         translate.translate("bank", kind="word", context={"sentence": "river bank"})

@@ -6,6 +6,7 @@ import { renderThread } from "./thread.js";
 import { loadConversations, newConversation, openConversation } from "./conversations.js";
 import { closeMaterialPicker, loadMaterialPicker, onPickerKey, openMaterialPicker } from "./materials.js";
 import { pickFile, renderAttachments, updateSendButton } from "./attachments.js";
+import { loadDeepStatus, runDeepAnalysis } from "./deep.js";
 import { sendMessage } from "./composer.js";
 import { stopStreaming } from "./stream.js";
 
@@ -33,6 +34,7 @@ export async function mount(ctx) {
     materialList: ctx.root.querySelector("#material-list"),
     materialSearch: ctx.root.querySelector("#material-search"),
     materialClose: ctx.root.querySelector("#material-close"),
+    deepRun: ctx.root.querySelector("#deep-run"),
   });
 
   dom.mode.value = MODE_NAMES[state.mode] ? state.mode : "explain";
@@ -42,6 +44,7 @@ export async function mount(ctx) {
   window.addEventListener("learnsys:answer-think", onAnswerThink);
 
   await loadConversations();
+  await loadDeepStatus();
   if (state.convId) {
     await openConversation(state.convId, { replaceHash: false, quiet: true });
   } else {
@@ -120,16 +123,29 @@ export function bindEvents() {
   ctxRef.root.querySelector("#attach-image").addEventListener("click", () => dom.fileImage.click());
   ctxRef.root.querySelector("#attach-doc").addEventListener("click", () => dom.fileDoc.click());
   ctxRef.root.querySelector("#attach-material").addEventListener("click", openMaterialPicker);
+  dom.deepRun?.addEventListener("click", runDeepAnalysis);
 
   dom.fileImage.addEventListener("change", () => pickFile(dom.fileImage, "image"));
   dom.fileDoc.addEventListener("change", () => pickFile(dom.fileDoc, "doc"));
 
   dom.attachRow.addEventListener("click", (event) => {
+    const pin = event.target.closest("button[data-pin]");
+    if (pin?.dataset.pin === "material") {
+      state.materialPinned = !state.materialPinned;
+      renderAttachments();
+      dom.status.textContent = state.materialPinned
+        ? "资料已固定：之后每一轮都会带上"
+        : "资料已取消固定：这一轮用完就撤";
+      return;
+    }
     const button = event.target.closest("button[data-remove]");
     if (!button) return;
     if (button.dataset.remove === "image") state.image = null;
     if (button.dataset.remove === "doc") state.doc = null;
-    if (button.dataset.remove === "material") state.material = null;
+    if (button.dataset.remove === "material") {
+      state.material = null;
+      state.materialPinned = false;
+    }
     renderAttachments();
   });
 

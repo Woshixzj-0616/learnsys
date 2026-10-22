@@ -1,0 +1,26 @@
+{
+  "paper": "2021年12月大学英语6级听力（卷一）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按懒笔记 2021 年 12 月第 1 套逐段原文核对，再用 base.en 回听；音频与线上冲突时以音频为准。只改明确错词、漏词和重复词。Recording 3 开头约 20 秒音频里有 4 句未进入 data.js，属切分结构缺失，未强行补句。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/sections/listening/2021-12-1/"
+  ],
+  "items": {
+    "Conversation 1": {
+      "13": "To make things worse, I managed to fall right in front of four girls from the 9th grade, so I was utterly humiliated, plus the laptop in my bag was broken too."
+    },
+    "Conversation 2": {
+      "4": "I'm so excited to talk about my latest book, which was published last month."
+    },
+    "Passage 1": {
+      "11": "It spurred collections and earned Coca-Cola an iconic image that made it part of American culture for a century."
+    },
+    "Passage 2": {
+      "17": "People who are talked to have equally positive experiences as those who initiate a conversation."
+    },
+    "Recording 1": {
+      "23": "Everything is at the resort-hotel, beach, shopping and recreation."
+    }
+  }
+}

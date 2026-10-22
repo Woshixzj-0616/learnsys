@@ -14,6 +14,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 from learnsys.agent import memory, planning, prompts, selfcheck, tools, vision
+from learnsys.agent.fallback import stream_with_fallback
 from learnsys.agent.config import AgentConfig, load_config
 from learnsys.agent.events import AgentEvent
 from learnsys.agent.provider_anthropic import ProviderError, ProviderResult
@@ -157,6 +158,9 @@ def _speed_config(cfg: AgentConfig, mode: str) -> tuple[AgentConfig, bool]:
     - deep：主模型 + 思考（深入推导；最慢）
     模式 quick 永远走 fast —— 用户选「速答」就是要快。
     """
+    routed = cfg.model_for(mode)
+    if routed:
+        return (dataclasses.replace(cfg, model=routed, thinking=False), True)
     speed = (cfg.speed or "balanced").lower()
     if mode == "quick":
         speed = "fast"
@@ -190,6 +194,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
 
     provider = provider or _default_provider()
     cfg, concise = _speed_config(cfg, request.mode)
+    cfg_holder = [cfg]
     profile = _read_profile(cfg)
     memory_text = memory.render_for_prompt(cfg.data_root)
     image_paths = ([request.image_path] if request.image_path else []) + list(
@@ -233,13 +238,16 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
             state.steps = step + 1
             state.model_calls += 1
             result: ProviderResult | None = None
-            for event in provider.stream_messages(
-                    cfg, system, messages, tool_schemas,
-                    abort=abort, response_sink=response_sink):
+            for event in stream_with_fallback(
+                    provider, cfg_holder, system, messages, tool_schemas,
+                    abort, response_sink):
                 if event.kind == "text":
                     yield AgentEvent("text", text=event.text)
                 elif event.kind == "thinking":
                     yield AgentEvent("thinking", text=event.text)
+                elif event.kind == "activity":
+                    # 降级提示由 _stream_with_fallback 发出，这里原样透传。
+                    yield AgentEvent("activity", text=event.text)
                 elif event.kind == "done":
                     result = event.result
             if result is None:
@@ -386,7 +394,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
         # 这里自动用「不思考」模式重答一次：既避开 thinking 吃满输出上限，也更快。
         if (not final_text and state.thinking.strip()
                 and (abort is None or not abort.is_set())):
-            retry_cfg = dataclasses.replace(cfg, thinking=False)
+            retry_cfg = dataclasses.replace(cfg_holder[0], thinking=False)
             retry_result = None
             state.model_calls += 1
             yield AgentEvent("activity", text="模型只输出了思考，正在改用快答重试…")
@@ -447,7 +455,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
             if issues:
                 yield AgentEvent("activity",
                                  text=f"自检发现 {len(issues)} 处引用对不上，正在重写…")
-                rewritten = _rewrite_answer(provider, cfg, state, final_text,
+                rewritten = _rewrite_answer(provider, cfg_holder[0], state, final_text,
                                             issues, abort)
                 if rewritten:
                     final_text = rewritten

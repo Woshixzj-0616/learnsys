@@ -31,6 +31,7 @@ export async function mount(ctx) {
     kind: ctx.root.querySelector("#mat-kind"),
     trash: ctx.root.querySelector("#mat-trash-toggle"),
     importBtn: ctx.root.querySelector("#mat-import"),
+    dirImport: ctx.root.querySelector("#mat-import-dir"),
     file: ctx.root.querySelector("#mat-file"),
     status: ctx.root.querySelector("#mat-status"),
     drop: ctx.root.querySelector("#mat-drop"),
@@ -51,6 +52,7 @@ export function unmount() {
 
 function bind() {
   nodes.importBtn.addEventListener("click", () => nodes.file.click());
+  nodes.dirImport.addEventListener("click", importDirectory);
   nodes.file.addEventListener("change", () => {
     const files = Array.from(nodes.file.files || []);
     nodes.file.value = "";
@@ -363,6 +365,31 @@ async function createNote() {
     await selectMaterial(data.item.id);
   } catch (error) {
     toast(error.message || "新建失败", "err");
+  }
+}
+
+async function importDirectory() {
+  const path = prompt(
+    "要导入哪个文件夹？\n\n先在设置里把目录加到 materials.import_dirs；不移动原文件。");
+  if (!path?.trim()) return;
+  const obsidian = confirm("这是 Obsidian 笔记库吗？\n\n确定 = 只导入 .md；取消 = 课程资料（PDF/DOCX/PPTX/TXT/MD）");
+  nodes.status.textContent = "正在扫描目录…";
+  try {
+    const result = await api.post("/api/materials/import-dir", {
+      path: path.trim(),
+      source: obsidian ? "obsidian" : "courses",
+    });
+    nodes.status.textContent =
+      `扫描 ${result.scanned} 份：导入 ${result.imported}，已存在跳过 ${result.skipped}，失败 ${result.failed}`;
+    toast(`导入完成：新增 ${result.imported} 份`, result.imported ? "ok" : "info");
+    const firstFailure = (result.items || [])[0];
+    if (firstFailure) {
+      toast(`${firstFailure.title}：${firstFailure.why}`, "err");
+    }
+    await loadList();
+  } catch (error) {
+    nodes.status.textContent = "";
+    toast(error.message || "这个目录没导进来", "err");
   }
 }
 

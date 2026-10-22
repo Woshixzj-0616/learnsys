@@ -1,0 +1,27 @@
+{
+  "paper": "2026年06月大学英语6级真题（卷一）听力",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按懒笔记 2026 年 6 月第 1 套听力原文逐段校对；文本以线上原文为线索、以音频为准。只改明确的重复词、错词和漏词。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/sections/listening/2026-06-1/"
+  ],
+  "items": {
+    "Conversation 2": {
+      "2": "From what I recall, the presentation consists of five parts, not including the introduction and conclusion.",
+      "6": "How would you suggest we dole out the rest?",
+      "12": "I appreciate the rigorous work ethic you applied to the research, but not the sarcasm that comes up every time I mention it."
+    },
+    "Passage 2": {
+      "6": "No wonder people hope to make changes without it.",
+      "8": "Let's say your motivators are 'prevent diabetes' and 'reach a healthy weight', so if you are at the all you can eat buffet, you think about your motivator, avoid diabetes through weight loss, and you take small portions and avoid the dessert table.",
+      "12": "Whether you call it a motivator, a burning goal, or a bright idea, this idea is the force behind your willpower."
+    },
+    "Recording 1": {
+      "18": "Agency spokesman Cassell says the FDA believes the recommendations will increase confidence, not uncertainty."
+    },
+    "Recording 2": {
+      "20": "Planning things and the anticipation that comes with it tend to make us happier."
+    }
+  }
+}

@@ -48,6 +48,11 @@ def _migrate_columns(conn: sqlite3.Connection) -> None:
     ):
         if run_cols and column not in run_cols:
             conn.execute(f"ALTER TABLE agent_runs ADD COLUMN {column} {ddl}")
+    message_cols = {row[1] for row in conn.execute(
+        "PRAGMA table_info(messages)").fetchall()}
+    if message_cols and "result_id" not in message_cols:
+        conn.execute(
+            "ALTER TABLE messages ADD COLUMN result_id INTEGER NOT NULL DEFAULT 0")
     cet6_cols = {row[1] for row in conn.execute(
         "PRAGMA table_info(cet6_events)").fetchall()}
     if cet6_cols and "dedupe_key" not in cet6_cols:

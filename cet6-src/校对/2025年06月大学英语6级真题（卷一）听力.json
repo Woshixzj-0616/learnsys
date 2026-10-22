@@ -1,0 +1,37 @@
+{
+  "paper": "2025年06月大学英语6级真题（卷一）听力",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "逐段按懒笔记线上原文核对，再以音频重转写确认；只改明确的错词、漏词和起点切错，不动句子数量与题目。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-1/part2-section-a/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-1/part2-section-a-2/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-1/part2-section-b/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-1/part2-section-b-2/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-1/part2-section-c/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-1/part2-section-c-2/",
+    "https://english-exam.lazynote.cn/cet6/articles/2025-06-1/part2-section-c-3/"
+  ],
+  "items": {
+    "Conversation 1": {
+      "2": "My name is Bob Fetterman."
+    },
+    "Passage 1": {
+      "7": "Researchers Tarek Amer, Jordana Wynn, and Lynn Hasher looked at several behavioral and brain imaging studies, which show that older adults have difficulty suppressing information that is no longer relevant, and that when searching for a specific memory, they often retrieve other irrelevant memories along with it.",
+      "8": "The studies also showed that when given a cognitive task, older adults rely more on previous knowledge than younger adults do."
+    },
+    "Recording 1": {
+      "21": {
+        "en": "The experimenter never demonstrated pushing a button or trying to make music.",
+        "start": 1026.05,
+        "end": 1030.1
+      }
+    },
+    "Recording 2": {
+      "16": "Prepare for the day ahead. Have all of your notes and materials organized well in advance of each event, so that all you have to do is grab them and go when it's the actual day."
+    },
+    "Recording 3": {
+      "16": "Former US representative Chester Atkins says it's because the Puritan founding fathers were themselves impatient and bad-tempered and had little time for courtesy."
+    }
+  }
+}

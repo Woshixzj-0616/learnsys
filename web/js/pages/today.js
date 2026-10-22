@@ -21,6 +21,7 @@ export async function mount(ctx) {
   renderHero(overview);
   renderPlugins(ctx, overview, settings);
   renderStats(today, reviewStats || {});
+  renderActions(today.actions || []);
   renderWeek(overview.week || {});
   renderAchievements(overview.achievements || []);
   renderTimeline(today.asks || []);
@@ -163,6 +164,31 @@ function renderStats(today, reviewStats = {}) {
       <div class="stat-value">${escapeHtml(stat.value)}<small>${escapeHtml(stat.unit)}</small></div>
       <div class="stat-note">${escapeHtml(stat.note)}</div>
     </div>`).join("");
+}
+
+function renderActions(actions) {
+  const root = document.getElementById("today-actions");
+  if (!root) return;
+  if (!actions.length) {
+    root.hidden = true;
+    return;
+  }
+  root.hidden = false;
+  root.innerHTML = actions.map((item, index) => `
+    <button class="action-card" type="button" data-action-index="${index}">
+      <span class="action-no">${index + 1}</span>
+      <span class="action-main">
+        <span class="action-title">${escapeHtml(item.title || "")}</span>
+        <span class="action-detail">${escapeHtml(item.detail || "")}</span>
+      </span>
+      <span class="action-label">${escapeHtml(item.label || "去看看")} →</span>
+    </button>`).join("");
+  root.querySelectorAll("[data-action-index]").forEach((node) => {
+    const item = actions[Number(node.dataset.actionIndex)] || {};
+    node.addEventListener("click", () => {
+      if (item.href) location.hash = item.href;
+    });
+  });
 }
 
 function renderWeek(week) {

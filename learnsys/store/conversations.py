@@ -36,16 +36,19 @@ def touch_conversation(conn: sqlite3.Connection, conversation_id: int,
 
 
 def add_message(conn: sqlite3.Connection, conversation_id: int, role: str,
-                content, ts: str = "") -> int:
-    """content 可以是字符串或 dict/list；统一存 JSON。"""
+                content, ts: str = "", result_id: int = 0) -> int:
+    """content 可以是字符串或 dict/list；统一存 JSON。
+
+    `result_id` 只记引用（service_results 的 id），正文仍在那张表里。
+    """
     payload = content if isinstance(content, str) else json.dumps(
         content, ensure_ascii=False)
     stamp = ts or now()
     with _LOCK:
         cur = conn.execute(
-            "INSERT INTO messages (conversation_id, role, content_json, ts) "
-            "VALUES (?, ?, ?, ?)",
-            (conversation_id, role, payload, stamp))
+            "INSERT INTO messages (conversation_id, role, content_json, ts, result_id) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (conversation_id, role, payload, stamp, int(result_id or 0)))
         conn.execute(
             "UPDATE conversations SET updated_at = ? WHERE id = ?",
             (stamp, conversation_id))
@@ -85,7 +88,7 @@ def list_conversations(conn: sqlite3.Connection, limit: int = 20,
 def conversation_messages(conn: sqlite3.Connection, conversation_id: int) -> list[dict]:
     with _LOCK:
         rows = conn.execute(
-            "SELECT id, role, content_json, ts FROM messages "
+            "SELECT id, role, content_json, ts, result_id FROM messages "
             "WHERE conversation_id = ? ORDER BY id", (conversation_id,)).fetchall()
     out = []
     for row in rows:
@@ -93,5 +96,6 @@ def conversation_messages(conn: sqlite3.Connection, conversation_id: int) -> lis
             content = json.loads(row[2])
         except (json.JSONDecodeError, TypeError):
             content = row[2]
-        out.append({"id": row[0], "role": row[1], "content": content, "ts": row[3]})
+        out.append({"id": row[0], "role": row[1], "content": content, "ts": row[3],
+                    "result_id": int(row[4] or 0)})
     return out

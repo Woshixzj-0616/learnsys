@@ -27,6 +27,7 @@ export async function pickFile(input, kind) {
       dom.status.textContent = "图片已挂上";
     } else {
       state.material = null;       // 一次性文档和资料库二选一
+      state.materialPinned = false;
       state.doc = {
         name: result.name || file.name,
         text: result.text || "",
@@ -54,7 +55,11 @@ export function renderAttachments() {
       <button type="button" data-remove="doc" aria-label="移除文档">×</button></span>`);
   }
   if (state.material) {
-    items.push(`<span class="attach-chip">资料 · ${escapeHtml(state.material.title)} · ${state.material.chars} 字
+    const pinned = state.materialPinned;
+    items.push(`<span class="attach-chip${pinned ? " is-pinned" : ""}">
+      <span class="attach-kind">上下文 · 资料</span> ${escapeHtml(state.material.title)} · ${state.material.chars} 字
+      <button type="button" data-pin="material" aria-pressed="${pinned}"
+        title="${pinned ? "已固定：每一轮都会带上这份资料" : "固定这份资料，连续几轮都带上"}">${pinned ? "已固定" : "固定"}</button>
       <button type="button" data-remove="material" aria-label="移除资料">×</button></span>`);
   }
   dom.attachRow.innerHTML = items.join("");

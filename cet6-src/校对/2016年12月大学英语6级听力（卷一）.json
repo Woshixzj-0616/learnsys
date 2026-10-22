@@ -1,0 +1,33 @@
+{
+  "paper": "2016年12月大学英语6级听力（卷一）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按懒笔记 2016 年 12 月第 1 套逐段原文核对，再用 base.en 回听；音频与线上冲突时以音频为准。只改明确错词、漏词和被压坏的句子。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/sections/listening/2016-12-1/"
+  ],
+  "items": {
+    "Passage 1": {
+      "1": "Devils Tower, the first national monument in America,",
+      "3": "Its sheer rock sides sweep up from a broad base until they cut off abruptly at the flat summit.",
+      "4": "Rising more than 1,000 feet in the middle of the gently rolling plains of Wyoming,",
+      "6": "In a sense it was. Devils Tower is a relic of the past, when the molten rock of the Earth's core forced its way to the surface to form the throat of a volcano.",
+      "9": "Born in fire and fury, Devils Tower was then shaped by the slow, gentle work of wind and water.",
+      "10": "The outer layers of the volcano were worn away until the hard core stood completely exposed.",
+      "11": "Small wonder that an Indian legend described Devils Tower as being formed by supernatural powers.",
+      "12": "The legend says that when seven girls were attacked by bears, they took refuge on top of a small rock, and they appealed to the Rock God for help. The god caused the rock to grow and to lift the girls far above the ground, while its sides were scored by the claws of the angry bears.",
+      "13": "Even today, says the legend, the girls can be seen above the towering rock as seven shining stars in the night sky."
+    },
+    "Passage 2": {
+      "2": "Few of us can fill up the tank without buying a few snacks, cigarettes, soft drinks or other items we can live without."
+    },
+    "Recording 2": {
+      "9": "For my senior collection at Fashion Design School, I decided to try and 3D print an entire fashion collection from my home.",
+      "20": "The breakthrough came when I was introduced to Filaflex, which is a new kind of printing material."
+    },
+    "Recording 3": {
+      "2": "The purpose of today's lecture, as you have seen from the title and the abstract, is to examine in more detail the problems facing small and medium-sized enterprises, which arise at least in part from having to adapt to rapid advances in technology, and I want to look at these both from a financial and from a personnel point of view, and to offer a few hopefully effective solutions.",
+      "5": "Now, all of these problems involve significant costs for all businesses, but they are particularly challenging issues for small and medium-sized enterprises."
+    }
+  }
+}

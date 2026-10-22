@@ -1,0 +1,184 @@
+/* 面板层：搜索、AI 分析、统计、生词本、题目、页脚与划词浮钮。 */
+.side-search{width:100%;box-sizing:border-box;font:inherit;font-size:13px;color:var(--ink);background:#fffefb;border:1px solid var(--line);border-radius:9px;padding:6px 9px;margin:0 0 8px}
+.side-search:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.search-results{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fffefb;margin:0 0 8px}
+.search-item{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:7px 9px;cursor:pointer;font:inherit;color:var(--ink)}
+.search-item:last-child{border-bottom:0}
+.search-item:hover{background:var(--accent-soft)}
+.search-item .m{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+.search-item .t{font-size:12px;line-height:1.4}
+.search-empty{font-size:12px;color:var(--muted);padding:8px 9px;margin:0}
+.sel-vocab{position:fixed;z-index:50;font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--accent);background:#fffefb;color:var(--accent);cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+
+.analysis{border-left:5px solid var(--accent)}
+.analysis-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.head-actions{display:flex;gap:6px;flex-wrap:wrap}
+.stats table{border-collapse:collapse;width:100%;font-size:13px;margin:6px 0 12px}
+.stats th,.stats td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left}
+.stats th{color:var(--muted);font-weight:600}
+.stats td.n{text-align:right;font-variant-numeric:tabular-nums}
+.vocab-row{display:flex;gap:8px;align-items:flex-start;border-bottom:1px solid var(--line);padding:8px 0}
+.vocab-row .w{font-weight:700;min-width:90px}
+.vocab-row input{flex:1;font:inherit;font-size:12px;border:1px solid var(--line);border-radius:7px;padding:4px 7px;background:#fffefb;color:var(--ink)}
+.vocab-row .ctx{font-size:12px;color:var(--muted);flex:2}
+.vocab-row button{font-size:12px;padding:3px 8px}
+.analysis h3{font-size:15px;margin:12px 0 6px}
+.analysis p{margin:6px 0}
+.pattern{border-top:1px dashed var(--line);padding:8px 0}
+.pattern:first-of-type{border-top:0}
+.pattern b{color:#0b5f59}
+.priority{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.priority button{font-size:12px;padding:3px 9px}
+.plan{margin:6px 0 0;padding-left:20px}
+.plan li{margin:4px 0}
+
+.panel{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:12px 16px;margin:14px 0;
+}
+.panel summary{cursor:pointer;font-weight:600;color:var(--accent)}
+.q-row{border-top:1px dashed var(--line);padding:10px 0}
+.q-row:first-of-type{border-top:0}
+.q-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.q-row p{margin:6px 0 0;font-size:14px;line-height:1.7}
+footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
+
+/* ---- P12：分析状态机 / 直接问 / 划词翻译 ---- */
+.analysis-hint{
+  margin:6px 0;font:inherit;font-size:12px;color:var(--accent);
+  background:var(--accent-soft);border:1px solid #9fd4cc;
+  border-radius:999px;padding:4px 12px;cursor:pointer;
+}
+.analysis-hint:hover{background:#cdeee8}
+.analysis-status p{margin:4px 0;color:var(--muted)}
+.analysis-actions{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px}
+.analysis-actions button{font-size:12px;padding:3px 10px}
+
+.ask-panel{border-left:5px solid #5b46b8}
+.ask-body{
+  max-height:380px;overflow:auto;padding:6px 8px;
+  background:#fffefb;border:1px solid var(--line);border-radius:10px;margin:8px 0;
+}
+.ask-msg{display:flex;margin:8px 0}
+.ask-msg.user{justify-content:flex-end}
+.ask-bubble{
+  max-width:88%;font-size:14px;line-height:1.65;padding:8px 11px;
+  border-radius:12px;background:#f2eee4;color:var(--ink);
+  word-break:break-word;overflow-wrap:anywhere;
+}
+.ask-msg.user .ask-bubble{background:var(--accent);color:#fff}
+.ask-msg.assistant .ask-bubble{background:#fffdf8;border:1px solid var(--line)}
+.ask-msg.error .ask-bubble{background:var(--danger-soft);color:var(--danger);border:1px solid #f3b6c6}
+.ask-bubble code{background:#efe9dc;border-radius:4px;padding:0 3px;font-size:13px}
+.ask-meta{font-size:11px;color:var(--muted);margin:0 0 4px}
+.ask-thinking{font-size:12px;color:var(--muted);margin-bottom:6px}
+.ask-thinking summary{cursor:pointer;color:var(--accent)}
+.ask-tools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;font-size:11px;color:var(--accent)}
+.ask-tools span{background:var(--accent-soft);border-radius:999px;padding:1px 8px}
+.ask-input-row{display:flex;gap:8px;align-items:flex-end}
+.ask-input-row textarea{
+  flex:1;font:inherit;font-size:14px;line-height:1.5;padding:8px 10px;
+  border:1px solid var(--line);border-radius:10px;background:#fffefb;
+  color:var(--ink);resize:vertical;min-height:48px;
+}
+.ask-input-row textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+
+.translation-pop{
+  position:fixed;z-index:60;width:320px;background:#fffdf8;
+  border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.16);padding:10px 12px;
+  font-size:13px;line-height:1.55;color:var(--ink);
+}
+.trans-word{font-size:16px;font-weight:700;color:var(--accent)}
+.trans-phonetic{font-size:12px;color:var(--muted);margin:1px 0 4px}
+.trans-result{font-size:15px;font-weight:600;margin:4px 0}
+.trans-meaning{color:var(--muted);margin:4px 0}
+.trans-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.trans-actions button{font-size:12px;padding:3px 10px}
+.sel-translate{color:#5b46b8;border-color:#5b46b8}
+.sel-ask{color:#0b5f59;border-color:var(--accent);background:var(--accent-soft)}
+
+/* ---- AI 助手：右下角常驻入口 + 右侧抽屉 ---- */
+.ai-fab{
+  position:fixed;right:22px;bottom:96px;z-index:60;
+  width:58px;height:58px;border-radius:50%;padding:0;
+  font-size:15px;font-weight:800;letter-spacing:.02em;
+  color:#fff;background:linear-gradient(145deg,#0f766e,#0b5f59);
+  border:1px solid #0b5f59;box-shadow:0 10px 26px rgba(15,118,110,.32);
+  touch-action:none;cursor:grab;user-select:none;
+}
+.ai-fab:active{cursor:grabbing}
+.ai-fab:hover{background:#0b5f59;border-color:#0b5f59}
+.ai-fab.on{background:#5b46b8;border-color:#5b46b8;box-shadow:0 10px 26px rgba(91,70,184,.30)}
+
+.ai-dock{
+  position:fixed;right:16px;top:16px;bottom:96px;z-index:70;
+  width:min(430px,calc(100vw - 32px));
+  display:flex;flex-direction:column;gap:8px;
+  background:var(--card);border:1px solid var(--line);border-radius:18px;
+  box-shadow:0 18px 50px rgba(0,0,0,.20);padding:12px 14px;
+}
+.ai-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ai-title{display:flex;align-items:center;gap:8px;min-width:0}
+.ai-title b{font-size:15px}
+.ai-model{
+  font-size:10.5px;color:var(--accent);background:var(--accent-soft);
+  border:1px solid #9fd4cc;border-radius:999px;padding:1px 7px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.ai-head-actions{display:flex;gap:6px;flex:none}
+.ai-head-actions button{font-size:12px;padding:3px 9px}
+.ai-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);padding-bottom:7px}
+.ai-tabs button{
+  border:0;background:transparent;border-radius:8px;padding:4px 12px;
+  font-size:13px;color:var(--muted);position:relative;
+}
+.ai-tabs button.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.ai-tabs .dot{
+  display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--warn);margin-left:5px;vertical-align:middle;
+}
+.ai-view{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
+.ai-view.hidden{display:none !important}
+.ai-messages{
+  flex:1;min-height:0;max-height:none;overflow:auto;margin:0;
+  background:#fffefb;border:1px solid var(--line);border-radius:12px;padding:8px 10px;
+}
+.ai-welcome{font-size:13px;line-height:1.7;color:var(--ink);padding:6px 2px}
+.ai-welcome b{color:var(--accent)}
+.ai-welcome p{margin:6px 0}
+.ai-suggest{display:flex;flex-wrap:wrap;gap:6px;flex:none}
+.ai-suggest button{font-size:11.5px;padding:3px 9px;color:var(--accent);border-color:#9fd4cc;background:var(--accent-soft)}
+.ai-dock .ask-input-row{flex:none}
+.ai-dock .ask-input-row textarea{min-height:52px;max-height:150px}
+.ai-dock .ask-meta{font-size:10.5px}
+
+.ai-analysis-tools{display:flex;gap:6px;flex-wrap:wrap;flex:none}
+.ai-analysis-tools button{font-size:12px;padding:4px 10px}
+#askAnalysisView .analysis{border-left:0;padding:0;margin:0;background:transparent}
+#askAnalysisView{overflow:auto}
+#askAnalysisView #analysisPanel{flex:none}
+#analysisEmpty{font-size:12.5px;color:var(--muted);margin:4px 0}
+
+.ai-history-search{
+  width:100%;font:inherit;font-size:13px;color:var(--ink);background:#fffefb;
+  border:1px solid var(--line);border-radius:9px;padding:6px 10px;flex:none;
+}
+.ai-history-search:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.ai-history-list{flex:1;min-height:0;overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fffefb}
+.ai-history-item{
+  display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;
+  border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;
+  padding:9px 11px;cursor:pointer;font:inherit;color:var(--ink);
+}
+.ai-history-item:last-child{border-bottom:0}
+.ai-history-item:hover{background:var(--accent-soft)}
+.ai-history-item.on{background:var(--accent-soft)}
+.ai-history-item .t{font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.ai-history-item .m{font-size:11px;color:var(--muted)}
+.ai-history-list .status{padding:10px 12px;margin:0}
+
+@media (max-width:760px){
+  .ai-fab{right:14px;bottom:92px;width:52px;height:52px}
+  .ai-dock{right:8px;left:8px;top:8px;bottom:88px;width:auto}
+}

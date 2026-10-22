@@ -1,0 +1,55 @@
+{
+  "paper": "英语六级强化刷题卷一",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "拼装卷。经逐单元比对，7 个单元均取自 2021 年 12 月六级听力第 1 套（其中 Recording 3 为同一讲座的后半段）。文本以线上原文为线索、以音频为准。",
+  "sources": [
+    {
+      "unit": "Conversation 1",
+      "url": "https://m.kekenet.com/cet6/202202/652837.shtml"
+    },
+    {
+      "unit": "Conversation 2",
+      "url": "https://m.kekenet.com/cet6/202202/652839.shtml"
+    },
+    {
+      "unit": "Passage 1",
+      "url": "https://m.kekenet.com/cet6/202202/652841.shtml"
+    },
+    {
+      "unit": "Passage 2",
+      "url": "https://m.kekenet.com/cet6/202202/652843.shtml"
+    },
+    {
+      "unit": "Recording 1",
+      "url": "https://m.kekenet.com/cet6/202202/652844.shtml"
+    },
+    {
+      "unit": "Recording 2",
+      "url": "https://m.kekenet.com/cet6/202202/652895.shtml"
+    },
+    {
+      "unit": "Recording 3",
+      "url": "https://m.kekenet.com/cet6/202202/652896.shtml"
+    }
+  ],
+  "items": {
+    "Conversation 1": {
+      "10": "To make things worse, I managed to fall right in front of four girls from the ninth grade, so I was utterly humiliated."
+    },
+    "Conversation 2": {
+      "4": "I'm so excited to talk about my latest book, which was published last month."
+    },
+    "Passage 1": {
+      "4": "Flashback to 1915, when a bottle of Coca-Cola cost just a nickel.",
+      "9": "Workers at the Root Glass Company got the request and began flipping through the encyclopedia at the local library, landing on cocoa seed.",
+      "14": "Americans mostly consume Coke out of aluminum or plastic today, but the glass bottle remains a symbol of America that's readily recognized around the world."
+    },
+    "Recording 2": {
+      "8": "Rather than getting material things, children need parents' devoted attention."
+    },
+    "Recording 1": {
+      "25": "The vacationer never has any reason to explore the island."
+    }
+  }
+}

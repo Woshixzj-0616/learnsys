@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends
 
@@ -16,6 +17,66 @@ router = APIRouter()
 @router.get("/api/config")
 def get_config(_=Depends(require_token)):
     return load_config().public()
+
+
+def _today_actions(conn, day: str, due: list) -> list[dict]:
+    """今日页最多三张行动卡：到期复习 / 昨日断点或资料 / 薄弱点去测验。
+
+    口径只在这里拼；前端只负责显示，不再各自判断「今天最该做什么」。
+    """
+    actions: list[dict] = []
+    if due:
+        actions.append({
+            "kind": "due",
+            "title": f"{len(due)} 条到期",
+            "detail": "错题和生词按记忆曲线排到了今天",
+            "href": "#/wrongbook",
+            "label": "去复习",
+        })
+
+    yesterday = (datetime.date.fromisoformat(day)
+                 - datetime.timedelta(days=1)).isoformat()
+    row = conn.execute(
+        "SELECT paper_title, section, item, COUNT(*), MAX(paper_id) FROM cet6_events "
+        "WHERE ts LIKE ? GROUP BY paper_title, section, item "
+        "ORDER BY COUNT(*) DESC, MAX(ts) DESC LIMIT 1", (f"{yesterday}%",)).fetchone()
+    if row:
+        paper, section, item, count, paper_id = row
+        detail = " · ".join(part for part in (paper or "六级", section or "", item or "") if part)
+        actions.append({
+            "kind": "cet6",
+            "title": "接着昨天的听力断点",
+            "detail": f"{detail}（{int(count or 0)} 个断点）",
+            "href": "#/cet6?paper=" + quote(str(paper_id or paper or ""), safe=""),
+            "label": "回到断点",
+        })
+    else:
+        row = conn.execute(
+            "SELECT title, COUNT(*) FROM events WHERE module='materials' AND ts LIKE ? "
+            "GROUP BY title ORDER BY COUNT(*) DESC, MAX(id) DESC LIMIT 1",
+            (f"{yesterday}%",)).fetchone()
+        if row:
+            actions.append({
+                "kind": "materials",
+                "title": "接着看昨天的资料",
+                "detail": f"{row[0] or '资料'}（昨天看过 {int(row[1] or 0)} 次）",
+                "href": "#/materials",
+                "label": "打开资料",
+            })
+
+    row = conn.execute(
+        "SELECT question FROM wrong_items WHERE mastered=0 "
+        "ORDER BY ts DESC, id DESC LIMIT 1").fetchone()
+    if row:
+        question = " ".join(str(row[0] or "").split())[:40]
+        actions.append({
+            "kind": "weak",
+            "title": "薄弱点练一道",
+            "detail": f"最近错的：{question}",
+            "href": "#/quiz",
+            "label": "去测验",
+        })
+    return actions[:3]
 
 
 @router.get("/api/today")
@@ -50,6 +111,7 @@ def today(_=Depends(require_token)):
             "ask_count": ask_count,
             "transcripts": {"count": int(transcript_count or 0), "chars": int(chars or 0)},
             "due_reviews": len(due),
+            "actions": _today_actions(conn, day, due),
             "cet6": [
                 {"paper": row[0] or "", "section": row[1] or "", "item": row[2] or "",
                  "count": int(row[3] or 0), "last": row[4] or "",

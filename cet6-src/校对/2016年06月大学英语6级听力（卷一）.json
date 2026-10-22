@@ -1,0 +1,22 @@
+{
+  "paper": "2016年06月大学英语6级听力（卷一）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按懒笔记 2016 年 6 月第 1 套逐段原文核对，再用 base.en 回听；音频与线上冲突时以音频为准。只改人名、明确错词和与音频不符的转写。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/sections/listening/2016-06-1/"
+  ],
+  "items": {
+    "Recording 1": {
+      "5": "U.N. weather expert Geoffrey Love says that is the bad news."
+    },
+    "Recording 2": {
+      "4": "It was in a free fall and it was a very scary period, economist Martin Neil Baily said.",
+      "6": "Although he says the worst is over, Baily says the banking crisis is not.",
+      "7": "More than 130 U.S. banks failed in 2009. He predicts high failure rates for smaller regional banks in 2010 as commercial real estate loans come due.",
+      "13": "Lending is the coal to our engine, so we want to make more loans.",
+      "15": "While some economists predict continued recovery in the future, Baily says the only certainty is that banks are unlikely to make the same mistakes twice.",
+      "18": "If the economy starts to shrink again, Baily says it would make a strong case for a second stimulus."
+    }
+  }
+}

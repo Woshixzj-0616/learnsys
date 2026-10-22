@@ -21,6 +21,7 @@ from learnsys import config as app_config
 from learnsys import store
 from learnsys.ask import study
 from learnsys.materials import search as material_search
+from learnsys.services import materials_import
 from learnsys.server.security import require_token
 
 router = APIRouter()
@@ -33,6 +34,14 @@ DOC_SUFFIX = {".pdf", ".docx", ".pptx", ".txt", ".md"}
 class NoteIn(BaseModel):
     title: str = Field(default="新的笔记", max_length=200)
     body: str = Field(default="", max_length=MAX_TEXT_CHARS)
+    course: str = Field(default="", max_length=80)
+    tags: str = Field(default="", max_length=200)
+
+
+class ImportDirIn(BaseModel):
+    path: str = Field(max_length=500)
+    source: str = Field(default="courses", max_length=20)
+    recursive: bool = True
     course: str = Field(default="", max_length=80)
     tags: str = Field(default="", max_length=200)
 
@@ -138,6 +147,17 @@ async def upload_material(request: Request, name: str = "", course: str = "",
         raise
     finally:
         conn.close()
+
+
+@router.post("/api/materials/import-dir")
+def import_materials_dir(req: ImportDirIn, _=Depends(require_token)):
+    """批量导入一个目录：设置里的白名单，按 SHA256 去重；不移动原文件。"""
+    try:
+        return materials_import.import_dir(
+            req.path, source=req.source, recursive=req.recursive,
+            course=req.course.strip(), tags=req.tags.strip())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/api/materials/note")

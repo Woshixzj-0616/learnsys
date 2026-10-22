@@ -1,0 +1,72 @@
+/* 句子卡片：卡片骨架、mini 播放器、循环、A-B、笔记、断点、原文。 */
+.card{
+  background:var(--card);border:1px solid var(--line);border-left:5px solid #c9c2b4;
+  border-radius:var(--radius);padding:13px 15px;margin:10px 0;
+}
+.card.playing{border-left-color:var(--accent);box-shadow:0 0 0 2px #dff3ef}
+.card.done{background:#f3f8f4;border-color:#cfe3d3}
+.card.active{outline:2px solid var(--accent);outline-offset:2px}
+.card.follow{
+  border-left-color:var(--accent);
+  background:linear-gradient(90deg,var(--accent-soft),var(--card) 42%);
+  box-shadow:0 0 0 2px #dff3ef,0 6px 18px rgba(15,118,110,.10);
+}
+.card.hit{animation:hitflash 2s ease-out}
+@keyframes hitflash{0%{background:var(--accent-soft)}100%{background:transparent}}
+.card-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.num{font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.time{font-size:12px;color:var(--accent);font-variant-numeric:tabular-nums}
+.badge{font-size:12px;color:var(--muted);margin-left:auto}
+.review{
+  font-size:11px;background:var(--warn-soft);color:var(--warn);
+  border:1px solid #f0d3a6;border-radius:999px;padding:1px 8px;
+}
+.time.manual{color:var(--warn)}
+.note{
+  width:100%;min-height:44px;margin:7px 0 2px;padding:7px 9px;
+  border:1px solid var(--line);border-radius:9px;background:#fffefb;
+  font:inherit;font-size:13px;color:var(--ink);resize:vertical;
+}
+.note:focus{outline:2px solid #9fd4cc;border-color:#9fd4cc}
+.mini{display:flex;align-items:center;gap:8px;margin:8px 0 2px}
+.mini-btn{
+  width:30px;height:30px;padding:0;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:12px;line-height:1;
+}
+.mini-btn.on{background:var(--accent-soft);border-color:#9fd4cc;color:#0b5f59}
+.mini-range{flex:1;min-width:80px;accent-color:var(--accent);height:4px;cursor:pointer}
+.mini-time{
+  font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;
+  min-width:76px;text-align:right;
+}
+
+/* 每句循环与连播 */
+.card-loop{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin:4px 0 2px}
+.card-loop label{display:flex;gap:4px;align-items:center;cursor:pointer}
+.card-loop select{font:inherit;font-size:12px;padding:2px 6px;border:1px solid var(--line);border-radius:8px;background:#fffefb;color:var(--ink)}
+.loop-stat{margin-left:auto;color:var(--warn);font-variant-numeric:tabular-nums}
+.loop-stat:empty{display:none}
+
+/* 每句 A-B 区间 */
+.card-ab{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted);margin:2px 0}
+.card-ab button{font-size:12px;padding:2px 9px}
+.ab-badge{margin-left:auto;font-size:11px;color:var(--accent);white-space:nowrap}
+.ab-badge:empty{display:none}
+.ab-badge.invalid{color:var(--warn)}
+
+/* 原文、操作、断点、空态 */
+.en{font-size:16px;line-height:1.75;margin:9px 0}
+.en.hidden{display:none}
+/* 逐句译文：灰色小字，跟随原文显示/隐藏 */
+.zh{
+  font-size:13px;line-height:1.7;color:var(--muted);background:#f6f2e9;
+  border-left:3px solid #d8cdb8;border-radius:6px;padding:5px 9px;margin:-3px 0 9px;
+}
+.zh.hidden{display:none}
+.zh:empty{display:none}
+.controls{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 4px}
+.errors{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted);margin-top:6px}
+.errors button{font-size:12px;padding:3px 9px}
+.errors button.on{background:var(--danger-soft);border-color:#f3b6c6;color:var(--danger)}
+.empty{color:var(--muted);text-align:center;padding:26px 0;display:none}

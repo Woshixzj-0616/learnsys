@@ -1,0 +1,36 @@
+{
+  "paper": "2022年12月大学英语6级听力（卷二）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按可可英语 2022 年 12 月六级听力（第1套）逐段校对；文本以线上原文为线索、以音频为准。Recording 2 开头两句音频本身被截掉，仅修正第 1 句并回退起点。",
+  "sources": [
+    "https://m.kekenet.com/cet6/202302/667830.shtml",
+    "https://m.kekenet.com/cet6/202302/667832.shtml",
+    "https://m.kekenet.com/cet6/202302/667833.shtml",
+    "https://m.kekenet.com/cet6/202302/667834.shtml",
+    "https://m.kekenet.com/cet6/202302/667835.shtml",
+    "https://m.kekenet.com/cet6/202302/667836.shtml",
+    "https://m.kekenet.com/cet6/202302/667837.shtml"
+  ],
+  "items": {
+    "Conversation 1": {
+      "15": "Once we make the right things our priority, our goals will change, and so will our financial behavior."
+    },
+    "Conversation 2": {
+      "14": "Obviously, I can't disclose the exact amount he paid, but it was substantial."
+    },
+    "Passage 1": {
+      "13": "It's important to cultivate forgiveness by developing compassion for the offender."
+    },
+    "Recording 1": {
+      "3": "Since national parks are wildlife sanctuaries where no disturbance of the native animals is allowed, years of protection have served to break down the wild bear's fear of humans."
+    },
+    "Recording 2": {
+      "1": {
+        "en": "But letting the opinions of another person determine what our opinions will be is dangerous.",
+        "start": 1118.9,
+        "end": 1124.18
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "paper": "2020年12月大学英语6级听力（卷二）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按可可英语 2020 年 12 月六级听力第 2 套原文逐篇校对；文本以线上原文为线索、以音频为准。拼写风格差异不改。",
+  "sources": [
+    "https://m.kekenet.com/cet6/202303/668347.shtml",
+    "https://m.kekenet.com/cet6/202303/668348.shtml",
+    "https://m.kekenet.com/cet6/202303/668346.shtml",
+    "https://m.kekenet.com/cet6/202303/668353.shtml",
+    "https://m.kekenet.com/cet6/202303/668354.shtml",
+    "https://m.kekenet.com/cet6/202303/668355.shtml",
+    "https://m.kekenet.com/cet6/202303/668356.shtml"
+  ],
+  "items": {
+    "Conversation 1": {
+      "4": "My brother introduced it to me last year.",
+      "15": "My brother also introduced me to some videos of someone that streams their game online."
+    },
+    "Conversation 2": {
+      "10": "Still, having a manager nearby at least indicates there's an opportunity they'll be decent enough to look out for you when your energy and focus begin to deplete."
+    },
+    "Passage 1": {
+      "20": "Better decisions, this could bolster sales."
+    },
+    "Passage 2": {
+      "6": "Researchers conducted a review of all studies relating to air conditioning and productivity."
+    }
+  }
+}

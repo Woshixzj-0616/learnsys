@@ -1,0 +1,23 @@
+{
+  "paper": "2024年06月大学英语6级真题听力（卷二）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "逐段按可可英语线上原文核对，再以音频重转写确认；只改明确的漏词/错词，不动句子数量与题目。",
+  "sources": [
+    "https://m.kekenet.com/cet6/202408/692823.shtml",
+    "https://m.kekenet.com/cet6/202408/692824.shtml",
+    "https://m.kekenet.com/cet6/202408/692825.shtml",
+    "https://m.kekenet.com/cet6/202408/692826.shtml",
+    "https://m.kekenet.com/cet6/202408/692827.shtml",
+    "https://m.kekenet.com/cet6/202408/692828.shtml",
+    "https://m.kekenet.com/cet6/202408/692829.shtml"
+  ],
+  "items": {
+    "Recording 2": {
+      "17": "In fact, despite the demographic shift, retail spending on the holiday appears to be rising."
+    },
+    "Recording 3": {
+      "6": "In fact, natural ventilation is far better at cleaning the air."
+    }
+  }
+}

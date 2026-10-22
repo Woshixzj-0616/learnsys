@@ -1,0 +1,15 @@
+{
+  "paper": "2021年12月大学英语6级听力（卷二）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按懒笔记 2021 年 12 月第 2 套逐段原文核对，再用 base.en 回听；音频与线上冲突时以音频为准。只改明确漏词和重复词；英式/美式拼写和数字写法未动。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/sections/listening/2021-12-2/"
+  ],
+  "items": {
+    "Passage 2": {
+      "2": "Children who spend more time watching educational programs increase their emotional aggression toward other children.",
+      "17": "They should explain how certain types of behavior were not appropriate."
+    }
+  }
+}

@@ -217,9 +217,10 @@ def validate_analysis(obj: dict) -> dict:
 
 
 def _analysis_cfg():
-    """分析固定用快模型（deepseek-flash）；pro 留给需要深度推理的问答。"""
+    """分析默认用快模型；设置里 agent.routes.analyze 可以显式换模型。"""
     cfg = load_config()
-    return dataclasses.replace(cfg, model=cfg.fast_model or cfg.model)
+    return dataclasses.replace(
+        cfg, model=cfg.model_for("analyze") or cfg.fast_model or cfg.model)
 
 
 def _usage(usage: dict) -> tuple[int, int]:

@@ -47,7 +47,7 @@ export function sendMessage() {
   dom.input.style.height = "auto";
   state.image = null;
   state.doc = null;
-  state.material = null;
+  if (!state.materialPinned) state.material = null;   // 固定后连续几轮都带同一份资料
   renderAttachments();
   dom.status.textContent = "";
   scrollBottom(true);

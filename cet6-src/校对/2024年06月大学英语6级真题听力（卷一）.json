@@ -1,0 +1,52 @@
+{
+  "paper": "2024年06月大学英语6级真题听力（卷一）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "逐段按可可英语/懒笔记线上原文核对，再以音频重转写确认；只改明确的漏词、错词、重复和切句错误，不动句子数量与题目。",
+  "sources": [
+    "https://m.kekenet.com/cet6/202407/692815.shtml",
+    "https://m.kekenet.com/cet6/202407/692816.shtml",
+    "https://m.kekenet.com/cet6/202407/692817.shtml",
+    "https://english-exam.lazynote.cn/cet6/articles/2024-06-1/part2-section-b-2/",
+    "https://m.kekenet.com/cet6/202408/692820.shtml",
+    "https://m.kekenet.com/cet6/202408/692821.shtml",
+    "https://m.kekenet.com/cet6/202408/692822.shtml"
+  ],
+  "items": {
+    "Conversation 1": {
+      "17": {
+        "en": "The Middle East is a negligible market for us, but I still need to check this with a couple of departments.",
+        "end": 148.1
+      }
+    },
+    "Passage 2": {
+      "1": {
+        "en": "The most successful creative people know that constraints give their minds the impetus to leap higher.",
+        "start": 677.45
+      },
+      "7": "In a 2015 study, which examined how thinking about scarcity or abundance influences how creatively people use their resources, Ravi Mehta at the University of Illinois and Meng Zhu at Johns Hopkins University found that people simply have no incentive to use what's available to them in novel ways.",
+      "11": "Marissa Mayer, former Vice President for search products and user experience at Google, once wrote in a publication on Bloomberg, constraints shape and focus problems and provide clear challenges to overcome."
+    },
+    "Recording 1": {
+      "29": "They see conflicts as improving relationships by reducing tension between two people."
+    },
+    "Recording 2": {
+      "2": {
+        "en": "The genetic code of all 1.5 million known species of animals and plants living on Earth will be mapped to help save species from extinction and boost human health.",
+        "start": 1120.2,
+        "end": 1132.2
+      },
+      "13": "Sir Jim Smith, Director of Science at Wellcome said, try as I might I can't think of a more exciting, more relevant, more timely, or more internationally inspirational project."
+    },
+    "Recording 3": {
+      "13": {
+        "en": "Since our bodies are essentially made anew every few weeks, the material in them alone is clearly insufficient to explain the persistent thread of an identity.",
+        "end": 1492.1
+      },
+      "14": {
+        "en": "Professor Oliver claims that individualism is actually bad for society, and only by realizing we are part of a bigger entity can we solve pressing environmental and societal problems.",
+        "start": 1492.8
+      }
+    }
+  }
+}

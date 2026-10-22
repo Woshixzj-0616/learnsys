@@ -4,13 +4,13 @@
 
 ## 当前状态
 
-- 版本：**2.11.0**（已推送 `origin/v2` + tag `v2.11.0`；GitHub Release 未建）
+- 版本：**2.12.0**
 - 分支：`v2`
-- 最近阶段：**P16 四阶段完成 + 2.11.0 发布**
-- 下一步：GitHub Release 等负责人发话；或开始下一阶段
-- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 496 OK；
+- 最近阶段：**补齐方案欠账 + 六级源码入库 + golden set + 深度分析**
+- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 529 OK；
   前端 `node --test web/tests/context.test.mjs` → 6 通过
-- 发布说明：[2.11.0-发布说明](2.11.0-发布说明.md)
+- 发布说明：[2.12.0-发布说明](2.12.0-发布说明.md)
+- 上一版：[2.11.0-发布说明](2.11.0-发布说明.md)
 
 ## 架构
 
@@ -37,6 +37,7 @@
 
 ## 验收
 
+- [2.12.0 发布说明](2.12.0-发布说明.md)
 - [P16.4 真实任务 A/B 评测](P16.4-AB评测.md)
 - [P16.3 可观测性与成本](P16.3-验收记录.md)
 - [P16.2 写入与代码沙箱](P16.2-验收记录.md)
@@ -53,6 +54,8 @@
 ## 插件与发布
 
 - [插件开发规范](插件开发规范.md)
-- [MCP 接入](MCP接入.md)：Claude Code / Codex 的只读工具配置
+- [MCP 接入](MCP接入.md)：Claude Code / Codex 的只读工具配置（两个客户端都已注册）
 - `tools/release.py`：打 zip + SHA256
+- `tools/sync_cet6_src.py`：六级源码快照同步 / 漂移检查
+- `tools/golden_run.py`：golden set 重放与对比（`docs/golden/tasks.jsonl`）
 - `打包.cmd`：PyInstaller 打包

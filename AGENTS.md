@@ -15,7 +15,18 @@ cd "D:/Desktop/learnsys"
 .venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"
 ```
 
-当前基线：496 个测试全过。
+当前基线：529 个测试全过。
+
+```bash
+# 前端纯函数
+node --test web/tests/context.test.mjs
+
+# 体量门禁
+.venv/Scripts/python.exe tools/arch_report.py --check
+
+# golden set（需要 8765 正在运行、会消耗真实模型）
+.venv/Scripts/python.exe tools/golden_run.py --limit 5
+```
 
 ## 打包与发布
 
@@ -30,7 +41,8 @@ cd "D:/Desktop/learnsys"
 
 ## 六级精听工作台
 
-- 源码：`D:\cet6_tool\workbench_src\`（12 个 JS + 3 个 CSS + `shell.html`）
+- 源码：`D:\cet6_tool\workbench_src\`（18 个 JS + 3 个 CSS + `shell.html`）；仓库 `cet6-src/` 是文本快照
+- 同步 / 查漂移：`.venv/Scripts/python.exe tools/sync_cet6_src.py [--check]`（提交前跑）
 - 构建：`python D:\cet6_tool\build_workbench.py --check`
 - 部署：`python D:\cet6_tool\split_listening.py --refresh-index --workbench`
 - 产物：`D:\Desktop\六级精听\工作台\精听工作台.html`（不要手改）

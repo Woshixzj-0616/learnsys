@@ -4,7 +4,7 @@
 """
 from __future__ import annotations
 
-from learnsys.services import analysis, translate
+from learnsys.services import analysis, textops, translate
 
 
 class UnknownService(LookupError):
@@ -23,6 +23,12 @@ def _translate_items(payload: dict) -> dict:
         section=payload.get("section") or "", item=payload.get("item") or "")
 
 
+def _define(payload: dict) -> dict:
+    """查词 = 带语境和音标的单词翻译，复用同一份缓存。"""
+    return translate.translate(
+        payload["text"], kind="word", context=payload.get("context"))
+
+
 def _cet6_analyze(payload: dict) -> dict:
     return analysis.submit(payload, force=bool(payload.get("force")))
 
@@ -34,6 +40,29 @@ SERVICES: dict[str, dict] = {
         "params": ["text", "kind", "context"],
         "required": ["text"],
         "handler": _translate,
+    },
+    "define": {
+        "description": "查词：音标 + 释义 + 语境（复用翻译缓存）",
+        "mode": "sync",
+        "params": ["text", "context"],
+        "required": ["text"],
+        "handler": _define,
+    },
+    "explain": {
+        "description": "用中文解释一句话或一个概念",
+        "mode": "sync",
+        "params": ["text", "context"],
+        "required": ["text"],
+        "handler": lambda payload: textops.complete(
+            "explain", payload["text"], payload.get("context") or ""),
+    },
+    "summarize": {
+        "description": "把一段内容压缩成中文要点",
+        "mode": "sync",
+        "params": ["text", "context"],
+        "required": ["text"],
+        "handler": lambda payload: textops.complete(
+            "summarize", payload["text"], payload.get("context") or ""),
     },
     "translate_items": {
         "description": "一段的逐句翻译（12 句分块 + 缓存）",

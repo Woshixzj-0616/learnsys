@@ -1,0 +1,47 @@
+{
+  "paper": "英语六级强化刷题卷二",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "拼装卷。经逐单元比对，7 个单元均取自 2021 年 12 月六级听力第 2 套。文本以线上原文为线索、以音频为准；线上明显笔误（sills、wild、simple 等）未采纳。",
+  "sources": [
+    {
+      "unit": "Conversation 1",
+      "url": "https://m.kekenet.com/cet6/202202/652898.shtml"
+    },
+    {
+      "unit": "Conversation 2",
+      "url": "https://m.kekenet.com/cet6/202202/652899.shtml"
+    },
+    {
+      "unit": "Passage 1",
+      "url": "https://m.kekenet.com/cet6/202202/652901.shtml"
+    },
+    {
+      "unit": "Passage 2",
+      "url": "https://m.kekenet.com/cet6/202202/652900.shtml"
+    },
+    {
+      "unit": "Recording 1",
+      "url": "https://m.kekenet.com/cet6/202202/652916.shtml"
+    },
+    {
+      "unit": "Recording 2",
+      "url": "https://m.kekenet.com/cet6/202202/652917.shtml"
+    },
+    {
+      "unit": "Recording 3",
+      "url": "https://m.kekenet.com/cet6/202202/652918.shtml"
+    }
+  ],
+  "items": {
+    "Recording 1": {
+      "1": "While it has long been a practice in Asian countries, many people in Western countries have yet to embrace the no-shoes-in-house rule.",
+      "14": "These can dent and scratch your floor and if you live in an apartment building, removing your noisy shoes is the polite thing to do out of consideration for your downstairs neighbors.",
+      "18": "And if people aren't yet convinced by my arguments, I can give one final reason: the dust and toxic chemicals you bring into your house via your shoes can deteriorate the air quality in your home.",
+      "21": "By kicking off your shoes before you enter the home, you are denying entry to these harmful chemicals."
+    },
+    "Passage 2": {
+      "7": "This is to teach children a lesson at the end of the programme."
+    }
+  }
+}

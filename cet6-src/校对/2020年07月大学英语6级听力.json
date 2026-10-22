@@ -1,0 +1,35 @@
+{
+  "paper": "2020年07月大学英语6级听力",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按可可英语 2020 年 7 月六级听力原文分篇校对；文本以线上原文为线索、以音频为准。拼写风格差异不改。",
+  "sources": [
+    "https://m.kekenet.com/cet6/202009/619138.shtml",
+    "https://m.kekenet.com/cet6/202009/619139.shtml",
+    "https://m.kekenet.com/cet6/202009/619140.shtml",
+    "https://m.kekenet.com/cet6/202009/619141.shtml",
+    "https://m.kekenet.com/cet6/202009/619142.shtml",
+    "https://m.kekenet.com/cet6/202009/619143.shtml",
+    "https://m.kekenet.com/cet6/202009/619144.shtml"
+  ],
+  "items": {
+    "Passage 1": {
+      "1": "Too many people view their jobs as a five-day prison from which they are paroled every Friday, says Joel Goodman, founder of the Humor Project, a humor consulting group in Saratoga Springs, New York.",
+      "3": "According to Howard Pollio, professor of psychology at the University of Tennessee, Knoxville, an office with humor breaks is an office with satisfied and productive employees.",
+      "4": "Pollio conducted a study that proved humor can help workers excel at routine production tasks."
+    },
+    "Recording 1": {
+      "2": "Asked to consider the ingredients of close friendship, women rated these qualities above all others.",
+      "3": "Men assigned a lower priority to them in favor of similarity in interests, selected by 77% of men, and responsiveness in a crisis, chosen by 61% of male respondents."
+    },
+    "Recording 2": {
+      "8": "Rounded pieces of fossil bone have been found here.",
+      "22": "The early travellers on the Missouri River reported that shores and bars were often lined with the decaying bodies of buffalo that had died during spring floods."
+    },
+    "Recording 3": {
+      "5": "This standard American style has been forced on every ethnic group, although there are many groups for whom the ideal is not practical.",
+      "10": "They were astonished to hear that.",
+      "20": "Young people are being deprived of the thing they need most, perspective, to know why their parents behave so peculiarly and why their grandparents say the things they do."
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "paper": "2025年12月大学英语6级真题（卷二）听力",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按懒笔记 2025 年 12 月第 2 套听力原文逐段校对；文本以线上原文为线索、以音频为准。只改明确的漏词/多词。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/sections/listening/2025-12-2/"
+  ],
+  "items": {
+    "Conversation 1": {
+      "13": "However, don't you think six bucks for a slice of apple crumble is beyond most students' budgets?"
+    },
+    "Conversation 2": {
+      "22": "They must feel the need to stay working at a company whose values align with their own."
+    }
+  }
+}

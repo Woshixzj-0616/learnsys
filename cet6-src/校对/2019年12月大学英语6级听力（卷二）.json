@@ -1,0 +1,25 @@
+{
+  "paper": "2019年12月大学英语6级听力（卷二）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按懒笔记（lazynote）对应套数的逐段听力原文校对；文本以线上原文为线索，有歧义处用 base.en 重听音频，音频优先。只改明确错误，不动句子数量、题目和 Section 结构。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/sections/listening/2019-12-2/"
+  ],
+  "items": {
+    "Conversation 1": {
+      "33": {
+        "en": "As the great trumpet player, Louis Armstrong said, if you've got to ask, you'll never know.",
+        "start": 160.86,
+        "end": 166.18
+      }
+    },
+    "Recording 2": {
+      "11": {
+        "en": "It's time in which we are directed by the needs and desires of others, and denied the right to make our own choices.",
+        "start": 1255.96,
+        "end": 1262.84
+      }
+    }
+  }
+}

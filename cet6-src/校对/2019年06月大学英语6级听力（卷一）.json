@@ -1,0 +1,17 @@
+{
+  "paper": "2019年06月大学英语6级听力（卷一）",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按懒笔记（lazynote）对应套数的逐段听力原文校对；文本以线上原文为线索，有歧义处用 base.en 重听音频，音频优先。只改明确错误，不动句子数量、题目和 Section 结构。",
+  "sources": [
+    "https://english-exam.lazynote.cn/cet6/sections/listening/2019-06-1/"
+  ],
+  "items": {
+    "Recording 1": {
+      "10": "Smart basketball players or skilled musicians need to pay close attention to the demands of high performance, to the challenges to be overcome."
+    },
+    "Recording 3": {
+      "4": "And meanwhile, they mostly lost their coat of fur."
+    }
+  }
+}

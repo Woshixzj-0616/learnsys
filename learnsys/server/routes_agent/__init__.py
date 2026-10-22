@@ -9,7 +9,7 @@ from fastapi import APIRouter
 
 from learnsys import agent
 
-from . import chat, conversations, runs
+from . import chat, conversations, deep, runs
 from .chat import ChatRequest, ConfirmRequest, StopRequest
 from .common import _clip, _load_history, _sse, _trace_event
 from .state import (_ACTIVE, _ACTIVE_LOCK, _CONFIRM, _CONFIRM_LOCK, _TRACE_KINDS,
@@ -17,6 +17,7 @@ from .state import (_ACTIVE, _ACTIVE_LOCK, _CONFIRM, _CONFIRM_LOCK, _TRACE_KINDS
 
 router = APIRouter()
 router.include_router(chat.router)
+router.include_router(deep.router)
 router.include_router(runs.router)
 router.include_router(conversations.router)
 

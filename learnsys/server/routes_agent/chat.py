@@ -37,6 +37,7 @@ class ChatRequest(BaseModel):
     internal: bool = False       # 插件内部提示词：保留会话上下文，但不记成一条「问答」
     surface: str = "ask"         # ask / cet6 / materials ...
     context_snapshot: dict | None = None   # 结构化上下文，<= 20KB
+    result_id: int = 0               # 引用已有结果资产（分析/翻译），不复制正文
 
 
 class StopRequest(BaseModel):
@@ -95,7 +96,8 @@ def chat(req: ChatRequest, _=Depends(require_token)):
             "material_id": material_id,
             "surface": req.surface,
             "context_snapshot": req.context_snapshot,
-        })
+            "result_id": req.result_id,
+        }, result_id=req.result_id)
     except Exception:
         conn.close()
         raise

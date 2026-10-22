@@ -57,6 +57,9 @@ SETTINGS_TEMPLATE = {
         "max_tokens": 8192,
         "thinking": False,
         "speed": "balanced",
+        "_routes": "按任务换模型（可选）。键：explain/guide/quiz/quick/translate/analyze/review；"
+                   "留空 = 全部走 speed 档。例：{\"translate\": \"deepseek-flash\"}",
+        "routes": {},
     },
     "_vision": "可选：看图用的 OpenAI 兼容视觉模型（如智谱 GLM-4V-Flash）。留空 = 退回 OCR，只读图中文字。",
     "vision": {
@@ -90,6 +93,12 @@ SETTINGS_TEMPLATE = {
     "_cet6_dir": "六级精听目录（可选模块；留空 = 自动找仓库旁边的「六级精听」）。"
                  "目录里要有 工作台\\精听工作台.html 和 试卷\\",
     "cet6_dir": "",
+    "_materials": "资料库批量导入：import_dirs 是允许扫描的目录列表（留空 = 不允许批量导入）；"
+                  "obsidian_dir 只用于手动「导入 Obsidian」，默认不自动扫。只读，不移动原文件。",
+    "materials": {
+        "import_dirs": [],
+        "obsidian_dir": "",
+    },
     "_daily_goal_xp": "每日学习点目标（默认 100）。问答 10 / 转写 5 / 六级断点 8 / 专注 1 分钟 1 / 收藏 3",
     "daily_goal_xp": 100,
     "_名字": "学习台左上角怎么称呼你（留空 = 不显示名字）",

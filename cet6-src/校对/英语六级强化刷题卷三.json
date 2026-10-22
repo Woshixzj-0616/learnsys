@@ -1,0 +1,56 @@
+{
+  "paper": "英语六级强化刷题卷三",
+  "checked_at": "2026-10-22",
+  "revision": 2,
+  "note": "按 2021 年 6 月六级听力第 2 套线上原文逐段校对；文本以线上原文为线索、以音频为准。只改文本和个别起点，不动句子切分结构和题目。",
+  "sources": [
+    "https://m.kekenet.com/cet6/202202/652740.shtml",
+    "https://m.kekenet.com/cet6/202202/652742.shtml",
+    "https://m.kekenet.com/cet6/202202/652743.shtml",
+    "https://m.kekenet.com/cet6/202202/652744.shtml",
+    "https://m.kekenet.com/cet6/202202/652746.shtml",
+    "https://m.kekenet.com/cet6/202202/652747.shtml",
+    "https://m.kekenet.com/cet6/202202/652749.shtml"
+  ],
+  "items": {
+    "Conversation 1": {
+      "4": {
+        "en": "From the way you described your last company, no wonder they had a problem with high staff turnover.",
+        "start": 69.42,
+        "end": 75.66
+      },
+      "8": "Issues often get ignored there until they build up and reach a crisis point."
+    },
+    "Conversation 2": {
+      "1": "How was your holiday?",
+      "25": "What you need to do is research: have a process, invest time exploring your options, and eliminate as many things as you can."
+    },
+    "Passage 1": {
+      "8": "The researchers concluded that there was an upper limit to the correlation between homework and achievement, suggesting that high school students shouldn't be doing more than two hours of homework a night, and the most valuable kind of homework for elementary level children was simply assigned free reading."
+    },
+    "Passage 2": {
+      "2": "At age 27, Goddard published his first book, in which he hypothesized that a rocket launched from Earth could reach the Moon."
+    },
+    "Recording 1": {
+      "2": "There's instability, unclear responsibilities and the need to be a master of all trades.",
+      "9": "What becomes set in the firm's culture is a contagious collection of affirmative and positive emotions, which are usually shared among the team.",
+      "10": "Science has already done a good job of proving the results that follow.",
+      "12": "But what is yet to be demonstrated is whether the founder's passion leads to increased team performance.",
+      "20": "Likewise, the second, the passion for founding the venture doesn't necessarily translate into great success.",
+      "21": "The solution to great team performance stems from a willingness to recruit others who could direct their passion towards the third phase of entrepreneurialism: developing the business."
+    },
+    "Recording 2": {
+      "9": "Researchers also know, to an extent, what causes aging.",
+      "17": "In the opinion of some of the world's best scientific minds on the subject, part of the reason we don't yet have any answer is because many researchers are looking in the wrong direction.",
+      "20": "They point to when the diseases of childhood were eliminated, but this did not provide any insight into childhood development.",
+      "23": "But while there is money available to be spent on it, the search to understand the secrets of aging will be ongoing."
+    },
+    "Recording 3": {
+      "9": "But according to recent research conducted in Australia, it looks like it's not the employees' fault but the managers'.",
+      "12": "At other times, they may disagree with the spirit of the procedure, the effort demanded, the time consumed, the lack of potential effectiveness. And every now and then, they just don't want to, maybe deliberately or out of stubbornness.",
+      "15": "They asked the workers a range of procedure-related questions such as whether they found the procedures useful, how confident they felt in their job, how comfortable they were to speak up in the workplace and how closely they followed any new procedures set by their managers.",
+      "16": "They were also asked to rate the extent to which they perceived their supervisors to be helpful.",
+      "17": "That last statement was the most instructive because, as the researchers found, there was a remarkably strong correlation between how helpful supervisors were perceived to be and how likely their employees were to follow their directives."
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "paper": "2020年09月大学英语6级听力",
+  "checked_at": "2026-10-22",
+  "revision": 1,
+  "note": "按可可英语 2020 年 9 月六级听力原文分篇校对；文本以线上原文为线索、以音频为准。Recording 1 第 16 句原切分过短，按音频重切并把漏掉的整句补回。",
+  "sources": [
+    "https://m.kekenet.com/cet6/202009/618316.shtml",
+    "https://m.kekenet.com/cet6/202009/618519.shtml",
+    "https://m.kekenet.com/cet6/202009/618523.shtml",
+    "https://m.kekenet.com/cet6/202010/618526.shtml",
+    "https://m.kekenet.com/cet6/202010/618528.shtml",
+    "https://m.kekenet.com/cet6/202010/618710.shtml",
+    "https://m.kekenet.com/cet6/202010/618711.shtml"
+  ],
+  "items": {
+    "Conversation 1": {
+      "18": "Any scientific breakthroughs that you see on the near horizon, a significant discovery or invention we can expect soon?"
+    },
+    "Passage 1": {
+      "8": "Anything found there will be totally alien to what's on the surface of the Earth, says Siegert.",
+      "9": "Scientists are trying to find a way to drill into the ice and draw water samples without causing contamination."
+    },
+    "Passage 2": {
+      "9": "To reach their homeland he must drive two and a half days from Houston, Texas."
+    },
+    "Recording 1": {
+      "15": {
+        "en": "In fact, when we look at the word radical in a historical context, nearly every figure we now hold up as a hero was considered a radical in his or her time.",
+        "start": 972.09,
+        "end": 984.8
+      },
+      "16": {
+        "en": "Radicals are people who affect change. They are the people about whom history is written.",
+        "start": 985.0,
+        "end": 990.7
+      },
+      "19": "Even the founders of our country, in their fight to win independence from England, were radicals."
+    },
+    "Recording 2": {
+      "6": "Fred takes his ten minute coffee break, but the other workers take a half an hour."
+    }
+  }
+}
