@@ -1,0 +1,142 @@
+"""今日页与配置：一天的学习概况、问答、六级断点。"""
+from __future__ import annotations
+
+import datetime
+
+from fastapi import APIRouter, Depends
+
+from learnsys import store
+from learnsys.agent.config import load_config
+from learnsys.server.security import require_token
+from .common import _ask_dict, _conn
+
+router = APIRouter()
+
+
+@router.get("/api/config")
+def get_config(_=Depends(require_token)):
+    return load_config().public()
+
+
+@router.get("/api/today")
+def today(_=Depends(require_token)):
+    conn = _conn()
+    try:
+        day = datetime.date.today().isoformat()
+        focus = store.focus_stats(conn, day=day)
+        asks = store.recent_asks(conn, limit=10, day=day, with_conversation=True)
+        ask_count = int(conn.execute(
+            "SELECT COUNT(*) FROM asks WHERE ts LIKE ?", (f"{day}%",)).fetchone()[0] or 0)
+        transcript_count, chars = conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(LENGTH(text)), 0) FROM transcripts "
+            "WHERE ts_start LIKE ?", (f"{day}%",)).fetchone()
+        due = store.wrong_due_items(conn, datetime.date.today())
+        cet6 = []
+        try:
+            cet6 = conn.execute(
+                "SELECT paper_title, section, item, COUNT(*), MAX(ts), MAX(paper_id) "
+                "FROM cet6_events WHERE ts LIKE ? GROUP BY paper_title, section, item "
+                "ORDER BY MAX(ts) DESC LIMIT 10", (f"{day}%",)).fetchall()
+        except Exception:
+            pass
+        return {
+            "date": day,
+            "focus": {
+                "minutes": float(focus.get("分钟") or 0),
+                "switches": int(focus.get("切换") or 0),
+                "apps": [[name, round(float(mins), 1)] for name, mins in (focus.get("程序") or [])],
+            },
+            "asks": [_ask_dict(row) for row in asks],
+            "ask_count": ask_count,
+            "transcripts": {"count": int(transcript_count or 0), "chars": int(chars or 0)},
+            "due_reviews": len(due),
+            "cet6": [
+                {"paper": row[0] or "", "section": row[1] or "", "item": row[2] or "",
+                 "count": int(row[3] or 0), "last": row[4] or "",
+                 "paper_id": row[5] or row[0] or ""}
+                for row in cet6
+            ],
+        }
+    finally:
+        conn.close()
+
+
+@router.get("/api/study/today")
+def study_today(_=Depends(require_token)):
+    """复盘 / 测验插件共用的今日素材与提示词（拼题口径只在 study.py 一处）。"""
+    from learnsys.ask import study as study_mod
+    conn = _conn()
+    try:
+        day = datetime.date.today().isoformat()
+        sessions = conn.execute(
+            "SELECT id, started_at, COALESCE(ended_at, '') FROM sessions "
+            "WHERE started_at LIKE ? ORDER BY id", (f"{day}%",)).fetchall()
+        summary_lines = []
+        for sid, started, _ended in sessions:
+            info = store.session_summary(conn, sid)
+            line = (f"{str(started)[11:16]} 起记了 {info.get('分钟', 0)} 分钟，"
+                    f"切了 {info.get('切换', 0)} 次窗口")
+            seen: list[str] = []
+            for _ts, _process, title in store.session_windows(conn, sid):
+                text = (title or "").strip()
+                if text and text not in seen:
+                    seen.append(text)
+                if len(seen) >= 8:
+                    break
+            if seen:
+                line += "。看过：" + "；".join(seen)
+            summary_lines.append(line)
+        materials_count = 0
+        try:
+            for (title,) in conn.execute(
+                    "SELECT title FROM events WHERE module='netlab' AND ts LIKE ? "
+                    "ORDER BY id DESC LIMIT 10", (f"{day}%",)).fetchall():
+                summary_lines.append(f"完成网工训练：{title}")
+            for paper, section, item, count in conn.execute(
+                    "SELECT paper_title, section, item, COUNT(*) FROM cet6_events "
+                    "WHERE ts LIKE ? GROUP BY paper_title, section, item "
+                    "ORDER BY MAX(ts) DESC LIMIT 10", (f"{day}%",)).fetchall():
+                summary_lines.append(
+                    f"六级精听：{paper} / {section} / {item}，{count} 个断点")
+            labels = {"open": "打开原文", "ask": "问资料", "quiz": "资料出题"}
+            for kind, title, count in conn.execute(
+                    "SELECT kind, title, COUNT(*) FROM events WHERE module='materials' "
+                    "AND ts LIKE ? GROUP BY kind, title ORDER BY MAX(id) DESC LIMIT 10",
+                    (f"{day}%",)).fetchall():
+                materials_count += int(count or 0)
+                summary_lines.append(
+                    f"资料：{title}（{labels.get(kind, kind)} {int(count or 0)} 次）")
+        except Exception:
+            pass
+        transcripts = store.search_transcripts(
+            conn, ts_from=f"{day} 00:00:00", ts_to=f"{day} 23:59:59", limit=500)
+        digest = study_mod.transcripts_digest(transcripts)
+        asks = store.recent_asks(conn, limit=30, day=day)
+        asks_preview = [f"问：{(row[1] or '')[:60]}" for row in asks if (row[1] or "").strip()]
+        focus = store.focus_stats(conn, day=day)
+        trainings = int(conn.execute(
+            "SELECT COUNT(*) FROM events WHERE module='netlab' AND ts LIKE ?",
+            (f"{day}%",)).fetchone()[0] or 0)
+        breakpoints = int(conn.execute(
+            "SELECT COUNT(*) FROM cet6_events WHERE ts LIKE ?",
+            (f"{day}%",)).fetchone()[0] or 0)
+        return {
+            "date": day,
+            "summary_lines": summary_lines,
+            "transcript": digest[-4000:],
+            "transcript_chars": len(digest),
+            "asks": [_ask_dict(row) for row in asks],
+            "stats": {
+                "minutes": focus.get("分钟", 0),
+                "switches": focus.get("切换", 0),
+                "transcripts": len(transcripts),
+                "asks": len(asks),
+                "trainings": trainings,
+                "cet6": breakpoints,
+                "materials": materials_count,
+            },
+            "review_prompt": study_mod.build_review_question(summary_lines, digest),
+            "quiz_prompt": study_mod.build_quiz_question(summary_lines, asks_preview, digest),
+        }
+    finally:
+        conn.close()

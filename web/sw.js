@@ -3,7 +3,7 @@
  * 目标：PWA 能装、断网时至少能打开壳并提示「后台未连接」；
  * 数据永远走本地 FastAPI，不在这里缓存。
  */
-const CACHE = "learnsys-web-v11";
+const CACHE = "learnsys-web-v12";
 const CORE = [
   "/",
   "/manifest.webmanifest",
@@ -13,7 +13,14 @@ const CORE = [
   "/web/icons/apple-touch-icon.png",
   "/web/index.html",
   "/web/css/tokens.css",
-  "/web/css/app.css",
+  "/web/css/shell.css",
+  "/web/css/today.css",
+  "/web/css/ask.css",
+  "/web/css/settings.css",
+  "/web/css/study.css",
+  "/web/css/review.css",
+  "/web/css/materials.css",
+  "/web/css/vocab.css",
   "/web/js/shell.js",
   "/web/js/api.js",
   "/web/js/ui.js",
@@ -28,7 +35,14 @@ const CORE = [
   "/web/pages/wrongbook.html",
   "/web/pages/materials.html",
   "/web/js/pages/today.js",
-  "/web/js/pages/ask.js",
+  "/web/js/pages/ask/state.js",
+  "/web/js/pages/ask/attachments.js",
+  "/web/js/pages/ask/thread.js",
+  "/web/js/pages/ask/conversations.js",
+  "/web/js/pages/ask/materials.js",
+  "/web/js/pages/ask/stream.js",
+  "/web/js/pages/ask/composer.js",
+  "/web/js/pages/ask/index.js",
   "/web/js/pages/settings.js",
   "/web/js/pages/plugins.js",
   "/web/js/pages/netlab.js",

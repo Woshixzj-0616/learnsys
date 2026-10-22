@@ -1,0 +1,16 @@
+/* 学习工作台 · 生词本（同一插件族的样式放一个文件） */
+/* 生词本（P14.1）：列表 + FSRS 复习 */
+.vocab-toolbar { flex-wrap: wrap; gap: 8px; }
+.vocab-search { flex: 1; min-width: 180px; }
+.vocab-new { width: 150px; }
+.vocab-word { font-size: var(--fs-lg); font-weight: 650; }
+.vocab-phonetic { margin-left: 8px; color: var(--text-faint); font-size: var(--fs-sm); }
+.vocab-context { margin-top: 4px; color: var(--text-faint); font-size: var(--fs-xs); }
+.vocab-meaning { margin-top: 12px; width: 100%; }
+.vocab-review-card { padding: 24px; text-align: center; }
+.vocab-review-word { font-size: var(--fs-xl); font-weight: 700; }
+.vocab-review-context { margin-top: 12px; color: var(--text-dim); font-size: var(--fs-sm); line-height: 1.7; }
+.vocab-review-reveal { margin-top: 20px; }
+.vocab-review-answer { margin-top: 18px; }
+.vocab-review-meaning { font-size: var(--fs-lg); line-height: 1.6; }
+.vocab-review-actions { justify-content: center; }

@@ -22,6 +22,7 @@ from PySide6 import QtWidgets  # noqa: E402
 
 from learnsys import store  # noqa: E402
 from learnsys.ask import backup, bar, study  # noqa: E402
+from learnsys.ask.quickbar import streaming as quickbar_streaming  # noqa: E402
 
 
 def _app():
@@ -283,7 +284,7 @@ class TestBarStudyUI(unittest.TestCase):
             def wait(self, ms):
                 return True
 
-        with mock.patch.object(bar, "_AskWorker", FakeWorker):
+        with mock.patch.object(quickbar_streaming, "_AskWorker", FakeWorker):
             self.b.ask_with_context("完整题目" + "很长" * 100, "复盘：我刚才学了什么？", "")
         self.assertEqual(captured["question"].startswith("完整题目"), True)
         self.assertEqual(captured["context"], "")
@@ -314,7 +315,7 @@ class TestBarStudyUI(unittest.TestCase):
 
         self.b.extra_context_provider = lambda: "课堂转写片段"
         self.b.ask.setText("这题怎么解")
-        with mock.patch.object(bar, "_AskWorker", FakeWorker):
+        with mock.patch.object(quickbar_streaming, "_AskWorker", FakeWorker):
             self.b.submit()
         self.assertEqual(captured["context"], "课堂转写片段")
         self.assertEqual(captured["question"], "这题怎么解", "界面问题原样发，上下文另走一个参数")

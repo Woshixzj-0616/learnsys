@@ -38,6 +38,8 @@ cd "D:/Desktop/learnsys"
 
 ## 规矩
 
+- 改代码前先查 `docs/架构-前后端.md` 的「改动定位表」，按模块索引动手。
+- 单文件体量红线由 `tools/arch_report.py` 定义；提交前跑 `--check`（测试已接入）。
 - 一个功能一个落点；能一份就不做两份。
 - 改 schema 只做加法：`CREATE TABLE IF NOT EXISTS` / `ADD COLUMN` / `CREATE INDEX IF NOT EXISTS`。
 - 写接口必须 `require_token`；错误信息中文。

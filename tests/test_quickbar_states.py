@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PySide6 import QtCore, QtWidgets  # noqa: E402
 
+from learnsys import config  # noqa: E402
 from learnsys.ask import bar, overlay  # noqa: E402
 
 LONG_ANSWER = "这是一段足够长的答案，能把答案区撑出内部滚动条。" * 30
@@ -154,7 +155,7 @@ class TestFixedGeometry(AskBarFixture):
         self.assertEqual(self.b._answer_h, self.b._answer_cap)
         self.b._finish_resize()
         self.b._resize_answer(-10_000)
-        self.assertEqual(self.b._answer_h, min(bar.config.ASK_BAR_ANSWER_MIN_H, self.b._answer_cap))
+        self.assertEqual(self.b._answer_h, min(config.ASK_BAR_ANSWER_MIN_H, self.b._answer_cap))
 
     def test_patch_methods_are_gone(self):
         """事后补丁已删除：几何稳定后不再需要强制重画 / adjustSize 抢救。"""

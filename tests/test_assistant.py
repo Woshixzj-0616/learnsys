@@ -23,6 +23,7 @@ from PySide6 import QtCore, QtWidgets  # noqa: E402
 
 from learnsys import store  # noqa: E402
 from learnsys.ask import bar, liverec, ops, scheduler, study  # noqa: E402
+from learnsys.ask.quickbar import streaming as quickbar_streaming  # noqa: E402
 
 
 def _app():
@@ -275,7 +276,7 @@ class TestBarAssistant(unittest.TestCase):
         self.b.set_doc("D:/课件/第三章.pdf", "第三章讲队列的链式存储……")
         self.assertIn("第三章.pdf", self.b.ask.placeholderText())
         self.b.ask.setText("这章讲了什么")
-        with mock.patch.object(bar, "_AskWorker", FakeWorker):
+        with mock.patch.object(quickbar_streaming, "_AskWorker", FakeWorker):
             self.b.submit()
         self.assertIn("【参考文档：第三章.pdf】", captured["question"])
         self.assertIn("这章讲了什么", captured["question"])

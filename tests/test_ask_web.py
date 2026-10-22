@@ -6,6 +6,7 @@ from unittest import mock
 
 from learnsys.ask import app as app_mod
 from learnsys.ask import workbench
+from learnsys.ask.desktop import web_service
 
 
 class _Bar:
@@ -30,8 +31,8 @@ def _bare_app():
 class StartWebTest(unittest.TestCase):
     def test_reuse_healthy_server(self):
         obj = _bare_app()
-        with mock.patch.object(app_mod, "_server_healthy", return_value=True), \
-                mock.patch.object(app_mod, "_server_has_ui", return_value=True):
+        with mock.patch.object(web_service, "_server_healthy", return_value=True), \
+                mock.patch.object(web_service, "_server_has_ui", return_value=True):
             app_mod.AskApp.start_web(obj)
         self.assertEqual(obj._web_port, 8765)
         self.assertTrue(obj._web_external)
@@ -39,9 +40,9 @@ class StartWebTest(unittest.TestCase):
 
     def test_healthy_without_ui_is_not_reused(self):
         obj = _bare_app()
-        with mock.patch.object(app_mod, "_server_healthy",
+        with mock.patch.object(web_service, "_server_healthy",
                                side_effect=lambda port, timeout=0.5: port == 8765), \
-                mock.patch.object(app_mod, "_server_has_ui", return_value=False), \
+                mock.patch.object(web_service, "_server_has_ui", return_value=False), \
                 mock.patch("learnsys.server.app.port_free", return_value=True), \
                 mock.patch("learnsys.server.app.serve_in_thread", return_value="server"):
             app_mod.AskApp.start_web(obj)
@@ -54,7 +55,7 @@ class StartWebTest(unittest.TestCase):
         def free(port):
             return port == 8766
 
-        with mock.patch.object(app_mod, "_server_healthy", return_value=False), \
+        with mock.patch.object(web_service, "_server_healthy", return_value=False), \
                 mock.patch("learnsys.server.app.port_free", side_effect=free), \
                 mock.patch("learnsys.server.app.serve_in_thread", return_value="server") as serve:
             app_mod.AskApp.start_web(obj)
@@ -64,7 +65,7 @@ class StartWebTest(unittest.TestCase):
 
     def test_both_ports_busy_warns(self):
         obj = _bare_app()
-        with mock.patch.object(app_mod, "_server_healthy", return_value=False), \
+        with mock.patch.object(web_service, "_server_healthy", return_value=False), \
                 mock.patch("learnsys.server.app.port_free", return_value=False):
             app_mod.AskApp.start_web(obj)
         self.assertEqual(obj._web_port, 0)

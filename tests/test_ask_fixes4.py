@@ -91,7 +91,7 @@ class TestHistoryRowNullQuestion(unittest.TestCase):
         self.addCleanup(b.deleteLater)
         b.history_provider = lambda: [("2026-10-05 12:00:00", None, "答", "text", "")]
         # menu.exec 会阻塞等用户点击 —— 整个 QMenu 换成哑对象，只验「拼菜单那几行不炸」
-        with mock.patch.object(bar.QtWidgets, "QMenu") as menu_cls:
+        with mock.patch.object(QtWidgets, "QMenu") as menu_cls:
             fake_menu = menu_cls.return_value
             fake_menu.addAction.return_value = mock.MagicMock()
             b._show_history()

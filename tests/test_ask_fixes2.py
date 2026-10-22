@@ -20,6 +20,7 @@ from PySide6 import QtCore, QtGui, QtWidgets  # noqa: E402
 
 from learnsys import config, record, store  # noqa: E402
 from learnsys.ask import backend, bar, hotkey  # noqa: E402
+from learnsys.ask.quickbar import workers as quickbar_workers  # noqa: E402
 
 
 def _app() -> QtWidgets.QApplication:
@@ -165,7 +166,7 @@ class Test11UsageRunsOffMainThread(unittest.TestCase):
         b = bar.AskBar("Alt+Q")
         self.addCleanup(b.shutdown)
         self.addCleanup(b.deleteLater)
-        with mock.patch.object(bar.usage, "summary",
+        with mock.patch.object(quickbar_workers.usage, "summary",
                                side_effect=lambda: (_ for _ in ()).throw(RuntimeError("x"))):
             b.refresh_usage()                    # 不该在这里抛
             self.assertIsNotNone(b._usage_worker)
@@ -187,7 +188,7 @@ class Test12CancelClosesConnection(unittest.TestCase):
         b = bar.AskBar("Alt+Q")
         self.addCleanup(b.shutdown)
         self.addCleanup(b.deleteLater)
-        w = bar._AskWorker(None, "问", [], b)
+        w = quickbar_workers._AskWorker(None, "问", [], b)
         closed = []
 
         class FakeResp:

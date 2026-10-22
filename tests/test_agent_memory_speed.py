@@ -260,7 +260,7 @@ class ScrollRegressionTest(unittest.TestCase):
 
     def test_md_is_positioned(self):
         css = (pathlib.Path(__file__).resolve().parent.parent
-               / "web" / "css" / "app.css").read_text(encoding="utf-8")
+               / "web" / "css" / "ask.css").read_text(encoding="utf-8")
         self.assertIn(".md { position: relative", css)
 
 

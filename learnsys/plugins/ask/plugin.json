@@ -4,7 +4,7 @@
   "icon": "✎",
   "type": "native-page",
   "entry": "pages/ask.html",
-  "script": "js/pages/ask.js",
+  "script": "js/pages/ask/index.js",
   "order": 20,
   "status": "ready",
   "version": "2.0.0",
