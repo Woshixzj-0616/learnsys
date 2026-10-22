@@ -8,10 +8,12 @@
 from __future__ import annotations
 
 import datetime
+import hashlib
 import pathlib
 from dataclasses import dataclass, field
 
 from learnsys import config, store
+from learnsys.agent import sandbox
 from learnsys.ask import study
 
 TOOL_SCHEMAS = [
@@ -225,12 +227,72 @@ RECENT_WRONG_ITEMS_SCHEMA = {
     },
 }
 
-WRITE_TOOLS = {"save_wrongbook", "save_memory", "forget_memory"}
+SAVE_MATERIAL_NOTE_SCHEMA = {
+    "name": "save_material_note",
+    "description": (
+        "把整理好的笔记 / 代码讲解保存进资料库（会出现在「资料」页，可检索、可挂载）。"
+        "用户说「把这段整理成资料 / 笔记存下来」时使用。保存前需要用户在界面上确认。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "笔记标题，一句话"},
+            "content": {"type": "string",
+                        "description": "完整正文（Markdown 可以），最多 20 万字"},
+            "tags": {"type": "string", "description": "标签，逗号分隔，可留空"},
+        },
+        "required": ["title", "content"],
+    },
+}
+
+WRITE_STUDY_FILE_SCHEMA = {
+    "name": "write_study_file",
+    "description": (
+        "把文本 / 代码文件写进数据目录的「学习档案」下（相对路径）。"
+        "扩展名只支持 md/txt/cpp/cc/c/h/hpp/py/json/csv；写盘前需要用户确认。"
+        "不要用它写资料库原文或系统目录。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "relative_path": {"type": "string",
+                              "description": "相对「学习档案」的路径，例如 代码/栈示例.cpp"},
+            "content": {"type": "string", "description": "文件内容，最多 20 万字"},
+        },
+        "required": ["relative_path", "content"],
+    },
+}
+
+RUN_CODE_SCHEMA = {
+    "name": "run_code",
+    "description": (
+        "在临时目录运行一段 C++ / C / Python 代码，带超时、内存和输出上限。"
+        "**默认禁网**：代码里出现网络 API / 网址会被直接拒绝。"
+        "用户说「跑一下 / 验证这段代码」时使用；只能读写自己的临时目录。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "language": {"type": "string", "enum": ["cpp", "c", "python"]},
+            "code": {"type": "string", "description": "完整源代码"},
+            "stdin": {"type": "string", "description": "可选的标准输入"},
+        },
+        "required": ["language", "code"],
+    },
+}
+
+WRITE_TOOLS = {"save_wrongbook", "save_memory", "forget_memory",
+               "save_material_note", "write_study_file"}
+# 需要用户确认的副作用工具：写数据 + 运行代码（运行不算写，但同样要可见、可取消）
+CONFIRM_TOOLS = WRITE_TOOLS | {"run_code"}
 
 WRITE_LABELS = {
     "save_wrongbook": "收进错题本",
     "save_memory": "写进长期记忆",
     "forget_memory": "删除长期记忆",
+    "save_material_note": "保存资料笔记",
+    "write_study_file": "写学习档案",
+    "run_code": "运行代码",
 }
 
 
@@ -239,7 +301,8 @@ def schemas_for(mode: str = "explain", *, use_tools: bool = True):
     if not use_tools:
         return None
     schemas = [MAKE_PLAN_SCHEMA, RECENT_WRONG_ITEMS_SCHEMA] + list(TOOL_SCHEMAS)
-    schemas += [SAVE_MEMORY_SCHEMA, FORGET_MEMORY_SCHEMA]
+    schemas += [SAVE_MEMORY_SCHEMA, FORGET_MEMORY_SCHEMA,
+                SAVE_MATERIAL_NOTE_SCHEMA, WRITE_STUDY_FILE_SCHEMA, RUN_CODE_SCHEMA]
     if mode == "quiz":
         schemas.append(SAVE_WRONGBOOK_SCHEMA)
     return schemas
@@ -257,6 +320,18 @@ def write_summary(name: str, args: dict) -> str:
     if name == "save_wrongbook":
         question = " ".join(str(args.get("question") or "").split())[:80]
         return f"{label}：「{question}」"
+    if name == "save_material_note":
+        title = " ".join(str(args.get("title") or "").split())[:80]
+        return f"{label}：「{title or '未命名笔记'}」"
+    if name == "write_study_file":
+        return f"{label}：学习档案/{str(args.get('relative_path') or '').strip()[:80]}"
+    if name == "run_code":
+        language = sandbox.normalize_language(args.get("language") or "")
+        label_name = sandbox.LANGUAGES.get(language, {}).get("label", language)
+        code = str(args.get("code") or "")
+        first = next((line.strip() for line in code.splitlines() if line.strip()), "")
+        return (f"{label}（{label_name}，{len(code.splitlines())} 行）"
+                + (f"：{first[:60]}" if first else ""))
     return label
 
 
@@ -672,6 +747,90 @@ def recent_wrong_items(limit: int = 8, days: int = 0, material_id: int = 0,
     return "\n".join(lines)
 
 
+STUDY_FILE_SUFFIXES = {".md", ".txt", ".cpp", ".cc", ".c", ".h", ".hpp",
+                       ".py", ".json", ".csv"}
+_STUDY_BAD_CHARS = set('<>:"|?*')
+
+
+def _study_target(raw: str, data_root: pathlib.Path) -> tuple[pathlib.Path | None, str]:
+    """把相对路径夹到「学习档案」里；拒绝绝对路径、`..` 和奇怪扩展名。"""
+    text = str(raw or "").strip().replace("\\", "/")
+    if not text:
+        return None, "没有给文件路径。"
+    if text.startswith("/") or ":" in text:
+        return None, "只能写「学习档案」里的相对路径，不能写绝对路径或盘符。"
+    parts = [part for part in text.split("/") if part not in ("", ".")]
+    if not parts or any(part == ".." for part in parts):
+        return None, "只能写「学习档案」里的相对路径，不能包含 `..`。"
+    if any(any(ch in _STUDY_BAD_CHARS for ch in part) or part.strip(".") == ""
+           for part in parts):
+        return None, "路径里有 Windows 不允许的字符。"
+    suffix = pathlib.Path(parts[-1]).suffix.lower()
+    if suffix not in STUDY_FILE_SUFFIXES:
+        allowed = "、".join(sorted(STUDY_FILE_SUFFIXES))
+        return None, f"不支持这个扩展名；只允许 {allowed}。"
+    base = (pathlib.Path(data_root) / "学习档案").resolve()
+    target = base.joinpath(*parts).resolve()
+    if target != base and base not in target.parents:
+        return None, "只能写「学习档案」里的相对路径。"
+    return target, ""
+
+
+def save_material_note(title: str, content: str, tags: str = "",
+                       *, ctx: ToolContext) -> str:
+    """把笔记存进资料库（materials 表）；同内容只留一份。"""
+    title = " ".join(str(title or "").split())[:120] or "未命名笔记"
+    body = str(content or "")
+    if not body.strip():
+        return "笔记内容是空的，没有保存。"
+    if len(body) > 200_000:
+        return "笔记太长（上限 20 万字），没有保存。请压缩或分成几份。"
+    digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
+    conn = None
+    try:
+        conn = store.connect(ctx.db_path)
+        item_id, created = store.add_material(
+            conn, title=title, kind="note", source="agent", body=body,
+            tags=str(tags or ""), sha256=digest)
+    except Exception as exc:
+        return f"资料库保存失败：{exc}"
+    finally:
+        if conn is not None:
+            conn.close()
+    if created:
+        return (f"已保存进资料库（资料 #{item_id}：{title}，{len(body)} 字）。"
+                "用户可以在「资料」页看到、检索和挂到问一问。")
+    return f"资料库里已经存在这份内容（资料 #{item_id}），没有重复保存。"
+
+
+def write_study_file(relative_path: str, content: str, *,
+                     ctx: ToolContext) -> str:
+    """写「学习档案」下的文本文件；原子替换，失败给中文原因。"""
+    body = str(content or "")
+    if len(body) > 200_000:
+        return "文件太长（上限 20 万字），没有保存。"
+    target, reason = _study_target(relative_path, ctx.data_root)
+    if target is None:
+        return reason
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temp = target.with_name(target.name + ".tmp")
+        temp.write_text(body, encoding="utf-8")
+        temp.replace(target)
+    except OSError as exc:
+        return f"写文件失败：{exc}"
+    relative = target.relative_to((pathlib.Path(ctx.data_root) / "学习档案").resolve())
+    return f"已保存到 学习档案/{relative.as_posix()}（{len(body)} 字）。"
+
+
+def run_code(language: str, code: str, stdin: str = "",
+             *, ctx: ToolContext) -> str:
+    """在临时目录跑一段代码；结果（含失败原因）给模型和审计。"""
+    result = sandbox.run(str(language or ""), str(code or ""),
+                         stdin_text=str(stdin or ""))
+    return result.render()
+
+
 def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
     """执行工具，返回 (给模型看的内容, 给界面看的一句话摘要, 是否成功)。
 
@@ -720,6 +879,28 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
                 str(args.get("paper_id") or ""), str(args.get("section") or ""),
                 str(args.get("item") or ""), int(args.get("limit") or 40), ctx=ctx),
                 "读了六级精听进度", True)
+        if name == "save_material_note":
+            text = save_material_note(
+                str(args.get("title") or ""), str(args.get("content") or ""),
+                str(args.get("tags") or ""), ctx=ctx)
+            if text.startswith("已保存"):
+                preview, ok = "保存了资料笔记", True
+            elif "已经存在" in text:
+                preview, ok = "资料库里已有这份内容", True
+            else:
+                preview, ok = "资料笔记没有保存", False
+            return text, preview, ok
+        if name == "write_study_file":
+            text = write_study_file(
+                str(args.get("relative_path") or ""),
+                str(args.get("content") or ""), ctx=ctx)
+            ok = text.startswith("已保存")
+            return text, ("保存了学习档案文件" if ok else "学习档案没有保存"), ok
+        if name == "run_code":
+            result = sandbox.run(
+                str(args.get("language") or ""), str(args.get("code") or ""),
+                stdin_text=str(args.get("stdin") or ""))
+            return result.render(), result.preview(), result.ok
         if name == "save_memory":
             text = save_memory(str(args.get("content") or ""),
                                str(args.get("kind") or "preference"), ctx=ctx)

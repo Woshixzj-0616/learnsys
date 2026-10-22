@@ -79,8 +79,12 @@ def _clip(value, cap: int = 600, depth: int = 0):
 def _trace_event(event) -> dict | None:
     if event.kind not in _TRACE_KINDS:
         return None
+    data = _clip(event.data or {})
+    # 代码运行的输出是审计证据，单独放宽到 8KB（其余参数仍按 600 字截断）。
+    if isinstance(event.data, dict) and event.data.get("output"):
+        data["output"] = str(event.data["output"])[:8000]
     return {"kind": event.kind, "text": _clip(event.text or "", 400),
-            "data": _clip(event.data or {})}
+            "data": data}
 
 
 def _load_history(conn, conversation_id: int, turns: int = 4) -> list[tuple[str, str]]:

@@ -15,7 +15,7 @@ cd "D:/Desktop/learnsys"
 .venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"
 ```
 
-当前基线：468 个测试全过。
+当前基线：484 个测试全过。
 
 ## 打包与发布
 

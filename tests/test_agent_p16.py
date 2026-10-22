@@ -225,7 +225,7 @@ class TestWriteConfirmation(unittest.TestCase):
         tool_end = [event for event in events if event.kind == "tool_end"][0]
         self.assertTrue(tool_end.data["denied"])
         self.assertFalse(tool_end.data["ok"])
-        self.assertIn("没有写入", events[-1].data["text"])
+        self.assertIn("没有执行", events[-1].data["text"])
 
     def test_approved_write_is_executed(self):
         events, count, _ = self.run_save_memory(True)
@@ -233,6 +233,25 @@ class TestWriteConfirmation(unittest.TestCase):
         tool_end = [event for event in events if event.kind == "tool_end"][0]
         self.assertFalse(tool_end.data.get("denied"))
         self.assertTrue(tool_end.data["ok"])
+
+    def test_run_code_needs_confirmation_and_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = make_cfg(pathlib.Path(tmp))
+            fake = ScriptProvider(
+                tool_use("跑一下。", ("run_code", {
+                    "language": "python", "code": "print(6 * 7)"})),
+                ProviderResult(text="输出是 42。", stop_reason="end_turn"),
+            )
+            events = list(loop.run(
+                loop.AgentRequest("验证一下 6 乘 7"),
+                provider=fake, cfg=cfg,
+                confirm=lambda request_id, name, args: True))
+            confirm_events = [event for event in events if event.kind == "confirm"]
+            self.assertEqual(confirm_events[0].data["tool"], "run_code")
+            tool_end = [event for event in events if event.kind == "tool_end"][0]
+            self.assertTrue(tool_end.data["ok"])
+            self.assertIn("运行成功", tool_end.data["preview"])
+            self.assertIn("42", str(fake.seen_messages[-1]))
 
     def test_no_confirm_channel_means_denied(self):
         with tempfile.TemporaryDirectory() as tmp:

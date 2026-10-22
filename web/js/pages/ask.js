@@ -17,6 +17,9 @@ const TOOL_NAMES = {
   save_wrongbook: "收错题",
   save_memory: "记长期偏好",
   forget_memory: "忘掉记忆",
+  save_material_note: "存资料笔记",
+  write_study_file: "写学习档案",
+  run_code: "运行代码",
 };
 
 const state = {
@@ -513,7 +516,8 @@ function renderRunTrace(trace) {
         + `${data.goal ? ` · 目标：${escapeHtml(data.goal)}` : ""}</div>`);
     } else if (item.kind === "tool_end") {
       lines.push(`<div class="run-line ${data.ok === false ? "bad" : ""}"><b>${data.ok === false ? "失败" : "结果"}</b> `
-        + `${escapeHtml(data.preview || "")}${data.denied ? "（用户拒绝）" : ""}</div>`);
+        + `${escapeHtml(data.preview || "")}${data.denied ? "（用户拒绝）" : ""}</div>`
+        + (data.output ? `<pre class="run-output">${escapeHtml(data.output.slice(0, 4000))}</pre>` : ""));
     } else if (item.kind === "confirm") {
       lines.push(`<div class="run-line"><b>确认</b> ${escapeHtml(data.summary || "")}</div>`);
     } else if (item.kind === "check") {

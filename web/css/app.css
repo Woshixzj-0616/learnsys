@@ -702,6 +702,17 @@
 .run-line b { color: var(--text-dim); margin-right: 4px; }
 .run-line.bad, .run-line.bad b { color: var(--err); }
 
+.run-output {
+  margin: 2px 0 6px;
+  padding: 6px 8px;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  background: var(--bg-soft, rgba(255, 255, 255, 0.03));
+  border-radius: 4px;
+  font-size: 11px;
+}
+
 .sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 
 .source-chip {

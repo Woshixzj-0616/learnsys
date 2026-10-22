@@ -291,7 +291,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
                         "name": call.name, "input": call.input,
                         "goal": goal, "step": step_index})
 
-                    if call.name in tools.WRITE_TOOLS:
+                    if call.name in tools.CONFIRM_TOOLS:
                         approved = False
                         if confirm is not None:
                             request_id = uuid.uuid4().hex[:12]
@@ -333,7 +333,9 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
                             continue
 
                     content, preview, ok, raw = _execute_tool(call, ctx)
-                    if ok:
+                    # 代码运行的输出即使失败（编译错误 / 超时）也是可引用的证据；
+                    # 写入失败则不是，不能拿来当来源。
+                    if ok or call.name == "run_code":
                         state.evidence.add(call.name, call.input, raw)
                     if planning.mark_step(state.plan, step_index,
                                           "done" if ok else "failed"):
@@ -341,9 +343,12 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
                             "index": step_index,
                             "status": "done" if ok else "failed",
                             "steps": state.plan})
-                    yield AgentEvent("tool_end", data={
-                        "name": call.name, "preview": preview, "ok": ok,
-                        "goal": goal, "step": step_index})
+                    end_data = {"name": call.name, "preview": preview, "ok": ok,
+                                "goal": goal, "step": step_index}
+                    if call.name == "run_code":
+                        # 审计要看到真实输出与退出码，而不只是一句「运行成功」
+                        end_data["output"] = raw[:12000]
+                    yield AgentEvent("tool_end", data=end_data)
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": call.id,
@@ -438,10 +443,10 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
                     final_text += note
                     state.text = final_text
 
-        # 写操作被拒时，模型有时仍会说「已记住」。这是不可接受的：在答案末尾
-        # 钉一条系统提示，保证用户不会以为真的写进去了（自检重写也抹不掉它）。
+        # 写操作 / 运行代码被拒时，模型有时仍会说「已记住 / 已运行」。这是不可接受的：
+        # 在答案末尾钉一条系统提示，保证用户不会以为真的发生了（自检重写也抹不掉它）。
         if state.denied_writes and final_text:
-            final_text += ("\n\n> **没有写入**：下面这些操作需要你确认，但这次没有执行：\n"
+            final_text += ("\n\n> **没有执行**：下面这些操作需要你确认，但这次没有执行：\n"
                            + "\n".join(f"> - {item}"
                                        for item in state.denied_writes))
             state.text = final_text
