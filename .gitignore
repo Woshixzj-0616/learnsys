@@ -17,3 +17,6 @@ data/
 *.log
 .claude/
 agent_*.txt
+
+dist-build/
+build-p20/
