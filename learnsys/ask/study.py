@@ -195,26 +195,64 @@ def build_daily_report(day_name: str, summary_lines: list[str], asks: list,
     return "\n".join(lines)
 
 
+def _mastery_pct(value) -> str:
+    return f"{int(float(value or 0) * 100)}%"
+
+
+def _weak_focus_block(weak_points, focus: str) -> str:
+    """「本轮重点」段：BKT 最弱类目 + 用户指定的焦点。都没有就返回空串。"""
+    weak = [p for p in (weak_points or []) if p.get("name")]
+    if not weak and not focus:
+        return ""
+    lines = ["【本轮重点】"]
+    if weak:
+        shown = "、".join(
+            f"{p['name']} {_mastery_pct(p.get('mastery'))}"
+            f"（{int(p.get('attempts') or 0)} 条答题）" for p in weak)
+        lines.append(f"最近掌握度最低的类目：{shown}。")
+        lines.append("出题时优先覆盖这些类目；今天的记录里没有相关素材时，"
+                     "可以围绕同一主题延伸，但别硬凑。")
+    if focus:
+        lines.append(f"本轮指定重点：{focus}。5 道题里至少 3 道要考「{focus}」。")
+    return "\n".join(lines)
+
+
 def build_quiz_question(summary_lines: list[str], asks_preview: list[str],
-                        transcript_text: str) -> str:
-    """测验按钮发给 AI 的题：基于今天的内容出 5 道自测题，逐题批改。"""
+                        transcript_text: str, weak_points: list[dict] | None = None,
+                        focus: str = "") -> str:
+    """测验按钮发给 AI 的题：基于今天的内容出 5 道自测题，逐题批改。
+
+    `weak_points` 来自 BKT（`services.knowledge.weak_points`）；`focus` 必须已经过
+    类目白名单校验，这里不再猜。
+    """
+    has_context = bool(summary_lines or asks_preview or (transcript_text or "").strip())
+    only_weak = (not has_context) and bool(weak_points)
     parts = [
-        "以下是我今天学习的记录（窗口摘要 + 问过的问题 + 课堂转写）。",
+        ("我今天没有新的学习记录；请按下面的重点类目出题。"
+         if only_weak else
+         "以下是我今天学习的记录（窗口摘要 + 问过的问题 + 课堂转写）。"),
         "请基于这些内容出 **5 道自测题** 考我，要求：",
         "1. 只出题，先不要给答案；**一次只出一题**，每道题以「【第N题】」开头；",
-        "2. 题目从记录里的知识点来，别超纲；",
+        ("2. 题目围绕重点类目出通识自测题，别编造我今天学过什么；"
+         if only_weak else
+         "2. 题目从记录里的知识点来，别超纲；"),
         "3. 有简答也有选择；4. 我答一题你批一题，答错讲清楚错在哪；",
         "5. 只要我答错（含部分作答），先调用 save_wrongbook 工具："
         "question=题目原文（别改写，不要带【第N题】前缀和【知识点】行）、"
         "correct_answer=正确答案或关键解析、my_answer=我的原话、"
         "tags=本题【知识点】里的 1–3 个类目；然后再批改、出下一题。"
         "答对不要调用，同一题只调用一次。",
+    ]
+    focus_block = _weak_focus_block(weak_points, focus)
+    if focus_block:
+        parts += ["", focus_block]
+    parts += [
         "",
         knowledge.prompt_rules(),
         "",
         "【窗口摘要】",
     ]
-    parts += summary_lines or ["（今天没有开过录制）"]
+    parts += summary_lines or ["（今天没有新的学习记录）"]
     if asks_preview:
         parts += ["", "【今天问过的】"]
         parts += asks_preview

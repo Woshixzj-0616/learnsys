@@ -8,7 +8,9 @@ from fastapi import APIRouter, Depends
 
 from learnsys import store
 from learnsys.agent.config import load_config
+from learnsys.knowledge import CATEGORY_NAMES
 from learnsys.server.security import require_token
+from learnsys.services import knowledge as knowledge_service
 from .common import _ask_dict, _conn
 
 router = APIRouter()
@@ -64,18 +66,31 @@ def _today_actions(conn, day: str, due: list) -> list[dict]:
                 "label": "打开资料",
             })
 
-    row = conn.execute(
-        "SELECT question FROM wrong_items WHERE mastered=0 "
-        "ORDER BY ts DESC, id DESC LIMIT 1").fetchone()
-    if row:
-        question = " ".join(str(row[0] or "").split())[:40]
+    weak = knowledge_service.weak_points(
+        knowledge_service.attempt_stats(conn)["points"], limit=1)
+    weakest = weak[0] if weak else None
+    if weakest:
         actions.append({
             "kind": "weak",
-            "title": "薄弱点练一道",
-            "detail": f"最近错的：{question}",
-            "href": "#/quiz",
-            "label": "去测验",
+            "title": f"薄弱点练一道 · {weakest['name']}",
+            "detail": f"掌握度 {int(float(weakest['mastery']) * 100)}%，"
+                      f"{weakest['attempts']} 条答题",
+            "href": "#/quiz?focus=" + quote(weakest["name"], safe=""),
+            "label": "练这类",
         })
+    else:
+        row = conn.execute(
+            "SELECT question FROM wrong_items WHERE mastered=0 "
+            "ORDER BY ts DESC, id DESC LIMIT 1").fetchone()
+        if row:
+            question = " ".join(str(row[0] or "").split())[:40]
+            actions.append({
+                "kind": "weak",
+                "title": "薄弱点练一道",
+                "detail": f"最近错的：{question}",
+                "href": "#/quiz",
+                "label": "去测验",
+            })
     return actions[:3]
 
 
@@ -84,7 +99,7 @@ def today(_=Depends(require_token)):
     conn = _conn()
     try:
         day = datetime.date.today().isoformat()
-        focus = store.focus_stats(conn, day=day)
+        focus_stats = store.focus_stats(conn, day=day)
         asks = store.recent_asks(conn, limit=10, day=day, with_conversation=True)
         ask_count = int(conn.execute(
             "SELECT COUNT(*) FROM asks WHERE ts LIKE ?", (f"{day}%",)).fetchone()[0] or 0)
@@ -103,9 +118,10 @@ def today(_=Depends(require_token)):
         return {
             "date": day,
             "focus": {
-                "minutes": float(focus.get("分钟") or 0),
-                "switches": int(focus.get("切换") or 0),
-                "apps": [[name, round(float(mins), 1)] for name, mins in (focus.get("程序") or [])],
+                "minutes": float(focus_stats.get("分钟") or 0),
+                "switches": int(focus_stats.get("切换") or 0),
+                "apps": [[name, round(float(mins), 1)]
+                         for name, mins in (focus_stats.get("程序") or [])],
             },
             "asks": [_ask_dict(row) for row in asks],
             "ask_count": ask_count,
@@ -124,8 +140,11 @@ def today(_=Depends(require_token)):
 
 
 @router.get("/api/study/today")
-def study_today(_=Depends(require_token)):
-    """复盘 / 测验插件共用的今日素材与提示词（拼题口径只在 study.py 一处）。"""
+def study_today(focus: str = "", _=Depends(require_token)):
+    """复盘 / 测验插件共用的今日素材与提示词（拼题口径只在 study.py 一处）。
+
+    `focus` 只接受 8 个类目里除「其他」以外的值；其余一律忽略，不拼进提示词。
+    """
     from learnsys.ask import study as study_mod
     conn = _conn()
     try:
@@ -175,13 +194,16 @@ def study_today(_=Depends(require_token)):
         digest = study_mod.transcripts_digest(transcripts)
         asks = store.recent_asks(conn, limit=30, day=day)
         asks_preview = [f"问：{(row[1] or '')[:60]}" for row in asks if (row[1] or "").strip()]
-        focus = store.focus_stats(conn, day=day)
+        focus_stats = store.focus_stats(conn, day=day)
         trainings = int(conn.execute(
             "SELECT COUNT(*) FROM events WHERE module='netlab' AND ts LIKE ?",
             (f"{day}%",)).fetchone()[0] or 0)
         breakpoints = int(conn.execute(
             "SELECT COUNT(*) FROM cet6_events WHERE ts LIKE ?",
             (f"{day}%",)).fetchone()[0] or 0)
+        weak = knowledge_service.weak_points(
+            knowledge_service.attempt_stats(conn)["points"])
+        quiz_focus = (focus if focus in CATEGORY_NAMES and focus != "其他" else "")
         return {
             "date": day,
             "summary_lines": summary_lines,
@@ -189,16 +211,20 @@ def study_today(_=Depends(require_token)):
             "transcript_chars": len(digest),
             "asks": [_ask_dict(row) for row in asks],
             "stats": {
-                "minutes": focus.get("分钟", 0),
-                "switches": focus.get("切换", 0),
+                "minutes": focus_stats.get("分钟", 0),
+                "switches": focus_stats.get("切换", 0),
                 "transcripts": len(transcripts),
                 "asks": len(asks),
                 "trainings": trainings,
                 "cet6": breakpoints,
                 "materials": materials_count,
             },
+            "weak_points": weak,
+            "quiz_focus": quiz_focus,
             "review_prompt": study_mod.build_review_question(summary_lines, digest),
-            "quiz_prompt": study_mod.build_quiz_question(summary_lines, asks_preview, digest),
+            "quiz_prompt": study_mod.build_quiz_question(
+                summary_lines, asks_preview, digest,
+                weak_points=weak, focus=quiz_focus),
         }
     finally:
         conn.close()

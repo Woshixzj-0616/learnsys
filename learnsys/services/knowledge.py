@@ -68,6 +68,26 @@ def add_attempt(conn: sqlite3.Connection, *, question: str, my_answer: str,
     }
 
 
+def weak_points(points, limit: int = 3, *, below: float = bkt.MASTERED_AT) -> list[dict]:
+    """从知识点统计里挑掌握度最低的 ready 类目。
+
+    排序口径只在这一处：掌握度升序 → 样本多者优先 → sort → id。
+    `below` 是「算不算薄弱」的上限（默认掌握线 70%）：已经掌握的类目不该再被
+    优先练；`attempt_stats` 的 `totals.weakest` 用 below=1.01 保留「最低」的展示语义。
+    """
+    limit = max(0, int(limit or 0))
+    if not limit:
+        return []
+    ready = [p for p in (points or [])
+             if p.get("mastery_ready") and float(p["mastery"]) < below]
+    ready.sort(key=lambda p: (float(p["mastery"]),
+                              -int(p.get("mastery_attempts") or 0),
+                              int(p.get("sort") or 0), int(p.get("id") or 0)))
+    return [{"id": p["id"], "name": p["name"], "mastery": p["mastery"],
+             "attempts": int(p.get("mastery_attempts") or 0)}
+            for p in ready[:limit]]
+
+
 def attempt_stats(conn: sqlite3.Connection, days: int = 0) -> dict:
     start_day = _start_day(days)
     data = store.knowledge_stats(conn, start_day)
@@ -104,12 +124,8 @@ def attempt_stats(conn: sqlite3.Connection, days: int = 0) -> dict:
     totals["average_mastery"] = (
         round(sum(p["mastery"] for p in ready_points) / len(ready_points), 4)
         if ready_points else None)
-    weakest = (min(ready_points,
-                   key=lambda p: (p["mastery"], -p["mastery_attempts"],
-                                  p["sort"], p["id"]))
-               if ready_points else None)
-    totals["weakest"] = ({"id": weakest["id"], "name": weakest["name"],
-                          "mastery": weakest["mastery"]} if weakest else None)
+    weakest = weak_points(data["points"], limit=1, below=1.01)
+    totals["weakest"] = weakest[0] if weakest else None
 
     since = store.knowledge_meta(conn, "knowledge_attempts_since")
     done_at = store.knowledge_meta(conn, "knowledge_backfilled_at")

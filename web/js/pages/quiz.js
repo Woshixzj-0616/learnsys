@@ -12,6 +12,7 @@ let quizEventSent = false;
 let pending = null;             // 当前题：{no, stem, points}，出题时暂存
 let materialInfo = null;        // 从资料出题时的资料元信息
 let materialId = 0;
+let focusPoint = "";            // 今天页跳转带来的薄弱类目（后端会再校验白名单）
 let nodes = {};
 
 function resetQuizState() {
@@ -23,11 +24,13 @@ function resetQuizState() {
   pending = null;
   materialInfo = null;
   materialId = 0;
+  focusPoint = "";
 }
 
 export async function mount(ctx) {
   resetQuizState();
   materialId = Number(ctx.query?.get("material") || 0);
+  focusPoint = String(ctx.query?.get("focus") || "").trim();
   ctx.setSub("按今天的记录出题，逐题批改");
   ctx.setActions('<a class="btn" href="#/review">去复盘</a>');
   nodes = {
@@ -65,7 +68,8 @@ export async function mount(ctx) {
     }
   } else {
     try {
-      data = await api.get("/api/study/today");
+      const query = focusPoint ? `?focus=${encodeURIComponent(focusPoint)}` : "";
+      data = await api.get(`/api/study/today${query}`);
     } catch (error) {
       nodes.thread.innerHTML = `<div class="empty">读不到今天的记录：${escapeHtml(error.message || error)}</div>`;
       nodes.start.disabled = true;
@@ -78,11 +82,19 @@ export async function mount(ctx) {
       || (data.stats?.cet6 || 0) > 0
       || (data.summary_lines || []).length > 0;
   }
+  const hasWeak = (data.weak_points || []).length > 0;
+  const canStart = Boolean(hasData || hasWeak);
   renderStats(data.stats || {});
-  nodes.start.disabled = !hasData;
-  nodes.hint.textContent = hasData
-    ? (materialId ? "题目只来自这份资料" : "题目只来自今天的记录")
-    : "今天还没有可出题的素材";
+  nodes.start.disabled = !canStart;
+  nodes.hint.textContent = canStart
+    ? (materialId
+      ? "题目只来自这份资料"
+      : (focusPoint && hasData
+        ? `优先练「${focusPoint}」 · 题目仍来自今天的记录`
+        : (focusPoint
+          ? `今天没有新记录，按薄弱类目「${focusPoint}」出题`
+          : (hasData ? "题目只来自今天的记录" : "按薄弱类目出题"))))
+    : "今天还没有可出题的素材，也没有可建模的薄弱类目";
   nodes.start.addEventListener("click", startQuiz);
   nodes.form.addEventListener("submit", (event) => {
     event.preventDefault();
