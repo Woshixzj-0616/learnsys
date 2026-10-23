@@ -8,6 +8,8 @@ from __future__ import annotations
 from ._base import SCHEMA, _LOCK, _migrate, connect, now, stamp
 from .agent_runs import add_agent_run, get_agent_run, list_agent_runs
 from .asks import add_ask, recent_asks, starred_asks
+from .browser import (add_browser_event, cleanup_browser_events,
+                      clear_browser_events, list_browser_events)
 from .cet6 import (add_cet6_dualwrite_diffs, add_cet6_dualwrite_run,
                    cet6_progress_item, cet6_progress_paper_rows,
                    cet6_progress_summary, cet6_recent_events,
@@ -45,6 +47,8 @@ __all__ = [
     "SCHEMA", "connect", "now", "stamp",
     "add_agent_run", "get_agent_run", "list_agent_runs",
     "add_ask", "recent_asks", "starred_asks",
+    "add_browser_event", "cleanup_browser_events", "clear_browser_events",
+    "list_browser_events",
     "cet6_progress_item", "cet6_progress_summary", "cet6_recent_events",
     "cet6_progress_paper_rows", "add_cet6_dualwrite_run",
     "add_cet6_dualwrite_diffs", "upsert_cet6_progress",

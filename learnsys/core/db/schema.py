@@ -100,6 +100,16 @@ CREATE TABLE IF NOT EXISTS events (
     meta_json TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_events_ts ON events (ts);
+CREATE TABLE IF NOT EXISTS browser_events (
+    id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts     TEXT NOT NULL,
+    tab_id TEXT NOT NULL DEFAULT '',
+    url    TEXT NOT NULL,
+    title  TEXT NOT NULL DEFAULT '',
+    domain TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_browser_events_ts ON browser_events(ts);
+CREATE INDEX IF NOT EXISTS idx_browser_events_domain ON browser_events(domain);
 CREATE TABLE IF NOT EXISTS migrated_sources (
     path        TEXT PRIMARY KEY,
     migrated_at TEXT,

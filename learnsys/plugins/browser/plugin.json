@@ -1,0 +1,15 @@
+{
+  "id": "browser",
+  "name": "浏览器",
+  "icon": "◎",
+  "type": "native-page",
+  "entry": "pages/browser.html",
+  "script": "js/pages/browser.js",
+  "order": 75,
+  "status": "ready",
+  "version": "2.18.0",
+  "category": "工具",
+  "home": true,
+  "tagline": "独立窗口 + 本机浏览记录",
+  "description": "工作台管理的独立 Edge/Chrome 窗口：打开网址，只记录 URL、标题和域名。"
+}

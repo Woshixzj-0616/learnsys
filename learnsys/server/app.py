@@ -12,6 +12,7 @@ import socket
 import threading
 import time
 import traceback
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
@@ -22,17 +23,29 @@ from learnsys import config, product
 from learnsys.agent.config import load_config
 from learnsys.ask import VERSION
 from learnsys.modules import web_dir
-from learnsys.server import (routes_agent, routes_cet6, routes_data, routes_knowledge,
-                             routes_materials, routes_memory, routes_results,
-                             routes_review, routes_services, routes_settings, routes_ui,
-                             routes_upload, routes_vocab, routes_web, runtime)
+from learnsys.server import (routes_agent, routes_browser, routes_cet6, routes_data,
+                             routes_knowledge, routes_materials, routes_memory,
+                             routes_results, routes_review, routes_services,
+                             routes_settings, routes_ui, routes_upload, routes_vocab,
+                             routes_web, runtime)
 from learnsys.server.security import origin_allowed
 
 DEFAULT_PORT = 8765
 
 
+@asynccontextmanager
+async def _lifespan(_app):
+    yield
+    try:
+        from learnsys.browser.manager import get_manager
+        get_manager().shutdown()     # close_on_exit=false 时什么也不做
+    except Exception:
+        pass
+
+
 def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
-    app = FastAPI(title=product.PRODUCT_NAME, version=VERSION, docs_url="/docs", redoc_url=None)
+    app = FastAPI(title=product.PRODUCT_NAME, version=VERSION, docs_url="/docs",
+                  redoc_url=None, lifespan=_lifespan)
     app.state.token = token or os.environ.get("LEARNSYS_TOKEN") or secrets.token_urlsafe(24)
     app.state.port = port
 
@@ -76,6 +89,7 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
     app.include_router(routes_memory.router)
     app.include_router(routes_upload.router)
     app.include_router(routes_ui.router)
+    app.include_router(routes_browser.router)
 
     # 六级精听（可选模块）：工作台 + 试卷挂到 /cet6/；没装就跳过，主功能不受影响
     routes_cet6.mount_static(app)

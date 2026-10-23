@@ -99,6 +99,16 @@ SETTINGS_TEMPLATE = {
         "import_dirs": [],
         "obsidian_dir": "",
     },
+    "_browser": "工作台浏览器（P20.2）：独立 profile 的 Edge/Chrome，只记录 URL/标题/域名。"
+                "enabled=false 关闭功能；record=false 暂停记录；exclude_domains 不记录的域名；"
+                "history_days 保留天数（1–365）；close_on_exit 工作台退出时关闭浏览器。",
+    "browser": {
+        "enabled": True,
+        "record": True,
+        "exclude_domains": [],
+        "history_days": 30,
+        "close_on_exit": True,
+    },
     "_daily_goal_xp": "每日学习点目标（默认 100）。问答 10 / 转写 5 / 六级断点 8 / 专注 1 分钟 1 / 收藏 3",
     "daily_goal_xp": 100,
     "_名字": "学习台左上角怎么称呼你（留空 = 不显示名字）",
@@ -152,6 +162,95 @@ def ensure_settings_file() -> pathlib.Path:
         except OSError:
             pass
     return SETTINGS_FILE
+
+
+BROWSER_DEFAULTS = {
+    "enabled": True,
+    "record": True,
+    "exclude_domains": [],
+    "history_days": 30,
+    "close_on_exit": True,
+}
+
+
+def _clean_domain(raw) -> str:
+    """把 `https://Example.com/路径` / ` example.com ` 一律整成 `example.com`。"""
+    text = str(raw or "").strip().lower()
+    if not text:
+        return ""
+    if "://" in text:
+        try:
+            text = urllib.parse.urlsplit(text).hostname or ""
+        except ValueError:
+            return ""
+    return text.strip(". ")
+
+
+def browser_settings() -> dict:
+    """读 `设置.json` 的 browser 块：默认值 + 类型清洗，读坏了不让启动失败。"""
+    raw = load_settings().get("browser")
+    raw = raw if isinstance(raw, dict) else {}
+
+    def flag(key: str) -> bool:
+        value = raw.get(key)
+        if isinstance(value, bool):
+            return value
+        if value is None or str(value).strip() == "":
+            return bool(BROWSER_DEFAULTS[key])
+        return str(value).strip().lower() not in ("0", "false", "no", "off", "关", "否")
+
+    try:
+        days = int(str(raw.get("history_days") or BROWSER_DEFAULTS["history_days"]).strip())
+    except (TypeError, ValueError):
+        days = BROWSER_DEFAULTS["history_days"]
+    domains = raw.get("exclude_domains")
+    if not isinstance(domains, list):
+        domains = []
+    cleaned: list[str] = []
+    for item in domains:
+        domain = _clean_domain(item)
+        if domain and domain not in cleaned:
+            cleaned.append(domain)
+    return {
+        "enabled": flag("enabled"),
+        "record": flag("record"),
+        "exclude_domains": cleaned,
+        "history_days": max(1, min(365, days)),
+        "close_on_exit": flag("close_on_exit"),
+    }
+
+
+def update_browser_settings(**changes) -> dict:
+    """只改 browser 块并原子写回 `设置.json`；返回清洗后的当前值。"""
+    data = load_settings()
+    if not data:
+        data = json.loads(json.dumps(SETTINGS_TEMPLATE, ensure_ascii=False))
+    block = data.get("browser")
+    if not isinstance(block, dict):
+        block = {}
+    for key, value in changes.items():
+        if key in BROWSER_DEFAULTS:
+            block[key] = value
+    data["browser"] = block
+    target = pathlib.Path(SETTINGS_FILE)
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temp = target.with_suffix(target.suffix + ".tmp")
+        temp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(temp, target)
+    except OSError:
+        pass                      # 设置写不进去也不拦功能，界面上会看到开关没变
+    USER.clear()
+    USER.update(data)
+    return browser_settings()
+
+
+def browser_profile_dir() -> pathlib.Path:
+    return DATA_ROOT / "浏览器配置"
+
+
+def browser_download_dir() -> pathlib.Path:
+    return DATA_ROOT / "浏览器下载"
 
 
 def day_dir(when=None) -> pathlib.Path:

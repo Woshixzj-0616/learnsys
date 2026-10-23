@@ -2,7 +2,7 @@
 
 > **一个本地优先的学习舞台。** 问一问、六级精听、网工训练场都是插件；
 > 学习工作台把进度、连续天数、学习点和插件入口摆在一张桌上。
-> 版本 **2.10.0** ｜ Windows 11 实测 ｜ MIT License
+> 版本 **2.18.0** ｜ Windows 11 实测 ｜ MIT License
 
 ![学习工作台](docs/学习台.jpg)
 
@@ -38,6 +38,7 @@
 | 错题本 | 原生页 | 可用 | `#/wrongbook` | 问答收藏 / 测验错题 / 手动收录；可按资料筛选；FSRS 记忆曲线四档反馈；导出 Anki CSV |
 | 生词本 | 原生页 | 可用 | `#/vocab` | 六级划词与手动加词统一进库；搜索、改释义、FSRS 复习、导出 CSV |
 | 资料 | 原生页 | 可用 | `#/materials` | 导入 PDF/Word/PPT/TXT/MD，抽正文、检索、笔记、术语表/提纲生成 |
+| 浏览器 | 原生页 | 可用 | `#/browser` | 独立 profile 的 Edge/Chrome；只记录 URL、标题、域名和时间 |
 | 设置 / 插件中心 | 原生页 | 可用 | `#/settings`、`#/plugins` | 模型密钥、插件开关、数据与备份 |
 
 ![网工训练场](docs/网工训练场.jpg)
@@ -218,6 +219,17 @@ learnsys/plugins/myplugin/
 - [`docs/学习系统-v2-施工单.md`](docs/学习系统-v2-施工单.md)
 - [`docs/P1-验收记录.md`](docs/P1-验收记录.md) / [P2](docs/P2-验收记录.md) / [P3](docs/P3-验收记录.md) / [P4](docs/P4-验收记录.md) / [P5](docs/P5-验收记录.md) / [PWA](docs/PWA-验收记录.md) / [P6](docs/P6-复盘与测验.md) / [P7](docs/P7-错题本.md) / [P8](docs/P8-资料.md) / [P9](docs/P9-资料出题与复盘引用.md) / [P10](docs/P10-错题按资料归档.md)
 - [`docs/插件开发规范.md`](docs/插件开发规范.md)
+
+## 工作台浏览器（P20.2）
+
+- 由工作台启动一个**独立 profile** 的 Edge/Chrome（`<数据目录>/浏览器配置`），
+  不使用你日常浏览器的账号、Cookie、密码和收藏；窗口保留地址栏，防钓鱼。
+- 只记录 **URL / 标题 / 域名 / 时间**，存在本机 `learning.db`；不存正文、表单、截图。
+  记录不会自动进模型上下文，只有你提问、模型调用浏览记录工具时才会发送。
+- 调试端口随机、只绑 `127.0.0.1`，只开放 `/json/list`、`/json/new`、`/json/close`；
+  不开放 `Runtime.evaluate` / `Page.navigate`，不装根证书、不解密 HTTPS。
+- 威胁模型是**本机可信**：同一台机器的同用户进程理论上可以访问 CDP 端口，
+  这不是多用户隔离；需要更强隔离时再评估 `--remote-debugging-pipe` 或 WebView2。
 
 ## 贡献与安全
 

@@ -1,0 +1,42 @@
+<div class="browser-page">
+  <section class="stage-hero browser-hero">
+    <div>
+      <p class="stage-eyebrow">工作台浏览器 · 独立窗口</p>
+      <h2>网址在这里打开，记录只留在本机。</h2>
+      <p class="stage-sub">工作台启动一个独立 profile 的 Edge/Chrome，不使用你的日常浏览数据；
+        只记录 URL、标题和域名，只有你提问、模型调用浏览记录时才会发给模型。</p>
+      <div class="browser-status-row">
+        <span class="browser-dot" id="browser-dot" aria-hidden="true"></span>
+        <strong id="browser-state">读取中…</strong>
+        <span class="browser-current" id="browser-current"></span>
+      </div>
+    </div>
+    <div class="browser-hero-actions">
+      <button class="btn btn-primary" type="button" id="browser-launch">启动浏览器</button>
+      <button class="btn" type="button" id="browser-close">关闭浏览器</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head browser-toolbar">
+      <input class="input browser-url" type="text" id="browser-url"
+             placeholder="输入网址，例如 example.com" autocomplete="off">
+      <button class="btn btn-primary" type="button" id="browser-open">打开</button>
+      <button class="btn" type="button" id="browser-record">暂停记录</button>
+      <button class="btn" type="button" id="browser-clear">清空记录</button>
+    </div>
+    <div class="panel-body">
+      <div class="browser-history" id="browser-history">
+        <div class="empty">正在读浏览记录…</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel browser-notes">
+    <div class="panel-body">
+      <p><strong>独立窗口</strong>：这是工作台自己启动的浏览器，用单独的配置目录，不读取你日常浏览器的密码、Cookie 和收藏。</p>
+      <p><strong>只记三样</strong>：URL、标题、域名和时间，存在本机 SQLite；不存网页正文、表单和截图。</p>
+      <p><strong>查询才出库</strong>：记录不会自动进模型上下文；只有你在问一问里提问、模型调用浏览记录工具时，才会作为工具结果发送。</p>
+    </div>
+  </section>
+</div>

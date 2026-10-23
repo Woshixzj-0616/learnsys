@@ -1,0 +1,80 @@
+/* 学习工作台 · 浏览器（P20.2）：独立窗口状态 + 本机浏览记录 */
+.browser-page { display: grid; gap: var(--s5); }
+
+.browser-hero { align-items: start; }
+
+.browser-status-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s4);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.browser-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex: none;
+}
+
+.browser-dot.on { background: var(--ok); box-shadow: 0 0 0 3px rgba(99, 192, 143, 0.16); }
+.browser-dot.paused { background: var(--warn); box-shadow: 0 0 0 3px var(--mark-soft); }
+.browser-dot.off { background: var(--text-faint); }
+
+.browser-current {
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-hero-actions { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+.browser-toolbar { flex-wrap: wrap; gap: var(--s2); }
+.browser-url { flex: 1; min-width: 220px; }
+
+.browser-history { display: grid; gap: var(--s1); }
+
+.browser-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: var(--s3);
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.browser-row:last-child { border-bottom: 0; }
+.browser-row time { color: var(--text-faint); font-size: var(--fs-xs); font-family: var(--font-code); }
+
+.browser-row-main { min-width: 0; display: grid; gap: 2px; }
+.browser-row-main strong {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.browser-row-main span {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-reopen { padding: 4px 10px; font-size: var(--fs-xs); }
+
+.browser-notes .panel-body { display: grid; gap: var(--s2); }
+.browser-notes p { margin: 0; color: var(--text-dim); font-size: var(--fs-sm); line-height: 1.7; }
+.browser-notes strong { color: var(--text); }
+
+@media (max-width: 720px) {
+  .browser-row { grid-template-columns: 1fr; gap: var(--s1); }
+  .browser-row time { order: 2; }
+  .browser-reopen { justify-self: start; }
+}

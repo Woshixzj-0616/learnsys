@@ -15,6 +15,8 @@ import os
 import pathlib
 import re
 import shutil
+import subprocess
+import time
 
 # ---- 操作目录（AI 只能挑这些；名字和参数都别改，改了老计划会失效）----
 
@@ -34,6 +36,14 @@ OPS: dict[str, dict] = {
 
 # 动这些地方的操作一律拒绝（读目录里的文件不在此限，但删除/移动目标在下面就拒）
 PROTECTED = ("c:/windows", "c:/program files", "c:/program files (x86)", "c:/programdata")
+
+# 能直接执行的可执行文件 / 脚本一律不让「打开」——双击就是运行，确认框救不了。
+OPEN_BLOCKED_SUFFIXES = {
+    ".exe", ".bat", ".cmd", ".ps1", ".msi", ".lnk", ".url", ".scr", ".com",
+    ".vbs", ".js", ".jse", ".wsf", ".hta", ".cpl", ".reg",
+}
+OPEN_MAX_PATH = 4096
+APP_NAME_MAX = 60
 
 # 常用根目录提示（拼进计划题里，AI 知道这台机器的盘面布局）
 ROOT_HINT = "这台机器常用的位置：D:/学习系统（本程序数据）、D:/课件（课件）、C:/Users/<用户名>/Downloads（下载）"
@@ -106,9 +116,54 @@ def is_protected(path: str) -> bool:
 
 # ---- 执行 ----
 
+_START_APPS_CACHE: tuple[float, dict[str, str]] = (0.0, {})
+_START_APPS_TTL = 600.0
+
+
+def parse_start_apps(text: str) -> dict[str, str]:
+    """`Get-StartApps` 的 `名称|AppID` 输出 → 索引；坏行跳过。"""
+    index: dict[str, str] = {}
+    for line in str(text or "").splitlines():
+        if "|" not in line:
+            continue
+        name, _, app_id = line.partition("|")
+        name = name.strip()
+        app_id = app_id.strip()
+        if not name or not app_id:
+            continue
+        index.setdefault(name.lower(), f"shell:AppsFolder\\{app_id}")
+    return index
+
+
+def store_apps() -> dict[str, str]:
+    """开始菜单里的 Microsoft Store / UWP 应用（记事本、计算器这类没有 .lnk）。
+
+    `Get-StartApps` 是只读枚举，不带参数执行；失败就返回空表，不影响 .lnk 那套。
+    """
+    global _START_APPS_CACHE
+    now = time.monotonic()
+    if _START_APPS_CACHE[1] and now - _START_APPS_CACHE[0] < _START_APPS_TTL:
+        return dict(_START_APPS_CACHE[1])
+    if os.name != "nt":
+        return {}
+    command = (
+        "[Console]::OutputEncoding=[Text.Encoding]::UTF8; "
+        "Get-StartApps | ForEach-Object { $_.Name + '|' + $_.AppID }")
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", command],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=10, creationflags=0x08000000)
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    index = parse_start_apps(result.stdout)
+    if index:
+        _START_APPS_CACHE = (now, index)
+    return dict(index)
+
+
 def start_menu_apps(extra_dirs: list[pathlib.Path] | None = None) -> dict[str, str]:
-    """开始菜单里的快捷方式索引：小写程序名 → .lnk 路径（launch_app 用）。"""
-    import os
+    """开始菜单索引：小写程序名 → 启动目标（.lnk 路径或 `shell:AppsFolder\\<AppID>`）。"""
     roots = list(extra_dirs or [])
     appdata = os.environ.get("APPDATA")
     if appdata:
@@ -122,19 +177,95 @@ def start_menu_apps(extra_dirs: list[pathlib.Path] | None = None) -> dict[str, s
             name = lnk.stem.strip().lower()
             if name and name not in index:
                 index[name] = str(lnk)
+    for name, target in store_apps().items():    # .lnk 优先，同名不覆盖
+        index.setdefault(name, target)
     return index
 
 
-def find_app(name: str, index: dict[str, str]) -> str | None:
-    name = name.strip().lower()
+def find_app_name(name: str, index: dict[str, str]) -> str | None:
+    """精确命中优先，其次包含匹配（"记事" → 记事本）；返回索引里的名字。"""
+    name = str(name or "").strip().lower()
     if not name:
         return None
     if name in index:
-        return index[name]
-    for key, path in index.items():          # 退一步：包含匹配（"记事" → 记事本）
+        return name
+    for key in index:
         if name in key:
-            return path
+            return key
     return None
+
+
+def find_app(name: str, index: dict[str, str]) -> str | None:
+    key = find_app_name(name, index)
+    return index[key] if key is not None else None
+
+
+def _is_http_url(text: str) -> bool:
+    lowered = text.strip().lower()
+    return lowered.startswith("http://") or lowered.startswith("https://")
+
+
+def _is_unc(text: str) -> bool:
+    """Windows 网络共享路径（`\\\\server\\share` 或 `//server/share`）。"""
+    return text.startswith("\\\\") or text.startswith("//")
+
+
+def open_path(path: str, *, allow_url: bool = False) -> str:
+    """用默认程序打开文件 / 文件夹；返回一句中文结果，拒绝时抛 ValueError。
+
+    这是「电脑助手 open」和「Agent open_file」唯一共用的实现 ——
+    校验规则只在这里写一次。`allow_url=True` 只给电脑助手用（http/https 走默认浏览器）；
+    Agent 的 open_file 传默认值，网址由工作台浏览器（P20.2）负责。
+    """
+    raw = str(path or "").strip()
+    if not raw:
+        raise ValueError("路径是空的。")
+    if len(raw) > OPEN_MAX_PATH:
+        raise ValueError(f"路径太长（上限 {OPEN_MAX_PATH} 字符）。")
+    if allow_url and _is_http_url(raw):
+        os.startfile(raw)
+        return f"已打开网址：{raw}"
+    if _is_unc(raw):
+        raise ValueError("不能打开网络共享路径（\\\\服务器\\共享）—— 会触发网络访问。")
+    target = pathlib.Path(raw)
+    if not target.is_absolute():
+        raise ValueError("只接受绝对路径（例如 D:\\课件\\网络.pdf），相对路径不知道从哪儿算。")
+    try:
+        resolved = target.resolve()
+    except OSError as exc:
+        raise ValueError(f"路径解析失败：{exc}") from exc
+    if is_protected(str(resolved)):
+        raise ValueError(f"拒绝打开系统目录：{resolved}")
+    if resolved.suffix.lower() in OPEN_BLOCKED_SUFFIXES:
+        raise ValueError(
+            f"不允许打开可执行文件或脚本（{resolved.suffix}）：双击等于运行，风险太高。")
+    if not resolved.exists():
+        raise ValueError(f"找不到这个文件或文件夹：{raw}")
+    os.startfile(str(resolved))
+    kind = "文件夹" if resolved.is_dir() else "文件"
+    return f"已打开{kind}：{resolved}"
+
+
+def launch_by_name(name: str, index: dict[str, str] | None = None) -> str:
+    """按开始菜单里的名字启动程序；找不到就报中文原因并给候选，不猜、不执行。"""
+    text = " ".join(str(name or "").split())
+    if not text:
+        raise ValueError("程序名是空的。")
+    if len(text) > APP_NAME_MAX:
+        raise ValueError(f"程序名太长（上限 {APP_NAME_MAX} 个字符）。")
+    apps = index if index is not None else start_menu_apps()
+    matched = find_app_name(text, apps)
+    if matched is None:
+        import difflib
+        candidates = difflib.get_close_matches(
+            text.lower(), sorted(apps), n=10, cutoff=0.3
+        ) or sorted(apps)[:10]
+        hint = ("候选：" + "、".join(candidates)
+                if candidates else "开始菜单里没有任何可启动的程序。")
+        raise ValueError(f"开始菜单里没找到「{text}」—— {hint}")
+    target = apps[matched]
+    os.startfile(target)
+    return f"已启动程序：{matched}"
 
 
 def recycle(path: str) -> None:
@@ -192,16 +323,10 @@ def execute(step: dict, app_index: dict[str, str] | None = None) -> str:
     if not ok:
         raise ValueError(err)
     if op == "open":
-        target = str(step["path"])
-        os.startfile(target)                              # 文件/文件夹/网址通吃
-        return f"已打开 {target}"
+        # 电脑助手保留「打开网址」能力（走默认浏览器）；文件/文件夹走同一套校验。
+        return open_path(str(step["path"]), allow_url=True)
     if op == "launch_app":
-        name = str(step["name"])
-        lnk = find_app(name, app_index or start_menu_apps())
-        if lnk is None:
-            raise ValueError(f"开始菜单里没找到「{name}」—— 试试程序的完整名字")
-        os.startfile(lnk)
-        return f"已启动 {lnk and pathlib.Path(lnk).stem}"
+        return launch_by_name(str(step["name"]), app_index)
     if op == "list_dir":
         target = pathlib.Path(str(step["path"]))
         entries = sorted(target.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))

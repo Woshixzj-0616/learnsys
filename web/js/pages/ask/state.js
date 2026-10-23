@@ -15,6 +15,11 @@ export const TOOL_NAMES = {
   save_material_note: "存资料笔记",
   write_study_file: "写学习档案",
   run_code: "运行代码",
+  open_file: "打开文件",
+  launch_app: "启动程序",
+  open_url: "打开网址",
+  browser_status: "看浏览器状态",
+  browser_history: "读浏览记录",
 };
 
 export const state = {

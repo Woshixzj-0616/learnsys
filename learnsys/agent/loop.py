@@ -340,15 +340,15 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
                             label = tools.WRITE_LABELS.get(call.name, call.name)
                             state.denied_writes.append(
                                 tools.write_summary(call.name, call.input))
-                            raw = (f"用户没有确认这次写入（{label}），工具没有执行。"
-                                   "不要当成已经写入；需要的话用一句话说明请在界面上确认。")
+                            raw = (f"用户没有确认这次操作（{label}），工具没有执行。"
+                                   "不要当成已经完成；需要的话用一句话说明请在界面上确认。")
                             tool_results.append({
                                 "type": "tool_result",
                                 "tool_use_id": call.id,
                                 "content": f'<record source="{call.name}">\n{raw}\n</record>',
                             })
                             yield AgentEvent("tool_end", data={
-                                "name": call.name, "preview": "用户拒绝了写入",
+                                "name": call.name, "preview": "用户拒绝了操作",
                                 "ok": False, "denied": True, "goal": goal,
                                 "step": step_index})
                             if planning.mark_step(state.plan, step_index, "failed"):

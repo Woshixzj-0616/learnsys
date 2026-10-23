@@ -8,6 +8,8 @@ from .materials import read_material, save_material_note, search_materials
 from .records import ocr_image, read_attachment, search_records, today_summary
 from .study_tools import (forget_memory, get_cet6_context, recent_wrong_items,
                           save_memory, save_wrongbook)
+from .system_tools import (browser_history, browser_status, launch_app, open_file,
+                           open_url)
 
 
 def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
@@ -90,6 +92,24 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
             text = forget_memory(int(args.get("memory_id") or 0), ctx=ctx)
             return text, ("忘掉了一条长期记忆" if text.startswith("已忘掉")
                           else "没找到那条记忆"), text.startswith("已忘掉")
+        if name == "open_file":
+            text = open_file(str(args.get("path") or ""))
+            ok = text.startswith("已打开")
+            return text, ("打开了文件" if ok else "文件没有打开"), ok
+        if name == "launch_app":
+            text = launch_app(str(args.get("name") or ""))
+            ok = text.startswith("已启动")
+            return text, ("启动了程序" if ok else "程序没有启动"), ok
+        if name == "open_url":
+            text = open_url(str(args.get("url") or ""))
+            ok = text.startswith("已打开")
+            return text, ("打开了网址" if ok else "网址没有打开"), ok
+        if name == "browser_status":
+            return browser_status(), "看了浏览器状态", True
+        if name == "browser_history":
+            text = browser_history(int(args.get("limit") or 20),
+                                   int(args.get("days") or 7))
+            return text, "读了浏览器记录", not text.startswith("读浏览记录失败")
         if name == "save_wrongbook":
             text = save_wrongbook(
                 str(args.get("question") or ""), str(args.get("my_answer") or ""),

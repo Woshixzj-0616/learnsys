@@ -113,6 +113,82 @@ GET_CET6_CONTEXT_SCHEMA = {
 TOOL_SCHEMAS.append(GET_CET6_CONTEXT_SCHEMA)
 
 
+OPEN_FILE_SCHEMA = {
+    "name": "open_file",
+    "description": (
+        "用系统默认程序打开本机的一个文件或文件夹（只接受绝对路径）。"
+        "执行前会弹确认框，用户拒绝就不执行；不要声称已经打开。"
+        "不能打开可执行文件、脚本、系统目录或网络共享路径。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string",
+                     "description": "文件或文件夹的绝对路径，例如 D:\\课件\\网络.pdf"},
+        },
+        "required": ["path"],
+    },
+}
+
+LAUNCH_APP_SCHEMA = {
+    "name": "launch_app",
+    "description": (
+        "按名字启动开始菜单里能搜到的程序（例如「记事本」）。"
+        "执行前会弹确认框，用户拒绝就不执行；找不到时返回候选程序名，不要猜。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string",
+                     "description": "开始菜单里能搜到的程序名，例如「记事本」"},
+        },
+        "required": ["name"],
+    },
+}
+
+OPEN_URL_SCHEMA = {
+    "name": "open_url",
+    "description": (
+        "在工作台管理的独立浏览器窗口里打开一个 http/https 网址（新标签）。"
+        "执行前会弹确认框，用户拒绝就不执行；不要声称已经打开。"
+        "不能用它打开本地文件、执行脚本或控制页面。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "url": {"type": "string",
+                    "description": "完整网址，例如 https://example.com"},
+        },
+        "required": ["url"],
+    },
+}
+
+BROWSER_STATUS_SCHEMA = {
+    "name": "browser_status",
+    "description": (
+        "看工作台浏览器是否在运行、当前标签的标题和网址。"
+        "记录暂停时只会返回「已暂停」，不暴露当前页面。"
+    ),
+    "input_schema": {"type": "object", "properties": {}},
+}
+
+BROWSER_HISTORY_SCHEMA = {
+    "name": "browser_history",
+    "description": (
+        "读工作台浏览器最近的访问记录（时间 / 标题 / 域名 / URL）。"
+        "这些是用户本机浏览记录，只用于回答当前问题，不要主动扩散；"
+        "最多返回 50 条。用户问「我最近看了什么网页」时使用。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "limit": {"type": "integer", "description": "最多返回几条，默认 20，上限 50"},
+            "days": {"type": "integer", "description": "只看最近几天，默认 7；0 = 不限"},
+        },
+    },
+}
+
+
 SAVE_WRONGBOOK_SCHEMA = {
     "name": "save_wrongbook",
     "description": (
@@ -274,8 +350,9 @@ RUN_CODE_SCHEMA = {
 
 WRITE_TOOLS = {"save_wrongbook", "save_memory", "forget_memory",
                "save_material_note", "write_study_file"}
-# 需要用户确认的副作用工具：写数据 + 运行代码（运行不算写，但同样要可见、可取消）
-CONFIRM_TOOLS = WRITE_TOOLS | {"run_code"}
+# 需要用户确认的副作用工具：写数据 + 运行代码 + 动系统（打开文件/启动程序）。
+# 打开文件/启动程序不改数据，但会在电脑上真的发生，所以单独放进确认集合、不进 WRITE_TOOLS。
+CONFIRM_TOOLS = WRITE_TOOLS | {"run_code", "open_file", "launch_app", "open_url"}
 
 WRITE_LABELS = {
     "save_wrongbook": "收进错题本",
@@ -284,6 +361,9 @@ WRITE_LABELS = {
     "save_material_note": "保存资料笔记",
     "write_study_file": "写学习档案",
     "run_code": "运行代码",
+    "open_file": "打开文件",
+    "launch_app": "启动程序",
+    "open_url": "打开网址",
 }
 
 
@@ -292,6 +372,10 @@ def schemas_for(mode: str = "explain", *, use_tools: bool = True):
     if not use_tools:
         return None
     schemas = [MAKE_PLAN_SCHEMA, RECENT_WRONG_ITEMS_SCHEMA] + list(TOOL_SCHEMAS)
+    if mode != "quiz":
+        # 测验页不该顺手打开本机文件 / 程序 / 网页；只在普通问答里暴露。
+        schemas += [OPEN_FILE_SCHEMA, LAUNCH_APP_SCHEMA,
+                    OPEN_URL_SCHEMA, BROWSER_STATUS_SCHEMA, BROWSER_HISTORY_SCHEMA]
     schemas += [SAVE_MEMORY_SCHEMA, FORGET_MEMORY_SCHEMA,
                 SAVE_MATERIAL_NOTE_SCHEMA, WRITE_STUDY_FILE_SCHEMA, RUN_CODE_SCHEMA]
     if mode == "quiz":
@@ -323,4 +407,12 @@ def write_summary(name: str, args: dict) -> str:
         first = next((line.strip() for line in code.splitlines() if line.strip()), "")
         return (f"{label}（{label_name}，{len(code.splitlines())} 行）"
                 + (f"：{first[:60]}" if first else ""))
+    if name == "open_file":
+        # 确认框必须显示完整路径 —— 截断到看不出目标，就失去了确认的意义。
+        return f"{label}：{str(args.get('path') or '').strip() or '（空路径）'}"
+    if name == "launch_app":
+        return f"{label}：{str(args.get('name') or '').strip() or '（空程序名）'}"
+    if name == "open_url":
+        # 完整网址不截断：确认框要让人看得出要去哪个网站。
+        return f"{label}：{str(args.get('url') or '').strip() or '（空网址）'}"
     return label
