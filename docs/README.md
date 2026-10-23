@@ -4,13 +4,13 @@
 
 ## 当前状态
 
-- 版本：**2.12.0**
+- 版本：**2.15.0**
 - 分支：`v2`
-- 最近阶段：**补齐方案欠账 + 六级源码入库 + golden set + 深度分析**
-- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 529 OK；
-  前端 `node --test web/tests/context.test.mjs` → 6 通过
-- 发布说明：[2.12.0-发布说明](2.12.0-发布说明.md)
-- 上一版：[2.11.0-发布说明](2.11.0-发布说明.md)
+- 最近阶段：**P18.2 BKT 掌握度**
+- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 582 OK；
+  前端 `node --test web/tests/context.test.mjs` → 6；`quiz-parse` → 10；六级 dualwrite → 11
+- 发布说明：[2.15.0-发布说明](2.15.0-发布说明.md)
+- 上一版：[2.14.0-发布说明](2.14.0-发布说明.md)
 
 ## 架构
 
@@ -33,10 +33,19 @@
 - [P14 闭环与 FSRS](施工单/P14-闭环与FSRS.md)
 - [P15 MCP 只读](施工单/P15-MCP只读.md)
 - [P16 Agent 升级](施工单/P16-Agent升级.md)
+- [P17.1 六级双写退休准备](施工单/P17.1-六级双写退休.md) · 报告 `tools/cet6_dualwrite_report.py`
+- [P18.1 知识点与答题流水](施工单/P18.1-知识点与答题流水.md)
+- [P18.2 BKT 掌握度](施工单/P18.2-BKT掌握度.md)
 - [闸门：六级实验（已取消）](施工单/闸门-六级实验.md) · 报告 `tools/gate_report.py` 留作观测
 
 ## 验收
 
+- [2.15.0 发布说明](2.15.0-发布说明.md)
+- [P18.2 验收记录](P18.2-验收记录.md)
+- [2.14.0 发布说明](2.14.0-发布说明.md)
+- [P18.1 验收记录](P18.1-验收记录.md)
+- [2.13.0 发布说明](2.13.0-发布说明.md)
+- [P17.1 验收记录](P17.1-验收记录.md)
 - [2.12.0 发布说明](2.12.0-发布说明.md)
 - [P16.4 真实任务 A/B 评测](P16.4-AB评测.md)
 - [P16.3 可观测性与成本](P16.3-验收记录.md)

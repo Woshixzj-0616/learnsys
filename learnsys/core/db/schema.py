@@ -149,6 +149,48 @@ CREATE INDEX IF NOT EXISTS idx_wrong_ts ON wrong_items (ts);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_wrong_source
     ON wrong_items (source, source_id)
     WHERE source_id IS NOT NULL AND source_id <> '';
+-- P18.1 知识点与答题流水：BKT 的地基。类目固定 8 个，答题含答对/答错。
+CREATE TABLE IF NOT EXISTS knowledge_points (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL UNIQUE,
+    kind       TEXT NOT NULL UNIQUE,
+    sort       INTEGER NOT NULL DEFAULT 999,
+    active     INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS quiz_attempts (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts              TEXT NOT NULL,
+    day             TEXT NOT NULL,
+    conversation_id INTEGER NOT NULL DEFAULT 0,
+    material_id     INTEGER NOT NULL DEFAULT 0,
+    question_no     INTEGER NOT NULL DEFAULT 0,
+    question_key    TEXT NOT NULL DEFAULT '',
+    question        TEXT NOT NULL,
+    my_answer       TEXT NOT NULL DEFAULT '',
+    correct         INTEGER,                 -- NULL = 没判出来；0/1 = 错/对
+    feedback        TEXT NOT NULL DEFAULT '',
+    source          TEXT NOT NULL DEFAULT 'quiz',       -- quiz | backfill
+    points_source   TEXT NOT NULL DEFAULT 'model',      -- model | tags | fallback
+    points_raw      TEXT NOT NULL DEFAULT '',
+    parse_ok        INTEGER NOT NULL DEFAULT 0,
+    origin_key      TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_attempt_origin
+    ON quiz_attempts (origin_key);
+CREATE INDEX IF NOT EXISTS idx_attempt_day
+    ON quiz_attempts (day, id DESC);
+CREATE INDEX IF NOT EXISTS idx_attempt_ts
+    ON quiz_attempts (ts DESC);
+CREATE INDEX IF NOT EXISTS idx_attempt_conversation
+    ON quiz_attempts (conversation_id, question_key);
+CREATE TABLE IF NOT EXISTS attempt_points (
+    attempt_id INTEGER NOT NULL,
+    point_id   INTEGER NOT NULL,
+    PRIMARY KEY (attempt_id, point_id)
+);
+CREATE INDEX IF NOT EXISTS idx_attempt_points_point
+    ON attempt_points (point_id, attempt_id);
 CREATE TABLE IF NOT EXISTS service_results (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     kind           TEXT NOT NULL,
@@ -210,6 +252,51 @@ CREATE TABLE IF NOT EXISTS cet6_progress (
 );
 CREATE INDEX IF NOT EXISTS idx_cet6_progress_item
 ON cet6_progress (paper_id, section, item);
+-- P17.1 双写审计：每次打开试卷做一次「写前比对 + 写后校验」，一行一次。
+-- 判据是「连续 14 天每次整卷审计都无差异」，不是「本地和服务端时刻相等」。
+CREATE TABLE IF NOT EXISTS cet6_dualwrite_runs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts              TEXT NOT NULL,
+    day             TEXT NOT NULL,
+    client_ts       TEXT NOT NULL DEFAULT '',
+    client_day      TEXT NOT NULL DEFAULT '',
+    paper_id        TEXT NOT NULL,
+    paper_title     TEXT NOT NULL DEFAULT '',
+    mode            TEXT NOT NULL DEFAULT 'http',
+    hydration       TEXT NOT NULL DEFAULT 'local',
+    paper_sig       TEXT NOT NULL DEFAULT '',
+    items           INTEGER NOT NULL DEFAULT 0,
+    sentences       INTEGER NOT NULL DEFAULT 0,
+    compared        INTEGER NOT NULL DEFAULT 0,
+    diff_fields     INTEGER NOT NULL DEFAULT 0,
+    diff_rows       INTEGER NOT NULL DEFAULT 0,
+    minor_fields    INTEGER NOT NULL DEFAULT 0,
+    missing_db      INTEGER NOT NULL DEFAULT 0,
+    orphan_db       INTEGER NOT NULL DEFAULT 0,
+    orphan_blocking INTEGER NOT NULL DEFAULT 0,
+    invalid         INTEGER NOT NULL DEFAULT 0,
+    post_ok         INTEGER NOT NULL DEFAULT 0,
+    status          TEXT NOT NULL DEFAULT 'ok',
+    error           TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_cet6_dualwrite_day
+ON cet6_dualwrite_runs (day, paper_id);
+-- 只记差异明细；干净的一天不写这张表。
+CREATE TABLE IF NOT EXISTS cet6_dualwrite_diffs (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id       INTEGER NOT NULL,
+    ts           TEXT NOT NULL,
+    paper_id     TEXT NOT NULL,
+    section      TEXT NOT NULL DEFAULT '',
+    item         TEXT NOT NULL DEFAULT '',
+    sentence     INTEGER NOT NULL DEFAULT 0,
+    field        TEXT NOT NULL DEFAULT '',
+    kind         TEXT NOT NULL DEFAULT 'value',
+    local_value  TEXT NOT NULL DEFAULT '',
+    server_value TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_cet6_dualwrite_diffs_run
+ON cet6_dualwrite_diffs (run_id);
 CREATE TABLE IF NOT EXISTS vocab_items (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     word        TEXT NOT NULL,

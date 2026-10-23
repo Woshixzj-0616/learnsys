@@ -10,6 +10,8 @@ import datetime
 import io
 import pathlib
 
+from learnsys import knowledge
+
 REVIEW_DISPLAY = "复盘：我刚才学了什么？"      # 上屏显示的那句（真正发给 AI 的题在 study 里拼）
 
 _TRANSCRIPT_CAP = 4000          # 复盘时给 AI 的转写正文上限（字符）
@@ -201,11 +203,14 @@ def build_quiz_question(summary_lines: list[str], asks_preview: list[str],
         "请基于这些内容出 **5 道自测题** 考我，要求：",
         "1. 只出题，先不要给答案；**一次只出一题**，每道题以「【第N题】」开头；",
         "2. 题目从记录里的知识点来，别超纲；",
-        "3. 有简答也有选择；4. 我答一题你批一题，批改以「【批改】」开头，答错讲清楚错在哪；",
-        "5. 只要我答错（含部分答错），先调用 save_wrongbook 工具："
-        "question=题目原文（别改写）、correct_answer=正确答案或关键解析、"
-        "my_answer=我的原话、tags=知识点；然后再批改、出下一题。"
+        "3. 有简答也有选择；4. 我答一题你批一题，答错讲清楚错在哪；",
+        "5. 只要我答错（含部分作答），先调用 save_wrongbook 工具："
+        "question=题目原文（别改写，不要带【第N题】前缀和【知识点】行）、"
+        "correct_answer=正确答案或关键解析、my_answer=我的原话、"
+        "tags=本题【知识点】里的 1–3 个类目；然后再批改、出下一题。"
         "答对不要调用，同一题只调用一次。",
+        "",
+        knowledge.prompt_rules(),
         "",
         "【窗口摘要】",
     ]
@@ -252,12 +257,16 @@ def build_material_quiz_question(material: dict, cap: int = 12000) -> str:
         "请**只基于这份资料**出 **5 道自测题** 考我，要求：",
         "1. 只出题，先不要给答案；**一次只出一题**，每道题以「【第N题】」开头；",
         "2. 覆盖资料里的不同章节，优先定义、计算、易错点，别出资料里没有的内容；",
-        "3. 有简答也有选择；我答一题你批一题，批改以「【批改】」开头；",
+        "3. 有简答也有选择；我答一题你批一题；",
         "4. 如果给出的正文不够，调用 `read_material(material_id="
         f"{material.get('id')})` 继续读；找关键词也可以 `search_materials`；",
-        "5. 只要我答错（含部分答错），先调用 save_wrongbook："
-        "question=题目原文、correct_answer=正确答案或关键解析、my_answer=我的原话、tags=知识点；"
+        "5. 只要我答错（含部分作答），先调用 save_wrongbook："
+        "question=题目原文（不要带【第N题】前缀和【知识点】行）、"
+        "correct_answer=正确答案或关键解析、my_answer=我的原话、"
+        "tags=本题【知识点】里的 1–3 个类目；"
         "答对不要调用，同一题只调用一次。",
+        "",
+        knowledge.prompt_rules(),
         "",
         "【资料正文】",
         preview or "（这份资料还没有正文）",

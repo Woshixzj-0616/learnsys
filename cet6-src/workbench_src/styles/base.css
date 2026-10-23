@@ -63,6 +63,7 @@ header h1{font-size:22px;line-height:1.35;margin:0;letter-spacing:.01em;overflow
 .speed-group button{border:0;border-radius:0;padding:5px 8px;background:transparent;font-size:12px}
 .speed-group button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .launch-msg{margin:8px 0 0;padding:10px 12px;border-radius:10px;background:var(--danger-soft);border:1px solid #f3b6c6;color:var(--danger);font-size:13px;white-space:pre-wrap}
+.mode-banner{margin:8px 0 0;padding:10px 12px;border-radius:10px;background:var(--warn-soft);border:1px solid #f0d3a6;color:#7c4a03;font-size:13px;font-weight:600}
 /* 播放条钉在窗口底部：听整段时页面往下翻，暂停永远在手边，不用滚回顶上 */
 .player-bar{
   position:fixed;left:50%;transform:translateX(-50%);bottom:14px;

@@ -84,6 +84,62 @@ def cet6_progress_item(conn: sqlite3.Connection, *, paper_id: str,
     ]
 
 
+def cet6_progress_paper_rows(conn: sqlite3.Connection, paper_id: str) -> list[dict]:
+    """整卷逐句进度（双写审计用）；tags 还原成列表，按段、句号排序。"""
+    with _LOCK:
+        rows = conn.execute(
+            "SELECT paper_title, section, item, sentence, en, tags, note, loops, plays, done "
+            "FROM cet6_progress WHERE paper_id = ? ORDER BY section, item, sentence",
+            (paper_id,)).fetchall()
+    return [
+        {"paper_title": row[0] or "", "section": row[1], "item": row[2],
+         "sentence": int(row[3]), "en": row[4] or "",
+         "tags": [x for x in str(row[5] or "").split("、") if x],
+         "note": row[6] or "", "loops": int(row[7] or 0),
+         "plays": int(row[8] or 0), "done": bool(row[9])}
+        for row in rows
+    ]
+
+
+def add_cet6_dualwrite_run(conn: sqlite3.Connection, **fields) -> int:
+    """记一次整卷审计；返回 run id。字段缺省走表默认值。"""
+    columns = [
+        "ts", "day", "client_ts", "client_day", "paper_id", "paper_title",
+        "mode", "hydration", "paper_sig", "items", "sentences", "compared",
+        "diff_fields", "diff_rows", "minor_fields", "missing_db", "orphan_db",
+        "orphan_blocking", "invalid", "post_ok", "status", "error",
+    ]
+    int_fields = {"items", "sentences", "compared", "diff_fields", "diff_rows",
+                  "minor_fields", "missing_db", "orphan_db", "orphan_blocking",
+                  "invalid", "post_ok"}
+    values = [int(fields.get(name, 0) or 0) if name in int_fields
+              else str(fields.get(name, "") or "") for name in columns]
+    with _LOCK:
+        cur = conn.execute(
+            f"INSERT INTO cet6_dualwrite_runs ({', '.join(columns)}) "
+            f"VALUES ({', '.join('?' for _ in columns)})", values)
+        conn.commit()
+        return int(cur.lastrowid)
+
+
+def add_cet6_dualwrite_diffs(conn: sqlite3.Connection, run_id: int, paper_id: str,
+                             diffs: list[dict]) -> None:
+    """记差异明细；只存前 50 条，长值截 200 字。"""
+    stamp = now()
+    with _LOCK:
+        for item in (diffs or [])[:50]:
+            conn.execute(
+                "INSERT INTO cet6_dualwrite_diffs "
+                "(run_id, ts, paper_id, section, item, sentence, field, kind, "
+                " local_value, server_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (run_id, stamp, paper_id, str(item.get("section") or "")[:200],
+                 str(item.get("item") or "")[:200], int(item.get("sentence") or 0),
+                 str(item.get("field") or "")[:40], str(item.get("kind") or "value")[:40],
+                 str(item.get("local_value") or "")[:200],
+                 str(item.get("server_value") or "")[:200]))
+        conn.commit()
+
+
 def cet6_progress_summary(conn: sqlite3.Connection, paper_id: str = "") -> list[dict]:
     """按试卷汇总：总句数、已完成、断点数、最后更新时间。"""
     where, args = "", []

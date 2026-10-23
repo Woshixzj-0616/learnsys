@@ -1,0 +1,45 @@
+/* 知识点页：8 类目列表 + 最近答题。 */
+.knowledge-hero-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}
+.knowledge-stats .review-chip.warn strong{color:var(--warn)}
+.knowledge-grid{display:grid;grid-template-columns:minmax(280px,0.9fr) minmax(0,1.4fr);gap:16px;align-items:start}
+.knowledge-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.knowledge-range{display:flex;gap:6px}
+.knowledge-tab{padding:4px 10px;font-size:12px}
+.knowledge-tab.active{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.knowledge-list{display:flex;flex-direction:column;gap:6px}
+.knowledge-row{
+  display:grid;grid-template-columns:88px minmax(0,1fr) auto;gap:10px;align-items:center;
+  width:100%;text-align:left;font:inherit;color:var(--ink);background:#fffefb;
+  border:1px solid var(--line);border-radius:10px;padding:9px 11px;cursor:pointer;
+}
+.knowledge-row:hover{border-color:var(--accent)}
+.knowledge-row.active{border-color:var(--accent);background:var(--accent-soft)}
+.knowledge-row-name{font-weight:600;font-size:13.5px}
+.knowledge-row-meta{font-size:12px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.knowledge-row-tail{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:11px}
+.knowledge-state{font-weight:600}
+.knowledge-state.mastered{color:#166534}
+.knowledge-state.learning{color:var(--accent)}
+.knowledge-state.weak{color:var(--danger)}
+.knowledge-state.pending{color:var(--warn)}
+.knowledge-state.none{color:var(--muted);font-weight:500}
+.knowledge-detail-mastery{margin:0 0 10px;padding:8px 10px;border-radius:10px;background:#faf7f1;border:1px solid var(--line);line-height:1.7}
+.knowledge-detail-mastery:empty{display:none}
+.knowledge-attempts{display:flex;flex-direction:column;gap:10px;max-height:620px;overflow:auto}
+.knowledge-attempt{border:1px solid var(--line);border-radius:12px;background:#fffefb;padding:10px 12px}
+.knowledge-attempt-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.knowledge-badge{font-size:11px;border-radius:999px;padding:1px 8px;border:1px solid var(--line);color:var(--muted);background:#faf7f1}
+.knowledge-badge.ok{color:#166534;background:#e8f5e9;border-color:#a5d6a7}
+.knowledge-badge.bad{color:var(--danger);background:var(--danger-soft);border-color:#f3b6c6}
+.knowledge-badge.unknown{color:var(--warn);background:var(--warn-soft);border-color:#f0d3a6}
+.knowledge-badge.backfill{color:#5b21b6;background:#f3e8ff;border-color:#d8b4fe}
+.knowledge-question{margin:4px 0;font-size:13.5px;line-height:1.6;white-space:pre-wrap}
+.knowledge-line{margin:3px 0;font-size:12.5px;color:var(--muted);line-height:1.6;white-space:pre-wrap}
+.knowledge-points{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.knowledge-chip{font-size:11px;border-radius:999px;padding:1px 8px;background:var(--accent-soft);color:var(--accent)}
+.knowledge-note{margin:14px 0 0;line-height:1.7}
+@media (max-width:860px){
+  .knowledge-grid{grid-template-columns:1fr}
+  .knowledge-row{grid-template-columns:76px minmax(0,1fr);}
+  .knowledge-row-tail{grid-column:1 / -1;flex-direction:row;justify-content:space-between}
+}

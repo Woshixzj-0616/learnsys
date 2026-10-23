@@ -58,11 +58,20 @@
     WB.render.rateButtons();
     // 令牌是异步取的；先按本地缓存渲染，拿到令牌后再补拉后台最近一次分析。
     WB.api.init().then(function(){
-      if(WB.insights && WB.insights.restoreLatest) WB.insights.restoreLatest();
-      if(WB.vocab && WB.vocab.syncFromServer) WB.vocab.syncFromServer();
-      if(WB.translate && WB.translate.autoCurrent) WB.translate.autoCurrent();
-      // 把整卷进度补一遍：之前后台没开时点的「完成」，下次打开也能进学习工作台
-      if(WB.cet6Sync && WB.cet6Sync.syncPaper) WB.cet6Sync.syncPaper();
+      const afterAudit = function(){
+        if(WB.insights && WB.insights.restoreLatest) WB.insights.restoreLatest();
+        if(WB.vocab && WB.vocab.syncFromServer) WB.vocab.syncFromServer();
+        if(WB.translate && WB.translate.autoCurrent) WB.translate.autoCurrent();
+      };
+      // 先做整卷审计/恢复，再拉分析和生词：审计期间 hydrating=true，
+      // 4 个同步字段的写操作会被拦一下，避免拿空快照覆盖服务端。
+      if(WB.cet6Sync && WB.cet6Sync.syncPaper){
+        Promise.resolve(WB.cet6Sync.syncPaper())
+          .catch(function(){ return null; })
+          .then(afterAudit);
+      }else{
+        afterAudit();
+      }
     });
 
     document.title = paper.title + " · 精听工作台";

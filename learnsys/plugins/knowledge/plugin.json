@@ -1,0 +1,15 @@
+{
+  "id": "knowledge",
+  "name": "知识点",
+  "icon": "◈",
+  "type": "native-page",
+  "entry": "pages/knowledge.html",
+  "order": 62,
+  "status": "ready",
+  "version": "2.15.0",
+  "category": "回顾",
+  "home": true,
+  "tagline": "答题流水、正确率与 BKT 掌握度",
+  "description": "每次测验作答（含答对）都按知识点类目落库；用可建模答题估算掌握度；旧错题只回填展示，不计入 BKT 样本。",
+  "script": "js/pages/knowledge.js"
+}

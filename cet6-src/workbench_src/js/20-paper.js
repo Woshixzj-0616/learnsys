@@ -151,6 +151,10 @@
   }
 
   function toggleDone(i){
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("标记完成")){
+      const m = state().done[currentId()] || {};
+      return !!m[i];
+    }
     const id = currentId();
     state().done[id] = state().done[id] || {};
     const wasDone = !!state().done[id][i];
@@ -165,6 +169,9 @@
   }
 
   function toggleError(i, t){
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("断点标签")){
+      return ((state().errors[currentId()] || {})[i] || []).slice();
+    }
     const id = currentId();
     state().errors[id] = state().errors[id] || {};
     const arr = state().errors[id][i] || [];
@@ -178,6 +185,7 @@
   }
 
   function setNote(i, text){
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("笔记")) return;
     const id = currentId();
     state().notes[id] = state().notes[id] || {};
     if(String(text).trim()) state().notes[id][i] = text;
@@ -226,6 +234,7 @@
 
   function bumpLoopStat(i, key){
     if(i == null || i < 0) return null;
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("循环统计")) return null;
     const id = currentId();
     state().loopStats[id] = state().loopStats[id] || {};
     const st = state().loopStats[id][i] || {plays:0, loops:0};
@@ -233,6 +242,7 @@
     if(key === "loops") st.plays = (Number(st.plays) || 0) + 1;
     state().loopStats[id][i] = st;
     WB.store.saveState();
+    if(WB.cet6Sync && WB.cet6Sync.schedule) WB.cet6Sync.schedule();
     return st;
   }
 

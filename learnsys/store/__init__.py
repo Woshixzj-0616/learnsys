@@ -8,11 +8,20 @@ from __future__ import annotations
 from ._base import SCHEMA, _LOCK, _migrate, connect, now, stamp
 from .agent_runs import add_agent_run, get_agent_run, list_agent_runs
 from .asks import add_ask, recent_asks, starred_asks
-from .cet6 import (cet6_progress_item, cet6_progress_summary, cet6_recent_events,
+from .cet6 import (add_cet6_dualwrite_diffs, add_cet6_dualwrite_run,
+                   cet6_progress_item, cet6_progress_paper_rows,
+                   cet6_progress_summary, cet6_recent_events,
                    upsert_cet6_progress)
 from .conversations import (add_message, conversation_messages, create_conversation,
                             get_conversation, list_conversations, touch_conversation)
 from .events import add_event
+from .knowledge import (BKT_READY_SQL, add_attempt as add_knowledge_attempt,
+                        all_points as knowledge_points, attempt_exists,
+                        backfill_candidates, has_live_attempt, meta_value as knowledge_meta,
+                        point_attempts as knowledge_point_attempts,
+                        point_by_id as knowledge_point, ready_attempts,
+                        set_meta as set_knowledge_meta, stats as knowledge_stats,
+                        meta_value, set_meta)
 from .materials import (MATERIAL_KINDS, add_material, delete_material_row, get_material,
                         list_materials, material_counts, set_material_status,
                         touch_material, update_material)
@@ -37,10 +46,16 @@ __all__ = [
     "add_agent_run", "get_agent_run", "list_agent_runs",
     "add_ask", "recent_asks", "starred_asks",
     "cet6_progress_item", "cet6_progress_summary", "cet6_recent_events",
-    "upsert_cet6_progress",
+    "cet6_progress_paper_rows", "add_cet6_dualwrite_run",
+    "add_cet6_dualwrite_diffs", "upsert_cet6_progress",
     "add_message", "conversation_messages", "create_conversation",
     "get_conversation", "list_conversations", "touch_conversation",
     "add_event",
+    "BKT_READY_SQL", "add_knowledge_attempt", "knowledge_points",
+    "attempt_exists", "backfill_candidates", "has_live_attempt",
+    "knowledge_meta", "knowledge_point_attempts", "knowledge_point",
+    "ready_attempts", "set_knowledge_meta", "knowledge_stats",
+    "meta_value", "set_meta",
     "MATERIAL_KINDS", "add_material", "delete_material_row", "get_material",
     "list_materials", "material_counts", "set_material_status", "touch_material",
     "update_material",

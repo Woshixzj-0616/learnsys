@@ -1,0 +1,57 @@
+<div class="knowledge-page">
+  <section class="stage-hero knowledge-hero">
+    <div>
+      <p class="stage-eyebrow">知识点 · 答题流水</p>
+      <h2>每次作答都记一笔，先看清懂没懂。</h2>
+      <p class="stage-sub">按 8 个类目统计测验答题，并用可建模答题估算掌握度；旧错题回填只展示，不计入 BKT 样本。</p>
+      <div class="review-stats knowledge-stats" id="knowledge-stats">
+        <div class="review-chip"><span>总作答</span><strong>—</strong></div>
+        <div class="review-chip"><span>测验正确率</span><strong>—</strong></div>
+        <div class="review-chip"><span>可入 BKT</span><strong>—</strong></div>
+        <div class="review-chip"><span>回填</span><strong>—</strong></div>
+      </div>
+    </div>
+    <div class="knowledge-hero-actions">
+      <button class="btn" type="button" id="knowledge-backfill">回填旧错题</button>
+      <a class="btn btn-primary" href="#/quiz">去测验</a>
+    </div>
+  </section>
+
+  <section class="knowledge-grid">
+    <div class="panel knowledge-list-panel">
+      <div class="panel-head knowledge-toolbar">
+        <h3>类目</h3>
+        <div class="knowledge-range" role="tablist" aria-label="时间范围">
+          <button class="btn knowledge-tab active" type="button" data-days="0">全部</button>
+          <button class="btn knowledge-tab" type="button" data-days="30">近 30 天</button>
+          <button class="btn knowledge-tab" type="button" data-days="7">近 7 天</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="knowledge-list" id="knowledge-list">
+          <div class="empty">正在读取知识点…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel knowledge-detail-panel">
+      <div class="panel-head">
+        <h3 id="knowledge-detail-title">选一个类目</h3>
+        <span class="hint" id="knowledge-detail-count"></span>
+      </div>
+      <div class="panel-body">
+        <p class="knowledge-detail-mastery hint" id="knowledge-detail-mastery"></p>
+        <div class="knowledge-attempts" id="knowledge-attempts">
+          <div class="empty">点左边的类目看最近答题。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="hint knowledge-note">
+    掌握度不是正确率：按答题顺序逐次更新，答对提高、答错降低，越靠后的作答影响越大。
+    每个类目至少 5 条可建模答题才显示；等级为掌握 ≥70%、在学 40%–70%、薄弱 &lt;40%。
+    「其他」是兜底类目，不建模，也不参与平均掌握度。一题可以挂多个类目，
+    所以各类目次数之和可能大于总作答。
+  </p>
+</div>

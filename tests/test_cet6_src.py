@@ -15,8 +15,11 @@ class Cet6SourceSnapshotTest(unittest.TestCase):
     def test_key_sources_are_present(self):
         for rel in (
             "workbench_src/js/00-core.js",
+            "workbench_src/js/04-mode.js",
+            "workbench_src/js/56-dualwrite.js",
             "workbench_src/js/65-ask.js",
             "workbench_src/tests/test_ranges.mjs",
+            "workbench_src/tests/test_dualwrite.mjs",
             "build_workbench.py",
             "split_listening.py",
             "校对/结构修复.json",

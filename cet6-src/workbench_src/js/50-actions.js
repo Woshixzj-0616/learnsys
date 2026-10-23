@@ -102,6 +102,7 @@
       }
     }
     if(btn.dataset.act === "done"){
+      if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("标记完成")) return;
       const nowDone = WB.paper.toggleDone(i);
       WB.noteAction((nowDone ? "标记完成" : "取消完成") + "第 " + i + " 句");
       WB.render.sentences();
@@ -109,6 +110,7 @@
       WB.cet6Sync.schedule();
     }
     if(btn.dataset.err){
+      if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("断点标签")) return;
       WB.paper.toggleError(i, btn.dataset.err);
       WB.noteAction("第 " + i + " 句断点：" + btn.dataset.err);
       WB.render.sentences();
@@ -127,6 +129,7 @@
     }
     const ta = e.target.closest("textarea[data-note]");
     if(!ta) return;
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("笔记")) return;
     WB.paper.setNote(Number(ta.dataset.note), ta.value);
     WB.cet6Sync.schedule();
   }
@@ -135,6 +138,7 @@
     const onBox = e.target.closest("input[data-loop-on]");
     const timesSel = e.target.closest("select[data-loop-times]");
     if(!onBox && !timesSel) return;
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("循环设置")) return;
     const i = Number(onBox ? onBox.dataset.loopOn : timesSel.dataset.loopTimes);
     const patch = {};
     if(onBox) patch.on = onBox.checked;

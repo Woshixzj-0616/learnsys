@@ -1,5 +1,6 @@
-// @requires: 00-core.js
+// @requires: 00-core.js, 04-mode.js
 // 迁移桥：旧 file:// 工作台 → 学习系统后台；HTTP 首开 → 从后台恢复。
+// 退休后（WB.FLAGS.retired=true）file:// 只读，不再推送；HTTP 的恢复交给 90-boot/58-sync。
 // 只碰 localStorage 与网络，不参与渲染；放在 10-storage 之前，保证恢复/导入
 // 在试卷层读取状态之前就已经安排好（HTTP 恢复会 reload 一次）。
 (function(WB){
@@ -271,9 +272,17 @@
     }
   }
 
+  function retired(){
+    return !!(WB.FLAGS && WB.FLAGS.retired);
+  }
+
   function updateFooter(){
     const node = document.querySelector("footer");
     if(!node) return;
+    if(retired() && isFile()){
+      node.textContent = "只读模式 · 进度以学习系统为准 · 可以查看和导出，不能修改";
+      return;
+    }
     if(isHttp()){
       node.textContent = "已接入学习系统 · 从文件夹打开也会跳到这一份 · AI 分析走统一后台";
     }
@@ -311,8 +320,9 @@
     if(sessionStorage.getItem(REDIRECT_GUARD) === "1") return false;   // 跳过一次还失败就别循环
     for(let i = 0; i < SERVERS.length; i++){
       if(!(await probeServer(SERVERS[i], 800))) continue;
-      // 跳之前先把本地这份推上去：离线期间在文件夹里记的进度，后台一开就能补进同一份
-      await importFileData(collectAll(), SERVERS[i]);
+      // 跳之前先把本地这份推上去：离线期间在文件夹里记的进度，后台一开就能补进同一份。
+      // 退休后 file:// 不再作为写入口，只跳转、不推送。
+      if(!retired()) await importFileData(collectAll(), SERVERS[i]);
       try{ sessionStorage.setItem(REDIRECT_GUARD, "1"); }catch(e){}
       location.replace(SERVERS[i] + "/cet6/" + (location.hash || ""));
       return true;
@@ -323,9 +333,11 @@
   updateFooter();
   if(isFile()){
     jumpToServer().then(function(jumped){
-      if(!jumped) importFileData(collectAll());   // 后台没开：还用本地文件，顺便把旧数据推上去
+      // 后台没开：退休前照旧把本地数据推上去；退休后只读，不推送。
+      if(!jumped && !retired()) importFileData(collectAll());
     });
-  }else if(isHttp()){
+  }else if(isHttp() && !retired()){
+    // 退休后由 58-sync 在 boot 时按试卷从 cet6_progress 恢复，不再合并 legacy 快照。
     restoreHttpData();
   }
 })(window.WB = window.WB || {});

@@ -2,13 +2,14 @@
 import { api, streamChat } from "../api.js";
 import { renderInto } from "../markdown.js";
 import { escapeHtml, toast } from "../ui.js";
+import { buildAttemptPayload, parseGrading, parseLastQuestion } from "./quiz-parse.js";
 
 let data = null;
 let convId = null;
 let streaming = false;
 let controller = null;
 let quizEventSent = false;
-let pendingQuestion = "";       // 当前正在作答的题（从「【第N题】」标记里取）
+let pending = null;             // 当前题：{no, stem, points}，出题时暂存
 let materialInfo = null;        // 从资料出题时的资料元信息
 let materialId = 0;
 let nodes = {};
@@ -19,7 +20,7 @@ function resetQuizState() {
   streaming = false;
   controller = null;
   quizEventSent = false;
-  pendingQuestion = "";
+  pending = null;
   materialInfo = null;
   materialId = 0;
 }
@@ -171,7 +172,7 @@ async function startQuiz() {
 async function sendAnswer() {
   const text = String(nodes.input.value || "").trim();
   if (!text) return;
-  if (!convId) {
+  if (!convId || !pending) {
     toast("先点「出 5 道题」，再作答", "err");
     return;
   }
@@ -185,25 +186,9 @@ async function sendAnswer() {
   await runTurn(text, {
     note: "正在批改…",
     isGrading: true,
-    question: pendingQuestion,
+    current: pending,
     userAnswer: text,
   });
-}
-
-/** 从「【第N题】」标记里取最后一道题；模型没按标记写就返回空串。 */
-function lastQuestion(text) {
-  const pattern = /【第(\d+)题】([\s\S]*?)(?=【第\d+题】|【批改】|$)/g;
-  let found = "";
-  for (const match of String(text || "").matchAll(pattern)) {
-    found = (match[2] || "").trim();
-  }
-  return found;
-}
-
-/** 批改正文：从「【批改】」到下一题之前，避免把下一题混进答案。 */
-function extractGrading(text) {
-  const match = String(text || "").match(/【批改】([\s\S]*?)(?=【第\d+题】|$)/);
-  return match ? match[1].trim() : "";
 }
 
 function attachWrongbookAction(block, payload, autoSaved) {
@@ -226,7 +211,7 @@ function attachWrongbookAction(block, payload, autoSaved) {
         question: payload.question,
         answer: payload.answer,
         my_answer: payload.user_answer,
-        tags: "测验",
+        tags: payload.tags || "测验",
         material_id: materialId || 0,
       });
       button.textContent = "已收进错题本";
@@ -254,6 +239,7 @@ async function runTurn(message, options = {}) {
   let errorText = "";
   let autoSaved = false;
   let finished = false;
+  let fallbackText = "";          // 自检 rewrite 前的文本，标记被改掉时兜底
   try {
     await streamChat({
       message,
@@ -272,6 +258,7 @@ async function runTurn(message, options = {}) {
         renderInto(block, text);
         scrollDown();
       } else if (event.kind === "rewrite") {
+        if (!fallbackText) fallbackText = text;
         text = String(event.data?.text || text);
         renderInto(block, text);
         scrollDown();
@@ -298,18 +285,40 @@ async function runTurn(message, options = {}) {
     }, controller.signal);
     if (errorText) throw new Error(errorText);
     if (!text.trim()) throw new Error("模型没有返回内容");
-    const next = lastQuestion(text);
-    if (options.isGrading && options.question) {
-      const analysis = extractGrading(text) || text;
+
+    let grading = parseGrading(text);
+    if (!grading.found && fallbackText) {
+      const fallback = parseGrading(fallbackText);
+      if (fallback.found) grading = fallback;
+    }
+
+    if (options.isGrading && options.current) {
+      const payload = buildAttemptPayload({
+        conversationId: convId,
+        materialId: materialId || 0,
+        questionNo: options.current.no,
+        question: options.current.stem,
+        answer: options.userAnswer || "",
+        grading,
+        points: options.current.points,
+      });
+      // 逐题流水：答对也记；只在 done 之后发一次，失败不打断作答。
+      if (payload) {
+        api.post("/api/quiz/attempt", payload).catch((err) => {
+          console.warn("答题流水没有记上：", err);
+        });
+      }
       attachWrongbookAction(block, {
         conversation_id: convId,
-        question: options.question,
+        question: options.current.stem,
         user_answer: options.userAnswer || "",
-        answer: analysis,
+        answer: grading.body || text,
+        tags: (options.current.points || []).join("、") || "测验",
       }, autoSaved);
     }
-    if (next) pendingQuestion = next;
-    else if (finished) pendingQuestion = "";
+
+    const next = parseLastQuestion(text);
+    pending = next ? {no: next.no, stem: next.stem, points: next.points} : null;
   } catch (error) {
     if (error?.name === "AbortError") {
       block.innerHTML = `<p class="review-error">已停止，内容保留到中断处。</p>`;

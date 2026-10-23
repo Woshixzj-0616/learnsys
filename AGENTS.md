@@ -15,11 +15,12 @@ cd "D:/Desktop/learnsys"
 .venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"
 ```
 
-当前基线：529 个测试全过。
+当前基线：582 个测试全过。
 
 ```bash
 # 前端纯函数
 node --test web/tests/context.test.mjs
+node --test web/tests/quiz-parse.test.mjs
 
 # 体量门禁
 .venv/Scripts/python.exe tools/arch_report.py --check

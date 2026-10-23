@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- WB-BUILD hash=770222ca1b2c4695 built=2026-10-22 20:28:32 -->
+<!-- WB-BUILD hash=32cbee9862aec06e built=2026-10-23 07:52:45 -->
 
 <html lang="zh-CN">
 <head>
@@ -73,6 +73,7 @@ header h1{font-size:22px;line-height:1.35;margin:0;letter-spacing:.01em;overflow
 .speed-group button{border:0;border-radius:0;padding:5px 8px;background:transparent;font-size:12px}
 .speed-group button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .launch-msg{margin:8px 0 0;padding:10px 12px;border-radius:10px;background:var(--danger-soft);border:1px solid #f3b6c6;color:var(--danger);font-size:13px;white-space:pre-wrap}
+.mode-banner{margin:8px 0 0;padding:10px 12px;border-radius:10px;background:var(--warn-soft);border:1px solid #f0d3a6;color:#7c4a03;font-size:13px;font-weight:600}
 /* 播放条钉在窗口底部：听整段时页面往下翻，暂停永远在手边，不用滚回顶上 */
 .player-bar{
   position:fixed;left:50%;transform:translateX(-50%);bottom:14px;
@@ -472,6 +473,7 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
     </div>
     <div id="recentPanel" class="recent-panel hidden"></div>
     <div id="launchMsg" class="launch-msg hidden" role="alert"></div>
+    <div id="modeBanner" class="mode-banner hidden" role="status"></div>
 
     <div class="player-bar">
       <div class="player-main">
@@ -727,6 +729,10 @@ function showLaunchError(message){
   // 持久化学习状态，由 boot 从 storage 载入。
   WB.state = null;
 
+  // P17.1 退休开关：唯一构建常量。11-04 凭 tools/cet6_dualwrite_report.py
+  // 的报告决定是否改 true；改完必须重建工作台 HTML 并同步快照。
+  WB.FLAGS = { retired: false };
+
   WB.dom = {};
 
   WB.cacheDom = function(){
@@ -801,9 +807,63 @@ function showLaunchError(message){
 
 </script>
 <script>
-// ---- 05-bridge.js ----
+// ---- 04-mode.js ----
 // @requires: 00-core.js
+// 运行模式：HTTP / file:// 与「退休后只读」的唯一判断处。
+// 退休开关是构建常量 WB.FLAGS.retired（在 00-core.js），11-04 凭报告改 true 后重建。
+(function(WB){
+  "use strict";
+
+  const HTTP = location.protocol === "http:" || location.protocol === "https:";
+  const FLAGS = WB.FLAGS || (WB.FLAGS = {retired:false});
+
+  const mode = {
+    HTTP: HTTP,
+    retired: !!FLAGS.retired,
+    // file:// 是旧入口；退休后只读。HTTP 模式永远可写。
+    readOnly: !!FLAGS.retired && !HTTP,
+    // syncPaper 读取服务端进度期间，4 个同步字段先别让改。
+    hydrating: false,
+
+    ensureWritable: function(what){
+      if(!mode.readOnly) return true;
+      const label = what ? "（" + what + "）" : "";
+      if(WB.status) WB.status("只读模式" + label + "：请从学习工作台打开后再修改。");
+      return false;
+    },
+
+    banner: function(text){
+      if(!text) return;
+      const show = function(){
+        let el = document.getElementById("modeBanner");
+        if(!el){
+          el = document.createElement("div");
+          el.id = "modeBanner";
+          el.className = "mode-banner";
+          el.setAttribute("role", "status");
+          const wrap = document.querySelector(".wrap") || document.body;
+          wrap.insertBefore(el, wrap.firstChild);
+        }
+        el.textContent = text;
+        el.classList.remove("hidden");
+      };
+      if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", show);
+      else show();
+    }
+  };
+
+  if(mode.readOnly){
+    mode.banner("只读模式 · 进度以学习系统为准 · 可以查看和导出，不能修改。");
+  }
+  WB.cet6Mode = mode;
+})(window.WB = window.WB || {});
+
+</script>
+<script>
+// ---- 05-bridge.js ----
+// @requires: 00-core.js, 04-mode.js
 // 迁移桥：旧 file:// 工作台 → 学习系统后台；HTTP 首开 → 从后台恢复。
+// 退休后（WB.FLAGS.retired=true）file:// 只读，不再推送；HTTP 的恢复交给 90-boot/58-sync。
 // 只碰 localStorage 与网络，不参与渲染；放在 10-storage 之前，保证恢复/导入
 // 在试卷层读取状态之前就已经安排好（HTTP 恢复会 reload 一次）。
 (function(WB){
@@ -1075,9 +1135,17 @@ function showLaunchError(message){
     }
   }
 
+  function retired(){
+    return !!(WB.FLAGS && WB.FLAGS.retired);
+  }
+
   function updateFooter(){
     const node = document.querySelector("footer");
     if(!node) return;
+    if(retired() && isFile()){
+      node.textContent = "只读模式 · 进度以学习系统为准 · 可以查看和导出，不能修改";
+      return;
+    }
     if(isHttp()){
       node.textContent = "已接入学习系统 · 从文件夹打开也会跳到这一份 · AI 分析走统一后台";
     }
@@ -1115,8 +1183,9 @@ function showLaunchError(message){
     if(sessionStorage.getItem(REDIRECT_GUARD) === "1") return false;   // 跳过一次还失败就别循环
     for(let i = 0; i < SERVERS.length; i++){
       if(!(await probeServer(SERVERS[i], 800))) continue;
-      // 跳之前先把本地这份推上去：离线期间在文件夹里记的进度，后台一开就能补进同一份
-      await importFileData(collectAll(), SERVERS[i]);
+      // 跳之前先把本地这份推上去：离线期间在文件夹里记的进度，后台一开就能补进同一份。
+      // 退休后 file:// 不再作为写入口，只跳转、不推送。
+      if(!retired()) await importFileData(collectAll(), SERVERS[i]);
       try{ sessionStorage.setItem(REDIRECT_GUARD, "1"); }catch(e){}
       location.replace(SERVERS[i] + "/cet6/" + (location.hash || ""));
       return true;
@@ -1127,9 +1196,11 @@ function showLaunchError(message){
   updateFooter();
   if(isFile()){
     jumpToServer().then(function(jumped){
-      if(!jumped) importFileData(collectAll());   // 后台没开：还用本地文件，顺便把旧数据推上去
+      // 后台没开：退休前照旧把本地数据推上去；退休后只读，不推送。
+      if(!jumped && !retired()) importFileData(collectAll());
     });
-  }else if(isHttp()){
+  }else if(isHttp() && !retired()){
+    // 退休后由 58-sync 在 boot 时按试卷从 cet6_progress 恢复，不再合并 legacy 快照。
     restoreHttpData();
   }
 })(window.WB = window.WB || {});
@@ -1259,6 +1330,7 @@ function showLaunchError(message){
   }
 
   function saveVocab(arr){
+    if(WB.cet6Mode && WB.cet6Mode.readOnly) return;
     try{ localStorage.setItem(KEYS.vocab, JSON.stringify(arr)); }catch(e){}
   }
 
@@ -1333,6 +1405,9 @@ function showLaunchError(message){
   }
 
   function importData(data){
+    if(WB.cet6Mode && WB.cet6Mode.readOnly){
+      throw new Error("只读模式：请从学习工作台打开后再导入数据");
+    }
     if(!data || !data.store || typeof data.store !== "object"){
       throw new Error("不是本工作台导出的数据文件");
     }
@@ -1522,6 +1597,10 @@ function showLaunchError(message){
   }
 
   function toggleDone(i){
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("标记完成")){
+      const m = state().done[currentId()] || {};
+      return !!m[i];
+    }
     const id = currentId();
     state().done[id] = state().done[id] || {};
     const wasDone = !!state().done[id][i];
@@ -1536,6 +1615,9 @@ function showLaunchError(message){
   }
 
   function toggleError(i, t){
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("断点标签")){
+      return ((state().errors[currentId()] || {})[i] || []).slice();
+    }
     const id = currentId();
     state().errors[id] = state().errors[id] || {};
     const arr = state().errors[id][i] || [];
@@ -1549,6 +1631,7 @@ function showLaunchError(message){
   }
 
   function setNote(i, text){
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("笔记")) return;
     const id = currentId();
     state().notes[id] = state().notes[id] || {};
     if(String(text).trim()) state().notes[id][i] = text;
@@ -1597,6 +1680,7 @@ function showLaunchError(message){
 
   function bumpLoopStat(i, key){
     if(i == null || i < 0) return null;
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("循环统计")) return null;
     const id = currentId();
     state().loopStats[id] = state().loopStats[id] || {};
     const st = state().loopStats[id][i] || {plays:0, loops:0};
@@ -1604,6 +1688,7 @@ function showLaunchError(message){
     if(key === "loops") st.plays = (Number(st.plays) || 0) + 1;
     state().loopStats[id][i] = st;
     WB.store.saveState();
+    if(WB.cet6Sync && WB.cet6Sync.schedule) WB.cet6Sync.schedule();
     return st;
   }
 
@@ -2552,7 +2637,7 @@ function showLaunchError(message){
           "</div>" +
           cardLoopRow(s, lc, WB.paper.loopStatText(loopStats[s.i])) +
           cardABRow(s) +
-          '<textarea class="note" name="note-' + s.i + '" data-note="' + s.i + '" ' +
+          '<textarea class="note" name="note-' + s.i + '" data-note="' + s.i + '" maxlength="1000" ' +
             'placeholder="我的原因：比如语速太快 / 从句太长 / 这个词没反应过来…">' +
             U.escapeHtml(note) + "</textarea>" +
           '<div class="controls">' +
@@ -2830,6 +2915,7 @@ function showLaunchError(message){
       }
     }
     if(btn.dataset.act === "done"){
+      if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("标记完成")) return;
       const nowDone = WB.paper.toggleDone(i);
       WB.noteAction((nowDone ? "标记完成" : "取消完成") + "第 " + i + " 句");
       WB.render.sentences();
@@ -2837,6 +2923,7 @@ function showLaunchError(message){
       WB.cet6Sync.schedule();
     }
     if(btn.dataset.err){
+      if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("断点标签")) return;
       WB.paper.toggleError(i, btn.dataset.err);
       WB.noteAction("第 " + i + " 句断点：" + btn.dataset.err);
       WB.render.sentences();
@@ -2855,6 +2942,7 @@ function showLaunchError(message){
     }
     const ta = e.target.closest("textarea[data-note]");
     if(!ta) return;
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("笔记")) return;
     WB.paper.setNote(Number(ta.dataset.note), ta.value);
     WB.cet6Sync.schedule();
   }
@@ -2863,6 +2951,7 @@ function showLaunchError(message){
     const onBox = e.target.closest("input[data-loop-on]");
     const timesSel = e.target.closest("select[data-loop-times]");
     if(!onBox && !timesSel) return;
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("循环设置")) return;
     const i = Number(onBox ? onBox.dataset.loopOn : timesSel.dataset.loopTimes);
     const patch = {};
     if(onBox) patch.on = onBox.checked;
@@ -3226,15 +3315,274 @@ function showLaunchError(message){
 
 </script>
 <script>
+// ---- 56-dualwrite.js ----
+// @requires: 00-core.js, 04-mode.js
+// 双写审计的纯函数：服务端行 → 本地状态、整卷快照、结构指纹、空快照判断。
+// 不碰网络、不碰 DOM，node --test 可直接加载。
+(function(WB){
+  "use strict";
+
+  function normText(text){
+    return String(text || "").toLowerCase()
+      .replace(/\s+/g, "")
+      .replace(/[·:：,，.。;；!！?？'"“”‘’()（）\[\]【】]/g, "");
+  }
+
+  function sectionLetter(name){
+    const m = String(name || "").match(/Section\s*([A-Za-z])/i);
+    return m ? m[1].toUpperCase() : "";
+  }
+
+  function tailNumber(text){
+    const m = String(text || "").match(/(\d+)\s*$/);
+    return m ? Number(m[1]) : null;
+  }
+
+  function pickSection(sections, name){
+    const list = sections || [];
+    const exact = list.filter(function(sec){ return sec.name === name; });
+    if(exact.length === 1) return exact[0];
+    if(exact.length > 1) return null;
+    const letter = sectionLetter(name);
+    if(!letter) return null;
+    const byLetter = list.filter(function(sec){ return sec.letter === letter; });
+    return byLetter.length === 1 ? byLetter[0] : null;
+  }
+
+  function pickItem(section, title){
+    const items = (section && section.items) || [];
+    const exact = items.filter(function(it){ return it.title === title; });
+    if(exact.length === 1) return exact[0];
+    if(exact.length > 1) return null;
+    const num = tailNumber(title);
+    if(num != null){
+      const byNum = items.filter(function(it){ return Number(it.index) === num; });
+      if(byNum.length === 1) return byNum[0];
+    }
+    const norm = normText(title);
+    const byNorm = items.filter(function(it){ return normText(it.title) === norm; });
+    return byNorm.length === 1 ? byNorm[0] : null;
+  }
+
+  function emptyMaps(){
+    return {done:{}, errors:{}, notes:{}, loopStats:{}};
+  }
+
+  function put(map, id, sentence, value){
+    if(!map[id]) map[id] = {};
+    map[id][sentence] = value;
+  }
+
+  // 服务端整卷行 → 本地 state 形状；歧义/结构对不上一律不猜。
+  // 返回的 skipped 会随 /api/cet6/sync-paper 回传，服务端据此保留旧行。
+  function mapServerState(paper, serverItems){
+    const state = emptyMaps();
+    const skipped = [];
+    let meaningful = 0, matched = 0, partial = 0, unmatched = 0;
+    const sections = (paper && paper.sections) || [];
+
+    (serverItems || []).forEach(function(group){
+      const sec = pickSection(sections, group && group.section);
+      const item = sec ? pickItem(sec, group && group.item) : null;
+      if(!sec || !item){
+        unmatched += 1;
+        skipped.push({section: String((group && group.section) || ""),
+                      item: String((group && group.item) || ""),
+                      reason: "结构未匹配"});
+        return;
+      }
+      const id = sec.letter + "-" + item.index;
+      const valid = {};
+      (item.sentences || []).forEach(function(sent){ valid[sent.i] = true; });
+      let bad = false;
+      (group.sentences || []).forEach(function(row){
+        if(!valid[row.sentence]){ bad = true; return; }
+        if(row.done) put(state.done, id, row.sentence, true);
+        if(row.tags && row.tags.length){
+          put(state.errors, id, row.sentence, row.tags.slice());
+        }
+        if(row.note) put(state.notes, id, row.sentence, String(row.note));
+        const loops = Number(row.loops) || 0;
+        const plays = Number(row.plays) || 0;
+        if(loops || plays) put(state.loopStats, id, row.sentence, {loops:loops, plays:plays});
+        if(row.done || (row.tags && row.tags.length) || row.note || loops) meaningful += 1;
+      });
+      if(bad){
+        partial += 1;
+        skipped.push({section: group.section, item: group.item, reason: "句子结构不一致"});
+      }else{
+        matched += 1;
+      }
+    });
+    return {state:state, skipped:skipped, meaningful:meaningful,
+            matched:matched, partial:partial, unmatched:unmatched};
+  }
+
+  function mergeMaps(dst, src, mode){
+    Object.keys(src || {}).forEach(function(id){
+      const source = src[id] || {};
+      const target = dst[id] || (dst[id] = {});
+      Object.keys(source).forEach(function(key){
+        if(mode === "union"){
+          if(mode === "union" && Array.isArray(source[key])){
+            const arr = target[key] || [];
+            source[key].forEach(function(v){ if(arr.indexOf(v) < 0) arr.push(v); });
+            if(arr.length) target[key] = arr;
+          }else if(target[key] == null || source[key] === true){
+            target[key] = source[key];
+          }
+        }else if(mode === "missing"){
+          if(target[key] == null) target[key] = source[key];
+        }else{
+          target[key] = source[key];
+        }
+      });
+    });
+  }
+
+  // 把服务端状态并进本地 state。
+  // serverFirst=false：本地优先，只补缺口（双写阶段）。
+  // serverFirst=true ：服务端优先（退休后），但 done/errors 仍取并集，防止误删。
+  function mergeIntoState(state, mapped, serverFirst){
+    if(!state || !mapped || !mapped.state) return false;
+    state.done = state.done || {};
+    state.errors = state.errors || {};
+    state.notes = state.notes || {};
+    state.loopStats = state.loopStats || {};
+    const before = JSON.stringify({done:state.done, errors:state.errors,
+                                   notes:state.notes, loopStats:state.loopStats});
+    mergeMaps(state.done, mapped.state.done, "union");
+    mergeMaps(state.errors, mapped.state.errors, "union");
+    mergeMaps(state.notes, mapped.state.notes, serverFirst ? "override" : "missing");
+    const statsDst = state.loopStats;
+    Object.keys(mapped.state.loopStats || {}).forEach(function(id){
+      const src = mapped.state.loopStats[id] || {};
+      const dst = statsDst[id] || (statsDst[id] = {});
+      Object.keys(src).forEach(function(sentence){
+        const a = dst[sentence] || {};
+        const b = src[sentence] || {};
+        dst[sentence] = {loops:Math.max(Number(a.loops) || 0, Number(b.loops) || 0),
+                         plays:Math.max(Number(a.plays) || 0, Number(b.plays) || 0)};
+      });
+    });
+    const after = JSON.stringify({done:state.done, errors:state.errors,
+                                  notes:state.notes, loopStats:state.loopStats});
+    return before !== after;
+  }
+
+  function canonicalRows(paper, state, skipped){
+    const skip = {};
+    (skipped || []).forEach(function(item){
+      skip[String(item.section) + "\u0000" + String(item.item)] = true;
+    });
+    const items = [];
+    const sections = (paper && paper.sections) || [];
+    sections.forEach(function(sec){
+      (sec.items || []).forEach(function(item){
+        if(skip[String(sec.name) + "\u0000" + String(item.title)]) return;
+        const id = sec.letter + "-" + item.index;
+        const doneMap = (state && state.done && state.done[id]) || {};
+        const errors = (state && state.errors && state.errors[id]) || {};
+        const notes = (state && state.notes && state.notes[id]) || {};
+        const stats = (state && state.loopStats && state.loopStats[id]) || {};
+        const done = [];
+        const sentences = (item.sentences || []).map(function(sent){
+          if(doneMap[sent.i]) done.push(sent.i);
+          const st = stats[sent.i] || {};
+          return {
+            sentence: sent.i,
+            en: sent.en || "",
+            tags: (errors[sent.i] || []).slice(),
+            note: notes[sent.i] || "",
+            loops: Number(st.loops) || 0,
+            plays: Number(st.plays) || 0
+          };
+        });
+        items.push({section: sec.name, item: item.title,
+                    sentences: sentences, done: done});
+      });
+    });
+    return {items: items};
+  }
+
+  function anyMap(map){
+    return Object.keys(map || {}).some(function(id){
+      const inner = map[id];
+      return inner && typeof inner === "object" && Object.keys(inner).length > 0;
+    });
+  }
+
+  function anyLoop(stats){
+    return Object.keys(stats || {}).some(function(id){
+      const inner = stats[id] || {};
+      return Object.keys(inner).some(function(sentence){
+        const st = inner[sentence] || {};
+        return (Number(st.loops) || 0) > 0 || (Number(st.plays) || 0) > 0;
+      });
+    });
+  }
+
+  // 只看 4 个同步字段；starts / ab / pos / 翻译缓存不算「有进度」。
+  function snapshotIsEmpty(state){
+    if(!state) return true;
+    return !(anyMap(state.done) || anyMap(state.errors) ||
+             anyMap(state.notes) || anyLoop(state.loopStats));
+  }
+
+  function paperSig(paper){
+    const text = ((paper && paper.sections) || []).map(function(sec){
+      return String(sec.letter) + "|" + String(sec.name) + "|" +
+        (sec.items || []).map(function(item){
+          return String(item.index) + "|" + String(item.title) + "|" +
+            (item.sentences || []).map(function(s){ return s.i; }).join(",");
+        }).join(";");
+    }).join("||");
+    let h = 2166136261;
+    for(let i = 0; i < text.length; i++){
+      h ^= text.charCodeAt(i);
+      h = (h * 16777619) >>> 0;
+    }
+    return text.length + ":" + h.toString(16);
+  }
+
+  function clientDay(){
+    const d = new Date();
+    const pad = function(n){ return String(n).padStart(2, "0"); };
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+
+  WB.dualwrite = {
+    normText: normText,
+    sectionLetter: sectionLetter,
+    tailNumber: tailNumber,
+    pickSection: pickSection,
+    pickItem: pickItem,
+    mapServerState: mapServerState,
+    mergeIntoState: mergeIntoState,
+    canonicalRows: canonicalRows,
+    snapshotIsEmpty: snapshotIsEmpty,
+    paperSig: paperSig,
+    clientDay: clientDay
+  };
+})(window.WB = window.WB || {});
+
+</script>
+<script>
 // ---- 58-sync.js ----
-// @requires: 00-core.js, 10-storage.js, 20-paper.js, 55-api.js
-// 同步层：把当前段的逐句进度（标签/笔记/循环/完成）送到学习后台。
-// 断点同步按 dedupe_key 去重；这里只负责「拼快照 + 防抖」，不碰渲染。
+// @requires: 00-core.js, 04-mode.js, 10-storage.js, 20-paper.js, 55-api.js, 56-dualwrite.js
+// 同步层：增量编辑走 /api/cet6/sync；打开试卷时做一次整卷审计
+// （写前比对 → 写入 → 写后校验），结果进 cet6_dualwrite_runs。
 (function(WB){
   "use strict";
 
   const LEGACY_SERVER = "http://127.0.0.1:8765";
   let timer = null;
+  let failedPushes = 0;
+
+  function paperId(){
+    return WB.session.paperDir ||
+      (WB.session.paper && WB.session.paper.title) || "";
+  }
 
   function buildFor(sec, cur, analysis){
     const id = WB.paper.itemId(sec, cur);
@@ -3286,40 +3634,106 @@ function showLaunchError(message){
     }catch(e){
       // 后台没开 / 端口变了：工作台照常用，下次改动会再试
     }
+    failedPushes += 1;
     return false;
   }
 
   async function push(analysis){
     if(!WB.state || !WB.session.paper) return false;
+    if(WB.cet6Mode && WB.cet6Mode.readOnly) return false;
     return send(build(analysis));
   }
 
-  // 打开试卷时把整卷各段的进度补一遍：之前后台没开时点的「完成」也能进学习工作台。
-  // 每份试卷每次打开只跑一遍，失败不拦使用。
+  function renderAll(){
+    try{
+      if(WB.render && WB.render.sentences) WB.render.sentences();
+      if(WB.render && WB.render.progress) WB.render.progress();
+      if(WB.render && WB.render.nav) WB.render.nav();
+    }catch(e){}
+  }
+
+  async function fetchServerState(){
+    const data = await WB.api.get(
+      "/api/cet6/state?paper_id=" + encodeURIComponent(paperId()));
+    return WB.dualwrite.mapServerState(WB.session.paper, (data && data.items) || []);
+  }
+
+  // 服务端 → 本地：服务端优先（退休后），done/errors 仍取并集。
+  async function hydrateServer(){
+    const mapped = await fetchServerState();
+    const changed = WB.dualwrite.mergeIntoState(WB.state, mapped, true);
+    if(changed){
+      WB.store.saveState();
+      renderAll();
+    }
+    return mapped;
+  }
+
+  // 审计成功后，只补本地缺口（不覆盖用户现有值），避免服务端多出的行丢掉。
+  async function adoptMissing(){
+    try{
+      const mapped = await fetchServerState();
+      if(WB.dualwrite.mergeIntoState(WB.state, mapped, false)){
+        WB.store.saveState();
+        renderAll();
+      }
+    }catch(e){}
+  }
+
+  function payloadFor(items, hydration, skipped){
+    return {
+      paper: WB.session.paper.title,
+      paper_id: paperId(),
+      items: items,
+      hydration: hydration,
+      mode: (WB.cet6Mode && WB.cet6Mode.HTTP) ? "http" : "file",
+      paper_sig: WB.dualwrite.paperSig(WB.session.paper),
+      client_ts: new Date().toISOString(),
+      client_day: WB.dualwrite.clientDay(),
+      push_failed: failedPushes,
+      skipped_items: skipped || []
+    };
+  }
+
+  // 打开试卷时的一次整卷审计。force=true 可重跑（例如 409 恢复后）。
   let syncedPaper = "";
-  async function syncPaper(){
+  async function syncPaper(force){
     if(!WB.state || !WB.session.paper) return false;
     if(!WB.api || !WB.api.ready) return false;
-    const key = WB.session.paperDir || WB.session.paper.title;
-    if(!key || syncedPaper === key) return false;
-    syncedPaper = key;
-    const ok = [];
-    const sections = (WB.session.paper.sections || []);
-    for(let i = 0; i < sections.length; i++){
-      const sec = sections[i];
-      const items = sec.items || [];
-      for(let j = 0; j < items.length; j++){
-        try{
-          ok.push(await send(buildFor(sec, items[j], null)));
-        }catch(e){
-          ok.push(false);
-        }
+    if(WB.cet6Mode && WB.cet6Mode.readOnly) return false;
+    if(!force && syncedPaper === paperId()) return false;
+    syncedPaper = paperId();
+    if(WB.cet6Mode) WB.cet6Mode.hydrating = true;
+    try{
+      // 第一次用打开时的本地快照，先留证据：不先合并服务端，否则差异会被掩盖。
+      const built = WB.dualwrite.canonicalRows(WB.session.paper, WB.state, []);
+      try{
+        const res = await WB.api.post(
+          "/api/cet6/sync-paper", payloadFor(built.items, "local", []));
+        failedPushes = 0;
+        await adoptMissing();
+        return !!res;
+      }catch(err){
+        if(!err || err.status !== 409) throw err;
+        // 本地为空 / 服务端有进度：先从服务端恢复，再带 hydration=state 重试一次。
+        const mapped = await hydrateServer();
+        const built2 = WB.dualwrite.canonicalRows(
+          WB.session.paper, WB.state, mapped.skipped);
+        const res2 = await WB.api.post(
+          "/api/cet6/sync-paper", payloadFor(built2.items, "state", mapped.skipped));
+        failedPushes = 0;
+        return !!res2;
       }
+    }catch(e){
+      // 审计失败不拦使用；下次打开会重试。
+      return false;
+    }finally{
+      if(WB.cet6Mode) WB.cet6Mode.hydrating = false;
     }
-    return ok.every(Boolean);
   }
 
   function schedule(){
+    if(WB.cet6Mode && WB.cet6Mode.readOnly) return;
     if(timer) clearTimeout(timer);
     timer = setTimeout(function(){
       timer = null;
@@ -3327,8 +3741,20 @@ function showLaunchError(message){
     }, 1200);
   }
 
+  // 关窗/切后台时把防抖中的最后一笔推掉，避免下次打开审计出现缺口。
+  function flush(){
+    if(!timer) return;
+    clearTimeout(timer);
+    timer = null;
+    push(null);
+  }
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState === "hidden") flush();
+  });
+
   WB.cet6Sync = {build: build, buildFor: buildFor, push: push, schedule: schedule,
-                 syncPaper: syncPaper};
+                 syncPaper: syncPaper, flush: flush};
 })(window.WB = window.WB || {});
 
 </script>
@@ -3638,6 +4064,10 @@ function showLaunchError(message){
   }
 
   async function submitLegacy(record, key, paperScope){
+    if(WB.cet6Mode && WB.cet6Mode.readOnly){
+      WB.status("只读模式：请从学习工作台打开后再分析。");
+      return;
+    }
     busy = true;
     setButtonBusy(true);
     const my = ++seq;
@@ -3672,6 +4102,10 @@ function showLaunchError(message){
   }
 
   async function submitRecord(record, key, paperScope, force){
+    if(WB.cet6Mode && WB.cet6Mode.readOnly){
+      WB.status("只读模式：请从学习工作台打开后再分析。");
+      return;
+    }
     if(!(HTTP && WB.api.ready)){
       if(HTTP){
         setStatus(key, "后台令牌还没取到，请稍等一下再点「重试」。",
@@ -4879,6 +5313,7 @@ function showLaunchError(message){
   // 生词本唯一的写入入口：划词翻译和「＋生词」都走这里。
   // 已存在时只补/更新释义，不再重复插入。
   async function addWord(word, meaning, context){
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("生词本")) return false;
     word = String(word || "").trim();
     if(!word || word.length > 60){
       alert("请选择一个单词或短语（不超过 60 字）。");
@@ -5014,6 +5449,7 @@ function showLaunchError(message){
       const arr = load();
       const item = arr[k];
       if(!item) return;
+      if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("生词释义")) return;
       item.meaning = inp.value;
       if(item.id && usingApi()){
         clearTimeout(meaningTimer);
@@ -5035,6 +5471,7 @@ function showLaunchError(message){
       const b = e.target.closest("button[data-del]");
       if(!b) return;
       const k = Number(b.dataset.del);
+      if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("生词本")) return;
       const item = load()[k];
       if(item && item.id && usingApi()){
         try{
@@ -5273,11 +5710,20 @@ function showLaunchError(message){
     WB.render.rateButtons();
     // 令牌是异步取的；先按本地缓存渲染，拿到令牌后再补拉后台最近一次分析。
     WB.api.init().then(function(){
-      if(WB.insights && WB.insights.restoreLatest) WB.insights.restoreLatest();
-      if(WB.vocab && WB.vocab.syncFromServer) WB.vocab.syncFromServer();
-      if(WB.translate && WB.translate.autoCurrent) WB.translate.autoCurrent();
-      // 把整卷进度补一遍：之前后台没开时点的「完成」，下次打开也能进学习工作台
-      if(WB.cet6Sync && WB.cet6Sync.syncPaper) WB.cet6Sync.syncPaper();
+      const afterAudit = function(){
+        if(WB.insights && WB.insights.restoreLatest) WB.insights.restoreLatest();
+        if(WB.vocab && WB.vocab.syncFromServer) WB.vocab.syncFromServer();
+        if(WB.translate && WB.translate.autoCurrent) WB.translate.autoCurrent();
+      };
+      // 先做整卷审计/恢复，再拉分析和生词：审计期间 hydrating=true，
+      // 4 个同步字段的写操作会被拦一下，避免拿空快照覆盖服务端。
+      if(WB.cet6Sync && WB.cet6Sync.syncPaper){
+        Promise.resolve(WB.cet6Sync.syncPaper())
+          .catch(function(){ return null; })
+          .then(afterAudit);
+      }else{
+        afterAudit();
+      }
     });
 
     document.title = paper.title + " · 精听工作台";

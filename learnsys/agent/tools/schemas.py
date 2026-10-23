@@ -1,6 +1,7 @@
 """工具清单与写操作摘要：模型看到什么、确认框显示什么，只在 schema 里定义一次。"""
 from __future__ import annotations
 
+from learnsys import knowledge
 from learnsys.agent import sandbox
 
 
@@ -122,13 +123,15 @@ SAVE_WRONGBOOK_SCHEMA = {
         "type": "object",
         "properties": {
             "question": {"type": "string",
-                         "description": "完整题目原文，不要改写，不要带【第N题】前缀"},
+                         "description": "完整题目原文，不要改写，不要带【第N题】前缀和【知识点】行"},
             "correct_answer": {"type": "string",
                                "description": "正确答案；不确定可留空"},
             "my_answer": {"type": "string",
                           "description": "用户这题的作答原文"},
             "tags": {"type": "string",
-                     "description": "知识点标签，逗号分隔"},
+                     "description": "知识点类目，逗号分隔；只能从："
+                                    + "、".join(knowledge.CATEGORY_NAMES)
+                                    + " 中选 1–3 个"},
         },
         "required": ["question", "correct_answer", "my_answer"],
     },

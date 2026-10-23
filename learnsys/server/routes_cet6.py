@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from learnsys import agent, config, store   # agent 保留：旧测试按 routes_cet6.agent.run 打桩
 from learnsys.core import db as core_db
+from learnsys.server.cet6_models import Cet6Sentence, Cet6Sync
 from learnsys.server.security import require_token
 from learnsys.services import analysis, observability, results, translate
 
@@ -73,25 +74,6 @@ class AnalyzeRequest(BaseModel):
     item: str = ""
     scope: str = "item"
     sentences: list[dict] = Field(default_factory=list)
-
-
-class Cet6Sentence(BaseModel):
-    sentence: int = 0
-    en: str = ""
-    tags: list[str] = Field(default_factory=list)
-    note: str = ""
-    loops: int = 0
-    plays: int = 0
-
-
-class Cet6Sync(BaseModel):
-    paper: str = ""
-    paper_id: str = ""
-    section: str = ""
-    item: str = ""
-    sentences: list[Cet6Sentence] = Field(default_factory=list)
-    analysis: dict | None = None
-    done: list[int] | None = None   # None = 不碰完成状态；[...] = 该段完整状态
 
 
 class Cet6Import(BaseModel):
@@ -304,3 +286,9 @@ def cet6_restore():
         return {"ok": True, "items": {row[0]: row[1] for row in rows}, "count": len(rows)}
     finally:
         conn.close()
+
+
+# P17.1：整卷审计 + 服务端状态读取；单独一个路由文件，避免这里继续变长。
+from .routes_cet6_sync import router as _sync_router   # noqa: E402
+
+router.include_router(_sync_router)

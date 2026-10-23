@@ -6,7 +6,7 @@
   "entry": "pages/quiz.html",
   "order": 50,
   "status": "ready",
-  "version": "2.1.0",
+  "version": "2.14.0",
   "category": "练习",
   "home": true,
   "tagline": "让 AI 按你的记录出题、逐题批改",

@@ -139,7 +139,7 @@
           "</div>" +
           cardLoopRow(s, lc, WB.paper.loopStatText(loopStats[s.i])) +
           cardABRow(s) +
-          '<textarea class="note" name="note-' + s.i + '" data-note="' + s.i + '" ' +
+          '<textarea class="note" name="note-' + s.i + '" data-note="' + s.i + '" maxlength="1000" ' +
             'placeholder="我的原因：比如语速太快 / 从句太长 / 这个词没反应过来…">' +
             U.escapeHtml(note) + "</textarea>" +
           '<div class="controls">' +

@@ -120,6 +120,7 @@
   }
 
   function saveVocab(arr){
+    if(WB.cet6Mode && WB.cet6Mode.readOnly) return;
     try{ localStorage.setItem(KEYS.vocab, JSON.stringify(arr)); }catch(e){}
   }
 
@@ -194,6 +195,9 @@
   }
 
   function importData(data){
+    if(WB.cet6Mode && WB.cet6Mode.readOnly){
+      throw new Error("只读模式：请从学习工作台打开后再导入数据");
+    }
     if(!data || !data.store || typeof data.store !== "object"){
       throw new Error("不是本工作台导出的数据文件");
     }

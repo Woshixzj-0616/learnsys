@@ -93,6 +93,7 @@
   // 生词本唯一的写入入口：划词翻译和「＋生词」都走这里。
   // 已存在时只补/更新释义，不再重复插入。
   async function addWord(word, meaning, context){
+    if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("生词本")) return false;
     word = String(word || "").trim();
     if(!word || word.length > 60){
       alert("请选择一个单词或短语（不超过 60 字）。");
@@ -228,6 +229,7 @@
       const arr = load();
       const item = arr[k];
       if(!item) return;
+      if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("生词释义")) return;
       item.meaning = inp.value;
       if(item.id && usingApi()){
         clearTimeout(meaningTimer);
@@ -249,6 +251,7 @@
       const b = e.target.closest("button[data-del]");
       if(!b) return;
       const k = Number(b.dataset.del);
+      if(WB.cet6Mode && !WB.cet6Mode.ensureWritable("生词本")) return;
       const item = load()[k];
       if(item && item.id && usingApi()){
         try{

@@ -16,13 +16,21 @@ workbench_src\
 │  ├─ cards.css               句子卡片、mini 播放条、循环、A-B、笔记、断点
 │  └─ panels.css              搜索、AI、统计、生词本、题目、划词浮钮
 └─ js\
-   ├─ 00-core.js               WB 命名空间、DOM 缓存、格式化工具、session 默认值
+   ├─ 00-core.js               WB 命名空间、DOM 缓存、格式化工具、session 默认值、退休常量
+   ├─ 04-mode.js               HTTP/file/只读模式、写入口守卫、只读横幅
+   ├─ 05-bridge.js             旧 file:// ↔ 学习后台的迁移桥（退休后只读）
    ├─ 10-storage.js            所有 localStorage 键、状态读写、历史/最近、导出入
    ├─ 20-paper.js              试卷模型、当前段/题型、句范围、学习状态（含 A-B）
+   ├─ 25-ranges.js             整段/整篇区间与上下文载荷（纯函数）
    ├─ 30-audio.js              音频状态机：range、循环/连播、A-B、边界定时器
    ├─ 40-render.js             只读状态并渲染 DOM
    ├─ 50-actions.js            用户操作 → paper/audio 调用
+   ├─ 55-api.js                HTTP 令牌、请求、SSE
+   ├─ 56-dualwrite.js          服务端行映射、整卷快照、结构指纹（纯函数）
+   ├─ 58-sync.js               增量同步 + 打开试卷时的整卷审计
    ├─ 60-insights.js           AI 本段/整卷、学习统计
+   ├─ 65-ask.js                AI 助手 / 会话
+   ├─ 68-translate.js          划词翻译与整段译文
    ├─ 70-vocab.js              生词本、划词、CSV
    ├─ 75-search.js             本卷句子搜索
    ├─ 80-shortcuts.js          键盘快捷键
@@ -39,7 +47,10 @@ core → storage → paper → audio → render → actions → insights / vocab
 
 - 每个文件是一个 IIFE，只通过 `window.WB` 通信；文件头 `// @requires:` 声明前置文件，构建脚本会校验顺序。
 - `WB.state` 是持久化数据，`WB.session` 是运行态，`WB.dom` 是静态 DOM 缓存。
-- localStorage 只在 `10-storage.js`；播放器时钟只在 `30-audio.js`；渲染函数只读状态。
+- localStorage 的键定义与状态读写主要在 `10-storage.js`；`05-bridge.js`（迁移标记/合并）和
+  `70-vocab.js`（file:// 生词本）也直接碰它。播放器时钟只在 `30-audio.js`；渲染函数只读状态。
+- `WB.FLAGS.retired` 是双写退休的硬开关（`00-core.js`）；改 true 后重建工作台，
+  file:// 变只读，HTTP 成为唯一写入口。
 - 音频向 UI 通知走回调：`WB.audio.onTick / onWindowChange / onLoopStat / onRateChange`，由 `90-boot.js` 绑定。
 
 ## 数据键

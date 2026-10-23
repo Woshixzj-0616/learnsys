@@ -1,0 +1,243 @@
+"""六级双写退休报告：从 `learning.db` 直接算「连续 14 天无差异」。
+
+判据与口径见 `docs/施工单/P17.1-六级双写退休.md`。
+
+用法：
+    .venv\\Scripts\\python.exe -X utf8 tools\\cet6_dualwrite_report.py
+    ... --start 2026-10-21 --end 2026-11-04 --days 14
+    ... --db D:\\学习系统\\learning.db --json
+    ... --today 2026-11-04          # 测试用：固定“今天”
+
+只读打开数据库，不写任何表。
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import pathlib
+import sqlite3
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from learnsys import config                                  # noqa: E402
+
+CLEAN_STATUSES = {"ok", "ok_minor"}
+
+
+def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
+    return conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)).fetchone() is not None
+
+
+def _date(text: str) -> dt.date:
+    return dt.date.fromisoformat(text)
+
+
+def _rows(conn: sqlite3.Connection, start: dt.date, end: dt.date) -> list[dict]:
+    cur = conn.execute(
+        "SELECT day, ts, paper_id, mode, compared, diff_fields, minor_fields, "
+        "       missing_db, orphan_db, orphan_blocking, invalid, post_ok, status, hydration "
+        "FROM cet6_dualwrite_runs WHERE day >= ? AND day <= ? ORDER BY day, id",
+        (start.isoformat(), end.isoformat()))
+    keys = ("day", "ts", "paper_id", "mode", "compared", "diff_fields", "minor_fields",
+            "missing_db", "orphan_db", "orphan_blocking", "invalid", "post_ok",
+            "status", "hydration")
+    return [dict(zip(keys, row)) for row in cur.fetchall()]
+
+
+def _run_clean(run: dict, strict_plays: bool) -> bool:
+    if run["status"] not in CLEAN_STATUSES:
+        return False
+    if run["mode"] != "http":
+        return False
+    if not int(run["compared"] or 0):
+        return False
+    if int(run["diff_fields"] or 0) or int(run["missing_db"] or 0) \
+            or int(run["orphan_blocking"] or 0) or int(run["invalid"] or 0):
+        return False
+    if not int(run["post_ok"] or 0):
+        return False
+    if strict_plays and int(run["minor_fields"] or 0):
+        return False
+    return True
+
+
+def _day_clean(runs: list[dict], strict_plays: bool) -> bool:
+    return bool(runs) and all(_run_clean(run, strict_plays) for run in runs)
+
+
+def collect(*, db_path: pathlib.Path, start: dt.date, end: dt.date,
+            required_days: int = 14, today: dt.date | None = None,
+            strict_plays: bool = False) -> dict:
+    """返回报告所需全部数字；缺库/缺表时抛 RuntimeError。"""
+    if not db_path.exists():
+        raise RuntimeError(f"数据库不存在：{db_path}")
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        if not _table_exists(conn, "cet6_dualwrite_runs"):
+            raise RuntimeError("数据库里还没有 cet6_dualwrite_runs 表（升级到 2.13.0 并打开一次试卷后才有）。")
+        runs = _rows(conn, start, end)
+        diffs = [dict(zip(("ts", "paper_id", "section", "item", "sentence", "field",
+                           "kind", "local_value", "server_value"), row))
+                 for row in conn.execute(
+                     "SELECT ts, paper_id, section, item, sentence, field, kind, "
+                     "       local_value, server_value FROM cet6_dualwrite_diffs "
+                     "WHERE ts >= ? AND ts <= ? ORDER BY id DESC LIMIT 20",
+                     (f"{start.isoformat()} 00:00:00", f"{end.isoformat()} 23:59:59"))]
+    finally:
+        conn.close()
+
+    today = today or dt.date.today()
+    horizon = min(end, today)
+    by_day: dict[str, list[dict]] = {}
+    for run in runs:
+        by_day.setdefault(run["day"], []).append(run)
+
+    observed = sorted(by_day)
+    first_evidence = _date(observed[0]) if observed else None
+    available_days = 0
+    if first_evidence and horizon >= max(start, first_evidence):
+        available_days = (horizon - max(start, first_evidence)).days + 1
+
+    daily = []
+    for day in sorted(by_day):
+        group = by_day[day]
+        daily.append({
+            "day": day,
+            "runs": len(group),
+            "papers": len({r["paper_id"] for r in group}),
+            "diff_fields": sum(int(r["diff_fields"] or 0) for r in group),
+            "minor_fields": sum(int(r["minor_fields"] or 0) for r in group),
+            "missing_db": sum(int(r["missing_db"] or 0) for r in group),
+            "orphan_db": sum(int(r["orphan_db"] or 0) for r in group),
+            "orphan_blocking": sum(int(r["orphan_blocking"] or 0) for r in group),
+            "blocked": sum(1 for r in group if r["status"] == "blocked_empty"),
+            "errored": sum(1 for r in group if r["status"] == "error"),
+            "file_runs": sum(1 for r in group if r["mode"] != "http"),
+            "clean": _day_clean(group, strict_plays),
+        })
+
+    # 连续段：从最早证据日到 horizon 逐日看；没有记录 = 未知，会打断。
+    streak = 0
+    streak_start: dt.date | None = None
+    if first_evidence:
+        cursor = max(start, first_evidence)
+        cursor_end = max(cursor, horizon)
+        while cursor <= cursor_end:
+            group = by_day.get(cursor.isoformat())
+            if group and _day_clean(group, strict_plays):
+                if streak_start is None:
+                    streak_start = cursor
+                streak += 1
+            else:
+                streak = 0
+                streak_start = None
+            cursor += dt.timedelta(days=1)
+
+    earliest = None
+    if streak_start is not None:
+        earliest = streak_start + dt.timedelta(days=max(0, required_days - 1))
+        if streak >= required_days:
+            earliest = streak_start + dt.timedelta(days=required_days - 1)
+
+    clean_days = sum(1 for d in daily if d["clean"])
+    eligible = bool(streak >= required_days and available_days >= required_days)
+    return {
+        "db": str(db_path),
+        "start": start.isoformat(),
+        "end": end.isoformat(),
+        "today": today.isoformat(),
+        "horizon": horizon.isoformat(),
+        "required_days": required_days,
+        "first_evidence": first_evidence.isoformat() if first_evidence else None,
+        "available_days": available_days,
+        "observed_days": len(observed),
+        "clean_days": clean_days,
+        "dirty_days": len(observed) - clean_days,
+        "unknown_days": max(0, available_days - len(observed)) if first_evidence else 0,
+        "streak": streak,
+        "streak_start": streak_start.isoformat() if streak_start else None,
+        "earliest_eligible": earliest.isoformat() if earliest else None,
+        "eligible": eligible,
+        "daily": daily,
+        "diffs": diffs,
+    }
+
+
+def render(report: dict) -> str:
+    lines = ["六级双写退休报告（只读）",
+             f"数据库：{report['db']}",
+             f"窗口：{report['start']} → {report['end']}（要求连续 {report['required_days']} 天）"]
+    if report["first_evidence"]:
+        lines.append(f"证据起点：{report['first_evidence']}")
+        lines.append(f"可用证据窗口：{report['first_evidence']} → {report['horizon']}"
+                     f" = {report['available_days']} 天"
+                     + ("  ← 不足 {0} 天".format(report["required_days"])
+                        if report["available_days"] < report["required_days"] else ""))
+    else:
+        lines.append("证据起点：无（还没有任何整卷审计记录）")
+    lines.append(f"已观测 {report['observed_days']} 天；干净 {report['clean_days']} 天；"
+                 f"有差异 {report['dirty_days']} 天；未知 {report['unknown_days']} 天")
+    if report["streak"]:
+        lines.append(f"当前连续干净：{report['streak']} 天（起 {report['streak_start']}）")
+    else:
+        lines.append("当前连续干净：0 天")
+    lines.append(f"最早可能判定日：{report['earliest_eligible'] or '无法判断'}")
+    if report["eligible"]:
+        lines.append("结论：满足判据，可以按计划退休。")
+    elif report["available_days"] < report["required_days"]:
+        lines.append("结论：证据天数不足，不能按原计划切换。")
+    else:
+        lines.append("结论：未满足「连续无差异」，先查差异再决定。")
+
+    if report["daily"]:
+        lines.append("")
+        lines.append("每日明细：")
+        lines.append("日期        次数 卷数 差异 次要 缺失 孤儿 阻断 文件 状态")
+        for d in report["daily"]:
+            lines.append(f"{d['day']}  {d['runs']:>4} {d['papers']:>4} "
+                         f"{d['diff_fields']:>4} {d['minor_fields']:>4} "
+                         f"{d['missing_db']:>4} {d['orphan_db']:>4} "
+                         f"{d['blocked']:>4} {d['file_runs']:>4} "
+                         + ("干净" if d["clean"] else "不干净"))
+    if report["diffs"]:
+        lines.append("")
+        lines.append("最近差异：")
+        for item in report["diffs"]:
+            lines.append(f"{item['ts']} {item['paper_id']} / {item['section']} / "
+                         f"{item['item']} / 第{item['sentence']}句 / {item['field']}"
+                         f"（{item['kind']}）：本地={item['local_value']} 服务端={item['server_value']}")
+    return "\n".join(lines)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="六级双写退休报告（只读）")
+    parser.add_argument("--db", default=str(config.db_path()))
+    parser.add_argument("--start", default="2026-10-21")
+    parser.add_argument("--end", default="2026-11-04")
+    parser.add_argument("--days", type=int, default=14, dest="required_days")
+    parser.add_argument("--today", default="", help="测试用：固定今天（YYYY-MM-DD）")
+    parser.add_argument("--strict-plays", action="store_true", help="仅 plays 的差异也阻断")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        report = collect(
+            db_path=pathlib.Path(args.db), start=_date(args.start), end=_date(args.end),
+            required_days=args.required_days,
+            today=_date(args.today) if args.today else None,
+            strict_plays=args.strict_plays)
+    except RuntimeError as exc:
+        print(f"无法生成报告：{exc}")
+        return 1
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        print(render(report))
+    return 0 if report["eligible"] else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

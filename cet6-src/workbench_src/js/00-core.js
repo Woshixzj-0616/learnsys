@@ -92,6 +92,10 @@
   // 持久化学习状态，由 boot 从 storage 载入。
   WB.state = null;
 
+  // P17.1 退休开关：唯一构建常量。11-04 凭 tools/cet6_dualwrite_report.py
+  // 的报告决定是否改 true；改完必须重建工作台 HTML 并同步快照。
+  WB.FLAGS = { retired: false };
+
   WB.dom = {};
 
   WB.cacheDom = function(){

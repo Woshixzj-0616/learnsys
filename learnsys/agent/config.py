@@ -19,7 +19,7 @@ from learnsys import config as app_config
 CLAUDE_SETTINGS = pathlib.Path.home() / ".claude" / "settings.json"
 
 DEFAULT_BASE = "https://api.deepseek.com/anthropic"
-DEFAULT_MODEL = "deepseek-v4-pro"
+DEFAULT_MODEL = "deepseek-flash"          # DeepSeek-V4.1-Flash（2026-10-23 起默认）
 DEFAULT_FAST_MODEL = "deepseek-flash"
 DEFAULT_MAX_TOKENS = 8192
 DEFAULT_VISION_MODEL = "glm-4v-flash"

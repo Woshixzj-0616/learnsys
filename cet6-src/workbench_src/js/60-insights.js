@@ -302,6 +302,10 @@
   }
 
   async function submitLegacy(record, key, paperScope){
+    if(WB.cet6Mode && WB.cet6Mode.readOnly){
+      WB.status("只读模式：请从学习工作台打开后再分析。");
+      return;
+    }
     busy = true;
     setButtonBusy(true);
     const my = ++seq;
@@ -336,6 +340,10 @@
   }
 
   async function submitRecord(record, key, paperScope, force){
+    if(WB.cet6Mode && WB.cet6Mode.readOnly){
+      WB.status("只读模式：请从学习工作台打开后再分析。");
+      return;
+    }
     if(!(HTTP && WB.api.ready)){
       if(HTTP){
         setStatus(key, "后台令牌还没取到，请稍等一下再点「重试」。",
