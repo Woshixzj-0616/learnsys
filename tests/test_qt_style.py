@@ -156,9 +156,23 @@ class TestSettingsDark(unittest.TestCase):
         self.assertEqual(self.window.maximumWidth(), 16777215)  # 窗口不设上限
         self.assertIsNotNone(self.window.column_widget)
         self.assertEqual(self.window.column_widget.maximumWidth(), 780)
-        self.assertEqual((self.window.width(), self.window.height()), (900, 760))
+        self.assertEqual((self.window.width(), self.window.height()),
+                         style.fit_size(style.WINDOW_SIZE))
+        self.assertLessEqual(self.window.width(), 900)
+        self.assertLessEqual(self.window.height(), 760)
         self.assertEqual(self.window.minimumWidth(), 640)
         self.assertEqual(self.window.minimumHeight(), 420)
+
+    def test_窗口按工作区收缩(self):
+        class FakeScreen:
+            @staticmethod
+            def availableGeometry():
+                return QtCore.QRect(0, 0, 800, 600)
+
+        with mock.patch.object(QtWidgets.QApplication, "primaryScreen",
+                               staticmethod(lambda: FakeScreen())):
+            self.assertEqual(style.fit_size((900, 760)), (760, 560))
+            self.assertEqual(style.fit_size((640, 420)), (640, 420))
 
     def test_字段左列最小宽度(self):
         row = FieldRow("标签", QtWidgets.QLineEdit())

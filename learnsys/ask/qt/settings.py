@@ -50,7 +50,7 @@ class SettingsWindow(SettingsPageMixin, SettingsMemoryMixin, QtWidgets.QDialog):
         self.setObjectName("SettingsWindow")
         self.setWindowTitle(self._base_title)
         self.tokens = style.apply_theme(self)   # 默认深色：令牌来自 web/css/tokens.css
-        self.resize(*style.WINDOW_SIZE)
+        self.resize(*style.fit_size(style.WINDOW_SIZE))
         self.setMinimumSize(*style.WINDOW_MIN)
 
         self.inputs: dict[str, QtWidgets.QWidget] = {}

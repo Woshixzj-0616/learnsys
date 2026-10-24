@@ -40,11 +40,12 @@ class AskApp(TrayMixin, WebServiceMixin, SessionsMixin, AssistantOpsMixin,
     pick_requested_ui = QtCore.Signal()
 
     def __init__(self, app: QtWidgets.QApplication, background: bool = False,
-                 qt_settings: bool = False):
+                 qt_settings: bool = False, qt_today: bool = False):
         super().__init__()
         self.app = app
         self.background = background        # --background：只起后台/横栏/托盘，不自动弹网页
         self.qt_settings = qt_settings      # --qt-settings：开发用，只开 Qt 设置窗口，不弹 Web
+        self.qt_today = qt_today            # --qt-today：开发用，只开 Qt 今日页，不弹 Web
         self.show_bar_requested.connect(self.show_bar)
         self.pick_requested_ui.connect(self.pick)
         try:
@@ -279,11 +280,26 @@ def _settings_window_only(app: QtWidgets.QApplication, port: int) -> int:
     return app.exec()
 
 
+def _today_window_only(app: QtWidgets.QApplication, port: int) -> int:
+    """已有后台在跑时，开发用的 --qt-today 只开今日页。"""
+    from learnsys.ask.desktop.qt_pilot import open_workbench_link
+    from learnsys.ask.qt.api import ApiClient
+    from learnsys.ask.qt.today import TodayWindow
+
+    app.setApplicationName("learnsys-ask")
+    window = TodayWindow(ApiClient(port),
+                         navigate=lambda href: open_workbench_link(port, href))
+    window.show()
+    window.load()
+    return app.exec()
+
+
 def main() -> int:
     _silence_windowed()                   # 无黑框模式：print 不能炸
     argv = sys.argv[1:]
     background = "--background" in argv   # 开机自启：只起后台/横栏，不弹工作台
     qt_settings = "--qt-settings" in argv  # 开发用：起服务后直接开 Qt 设置窗口
+    qt_today = "--qt-today" in argv        # 开发用：起服务后直接开 Qt 今日页
     if "--watchdog" in argv:
         # 计划任务每分钟来一次。用户手动退出过、或后台还活着 → 当场走人；
         # 先判断再建 Qt，闲着的时候只花一次健康探测的钱。
@@ -298,17 +314,24 @@ def main() -> int:
         port = _running_web_port()
         if port:
             return _settings_window_only(app, port)
+    if qt_today and not background:
+        port = _running_web_port()
+        if port:
+            return _today_window_only(app, port)
     if not single.claim("background" if background else "show"):
         return 0                          # 已经有实例在跑 → 通知它后自己退
     app.setApplicationName("learnsys-ask")
     app.setQuitOnLastWindowClosed(False)
-    ask_app = AskApp(app, background=background, qt_settings=qt_settings)
+    ask_app = AskApp(app, background=background, qt_settings=qt_settings,
+                     qt_today=qt_today)
     ask_app.start_web()                 # 本地服务与快捷栏同一个进程
     app.aboutToQuit.connect(ask_app.hotkey.unregister)
     app.aboutToQuit.connect(ask_app.bar.shutdown)   # 兜底：走别的路径退出也先收线程
     QtCore.QTimer.singleShot(0, ask_app.start)
     if qt_settings:
         QtCore.QTimer.singleShot(0, ask_app.open_qt_settings)
+    elif qt_today:
+        QtCore.QTimer.singleShot(0, ask_app.open_qt_today)
     return app.exec()
 
 
