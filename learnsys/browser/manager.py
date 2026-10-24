@@ -108,6 +108,10 @@ class BrowserManager:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._message = "还没启动"
+
+    def _connect(self):
+        """统一库跟着 `data_root` 走；测试传临时目录时不能连到默认库。"""
+        return store.connect(self.data_root / "learning.db")
         self._started_at = 0.0
 
     # ---- 状态 ----
@@ -154,7 +158,7 @@ class BrowserManager:
 
     def _expire_history(self) -> None:
         try:
-            conn = store.connect()
+            conn = self._connect()
             try:
                 store.cleanup_browser_events(
                     conn, config.browser_settings()["history_days"])
@@ -334,7 +338,7 @@ class BrowserManager:
     def _poll_loop(self) -> None:
         conn = None
         try:
-            conn = store.connect()
+            conn = self._connect()
             while not self._stop.wait(POLL_SECONDS):
                 if (self._proc is not None and self._proc.poll() is not None
                         and not cdp.version_ok(self._port)):
@@ -390,14 +394,14 @@ class BrowserManager:
 
     def history(self, *, limit: int = 20, days: int = 7,
                 domain: str = "") -> list[dict]:
-        conn = store.connect()
+        conn = self._connect()
         try:
             return store.list_browser_events(conn, limit=limit, days=days, domain=domain)
         finally:
             conn.close()
 
     def clear_history(self) -> int:
-        conn = store.connect()
+        conn = self._connect()
         try:
             return store.clear_browser_events(conn)
         finally:

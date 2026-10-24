@@ -9,9 +9,12 @@ from learnsys import store
 
 
 def start_run(*, surface: str = "", kind: str = "", model: str = "",
-              result_id: int | None = None, meta: dict | None = None) -> int:
+              result_id: int | None = None, meta: dict | None = None,
+              conn: sqlite3.Connection | None = None) -> int:
+    """记一条运行流水。传 `conn` 就复用调用方的库（同一任务别开两条连接）。"""
+    own = conn is None
     try:
-        conn = store.connect()
+        conn = conn if conn is not None else store.connect()
         try:
             cur = conn.execute(
                 "INSERT INTO service_runs "
@@ -22,17 +25,20 @@ def start_run(*, surface: str = "", kind: str = "", model: str = "",
             conn.commit()
             return int(cur.lastrowid or 0)
         finally:
-            conn.close()
+            if own:
+                conn.close()
     except Exception:
         return 0
 
 
 def finish_run(run_id: int, *, status: str, ms: int, tokens_in: int = 0,
-               tokens_out: int = 0, cache_hit: int = 0, error: str = "") -> None:
+               tokens_out: int = 0, cache_hit: int = 0, error: str = "",
+               conn: sqlite3.Connection | None = None) -> None:
     if not run_id:
         return
+    own = conn is None
     try:
-        conn = store.connect()
+        conn = conn if conn is not None else store.connect()
         try:
             conn.execute(
                 "UPDATE service_runs SET status=?, ms=?, tokens_in=?, tokens_out=?, "
@@ -42,7 +48,8 @@ def finish_run(run_id: int, *, status: str, ms: int, tokens_in: int = 0,
                  str(error or "")[:1000], run_id))
             conn.commit()
         finally:
-            conn.close()
+            if own:
+                conn.close()
     except Exception:
         pass
 

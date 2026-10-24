@@ -300,8 +300,9 @@ def submit(raw: dict, *, force: bool = False) -> dict:
                 run_id = observability.start_run(
                     surface="cet6", kind=kind,
                     model=done.get("model") or cfg.model,
-                    result_id=done["id"], meta={"cache_hit": True})
-                observability.finish_run(run_id, status="done", ms=0, cache_hit=1)
+                    result_id=done["id"], meta={"cache_hit": True}, conn=conn)
+                observability.finish_run(run_id, status="done", ms=0,
+                                         cache_hit=1, conn=conn)
                 return {"id": done["id"], "status": "done", "cached": True}
             active = results.find_by_key(
                 conn, kind=kind, target_type=target_type, target_id=tid,
@@ -352,7 +353,8 @@ def run_job(result_id: int, record: dict) -> None:
         cfg = _analysis_cfg()
         run_id = observability.start_run(
             surface="cet6", kind=ANALYSIS_KIND, model=cfg.model,
-            result_id=result_id, meta={"scope": record.get("scope", "item")})
+            result_id=result_id, meta={"scope": record.get("scope", "item")},
+            conn=conn)
         started = time.monotonic()
         abort = threading.Event()
         timed_out = {"value": False}
@@ -416,7 +418,7 @@ def run_job(result_id: int, record: dict) -> None:
             model=cfg.model, ms=ms, tokens_in=tokens_in, tokens_out=tokens_out)
         observability.finish_run(
             run_id, status=status, ms=ms, tokens_in=tokens_in,
-            tokens_out=tokens_out, error=error)
+            tokens_out=tokens_out, error=error, conn=conn)
     finally:
         conn.close()
 

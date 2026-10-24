@@ -7,6 +7,9 @@ on:
 jobs:
   test:
     runs-on: windows-latest
+    env:
+      # 兜底：测试里万一有漏改的默认连接，也只写到 runner 临时目录。
+      LEARNSYS_DATA_ROOT: ${{ runner.temp }}/学习系统
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
