@@ -148,6 +148,27 @@ class SpeedConfigTest(unittest.TestCase):
         self.assertFalse(cfg.thinking)
         self.assertTrue(concise)
 
+    def test_route_does_not_downgrade_deep(self):
+        """任务路由只换模型；deep 仍要思考、仍用深入档。"""
+        cfg, concise = loop._speed_config(
+            make_cfg(self.root, speed="deep", routes={"explain": "route-model"}), "explain")
+        self.assertEqual(cfg.model, "route-model")
+        self.assertTrue(cfg.thinking)
+        self.assertFalse(concise)
+
+    def test_route_keeps_fast_and_balanced_semantics(self):
+        fast, fast_concise = loop._speed_config(
+            make_cfg(self.root, speed="fast", routes={"explain": "route-model"}), "explain")
+        self.assertEqual(fast.model, "route-model")
+        self.assertFalse(fast.thinking)
+        self.assertTrue(fast_concise)
+
+        balanced, balanced_concise = loop._speed_config(
+            make_cfg(self.root, speed="balanced", routes={"explain": "route-model"}), "explain")
+        self.assertEqual(balanced.model, "route-model")
+        self.assertFalse(balanced.thinking)
+        self.assertTrue(balanced_concise)
+
     def test_deepseek_body_has_thinking_switch(self):
         cfg = make_cfg(self.root, thinking=False)
         body = _body(cfg, "system", [], None, True)

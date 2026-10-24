@@ -158,18 +158,18 @@ def _speed_config(cfg: AgentConfig, mode: str) -> tuple[AgentConfig, bool]:
     - deep：主模型 + 思考（深入推导；最慢）
     模式 quick 永远走 fast —— 用户选「速答」就是要快。
     """
-    routed = cfg.model_for(mode)
-    if routed:
-        return (dataclasses.replace(cfg, model=routed, thinking=False), True)
     speed = (cfg.speed or "balanced").lower()
     if mode == "quick":
         speed = "fast"
-    if speed == "fast":
-        return (dataclasses.replace(cfg, model=cfg.fast_model or cfg.model,
-                                    thinking=False), True)
+    # 任务路由只换模型，不改变速度档的「思考 / 提示词」语义。
+    # 以前 routed 分支一律 thinking=False + 精简档，deep + 路由会退化成快答。
+    routed = cfg.model_for(mode)
     if speed == "deep":
-        return (dataclasses.replace(cfg, thinking=True), False)
-    return (dataclasses.replace(cfg, thinking=False), True)
+        return (dataclasses.replace(cfg, model=routed or cfg.model, thinking=True), False)
+    if speed == "fast":
+        return (dataclasses.replace(cfg, model=routed or cfg.fast_model or cfg.model,
+                                    thinking=False), True)
+    return (dataclasses.replace(cfg, model=routed or cfg.model, thinking=False), True)
 
 
 def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
