@@ -27,6 +27,7 @@ from learnsys.server import (routes_agent, routes_browser, routes_cet6, routes_d
                              routes_results, routes_review, routes_services,
                              routes_settings, routes_ui, routes_upload, routes_vocab,
                              routes_web, runtime)
+from learnsys.server.nav_bridge import NavBridge
 from learnsys.server.security import origin_allowed
 
 DEFAULT_PORT = 8765
@@ -47,6 +48,7 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
                   redoc_url=None, lifespan=_lifespan)
     app.state.token = token or os.environ.get("LEARNSYS_TOKEN") or secrets.token_urlsafe(24)
     app.state.port = port
+    app.state.nav_bridge = NavBridge()     # B1 深链桥：Qt 写、Web 壳按 seq 取
 
     @app.middleware("http")
     async def no_store_web(request, call_next):

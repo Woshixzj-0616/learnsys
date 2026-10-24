@@ -44,6 +44,17 @@ class WorkbenchTest(unittest.TestCase):
         self.assertIsInstance(workbench._windows_matching(), list)
         self.assertIsInstance(workbench.focus_window("· 绝对不存在的标题"), bool)
 
+    def test_浏览器进程判定(self):
+        # 标题相同，身份不同：Qt 窗口 / 打包 exe 都不能被当成 Web 工作台窗口
+        self.assertTrue(workbench.is_browser_process(r"C:\Program Files\Edge\msedge.exe"))
+        self.assertTrue(workbench.is_browser_process("MSEDGE.EXE"))
+        self.assertTrue(workbench.is_browser_process("chrome.exe"))
+        self.assertTrue(workbench.is_browser_process("firefox.exe"))
+        self.assertFalse(workbench.is_browser_process("学习工作台.exe"))
+        self.assertFalse(workbench.is_browser_process(r"D:\python\pythonw.exe"))
+        self.assertFalse(workbench.is_browser_process(""))
+        self.assertFalse(workbench.is_browser_process(None))
+
 
 if __name__ == "__main__":
     unittest.main()

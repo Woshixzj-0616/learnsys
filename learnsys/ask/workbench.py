@@ -22,6 +22,19 @@ from learnsys.core.browsers import find_browser
 WINDOW_MARK = f"· {product.PRODUCT_NAME}"   # 页面 <title> 统一是「今日 · 学习工作台」这种形状
 DEFAULT_SIZE = (1440, 900)
 
+# 标题只说明「这是哪一家的窗口」，不能说明「这是网页还是 Qt」——
+# Qt 试点的设置/今日窗口标题同样以 WINDOW_MARK 结尾，所以还要看进程是不是浏览器。
+BROWSER_EXES = frozenset({
+    "msedge.exe", "msedge_proxy.exe", "chrome.exe", "chromium.exe",
+    "brave.exe", "firefox.exe",
+})
+
+
+def is_browser_process(name: str) -> bool:
+    """进程映像路径/文件名是不是浏览器；Qt（学习工作台.exe / pythonw.exe）一律不算。"""
+    base = str(name or "").replace(chr(92), "/").rsplit("/", 1)[-1].strip().lower()
+    return base in BROWSER_EXES
+
 
 def _user32():
     """统一声明 HWND 参数类型 —— 不声明的话 64 位下句柄会被截成 32 位。"""
@@ -75,7 +88,7 @@ def fit_window(mark: str = WINDOW_MARK, preferred: tuple[int, int] = DEFAULT_SIZ
         return False
     user32 = _user32()
     left, top, avail_w, avail_h = _work_area()
-    for hwnd, _title in _windows_matching(mark):
+    for hwnd, _title in _windows_matching(mark, browser_only=True):
         rect = wintypes.RECT()
         if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
             continue
@@ -97,8 +110,43 @@ def fit_window(mark: str = WINDOW_MARK, preferred: tuple[int, int] = DEFAULT_SIZ
     return False
 
 
-def _windows_matching(mark: str = WINDOW_MARK) -> list[tuple[int, str]]:
-    """枚举可见顶层窗口，找出标题以「· 学习工作台」结尾的。"""
+def _window_process_name(hwnd: int) -> str:
+    """窗口所属进程的完整映像路径；拿不到返回空串（失败一律当「不是浏览器」）。"""
+    if sys.platform != "win32":
+        return ""
+    user32 = _user32()
+    pid = wintypes.DWORD()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    if not pid.value:
+        return ""
+    kernel32 = ctypes.windll.kernel32
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.QueryFullProcessImageNameW.argtypes = [
+        wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR,
+        ctypes.POINTER(wintypes.DWORD)]
+    kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
+    handle = kernel32.OpenProcess(0x1000, False, pid.value)   # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return ""
+    try:
+        buffer = ctypes.create_unicode_buffer(32768)
+        size = wintypes.DWORD(32768)
+        if not kernel32.QueryFullProcessImageNameW(handle, 0, buffer, ctypes.byref(size)):
+            return ""
+        return buffer.value
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _windows_matching(mark: str = WINDOW_MARK, *,
+                      browser_only: bool = False) -> list[tuple[int, str]]:
+    """枚举可见顶层窗口，找出标题以「· 学习工作台」结尾的。
+
+    `browser_only=True` 时再加一层身份判定：进程必须是浏览器。
+    看窗口用默认值（保留诊断能力）；真正聚焦/调整 Web 窗口时一律传 True。
+    """
     if sys.platform != "win32":
         return []
     user32 = _user32()
@@ -115,6 +163,8 @@ def _windows_matching(mark: str = WINDOW_MARK) -> list[tuple[int, str]]:
         user32.GetWindowTextW(hwnd, buffer, length + 1)
         title = buffer.value.strip()
         if title.endswith(mark):
+            if browser_only and not is_browser_process(_window_process_name(int(hwnd))):
+                return True
             found.append((int(hwnd), title))
         return True
 
@@ -124,12 +174,17 @@ def _windows_matching(mark: str = WINDOW_MARK) -> list[tuple[int, str]]:
     return found
 
 
+def has_web_window(mark: str = WINDOW_MARK) -> bool:
+    """当前是否有一个真正的 Web 工作台窗口（浏览器进程）。"""
+    return bool(_windows_matching(mark, browser_only=True))
+
+
 def focus_window(mark: str = WINDOW_MARK) -> bool:
     """已有学习工作台窗口就把它提到前台；没有返回 False。"""
     if sys.platform != "win32":
         return False
     user32 = _user32()
-    for hwnd, _title in _windows_matching(mark):
+    for hwnd, _title in _windows_matching(mark, browser_only=True):
         user32.ShowWindow(hwnd, 9)                  # SW_RESTORE
         foreground = user32.GetForegroundWindow()
         target_tid = user32.GetWindowThreadProcessId(hwnd, None)
@@ -148,7 +203,7 @@ def focus_window(mark: str = WINDOW_MARK) -> bool:
 def _wait_for_window(mark: str = WINDOW_MARK, timeout: float = 4.0) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        if _windows_matching(mark):
+        if _windows_matching(mark, browser_only=True):
             return True
         time.sleep(0.12)
     return False

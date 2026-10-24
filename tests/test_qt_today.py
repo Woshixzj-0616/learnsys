@@ -546,13 +546,40 @@ class TestTodayEntry(unittest.TestCase):
         self.assertEqual(FakeTodayWindow.instances, [])
         self.assertIn("本地服务", host.warnings[0])
 
-    def test_跳转拼出深链(self):
-        with mock.patch("learnsys.ask.workbench.open_or_focus",
-                        return_value="ok") as opened:
-            self.assertEqual(open_workbench_link(8765, "#/wrongbook"), "ok")
-            opened.assert_called_once_with("http://127.0.0.1:8765/#/wrongbook")
-            open_workbench_link(8765, "http://example.com/x")
-            opened.assert_called_with("http://example.com/x")
+    def test_没有窗口时新开带深链的窗口(self):
+        opened = mock.Mock(return_value="ok")
+        self.assertEqual(
+            open_workbench_link(8765, "#/wrongbook", has_window=lambda: False,
+                                open_url=opened),
+            "ok",
+        )
+        opened.assert_called_once_with("http://127.0.0.1:8765/#/wrongbook")
+        opened.reset_mock()
+        open_workbench_link(8765, "http://example.com/x", has_window=lambda: False,
+                            open_url=opened)
+        opened.assert_called_once_with("http://example.com/x")
+
+    def test_已有窗口先写队列再聚焦(self):
+        calls: list[tuple] = []
+        result = open_workbench_link(
+            8765, "#/quiz?focus=词汇",
+            has_window=lambda: True,
+            post=lambda port, href: calls.append(("post", port, href)) or True,
+            focus=lambda: calls.append(("focus",)),
+            open_url=lambda url: calls.append(("open", url)),
+        )
+        self.assertEqual(result, "已聚焦现有学习工作台")
+        self.assertEqual(calls, [("post", 8765, "#/quiz?focus=词汇"), ("focus",)])
+
+    def test_已有窗口但队列写失败仍然聚焦(self):
+        focused = mock.Mock()
+        result = open_workbench_link(
+            8765, "#/today", has_window=lambda: True,
+            post=lambda port, href: False, focus=focused,
+            open_url=lambda url: self.fail("有窗口时不该新开"),
+        )
+        self.assertIn("跳转请求没发出去", result)
+        focused.assert_called_once_with()
 
 
 if __name__ == "__main__":

@@ -1,22 +1,32 @@
 """Qt 试点入口：打开设置窗口 / 今日页。
 
-R3.1 先给 `--qt-settings` 用；R3.8 接托盘菜单与单实例；R4 增加今日页。
+R3.1 先给 `--qt-settings` 用；R3.8 接托盘菜单与单实例；R4 增加今日页；
+R6 起深链点击会先写服务端队列，已有 Web 窗口也能跳转（B1 深链桥）。
 """
 from __future__ import annotations
 
 
-def open_workbench_link(port: int, href: str) -> str:
-    """把 `#/...` 深链交给 Web 工作台；已有窗口时只聚焦（R4 已知限制）。"""
-    from learnsys.ask import workbench
+def open_workbench_link(port: int, href: str, *, has_window=None, post=None,
+                        focus=None, open_url=None) -> str:
+    """把 `#/...` 深链交给 Web 工作台。
 
-    text = str(href or "#/today")
-    if text.startswith(("http://", "https://")):
-        url = text
-    elif text.startswith("/"):
-        url = f"http://127.0.0.1:{int(port)}{text}"
-    else:
-        url = f"http://127.0.0.1:{int(port)}/{text if text.startswith('#') else '#/' + text}"
-    return workbench.open_or_focus(url)
+    - 已有 Web 窗口：先写待跳转队列，再把窗口提到前台（页面聚焦时立即拉取）。
+    - 没有窗口：新开一个直接带 hash 的窗口。
+    参数可注入，测试不发真实网络、不动真实窗口。
+    """
+    from learnsys.ask import workbench
+    from learnsys.ask.desktop import deep_link
+
+    has_window = has_window or workbench.has_web_window
+    open_url = open_url or workbench.open_or_focus
+    target = deep_link.hash_target(href)
+    url = deep_link.workbench_url(port, href)
+    if not target or not has_window():
+        return open_url(url)
+    sender = post or deep_link.post_navigate
+    sent = bool(sender(int(port), target))
+    (focus or workbench.focus_window)()
+    return "已聚焦现有学习工作台" if sent else "已聚焦现有学习工作台（跳转请求没发出去）"
 
 
 class QtPilotMixin:

@@ -1,5 +1,6 @@
 // 壳层：侧栏、hash 路由、页面生命周期。加模块只改 registry.json。
 import { api, initApi } from "./api.js";
+import { installNavBridge } from "./nav_bridge.js";
 import { escapeHtml, setStatus, toast } from "./ui.js";
 
 const PRODUCT_NAME = "学习工作台";
@@ -221,6 +222,7 @@ async function boot() {
       prefs = {};                    // 设置读不到不耽误用工作台
     }
     await navigate();
+    installNavBridge();            // B1 深链桥：Qt 点击后按 seq 跳到目标 hash
   } catch (error) {
     showOffline(error);
     console.error(error);
