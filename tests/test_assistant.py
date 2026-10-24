@@ -296,7 +296,7 @@ class TestOcrQueue(unittest.TestCase):
         self.addCleanup(self.conn.close)
 
     def test_enqueue_ocr_lands_in_db(self):
-        from learnsys.ask import ocr
+        from learnsys.services import ocr
         q = ocr.OcrQueue(lambda: self.conn)
         self.addCleanup(q.shutdown)
         got = []
@@ -310,7 +310,7 @@ class TestOcrQueue(unittest.TestCase):
         self.assertIn("哈夫曼树", rows[0][2])
 
     def test_ocr_failure_does_not_kill_queue(self):
-        from learnsys.ask import ocr
+        from learnsys.services import ocr
         q = ocr.OcrQueue(lambda: self.conn)
         self.addCleanup(q.shutdown)
         calls = []

@@ -128,7 +128,7 @@ def _call_vision(cfg: AgentConfig, data_url: str, timeout: float = 60.0) -> str:
 
 def _ocr_fallback(path: pathlib.Path) -> str:
     try:
-        from learnsys.ask.ocr import ocr_image
+        from learnsys.services.ocr import ocr_image
         return ocr_image(str(path)).strip()
     except Exception as exc:
         return f"（OCR 也失败了：{exc}）"

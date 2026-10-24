@@ -15,7 +15,8 @@ import sys
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from learnsys import config, product, store
-from learnsys.ask import bar, guard, hotkey as hotkey_mod, liverec, ocr, overlay, scheduler, single
+from learnsys.ask import bar, guard, hotkey as hotkey_mod, liverec, overlay, scheduler, single
+from learnsys.services import ocr
 from .desktop.assistant_ops import AssistantOpsMixin
 from .desktop.data_backup import DataBackupMixin
 from .desktop.sessions import SessionsMixin

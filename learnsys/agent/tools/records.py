@@ -152,7 +152,7 @@ def ocr_image(path: str, *, ctx: ToolContext) -> str:
     if not safe.exists():
         return f"图片不存在：{safe.name}"
     try:
-        from learnsys.ask.ocr import ocr_image as _ocr
+        from learnsys.services.ocr import ocr_image as _ocr
         text = _ocr(str(safe))
     except Exception as exc:
         return f"OCR 没成功：{exc}"
