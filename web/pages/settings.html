@@ -35,6 +35,26 @@
     </div>
 
     <div class="setting-row">
+      <label class="setting-label" for="agent-strong">强模型<small>自动路由升级用；空 = 主模型加思考</small></label>
+      <div class="setting-control">
+        <input class="input" id="agent-strong" spellcheck="false" autocomplete="off"
+               placeholder="例如 deepseek-v4-pro">
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <label class="setting-label" for="agent-auto-route">自动路由<small>按问题复杂度选档</small></label>
+      <div class="setting-control">
+        <select class="select" id="agent-auto-route">
+          <option value="off">关闭 · 完全按上面的速度档</option>
+          <option value="shadow">影子 · 只记录建议，不改实际模型</option>
+          <option value="on">启用 · 按建议切换模型</option>
+        </select>
+        <span class="hint">只影响「平衡」档；手动速度档与手动 routes 优先。影子模式零额外成本。</span>
+      </div>
+    </div>
+
+    <div class="setting-row">
       <label class="setting-label" for="agent-tokens">回答上限<small>token，默认 8192</small></label>
       <div class="setting-control">
         <input class="input" id="agent-tokens" type="number" min="64" max="131072" step="64">

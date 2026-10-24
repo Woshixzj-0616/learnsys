@@ -127,6 +127,7 @@ def chat(req: ChatRequest, _=Depends(require_token)):
         error_count = 0
         stop_reason = ""
         check_ok = None
+        routed_model = ""
         trace: list[dict] = []
 
         def ask_confirm(request_id: str, tool_name: str, args: dict) -> bool:
@@ -176,7 +177,9 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 if trace_item is not None:
                     trace.append(trace_item)
                 yield _sse(event.kind, event.text, data)
-                if event.kind == "check":
+                if event.kind == "route":
+                    routed_model = str(data.get("model") or "") or routed_model
+                elif event.kind == "check":
                     check_ok = bool(data.get("ok"))
                 elif event.kind == "tool_end":
                     if data.get("ok") is False:
@@ -203,7 +206,7 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 cost, currency, _ = agent_cost.estimate(usage, cfg)
                 store.add_agent_run(
                     conn, run_id=run_id, conversation_id=conv_id,
-                    question=req.message[:200], model=cfg.model or "",
+                    question=req.message[:200], model=routed_model or cfg.model or "",
                     mode=req.mode, started_at=started_at,
                     finished_at=store.now(), first_ms=first_ms,
                     total_ms=total_ms, steps=steps, stop_reason=stop_reason,
@@ -217,7 +220,8 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                                        "run_id": run_id})
                     if not req.internal:       # 复盘/测验的提示词不算「我问过什么」
                         store.add_ask(
-                            conn, req.message, final, total_ms, cfg.model or "agent",
+                            conn, req.message, final, total_ms,
+                            routed_model or cfg.model or "agent",
                             kind="image" if req.image_path else "text",
                             image_path=req.image_path or "", thread=str(conv_id),
                             conversation_id=conv_id, first_ms=first_ms)

@@ -95,6 +95,11 @@ class AgentConfig:
     # 回答速度档：fast = 轻量模型不思考；balanced = 主模型不思考；deep = 主模型思考
     speed: str = "balanced"
 
+    # 自动路由：off / shadow（只记建议）/ on（按建议执行）
+    auto_route: str = "off"
+    # 自动路由需要升级时用的强模型；空 = 退回主模型（只多开思考）
+    strong_model: str = ""
+
     # 成本估算：每 100 万 token 的单价；0 = 未配置（不猜价格）
     price_input: float = 0.0
     price_output: float = 0.0
@@ -130,6 +135,8 @@ class AgentConfig:
             "base_url": self.base_url,
             "max_tokens": self.max_tokens,
             "speed": self.speed,
+            "auto_route": self.auto_route,
+            "strong_model": self.strong_model,
             "price_input": self.price_input,
             "price_output": self.price_output,
             "price_cache_read": self.price_cache_read,
@@ -170,6 +177,10 @@ def load_config() -> AgentConfig:
     if speed not in ("fast", "balanced", "deep"):
         speed = "deep" if thinking else "balanced"
 
+    auto_route = str(agent.get("auto_route") or "off").strip().lower()
+    if auto_route not in ("off", "shadow", "on"):
+        auto_route = "off"
+
     raw_routes = agent.get("routes")
     routes = {
         str(key): clean_model(str(value))
@@ -190,6 +201,8 @@ def load_config() -> AgentConfig:
         data_root=data_root,
         profile_path=data_root / "学习档案.md",
         speed=speed,
+        auto_route=auto_route,
+        strong_model=clean_model(str(agent.get("strong_model") or "")),
         price_input=_as_float(agent.get("price_input")),
         price_output=_as_float(agent.get("price_output")),
         price_cache_read=_as_float(agent.get("price_cache_read")),

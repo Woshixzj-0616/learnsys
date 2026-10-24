@@ -13,7 +13,7 @@ import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
-from learnsys.agent import memory, planning, prompts, selfcheck, tools, vision
+from learnsys.agent import memory, planning, prompts, router, selfcheck, tools, vision
 from learnsys.agent.fallback import stream_with_fallback
 from learnsys.agent.config import AgentConfig, load_config
 from learnsys.agent.events import AgentEvent
@@ -150,26 +150,23 @@ def _rewrite_answer(provider, cfg: AgentConfig, state: _RunState, answer: str,
     return text
 
 
-def _speed_config(cfg: AgentConfig, mode: str) -> tuple[AgentConfig, bool]:
-    """按「回答速度」档定模型和思考开关，返回 (配置, 是否用精简提示词)。
+def _plan_config(cfg: AgentConfig, request: AgentRequest) -> tuple[AgentConfig, bool, router.RouteDecision]:
+    """定这一轮的模型 / 思考 / 提示词档，并把决策原样带出来写流水。
 
-    - fast：轻量模型 + 不思考（实测约 7 秒，适合速答/横栏快问）
-    - balanced：**同一个主模型** + 不思考（实测约 10–20 秒，质量口径不变，少掉冗长思考）
-    - deep：主模型 + 思考（深入推导；最慢）
-    模式 quick 永远走 fast —— 用户选「速答」就是要快。
+    规则全部在 `agent/router.py`（单一落点）：手动速度档 > 手动 routes > 自动路由。
     """
-    speed = (cfg.speed or "balanced").lower()
-    if mode == "quick":
-        speed = "fast"
-    # 任务路由只换模型，不改变速度档的「思考 / 提示词」语义。
-    # 以前 routed 分支一律 thinking=False + 精简档，deep + 路由会退化成快答。
-    routed = cfg.model_for(mode)
-    if speed == "deep":
-        return (dataclasses.replace(cfg, model=routed or cfg.model, thinking=True), False)
-    if speed == "fast":
-        return (dataclasses.replace(cfg, model=routed or cfg.fast_model or cfg.model,
-                                    thinking=False), True)
-    return (dataclasses.replace(cfg, model=routed or cfg.model, thinking=False), True)
+    decision = router.decide(
+        cfg, mode=request.mode, message=request.message, context=request.context,
+        attachment_text=request.attachment_text,
+        history_len=len(request.history or []),
+        has_image=bool(request.image_path or request.extra_images))
+    return router.apply(cfg, decision), decision.concise, decision
+
+
+def _speed_config(cfg: AgentConfig, mode: str) -> tuple[AgentConfig, bool]:
+    """兼容旧调用：只按模式取档位，返回 (配置, 是否用精简提示词)。"""
+    decision = router.decide(cfg, mode=mode)
+    return router.apply(cfg, decision), decision.concise
 
 
 def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
@@ -193,8 +190,12 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
         return
 
     provider = provider or _default_provider()
-    cfg, concise = _speed_config(cfg, request.mode)
+    cfg, concise, decision = _plan_config(cfg, request)
     cfg_holder = [cfg]
+    if (cfg.auto_route or "off").lower() in ("shadow", "on"):
+        route_data = decision.trace()
+        route_data["auto"] = cfg.auto_route
+        yield AgentEvent("route", data=route_data)
     profile = _read_profile(cfg)
     memory_text = memory.render_for_prompt(cfg.data_root)
     image_paths = ([request.image_path] if request.image_path else []) + list(

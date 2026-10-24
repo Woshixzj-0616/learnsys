@@ -16,4 +16,4 @@ _CONFIRM_LOCK = threading.Lock()
 CONFIRM_WAIT_SECONDS = 120
 
 _TRACE_KINDS = {"plan", "plan_update", "tool_start", "tool_end", "confirm",
-                "check", "rewrite", "activity", "error"}
+                "check", "rewrite", "activity", "error", "route"}

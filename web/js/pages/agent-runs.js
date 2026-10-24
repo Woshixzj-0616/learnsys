@@ -206,7 +206,14 @@ function renderTrace(run) {
   const lines = [];
   for (const item of run.trace || []) {
     const data = item.data || {};
-    if (item.kind === "plan") {
+    if (item.kind === "route") {
+      const actual = `${data.tier || "—"} · ${data.model || "—"}${data.thinking ? " · 思考" : ""}`;
+      const rec = data.recommended
+        ? ` → 建议 ${data.recommended.tier} · ${data.recommended.model}`
+          + `${data.recommended.thinking ? " · 思考" : ""}（${data.recommended.reason || ""}）`
+        : "";
+      lines.push(`<div class="run-line"><b>路由</b> ${escapeHtml(actual + rec)}</div>`);
+    } else if (item.kind === "plan") {
       lines.push(`<div class="run-line"><b>计划</b> ${(data.steps || []).map(
         (step, index) => `${index + 1}. ${escapeHtml(step.title || "")}`).join("；")}</div>`);
     } else if (item.kind === "tool_start") {

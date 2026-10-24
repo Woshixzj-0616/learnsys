@@ -110,6 +110,20 @@ class WebTest(unittest.TestCase):
         self.assertEqual(raw["agent"]["auth_token"], "sk-test-123456")
         self.assertEqual(raw["vision"]["api_key"], "vk-test-abcdef")
 
+    def test_settings_auto_route(self):
+        saved = self.client.post("/api/settings", headers=AUTH, json={
+            "agent": {"auto_route": "shadow",
+                      "strong_model": " deepseek-v4-pro "}})
+        self.assertEqual(saved.status_code, 200, saved.text)
+        after = self.client.get("/api/settings", headers=AUTH).json()["agent"]
+        self.assertEqual(after["auto_route"], "shadow")
+        self.assertEqual(after["strong_model"], "deepseek-v4-pro")
+
+        bad = self.client.post("/api/settings", headers=AUTH,
+                               json={"agent": {"auto_route": "maybe"}})
+        self.assertEqual(bad.status_code, 400)
+        self.assertIn("自动路由", bad.json()["detail"])
+
     def test_settings_reject_bad_hotkey(self):
         bad = self.client.post("/api/settings", json={"hotkey": "Q"},
                                headers=AUTH)

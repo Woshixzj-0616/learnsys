@@ -57,6 +57,11 @@ SETTINGS_TEMPLATE = {
         "max_tokens": 8192,
         "thinking": False,
         "speed": "balanced",
+        "auto_route": "off",
+        "_auto_route": "自动路由：off 关闭 / shadow 只记建议 / on 按建议切换。"
+                       "只影响 balanced 档；手动 speed 与 routes 优先。",
+        "strong_model": "",
+        "_strong_model": "自动路由升级用的强模型；留空 = 用主模型并多开思考。",
         "_routes": "按任务换模型（可选）。键：explain/guide/quiz/quick/translate/analyze/review；"
                    "留空 = 全部走 speed 档。例：{\"translate\": \"deepseek-flash\"}",
         "routes": {},

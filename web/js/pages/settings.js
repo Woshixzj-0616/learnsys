@@ -28,6 +28,8 @@ function fill(data) {
   setValue("agent-base", data.agent?.base_url);
   setValue("agent-model", data.agent?.model);
   setValue("agent-fast", data.agent?.fast_model);
+  setValue("agent-strong", data.agent?.strong_model);
+  setValue("agent-auto-route", data.agent?.auto_route || "off");
   setValue("agent-tokens", data.agent?.max_tokens);
   setValue("agent-speed", data.agent?.speed || "balanced");
   setValue("price-input", data.agent?.price_input ?? "");
@@ -183,6 +185,8 @@ function collect() {
     base_url: valueOf("agent-base"),
     model: valueOf("agent-model"),
     fast_model: valueOf("agent-fast"),
+    strong_model: valueOf("agent-strong"),
+    auto_route: valueOf("agent-auto-route") || "off",
     speed: valueOf("agent-speed") || "balanced",
   };
   const tokens = Number(valueOf("agent-tokens"));
