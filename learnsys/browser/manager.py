@@ -15,7 +15,7 @@ import threading
 import time
 
 from learnsys import config, store
-from learnsys.ask.workbench import find_browser
+from learnsys.core.browsers import find_browser
 
 from . import cdp, urls
 

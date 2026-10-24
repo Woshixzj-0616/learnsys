@@ -8,6 +8,7 @@ import unittest
 from unittest import mock
 
 from learnsys.ask import workbench
+from learnsys.core import browsers
 
 
 class WorkbenchTest(unittest.TestCase):
@@ -16,7 +17,7 @@ class WorkbenchTest(unittest.TestCase):
             fake = pathlib.Path(tmp) / "mybrowser.exe"
             fake.write_bytes(b"MZ")
             with mock.patch.dict(os.environ, {"LEARNSYS_BROWSER": str(fake)}):
-                self.assertEqual(workbench.find_browser(), str(fake))
+                self.assertEqual(browsers.find_browser(), str(fake))
 
     def test_missing_browser_falls_back(self):
         with mock.patch.object(workbench, "find_browser", return_value=None), \
