@@ -15,7 +15,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PySide6 import QtCore, QtGui, QtWidgets  # noqa: E402
 
 from learnsys.ask.desktop.qt_pilot import QtPilotMixin, open_workbench_link  # noqa: E402
-from learnsys.ask.qt.today import TodayWindow, chars_parts, date_label, minutes_parts  # noqa: E402
+from learnsys.ask.qt.today import (AUTO_REFRESH_MS, TodayWindow, chars_parts,  # noqa: E402
+                                   date_label, minutes_parts)
 from learnsys.ask.qt.today_panels import AchievementRow, plain  # noqa: E402
 
 
@@ -262,6 +263,44 @@ class TestTodayWindow(unittest.TestCase):
         self.assertEqual(palette.color(QtGui.QPalette.ColorRole.Window).name(),
                          "#1b1e23")
         self.assertTrue(self.window.styleSheet().strip())
+
+    def test_自动刷新定时器随显隐启停(self):
+        self.assertEqual(self.window._auto_timer.interval(), AUTO_REFRESH_MS)
+        self.assertFalse(self.window._auto_timer.isActive())
+        self.window.show()
+        _app().processEvents()
+        self.assertTrue(self.window._auto_timer.isActive())
+        self.window.hide()
+        _app().processEvents()
+        self.assertFalse(self.window._auto_timer.isActive())
+
+    def test_自动刷新只在可见且空闲时触发(self):
+        self.assertEqual(self.api.started, 1)
+        self.window._auto_refresh()          # 窗口没显示
+        self.assertEqual(self.api.started, 1)
+        self.window.show()
+        _app().processEvents()
+        self.window._auto_refresh()
+        self.assertEqual(self.api.started, 2)
+        self.window._pending = {"today"}     # 有请求在飞
+        self.window._auto_refresh()
+        self.assertEqual(self.api.started, 2)
+        self.window._pending = set()
+        self.window.showMinimized()
+        _app().processEvents()
+        self.window._auto_refresh()          # 最小化不刷新
+        self.assertEqual(self.api.started, 2)
+
+    def test_自动刷新失败保留旧数据(self):
+        self.window.show()
+        _app().processEvents()
+        self.window._auto_refresh()
+        self.assertEqual(self.api.started, 2)
+        self.api.failed.emit("本地服务没起来")
+        self.assertEqual(self.window.hero.goal_text.text(), "45 / 100")
+        self.assertIn("自动刷新没连上", self.window.status_label.text())
+        self.assertTrue(self.window.retry_button.isHidden())
+        self.assertTrue(self.window.refresh_button.isEnabled())
 
 
 PANEL_OVERVIEW = {

@@ -21,6 +21,7 @@ from .widgets import StatusLabel
 TODAY_SIZE = (1040, 700)
 TODAY_MIN = (760, 560)
 CONTENT_MAX = 1040
+AUTO_REFRESH_MS = 60_000   # 今日页可见时每分钟静默拉一次，窗口隐藏就停
 # BREAK 由 today_bottom 统一提供：行动卡/插件卡/底栏堆叠共用一个断点。
 
 
@@ -57,8 +58,13 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         self._plugin_cols = 0
         self._bottom_stacked = False
         self._continue_conv = ""
+        self._silent = False
         self.action_cards: list[ActionCard] = []
         self.plugin_cards: list[PluginCard] = []
+
+        self._auto_timer = QtCore.QTimer(self)
+        self._auto_timer.setInterval(AUTO_REFRESH_MS)
+        self._auto_timer.timeout.connect(self._auto_refresh)
 
         self._build()
         self.api.ready.connect(self._on_ready)
@@ -177,7 +183,27 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
 
     # ---- 加载 ----
 
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._auto_timer.start()
+
+    def hideEvent(self, event) -> None:
+        self._auto_timer.stop()
+        super().hideEvent(event)
+
+    def _auto_refresh(self) -> None:
+        """自动刷新：只在可见、未最小化且没有请求在飞时静默拉一次。"""
+        if not self.isVisible():
+            return
+        if self.windowState() & QtCore.Qt.WindowState.WindowMinimized:
+            return
+        if self._pending or not self.refresh_button.isEnabled():
+            return
+        self._silent = True
+        self.api.start()
+
     def load(self) -> None:
+        self._silent = False
         self._data = {}
         self._errors = {}
         self._pending = set()
@@ -189,6 +215,7 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         self.api.start()
 
     def _on_ready(self) -> None:
+        self._silent = False      # 连上了就不算「自动刷新失败」了
         self._pending = {"overview", "today", "modules", "settings", "review",
                          "conversations"}
         self.api.get("/api/overview", lambda data: self._ok("overview", data),
@@ -206,6 +233,12 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
                      lambda message: self._fail("conversations", message))
 
     def _on_failed(self, message: str) -> None:
+        silent = self._silent
+        self._silent = False
+        if silent:
+            # 自动刷新失败不覆盖已显示的数据，只留一行提示。
+            self.status_label.show_info(f"自动刷新没连上（显示上次数据）：{message}")
+            return
         self.status_label.show_err(message)
         self.retry_button.show()
         self.refresh_button.setEnabled(True)
@@ -249,6 +282,7 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
             if not self._required_failed:
                 self.status_label.show_info("部分数据还在加载…")
             return
+        self._silent = False
         self.refresh_button.setEnabled(True)
         if self._required_failed:
             return
