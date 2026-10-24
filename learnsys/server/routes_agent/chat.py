@@ -128,6 +128,9 @@ def chat(req: ChatRequest, _=Depends(require_token)):
         stop_reason = ""
         check_ok = None
         routed_model = ""
+        usage_by_model: dict = {}
+        run_cost = 0.0
+        run_currency = ""
         trace: list[dict] = []
 
         def ask_confirm(request_id: str, tool_name: str, args: dict) -> bool:
@@ -188,6 +191,10 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                     final = str(data.get("text") or "")
                     thinking = str(data.get("thinking") or "")
                     usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
+                    usage_by_model = (data.get("usage_by_model")
+                                      if isinstance(data.get("usage_by_model"), dict) else {})
+                    run_cost = float(data.get("cost") or 0)
+                    run_currency = str(data.get("currency") or "")
                     steps = int(data.get("steps") or 0)
                     model_calls = int(data.get("model_calls") or 0)
                     tool_count = int(data.get("tool_calls") or 0)
@@ -203,7 +210,11 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 _ACTIVE.pop(key, None)
             try:
                 total_ms = int((time.monotonic() - started) * 1000)
-                cost, currency, _ = agent_cost.estimate(usage, cfg)
+                if run_cost or usage_by_model:
+                    cost, currency = run_cost, run_currency
+                else:
+                    cost, currency, _ = agent_cost.estimate(usage, cfg,
+                                                            str(routed_model or cfg.model))
                 store.add_agent_run(
                     conn, run_id=run_id, conversation_id=conv_id,
                     question=req.message[:200], model=routed_model or cfg.model or "",

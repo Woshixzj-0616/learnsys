@@ -119,3 +119,15 @@
   .composer-wrap { padding: 8px 20px 16px; }
   .setting-row { grid-template-columns: 150px minmax(0, 1fr); }
 }
+
+/* 模型单价表：一行一个模型，四列输入 + 删除 */
+.price-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.price-row .input { flex: 1 1 88px; min-width: 0; }
+.price-row [data-price-model] { flex: 2 1 150px; }
+.price-row .btn { flex: 0 0 auto; }

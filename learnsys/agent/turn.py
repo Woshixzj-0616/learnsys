@@ -5,12 +5,15 @@
 """
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import time
 import uuid
 from collections.abc import Generator
 from dataclasses import dataclass, field
 
+from learnsys import config, diagnostics, store
+from learnsys.agent import cost as agent_cost
 from learnsys.agent import planning, selfcheck, tools
 from learnsys.llm.config import AgentConfig
 from learnsys.agent.events import AgentEvent
@@ -46,6 +49,9 @@ class _RunState:
     text: str = ""
     thinking: str = ""
     usage: dict = field(default_factory=dict)
+    usage_by_model: dict = field(default_factory=dict)   # 模型 → usage（账本口径）
+    cost: float = 0.0
+    currency: str = ""
     steps: int = 0
     stop_reason: str = ""
     plan: list[dict] = field(default_factory=list)
@@ -81,6 +87,32 @@ def _merge_usage(target: dict, update) -> None:
             target.setdefault(key, value)
 
 
+def _record_usage(state: _RunState, cfg, model: str, usage,
+                  source: str = "") -> None:
+    """一次成功的模型调用：合并用量 + 按模型记进账本。
+
+    账本写失败只记日志，不让一轮对话因此失败——但每日上限会因此少算。
+    """
+    if not isinstance(usage, dict) or not usage:
+        return
+    model = str(model or "")
+    _merge_usage(state.usage, usage)
+    _merge_usage(state.usage_by_model.setdefault(model, {}), usage)
+    amount, currency, _ = agent_cost.estimate(usage, cfg, model)
+    state.cost = round(state.cost + amount, 8)
+    state.currency = currency or state.currency
+    try:
+        path = config.db_path_in(getattr(cfg, "data_root", config.DATA_ROOT))
+        with contextlib.closing(store.connect(path)) as conn:
+            store.add_model_usage(
+                conn, source=source, model=model,
+                counts=agent_cost.normalize_usage(usage),
+                cost=amount, currency=currency)
+    except Exception as exc:  # noqa: BLE001 —— 记账失败不能挡住对话
+        diagnostics.log_swallow("记录模型用量", exc,
+                                data_root=getattr(cfg, "data_root", None))
+
+
 def _aborted(state: _RunState) -> AgentEvent:
     return AgentEvent("done", data={
         "text": state.text, "thinking": state.thinking,
@@ -96,7 +128,7 @@ def _execute_tool(call, ctx: tools.ToolContext) -> tuple[str, str, bool, str]:
 
 
 def _rewrite_answer(provider, cfg: AgentConfig, state: _RunState, answer: str,
-                    issues: list[str], abort) -> str:
+                    issues: list[str], abort, source: str = "rewrite") -> str:
     """自检不通过：用快模型按证据重写一次（不再调工具）。失败返回空串。"""
     if abort is not None and abort.is_set():
         return ""
@@ -114,7 +146,7 @@ def _rewrite_answer(provider, cfg: AgentConfig, state: _RunState, answer: str,
         elif event.kind == "done":
             result = event.result
     if result is not None and result.usage:
-        _merge_usage(state.usage, result.usage)
+        _record_usage(state, rewrite_cfg, rewrite_cfg.model, result.usage, source)
     text = (result.text if result is not None and result.text
             else "".join(parts)).strip()
     return text
@@ -122,7 +154,7 @@ def _rewrite_answer(provider, cfg: AgentConfig, state: _RunState, answer: str,
 
 def _stream_once(provider, cfg_holder: list, system: str, messages: list,
                  tool_schemas, abort, response_sink,
-                 state: _RunState) -> Generator[AgentEvent, None, ProviderResult | None]:
+                 state: _RunState, source: str = "") -> Generator[AgentEvent, None, ProviderResult | None]:
     """一次模型流式调用：增量事件原样透传，返回最终结果并合并 usage。"""
     result: ProviderResult | None = None
     for event in stream_with_fallback(
@@ -138,7 +170,7 @@ def _stream_once(provider, cfg_holder: list, system: str, messages: list,
         elif event.kind == "done":
             result = event.result
     if result is not None and result.usage:
-        _merge_usage(state.usage, result.usage)
+        _record_usage(state, cfg_holder[0], cfg_holder[0].model, result.usage, source)
     return result
 
 
@@ -252,7 +284,8 @@ def _run_tool_loop(turn: _Turn, *, abort, response_sink, max_steps,
         state.model_calls += 1
         result = yield from _stream_once(
             turn.provider, turn.cfg_holder, turn.system, turn.messages,
-            turn.tool_schemas, abort, response_sink, state)
+            turn.tool_schemas, abort, response_sink, state,
+            source=str(getattr(turn.request, "mode", "") or ""))
         if result is None:
             raise AgentError("模型没有返回结果（连接可能被中断了）。")
         state.stop_reason = result.stop_reason
@@ -365,7 +398,8 @@ def _finish(turn: _Turn, *, abort) -> Generator[AgentEvent, None, None]:
             yield AgentEvent("activity",
                              text=f"自检发现 {len(issues)} 处引用对不上，正在重写…")
             rewritten = _rewrite_answer(turn.provider, turn.cfg_holder[0], state,
-                                        final_text, issues, abort)
+                                        final_text, issues, abort,
+                                        source=str(getattr(turn.request, "mode", "") or ""))
             if rewritten:
                 final_text = rewritten
                 state.text = rewritten
@@ -391,6 +425,10 @@ def _finish(turn: _Turn, *, abort) -> Generator[AgentEvent, None, None]:
         "text": final_text,
         "thinking": state.thinking,
         "usage": state.usage,
+        "usage_by_model": {name: dict(value)
+                           for name, value in state.usage_by_model.items()},
+        "cost": state.cost,
+        "currency": state.currency,
         "steps": state.steps,
         "model_calls": state.model_calls,
         "tool_calls": state.tool_calls,

@@ -96,13 +96,25 @@ function chip(label, value, hint = "") {
     <span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`;
 }
 
+function fmtAmount(value, currency) {
+  return `${Number(value || 0).toFixed(4)} ${currency || ""}`.trim();
+}
+
 function renderStats(data) {
   const totals = data.totals || {};
+  const today = data.today || {};
   const cost = totals.price_configured
     ? fmtCost(totals.cost, totals.currency)
     : "未配置单价";
+  const callLimit = Number(today.call_limit || 0);
+  const costLimit = Number(today.cost_limit || 0);
+  const calls = Number(today.calls || 0);
   dom.stats.innerHTML = [
     chip("运行", `${data.runs} 次`),
+    chip("今日调用", callLimit ? `${fmtNum(calls)} / ${fmtNum(callLimit)}` : `${fmtNum(calls)} 次`,
+      callLimit && calls >= callLimit ? "已达每日调用上限" : "0 = 不限"),
+    chip("今日花费", costLimit ? `${fmtAmount(today.cost, today.currency)} / ${fmtAmount(costLimit)}` : fmtAmount(today.cost, today.currency),
+      costLimit && Number(today.cost) >= costLimit ? "已达每日成本上限" : "0 = 不限"),
     chip("首 token 平均", fmtMs(totals.first_ms_avg)),
     chip("总耗时平均", fmtMs(totals.total_ms_avg), `P95 ${fmtMs(totals.total_ms_p95)}`),
     chip("Tokens", fmtNum(totals.total_tokens),

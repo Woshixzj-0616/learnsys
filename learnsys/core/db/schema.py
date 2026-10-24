@@ -6,7 +6,7 @@ from __future__ import annotations
 
 # 统一库结构版本。改了 `SCHEMA` 或 `_migrate_columns` 就 +1：
 # `connect()` 只在版本不一致时跑建表/补列/种子，一致时只建连接。
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 SCHEMA = """
@@ -382,6 +382,27 @@ CREATE TABLE IF NOT EXISTS agent_runs (
 );
 CREATE INDEX IF NOT EXISTS idx_agent_runs_conversation
     ON agent_runs (conversation_id, id DESC);
+-- 模型调用账本：**每一次**成功调用一行，按模型记 token 与成本。
+-- 每日上限、成本面板都只读这一张表；别在别处再算一份。
+CREATE TABLE IF NOT EXISTS model_usage (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts                 TEXT NOT NULL,
+    day                TEXT NOT NULL,
+    source             TEXT NOT NULL DEFAULT '',
+    model              TEXT NOT NULL DEFAULT '',
+    prompt_tokens      INTEGER NOT NULL DEFAULT 0,
+    uncached_tokens    INTEGER NOT NULL DEFAULT 0,
+    cache_read_tokens  INTEGER NOT NULL DEFAULT 0,
+    cache_write_tokens INTEGER NOT NULL DEFAULT 0,
+    completion_tokens  INTEGER NOT NULL DEFAULT 0,
+    total_tokens       INTEGER NOT NULL DEFAULT 0,
+    cost               REAL NOT NULL DEFAULT 0,
+    currency           TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_model_usage_day
+    ON model_usage (day);
+CREATE INDEX IF NOT EXISTS idx_model_usage_model
+    ON model_usage (day, model);
 CREATE TABLE IF NOT EXISTS review_log (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     ts             TEXT NOT NULL,

@@ -9,7 +9,7 @@ import pathlib
 import threading
 from collections.abc import Iterator
 
-from learnsys.agent import memory, prompts, router, tools, vision
+from learnsys.agent import budget, memory, prompts, router, tools, vision
 from learnsys.llm.config import AgentConfig, load_config
 from learnsys.agent.events import AgentEvent
 from learnsys.llm.provider_anthropic import ProviderError
@@ -105,6 +105,11 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
         return None
     if abort is not None and abort.is_set():
         yield AgentEvent("done", data={"text": "", "stop_reason": "aborted"})
+        return None
+
+    blocked = budget.check(cfg)
+    if blocked:
+        yield AgentEvent("error", text=blocked)
         return None
 
     provider = provider or _default_provider()

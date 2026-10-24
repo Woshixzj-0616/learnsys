@@ -72,25 +72,16 @@ def get_settings(_=Depends(require_token)):
                     else ("env" if cfg.auth_token else "none"))
     key_source = ("file" if vision_raw.get("api_key")
                   else ("env" if cfg.vision_api_key else "none"))
+    agent = cfg.public()                 # 单价 / 上限 / 模型字段的唯一来源
+    agent.update({
+        "thinking": cfg.thinking,
+        "ready": cfg.ready,
+        "auth_token_set": bool(cfg.auth_token),
+        "auth_token_mask": _mask(cfg.auth_token),
+        "auth_token_source": token_source,
+    })
     return {
-        "agent": {
-            "base_url": cfg.base_url,
-            "model": cfg.model,
-            "fast_model": cfg.fast_model,
-            "max_tokens": cfg.max_tokens,
-            "thinking": cfg.thinking,
-            "speed": cfg.speed,
-            "auto_route": cfg.auto_route,
-            "strong_model": cfg.strong_model,
-            "price_input": cfg.price_input,
-            "price_output": cfg.price_output,
-            "price_cache_read": cfg.price_cache_read,
-            "currency": cfg.currency,
-            "ready": cfg.ready,
-            "auth_token_set": bool(cfg.auth_token),
-            "auth_token_mask": _mask(cfg.auth_token),
-            "auth_token_source": token_source,
-        },
+        "agent": agent,
         "vision": {
             "base_url": cfg.vision_base_url,
             "model": cfg.vision_model,
@@ -121,7 +112,10 @@ class AgentPatch(BaseModel):
     price_input: float | None = Field(default=None, ge=0, le=100000)
     price_output: float | None = Field(default=None, ge=0, le=100000)
     price_cache_read: float | None = Field(default=None, ge=0, le=100000)
+    prices: dict[str, dict] | None = None
     currency: str | None = Field(default=None, max_length=12)
+    daily_cost_limit: float | None = Field(default=None, ge=0, le=1000000)
+    daily_call_limit: int | None = Field(default=None, ge=0, le=1000000)
 
 
 class VisionPatch(BaseModel):
@@ -135,6 +129,29 @@ class SettingsPatch(BaseModel):
     vision: VisionPatch | None = None
     hotkey: str | None = None
     modules: dict[str, bool] | None = None
+
+
+def _clean_prices(raw) -> dict[str, dict]:
+    """模型单价表：只留有效条目（模型名非空、至少一个正数），最多 100 个。"""
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, dict] = {}
+    for name, value in raw.items():
+        model = str(name or "").strip()
+        if not model or not isinstance(value, dict):
+            continue
+        entry = {}
+        for key in ("input", "output", "cache_read"):
+            try:
+                number = float(value.get(key) or 0)
+            except (TypeError, ValueError):
+                number = 0.0
+            entry[key] = max(0.0, number)
+        if any(entry.values()):
+            out[model] = entry
+        if len(out) >= 100:
+            break
+    return out
 
 
 def _put(data: dict, section: str, values: dict) -> None:
@@ -169,6 +186,13 @@ def save_settings(patch: SettingsPatch, _=Depends(require_token)):
         for key in ("price_input", "price_output", "price_cache_read"):
             if key in agent:
                 agent[key] = max(0.0, float(agent[key]))
+        if "prices" in agent:
+            agent["prices"] = _clean_prices(agent["prices"])
+        for key in ("daily_cost_limit",):
+            if key in agent:
+                agent[key] = max(0.0, float(agent[key]))
+        if "daily_call_limit" in agent:
+            agent["daily_call_limit"] = max(0, int(agent["daily_call_limit"]))
         if "speed" in agent:
             speed = str(agent["speed"]).strip().lower()
             if speed not in ("fast", "balanced", "deep"):

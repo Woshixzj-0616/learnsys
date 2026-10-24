@@ -65,6 +65,14 @@ SETTINGS_TEMPLATE = {
         "_routes": "按任务换模型（可选）。键：explain/guide/quiz/quick/translate/analyze/review；"
                    "留空 = 全部走 speed 档。例：{\"translate\": \"deepseek-flash\"}",
         "routes": {},
+        "_prices": "按模型覆盖单价（每 100 万 token）。没配的模型用上面的全局价。"
+                   "例：{\"deepseek-v4-pro\": {\"input\": 1.0, \"output\": 2.0, \"cache_read\": 0.1}}",
+        "prices": {},
+        "_daily_cost_limit": "每日成本上限（0 = 不限）。达到后不再发起模型调用；"
+                             "需要先填单价才有意义。",
+        "daily_cost_limit": 0,
+        "_daily_call_limit": "每日模型调用上限（0 = 不限）。按成功调用的次数算。",
+        "daily_call_limit": 0,
     },
     "_vision": "可选：看图用的 OpenAI 兼容视觉模型（如智谱 GLM-4V-Flash）。留空 = 退回 OCR，只读图中文字。",
     "vision": {
@@ -269,13 +277,18 @@ def materials_dir() -> pathlib.Path:
     return DATA_ROOT / "资料库"
 
 
+def db_path_in(root) -> pathlib.Path:
+    """指定数据目录下的统一库；测试和按 cfg.data_root 记账时用这一份。"""
+    return pathlib.Path(root) / "learning.db"
+
+
 def db_path(when=None) -> pathlib.Path:
     """统一库：所有日子的问答、转写、窗口、会话都在这里。
 
     `when` 参数保留只为兼容旧调用；v2 不再按天分库。
     按天的文件夹仍由 `day_dir()` 管，只放截图 / 录屏 / 报告。
     """
-    return DATA_ROOT / "learning.db"
+    return db_path_in(DATA_ROOT)
 
 
 def cet6_dir_candidates() -> list[pathlib.Path]:

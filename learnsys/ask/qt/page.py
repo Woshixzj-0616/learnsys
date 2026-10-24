@@ -152,6 +152,37 @@ class SettingsPageMixin:
         section.add_widget(FieldRow(
             "币种", self._line("price-currency", max_length=12, placeholder="USD"),
             small="例如 USD / CNY，只用于显示"))
+        limit_validator = QtGui.QDoubleValidator(0.0, 1000000.0, 6, self)
+        limit_validator.setNotation(QtGui.QDoubleValidator.Notation.StandardNotation)
+        section.add_widget(FieldRow(
+            "每日成本上限", self._line("daily-cost-limit", validator=limit_validator),
+            small="0 = 不限；达到后不再发起模型调用"))
+        section.add_widget(FieldRow(
+            "每日调用上限",
+            self._line("daily-call-limit",
+                       validator=QtGui.QIntValidator(0, 1000000, self)),
+            small="0 = 不限；按成功调用次数算"))
+        self.price_table = QtWidgets.QTableWidget(0, 4)
+        self.price_table.setHorizontalHeaderLabels(["模型", "输入", "输出", "缓存"])
+        self.price_table.verticalHeader().setVisible(False)
+        self.price_table.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.price_table.setMinimumHeight(120)
+        header = self.price_table.horizontalHeader()
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        for index in (1, 2, 3):
+            header.setSectionResizeMode(
+                index, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        section.add_widget(FieldRow(
+            "模型单价", self.price_table,
+            small="每 100 万 token；没列出的模型用上面的默认价"))
+        self.price_add_button = QtWidgets.QPushButton("添加模型")
+        self.price_remove_button = QtWidgets.QPushButton("删除选中")
+        price_buttons = QtWidgets.QHBoxLayout()
+        price_buttons.addWidget(self.price_add_button)
+        price_buttons.addWidget(self.price_remove_button)
+        price_buttons.addStretch(1)
+        section.add_widget(self._wrap(price_buttons))
         self.cost_section = section
         column.addWidget(section)
 

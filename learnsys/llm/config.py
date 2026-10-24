@@ -65,6 +65,34 @@ def _as_bool(value, default: bool) -> bool:
     return str(value).strip().lower() not in ("0", "false", "no", "off", "关", "否")
 
 
+def _as_prices(raw) -> dict[str, dict]:
+    """`{模型: {input, output, cache_read}}`，负数/非数字当 0；空模型名丢弃。"""
+    if not isinstance(raw, dict):
+        return {}
+    prices: dict[str, dict] = {}
+    for name, value in raw.items():
+        model = clean_model(str(name or ""))
+        if not model or not isinstance(value, dict):
+            continue
+        entry = {
+            "input": _as_float(value.get("input")),
+            "output": _as_float(value.get("output")),
+            "cache_read": _as_float(value.get("cache_read")),
+        }
+        if any(entry.values()):
+            prices[model] = entry
+    return prices
+
+
+def _as_limit(value) -> float:
+    """每日上限：负数当 0（不限）。"""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return number if number > 0 else 0.0
+
+
 def _as_float(value, default: float = 0.0) -> float:
     try:
         number = float(value)
@@ -101,10 +129,16 @@ class AgentConfig:
     strong_model: str = ""
 
     # 成本估算：每 100 万 token 的单价；0 = 未配置（不猜价格）
+    # 全局价是兜底；`prices` 按模型覆盖，键是模型名。
     price_input: float = 0.0
     price_output: float = 0.0
     price_cache_read: float = 0.0
+    prices: dict[str, dict] = field(default_factory=dict)
     currency: str = "USD"
+
+    # 每日上限：0 = 不限。达到后 agent.run 直接拒绝（硬拒绝，不发模型请求）。
+    daily_cost_limit: float = 0.0
+    daily_call_limit: int = 0
 
     # 任务 → 模型（可选）。为空 = 全部走现有 speed 档，行为不变。
     # 键：explain / guide / quiz / quick / translate / analyze / review
@@ -140,7 +174,10 @@ class AgentConfig:
             "price_input": self.price_input,
             "price_output": self.price_output,
             "price_cache_read": self.price_cache_read,
+            "prices": {name: dict(value) for name, value in (self.prices or {}).items()},
             "currency": self.currency,
+            "daily_cost_limit": self.daily_cost_limit,
+            "daily_call_limit": self.daily_call_limit,
             "routes": dict(self.routes or {}),
             "vision_model": self.vision_model if self.vision_ready else "",
         }
@@ -206,6 +243,9 @@ def load_config() -> AgentConfig:
         price_input=_as_float(agent.get("price_input")),
         price_output=_as_float(agent.get("price_output")),
         price_cache_read=_as_float(agent.get("price_cache_read")),
+        prices=_as_prices(agent.get("prices")),
         currency=str(agent.get("currency") or "USD").strip()[:12] or "USD",
+        daily_cost_limit=_as_limit(agent.get("daily_cost_limit")),
+        daily_call_limit=int(_as_limit(agent.get("daily_call_limit"))),
         routes=routes,
     )

@@ -24,9 +24,21 @@ CORE_FIELDS = frozenset({
     "agent-base", "agent-token", "agent-model", "agent-fast", "agent-strong",
     "agent-auto-route", "agent-tokens", "agent-speed",
     "price-input", "price-output", "price-cache", "price-currency",
+    "daily-cost-limit", "daily-call-limit",
     "vision-base", "vision-key", "vision-model",
     "hotkey",
 })
+
+
+def _number_text(value) -> str:
+    """表格里显示数字：0.28 原样，2.0 显示 2；空值显示空串。"""
+    if value in (None, ""):
+        return ""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return ""
+    return str(int(number)) if number == int(number) else f"{number:g}"
 
 
 def key_hint(has: bool, mask: str, source: str) -> str:
@@ -107,6 +119,9 @@ class SettingsWindow(SettingsPageMixin, SettingsMemoryMixin, QtWidgets.QDialog):
         self.backup_button.clicked.connect(self.backup)
         self.memory_add_button.clicked.connect(self.add_memory)
         self.memory_input.returnPressed.connect(self.add_memory)
+        self.price_add_button.clicked.connect(lambda: self._add_price_row())
+        self.price_remove_button.clicked.connect(self._remove_price_row)
+        self.price_table.cellChanged.connect(self.mark_dirty)
         self.set_editable(CORE_FIELDS)   # R3.3：核心表单可改；其余步骤再放开
         self.save_button.setEnabled(True)
         self._wire_dirty()
@@ -175,6 +190,9 @@ class SettingsWindow(SettingsPageMixin, SettingsMemoryMixin, QtWidgets.QDialog):
         self._set("price-output", agent.get("price_output"))
         self._set("price-cache", agent.get("price_cache_read"))
         self._set("price-currency", agent.get("currency") or "USD")
+        self._set("daily-cost-limit", agent.get("daily_cost_limit"))
+        self._set("daily-call-limit", agent.get("daily_call_limit"))
+        self._fill_price_table(agent.get("prices"))
 
         self.inputs["agent-token"].clear()
         self.agent_token_hint.setText(key_hint(
@@ -193,6 +211,65 @@ class SettingsWindow(SettingsPageMixin, SettingsMemoryMixin, QtWidgets.QDialog):
         self.settings_path_label.setText(f"设置在：{self._settings.get('settings_path') or ''}")
         self.backup_dir_label.setText(f"备份目录：{self._settings.get('backup_dir') or ''}")
         self._apply_module_checks()
+
+    # ---- 模型单价表 ----
+
+    def _fill_price_table(self, prices) -> None:
+        table = getattr(self, "price_table", None)
+        if table is None:
+            return
+        table.blockSignals(True)          # 程序回填不算用户改动
+        try:
+            table.setRowCount(0)
+            for model, price in (prices or {}).items():
+                self._append_price_row(str(model), price if isinstance(price, dict) else {})
+        finally:
+            table.blockSignals(False)
+
+    def _append_price_row(self, model: str = "", price: dict | None = None) -> None:
+        price = price if isinstance(price, dict) else {}
+        row = self.price_table.rowCount()
+        self.price_table.insertRow(row)
+        values = [model, _number_text(price.get("input")),
+                  _number_text(price.get("output")),
+                  _number_text(price.get("cache_read"))]
+        for column, value in enumerate(values):
+            self.price_table.setItem(row, column, QtWidgets.QTableWidgetItem(value))
+
+    def _add_price_row(self) -> None:
+        self._append_price_row()
+        self.mark_dirty()
+
+    def _remove_price_row(self) -> None:
+        rows = sorted({index.row() for index in self.price_table.selectedIndexes()},
+                      reverse=True)
+        if not rows and self.price_table.rowCount():
+            rows = [self.price_table.rowCount() - 1]
+        for row in rows:
+            self.price_table.removeRow(row)
+        self.mark_dirty()
+
+    def _collect_prices(self) -> dict:
+        prices: dict[str, dict] = {}
+        for row in range(self.price_table.rowCount()):
+            item = self.price_table.item(row, 0)
+            model = item.text().strip() if item else ""
+            if not model:
+                continue
+            entry: dict[str, float] = {}
+            for column, key in ((1, "input"), (2, "output"), (3, "cache_read")):
+                cell = self.price_table.item(row, column)
+                raw = cell.text().strip() if cell else ""
+                if raw == "":
+                    continue
+                try:
+                    value = float(raw)
+                except ValueError:
+                    continue
+                if value >= 0:
+                    entry[key] = value
+            prices[model] = entry
+        return prices
 
     def _fill_modules(self, data: dict) -> None:
         modules = (data or {}).get("modules")
@@ -307,6 +384,18 @@ class SettingsWindow(SettingsPageMixin, SettingsMemoryMixin, QtWidgets.QDialog):
         currency = self._value("price-currency")
         if currency:
             agent["currency"] = currency
+        for key, name in (("daily-cost-limit", "daily_cost_limit"),
+                          ("daily-call-limit", "daily_call_limit")):
+            raw = self._value(key)
+            if raw == "":
+                continue
+            try:
+                value = float(raw)
+            except ValueError:
+                continue
+            if value >= 0:
+                agent[name] = value if name == "daily_cost_limit" else int(value)
+        agent["prices"] = self._collect_prices()
         token = self._value("agent-token")
         if token:
             agent["auth_token"] = token

@@ -28,6 +28,8 @@ from .materials import (MATERIAL_KINDS, add_material, delete_material_row, get_m
                         list_materials, material_counts, set_material_status,
                         touch_material, update_material)
 from .memories import add_memory, delete_memory, list_memories, update_memory
+from .model_usage import add_usage as add_model_usage, day_by_model, day_totals, \
+    recent as recent_model_usage
 from .review import (REVIEW_ITEM_TYPES, add_review_log, due_review_items,
                      get_review_state, recent_review_log, review_stats,
                      save_review_state, seed_review_states)
@@ -52,6 +54,7 @@ __all__ = [
     "cet6_progress_item", "cet6_progress_summary", "cet6_recent_events",
     "cet6_progress_paper_rows", "add_cet6_dualwrite_run",
     "add_cet6_dualwrite_diffs", "upsert_cet6_progress",
+    "add_model_usage", "day_by_model", "day_totals", "recent_model_usage",
     "add_message", "conversation_messages", "create_conversation",
     "get_conversation", "list_conversations", "touch_conversation",
     "add_event",

@@ -36,6 +36,9 @@ function fill(data) {
   setValue("price-output", data.agent?.price_output ?? "");
   setValue("price-cache", data.agent?.price_cache_read ?? "");
   setValue("price-currency", data.agent?.currency || "USD");
+  setValue("daily-cost-limit", data.agent?.daily_cost_limit ?? 0);
+  setValue("daily-call-limit", data.agent?.daily_call_limit ?? 0);
+  renderPrices(data.agent?.prices || {});
   document.getElementById("agent-token").value = "";
   document.getElementById("agent-token-hint").textContent = keyHint(
     data.agent?.auth_token_set, data.agent?.auth_token_mask, data.agent?.auth_token_source);
@@ -101,6 +104,19 @@ function bind() {
   ctxRef.root.querySelector("#test-text").addEventListener("click", () => test("text"));
   ctxRef.root.querySelector("#test-vision").addEventListener("click", () => test("vision"));
   ctxRef.root.querySelector("#backup-now").addEventListener("click", backup);
+
+  document.getElementById("price-add").addEventListener("click", () => {
+    document.getElementById("price-models").appendChild(priceRow("", {}));
+    markDirty();
+  });
+  const priceBox = document.getElementById("price-models");
+  priceBox.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-price-remove]");
+    if (!button) return;
+    button.closest("[data-price-row]")?.remove();
+    markDirty();
+  });
+  priceBox.addEventListener("input", markDirty);
 
   document.getElementById("memory-add").addEventListener("click", addMemory);
   const input = document.getElementById("memory-input");
@@ -180,6 +196,63 @@ async function onMemoryAction(event) {
   }
 }
 
+function renderPrices(prices) {
+  const box = document.getElementById("price-models");
+  box.innerHTML = "";
+  Object.entries(prices || {}).forEach(([model, price]) => {
+    box.appendChild(priceRow(model, price || {}));
+  });
+}
+
+function priceRow(model, price) {
+  const row = document.createElement("div");
+  row.className = "price-row";
+  row.dataset.priceRow = "";
+  const fields = [
+    ["data-price-model", "text", model, "模型名"],
+    ["data-price-in", "number", price.input ?? "", "输入价"],
+    ["data-price-out", "number", price.output ?? "", "输出价"],
+    ["data-price-cache", "number", price.cache_read ?? "", "缓存价"],
+  ];
+  for (const [attr, type, value, placeholder] of fields) {
+    const input = document.createElement("input");
+    input.className = "input";
+    input.setAttribute(attr, "");
+    input.type = type;
+    if (type === "number") {
+      input.min = "0";
+      input.step = "0.001";
+    }
+    input.placeholder = placeholder;
+    input.value = value ?? "";
+    row.appendChild(input);
+  }
+  const remove = document.createElement("button");
+  remove.className = "btn";
+  remove.type = "button";
+  remove.dataset.priceRemove = "";
+  remove.textContent = "删除";
+  row.appendChild(remove);
+  return row;
+}
+
+function collectPrices() {
+  const prices = {};
+  document.querySelectorAll("#price-models [data-price-row]").forEach((row) => {
+    const model = row.querySelector("[data-price-model]").value.trim();
+    if (!model) return;
+    const entry = {};
+    for (const [attr, key] of [["data-price-in", "input"],
+      ["data-price-out", "output"], ["data-price-cache", "cache_read"]]) {
+      const raw = row.querySelector(`[${attr}]`).value;
+      const value = Number(raw);
+      if (raw !== "" && Number.isFinite(value) && value >= 0) entry[key] = value;
+    }
+    prices[model] = entry;
+  });
+  return prices;
+}
+
 function collect() {
   const agent = {
     base_url: valueOf("agent-base"),
@@ -199,6 +272,13 @@ function collect() {
   }
   const currency = valueOf("price-currency");
   if (currency) agent.currency = currency;
+  const costLimit = Number(valueOf("daily-cost-limit"));
+  if (Number.isFinite(costLimit) && costLimit >= 0) agent.daily_cost_limit = costLimit;
+  const callLimit = Number(valueOf("daily-call-limit"));
+  if (Number.isFinite(callLimit) && callLimit >= 0) {
+    agent.daily_call_limit = Math.round(callLimit);
+  }
+  agent.prices = collectPrices();
   const token = valueOf("agent-token");
   if (token) agent.auth_token = token;
 

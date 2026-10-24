@@ -38,6 +38,10 @@ SETTINGS = {
         "price_input": 0.28,
         "price_output": 0.42,
         "price_cache_read": 0.028,
+        "prices": {"deepseek-v4-pro": {"input": 1.0, "output": 2.0,
+                                       "cache_read": 0.1}},
+        "daily_cost_limit": 5,
+        "daily_call_limit": 100,
         "currency": "CNY",
         "auth_token_set": True,
         "auth_token_mask": "••••d562",
@@ -356,6 +360,61 @@ class TestSettingsWindowEdit(unittest.TestCase):
         self.window.save_button.click()
         # Fake 同步回调，保存结束后已恢复；这里只验证没有抛异常
         self.assertTrue(self.window.save_button.isEnabled())
+
+
+class TestSettingsWindowBudget(unittest.TestCase):
+    """R7：按模型单价表 + 每日上限。"""
+
+    def setUp(self):
+        _app()
+        self.api = FakeApiClient()
+        self.window = SettingsWindow(self.api)
+        self.addCleanup(self.window.deleteLater)
+        self.window.load()
+        self.api.ready.emit()
+
+    def test_单价表回填(self):
+        table = self.window.price_table
+        self.assertEqual(table.rowCount(), 1)
+        self.assertEqual(table.item(0, 0).text(), "deepseek-v4-pro")
+        self.assertEqual(table.item(0, 1).text(), "1")
+        self.assertEqual(table.item(0, 2).text(), "2")
+        self.assertEqual(table.item(0, 3).text(), "0.1")
+
+    def test_每日上限回填并进_payload(self):
+        self.assertEqual(self.window.inputs["daily-cost-limit"].text(), "5")
+        self.assertEqual(self.window.inputs["daily-call-limit"].text(), "100")
+        payload = self.window.collect()
+        self.assertEqual(payload["agent"]["daily_cost_limit"], 5.0)
+        self.assertEqual(payload["agent"]["daily_call_limit"], 100)
+
+    def test_添加删除单价行(self):
+        self.window.price_add_button.click()
+        self.assertEqual(self.window.price_table.rowCount(), 2)
+        row = self.window.price_table.rowCount() - 1
+        self.window.price_table.item(row, 0).setText("m2")
+        self.window.price_table.item(row, 1).setText("3.5")
+        prices = self.window.collect()["agent"]["prices"]
+        self.assertEqual(prices["m2"], {"input": 3.5})
+        self.window.price_table.selectRow(row)
+        self.window.price_remove_button.click()
+        self.assertEqual(self.window.price_table.rowCount(), 1)
+        self.assertNotIn("m2", self.window.collect()["agent"]["prices"])
+
+    def test_空模型名和非法数字被忽略(self):
+        self.window.price_add_button.click()
+        row = self.window.price_table.rowCount() - 1
+        self.window.price_table.item(row, 0).setText("")
+        self.window.price_table.item(row, 1).setText("abc")
+        prices = self.window.collect()["agent"]["prices"]
+        self.assertEqual(list(prices), ["deepseek-v4-pro"])
+
+    def test_表格改动标记_dirty(self):
+        self.window.load()
+        self.api.ready.emit()
+        self.assertFalse(self.window.windowTitle().endswith("*"))
+        self.window.price_table.item(0, 1).setText("9")
+        self.assertTrue(self.window.windowTitle().endswith("*"))
 
 
 class TestKeySemantics(unittest.TestCase):

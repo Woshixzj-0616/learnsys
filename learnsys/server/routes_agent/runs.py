@@ -63,6 +63,8 @@ def agent_stats(days: int = 7, limit: int = 200, _=Depends(require_token)):
     conn = store.connect()
     try:
         runs = store.list_agent_runs(conn, limit=limit)
+        today_usage = store.day_totals(conn)
+        today_models = store.day_by_model(conn)
     finally:
         conn.close()
     if days:
@@ -71,7 +73,7 @@ def agent_stats(days: int = 7, limit: int = 200, _=Depends(require_token)):
 
     cfg = load_config()
     price_configured = bool(cfg.price_input or cfg.price_output
-                            or cfg.price_cache_read)
+                            or cfg.price_cache_read or any(cfg.prices.values()))
     by_tool: dict[str, dict] = {}
     by_model: dict[str, dict] = {}
     daily: dict[str, dict] = {}
@@ -92,7 +94,8 @@ def agent_stats(days: int = 7, limit: int = 200, _=Depends(require_token)):
             tokens[key] += int(counts.get(key) or 0)
         run_cost = float(run.get("cost") or 0)
         if not run_cost and price_configured:
-            run_cost = agent_cost.estimate(run.get("usage"), cfg)[0]
+            run_cost = agent_cost.estimate(run.get("usage"), cfg,
+                                           str(run.get("model") or ""))[0]
         run_currency = str(run.get("currency") or "")
         if not currency and run_currency:
             currency = run_currency
@@ -200,6 +203,12 @@ def agent_stats(days: int = 7, limit: int = 200, _=Depends(require_token)):
             "cost": round(cost_sum, 6),
             "currency": currency,
             "price_configured": price_configured,
+        },
+        "today": {
+            **today_usage,
+            "cost_limit": float(getattr(cfg, "daily_cost_limit", 0) or 0),
+            "call_limit": int(getattr(cfg, "daily_call_limit", 0) or 0),
+            "by_model": today_models,
         },
         "by_tool": tools,
         "by_model": models,
