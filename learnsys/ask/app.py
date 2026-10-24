@@ -20,6 +20,7 @@ from learnsys.services import ocr
 from .desktop.assistant_ops import AssistantOpsMixin
 from .desktop.data_backup import DataBackupMixin
 from .desktop.sessions import SessionsMixin
+from .desktop.qt_pilot import QtPilotMixin
 from .desktop.startup import _StartupWorker
 from .desktop.study_ops import StudyOpsMixin
 from .desktop.tray import TrayMixin
@@ -30,7 +31,7 @@ from .desktop.web_service import (WebServiceMixin, _server_healthy,
 
 
 class AskApp(TrayMixin, WebServiceMixin, SessionsMixin, AssistantOpsMixin,
-             StudyOpsMixin, DataBackupMixin, QtCore.QObject):
+             StudyOpsMixin, DataBackupMixin, QtPilotMixin, QtCore.QObject):
     # 框选松手后有 140ms 的截图延迟 —— 这期间再按快捷键不许框出第二个。
     # 放类上：谁都有默认值，别依赖 __init__ 跑过（测试里有 __new__ 裸构造的用法）
     _capture_scheduled = False
@@ -38,10 +39,12 @@ class AskApp(TrayMixin, WebServiceMixin, SessionsMixin, AssistantOpsMixin,
     show_bar_requested = QtCore.Signal()
     pick_requested_ui = QtCore.Signal()
 
-    def __init__(self, app: QtWidgets.QApplication, background: bool = False):
+    def __init__(self, app: QtWidgets.QApplication, background: bool = False,
+                 qt_settings: bool = False):
         super().__init__()
         self.app = app
         self.background = background        # --background：只起后台/横栏/托盘，不自动弹网页
+        self.qt_settings = qt_settings      # --qt-settings：开发用，只开 Qt 设置窗口，不弹 Web
         self.show_bar_requested.connect(self.show_bar)
         self.pick_requested_ui.connect(self.pick)
         try:
@@ -119,7 +122,7 @@ class AskApp(TrayMixin, WebServiceMixin, SessionsMixin, AssistantOpsMixin,
                 f"已就绪 —— 按 {self.hotkey.pretty} 框一块屏幕；横栏能拖着挪、也能收成小条。",
                 QtWidgets.QSystemTrayIcon.Information, 5000)
         # --background 只抑制网页窗口；后台、横栏、托盘照常
-        if config.WORKBENCH_ON_START and not self.background:
+        if config.WORKBENCH_ON_START and not self.background and not self.qt_settings:
             # 等后台线程把 8765/8766 绑定好再开窗；页面自己也有重试，早了也不白屏
             QtCore.QTimer.singleShot(700, self.open_web)
 
@@ -256,10 +259,31 @@ class AskApp(TrayMixin, WebServiceMixin, SessionsMixin, AssistantOpsMixin,
         self.show_bar()
 
 
+def _running_web_port() -> int:
+    """已经有一个健康后台时返回端口（--qt-settings 直接当客户端连上去）。"""
+    for port in (8765, 8766):
+        if _server_healthy(port):
+            return port
+    return 0
+
+
+def _settings_window_only(app: QtWidgets.QApplication, port: int) -> int:
+    """已有后台在跑时，开发用的 --qt-settings 只开窗口，不抢单实例、不起第二套后台。"""
+    from learnsys.ask.qt.api import ApiClient
+    from learnsys.ask.qt.settings import SettingsWindow
+
+    app.setApplicationName("learnsys-ask")
+    window = SettingsWindow(ApiClient(port))
+    window.show()
+    window.load()
+    return app.exec()
+
+
 def main() -> int:
     _silence_windowed()                   # 无黑框模式：print 不能炸
     argv = sys.argv[1:]
     background = "--background" in argv   # 开机自启：只起后台/横栏，不弹工作台
+    qt_settings = "--qt-settings" in argv  # 开发用：起服务后直接开 Qt 设置窗口
     if "--watchdog" in argv:
         # 计划任务每分钟来一次。用户手动退出过、或后台还活着 → 当场走人；
         # 先判断再建 Qt，闲着的时候只花一次健康探测的钱。
@@ -270,13 +294,23 @@ def main() -> int:
     else:
         guard.clear_quit()                # 任何正常启动都代表「这次我想让它跑」
     app = QtWidgets.QApplication(sys.argv)
+    if qt_settings and not background:
+        port = _running_web_port()
+        if port:
+            return _settings_window_only(app, port)
     if not single.claim("background" if background else "show"):
         return 0                          # 已经有实例在跑 → 通知它后自己退
     app.setApplicationName("learnsys-ask")
     app.setQuitOnLastWindowClosed(False)
-    ask_app = AskApp(app, background=background)
+    ask_app = AskApp(app, background=background, qt_settings=qt_settings)
     ask_app.start_web()                 # 本地服务与快捷栏同一个进程
     app.aboutToQuit.connect(ask_app.hotkey.unregister)
     app.aboutToQuit.connect(ask_app.bar.shutdown)   # 兜底：走别的路径退出也先收线程
     QtCore.QTimer.singleShot(0, ask_app.start)
+    if qt_settings:
+        QtCore.QTimer.singleShot(0, ask_app.open_qt_settings)
     return app.exec()
+
+
+if __name__ == "__main__":       # 源码入口：python -m learnsys.ask.app
+    raise SystemExit(main())
