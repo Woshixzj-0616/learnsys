@@ -109,6 +109,8 @@ class SettingsPageMixin:
         self.memory_list = QtWidgets.QListWidget()
         self.memory_list.setMinimumHeight(90)
         section.add_widget(self.memory_list)
+        self.memory_status = StatusLabel()
+        section.add_widget(self.memory_status)
         self.memory_input = self._line("memory-input", max_length=500,
                                        placeholder="例如：回答和思考一律用中文")
         self.memory_add_button = QtWidgets.QPushButton("记下来")

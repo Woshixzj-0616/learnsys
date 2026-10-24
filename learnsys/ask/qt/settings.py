@@ -13,6 +13,7 @@ from PySide6 import QtCore, QtWidgets
 from learnsys import product
 
 from . import style
+from .memory import SettingsMemoryMixin
 from .page import SettingsPageMixin
 from .widgets import StatusLabel
 
@@ -35,7 +36,7 @@ def key_hint(has: bool, mask: str, source: str) -> str:
     return f"{where}：{mask or '••••'}（留空不改）"
 
 
-class SettingsWindow(SettingsPageMixin, QtWidgets.QDialog):
+class SettingsWindow(SettingsPageMixin, SettingsMemoryMixin, QtWidgets.QDialog):
     """非模态设置窗口；关掉不影响主程序。"""
 
     def __init__(self, api, parent: QtWidgets.QWidget | None = None):
@@ -53,6 +54,7 @@ class SettingsWindow(SettingsPageMixin, QtWidgets.QDialog):
 
         self.inputs: dict[str, QtWidgets.QWidget] = {}
         self.module_boxes: dict[str, QtWidgets.QCheckBox] = {}
+        self.memory_rows: dict[int, dict] = {}
         self._settings: dict = {}
         self._modules: list[dict] = []
         self._dirty = False
@@ -85,13 +87,13 @@ class SettingsWindow(SettingsPageMixin, QtWidgets.QDialog):
         self.test_text_button.clicked.connect(lambda: self.test_connection("text"))
         self.test_vision_button.clicked.connect(lambda: self.test_connection("vision"))
         self.backup_button.clicked.connect(self.backup)
+        self.memory_add_button.clicked.connect(self.add_memory)
+        self.memory_input.returnPressed.connect(self.add_memory)
         self.set_editable(CORE_FIELDS)   # R3.3：核心表单可改；其余步骤再放开
         self.save_button.setEnabled(True)
         self._wire_dirty()
-        # 记忆 / 模块留给 R3.6–R3.7 逐个放开
-        self.memory_list.setEnabled(False)
-        self.memory_input.setEnabled(False)
-        self.memory_add_button.setEnabled(False)
+        # 模块留给 R3.7 放开
+        self.memory_list.setEnabled(True)
 
     # ---- 加载 ----
 
@@ -205,15 +207,7 @@ class SettingsWindow(SettingsPageMixin, QtWidgets.QDialog):
         for module_id, box in self.module_boxes.items():
             box.setChecked(saved.get(module_id, True) is not False)
 
-    def _fill_memory(self, data: dict) -> None:
-        items = (data or {}).get("items")
-        items = items if isinstance(items, list) else []
-        self.memory_list.clear()
-        if not items:
-            self.memory_list.addItem("还没有记忆。Agent 听到「以后都…」会自动记；也可以手动加。")
-            return
-        for item in items:
-            self.memory_list.addItem(str(item.get("content") or ""))
+    # 记忆 CRUD 在 memory.py
 
     # ---- 可编辑 / dirty ----
 

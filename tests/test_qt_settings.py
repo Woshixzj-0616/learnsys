@@ -93,6 +93,8 @@ class FakeApiClient(QtCore.QObject):
         self.post_responses: dict[str, dict] = {}
         self.post_error: str | None = None
         self.post_errors: dict[str, str] = {}
+        self.delete_responses: dict[str, dict] = {}
+        self.delete_errors: dict[str, str] = {}
         self.deferred = False
         self.pending: list[tuple] = []
 
@@ -122,6 +124,11 @@ class FakeApiClient(QtCore.QObject):
 
     def delete(self, path, on_ok, on_err=None):
         self.calls.append(("DELETE", path, None))
+        if path in self.delete_errors:
+            on_err(self.delete_errors[path])
+            return
+        on_ok(copy.deepcopy(self.delete_responses.get(
+            path, {"ok": True, "message": "已忘掉"})))
 
 
 class TestSettingsWindowSkeleton(unittest.TestCase):
@@ -212,8 +219,8 @@ class TestSettingsWindowRender(unittest.TestCase):
 
     def test_记忆列表(self):
         self.assertEqual(self.window.memory_list.count(), 2)
-        self.assertEqual(self.window.memory_list.item(0).text(), "回答和思考一律用中文")
-        self.assertEqual(self.window.memory_list.item(1).text(), "需要示例代码时用 C")
+        self.assertEqual(self.window.memory_rows[1]["edit"].text(), "回答和思考一律用中文")
+        self.assertEqual(self.window.memory_rows[2]["edit"].text(), "需要示例代码时用 C")
 
     def test_记忆空状态(self):
         api = FakeApiClient(responses={
@@ -244,7 +251,7 @@ class TestSettingsWindowRender(unittest.TestCase):
     def test_核心表单可改其余仍只读(self):
         self.assertFalse(self.window.inputs["agent-model"].isReadOnly())
         self.assertTrue(self.window.inputs["agent-auto-route"].isEnabled())
-        self.assertFalse(self.window.memory_list.isEnabled())
+        self.assertTrue(self.window.memory_list.isEnabled())
         self.assertFalse(self.window.module_boxes["ask"].isEnabled())
         self.assertTrue(self.window.inputs["data-root"].isReadOnly())
         self.assertTrue(self.window.save_button.isEnabled())
@@ -483,6 +490,82 @@ class TestSettingsWindowActions(unittest.TestCase):
         self.assertEqual(self.window.backup_result.property("state"), "err")
         self.assertIn("磁盘满了", self.window.backup_result.text())
         self.assertTrue(self.window.backup_button.isEnabled())
+
+
+class TestSettingsWindowMemory(unittest.TestCase):
+    """R3.6：Agent 记忆列表、添加、修改、删除。"""
+
+    def setUp(self):
+        _app()
+        self.api = FakeApiClient()
+        self.window = SettingsWindow(self.api)
+        self.addCleanup(self.window.deleteLater)
+        self.window.load()
+        self.api.ready.emit()
+
+    def _calls(self, method: str, path: str) -> list[tuple]:
+        return [call for call in self.api.calls if call[0] == method and call[1] == path]
+
+    def test_添加记忆(self):
+        self.api.responses["/api/memory"] = {"items": MEMORY["items"] + [
+            {"id": 3, "content": "需要示例代码时用 C++"}]}
+        self.api.post_responses["/api/memory"] = {
+            "ok": True, "id": 3, "created": True, "message": "已记住，下一轮对话生效"}
+        self.window.memory_input.setText("需要示例代码时用 C++")
+        self.window.memory_add_button.click()
+
+        calls = self._calls("POST", "/api/memory")
+        self.assertEqual(calls[-1][2], {"content": "需要示例代码时用 C++"})
+        self.assertEqual(self.window.memory_input.text(), "")
+        self.assertIn("已记住", self.window.memory_status.text())
+        self.assertIn(3, self.window.memory_rows)
+
+    def test_空内容不提交(self):
+        self.window.memory_input.setText("   ")
+        self.window.memory_add_button.click()
+        self.assertFalse(self._calls("POST", "/api/memory"))
+
+    def test_回车添加(self):
+        self.window.memory_input.setText("以后都先给结论")
+        self.window.memory_input.returnPressed.emit()
+        self.assertTrue(self._calls("POST", "/api/memory"))
+
+    def test_修改记忆(self):
+        self.api.post_responses["/api/memory/1"] = {"ok": True, "message": "已更新"}
+        row = self.window.memory_rows[1]
+        row["edit"].setText("回答、思考和示例一律用中文")
+        row["save"].click()
+        calls = self._calls("POST", "/api/memory/1")
+        self.assertEqual(calls[-1][2], {"content": "回答、思考和示例一律用中文"})
+        self.assertIn("已更新", self.window.memory_status.text())
+
+    def test_行内回车保存(self):
+        row = self.window.memory_rows[1]
+        row["edit"].setText("新的内容")
+        row["edit"].returnPressed.emit()
+        self.assertTrue(self._calls("POST", "/api/memory/1"))
+
+    def test_删除记忆(self):
+        self.api.responses["/api/memory"] = {"items": MEMORY["items"][:1]}
+        self.window.memory_rows[2]["delete"].click()
+        self.assertTrue(self._calls("DELETE", "/api/memory/2"))
+        self.assertEqual(self.window.memory_list.count(), 1)
+        self.assertNotIn(2, self.window.memory_rows)
+
+    def test_修改_404_显示中文(self):
+        self.api.post_errors["/api/memory/1"] = "这条记忆不存在或已删除"
+        row = self.window.memory_rows[1]
+        row["edit"].setText("改一下")
+        row["save"].click()
+        self.assertIn("不存在或已删除", self.window.memory_status.text())
+        self.assertTrue(row["save"].isEnabled())
+
+    def test_删除失败恢复按钮(self):
+        self.api.delete_errors["/api/memory/1"] = "删除失败：数据库忙"
+        row = self.window.memory_rows[1]
+        row["delete"].click()
+        self.assertIn("数据库忙", self.window.memory_status.text())
+        self.assertTrue(row["delete"].isEnabled())
 
 
 if __name__ == "__main__":
