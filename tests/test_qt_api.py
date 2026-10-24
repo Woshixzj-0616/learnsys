@@ -16,6 +16,7 @@ from PySide6 import QtCore, QtWidgets  # noqa: E402
 
 from learnsys.ask.qt.api import (TOKEN_ERROR, ApiClient, connection_text,  # noqa: E402
                                  error_text)
+from learnsys.ask.qt.settings import key_hint  # noqa: E402
 
 
 def _app():
@@ -46,6 +47,22 @@ class TestErrorText(unittest.TestCase):
     def test_连接失败文案(self):
         self.assertIn("本地服务没起来", connection_text("Connection refused"))
         self.assertIn("Connection refused", connection_text("Connection refused"))
+
+
+class TestKeyHint(unittest.TestCase):
+    def test_未配置(self):
+        self.assertEqual(key_hint(False, "", "none"), "未配置")
+
+    def test_来自环境变量(self):
+        hint = key_hint(True, "••••d562", "env")
+        self.assertEqual(hint, "来自环境变量：••••d562（留空不改）")
+
+    def test_已保存在设置文件(self):
+        hint = key_hint(True, "••••3456", "file")
+        self.assertEqual(hint, "已保存在设置文件：••••3456（留空不改）")
+
+    def test_有密钥但没掩码用圆点兜底(self):
+        self.assertIn("••••", key_hint(True, "", "file"))
 
 
 class TestApiClientToken(unittest.TestCase):

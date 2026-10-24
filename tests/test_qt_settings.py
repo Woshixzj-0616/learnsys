@@ -333,5 +333,67 @@ class TestSettingsWindowEdit(unittest.TestCase):
         self.assertTrue(self.window.save_button.isEnabled())
 
 
+class TestKeySemantics(unittest.TestCase):
+    """R3.4：密钥只进不出、留空不改、明文不落到界面。"""
+
+    def setUp(self):
+        _app()
+        self.api = FakeApiClient()
+        self.window = SettingsWindow(self.api)
+        self.addCleanup(self.window.deleteLater)
+        self.window.load()
+        self.api.ready.emit()
+
+    def _payloads(self) -> list[dict]:
+        return [call[2] for call in self.api.calls if call[0] == "POST"]
+
+    def _all_texts(self) -> str:
+        parts = [self.window.windowTitle()]
+        for label in self.window.findChildren(QtWidgets.QLabel):
+            parts.append(label.text())
+        for edit in self.window.findChildren(QtWidgets.QLineEdit):
+            parts.append(edit.text())
+            parts.append(edit.placeholderText())
+        for row in range(self.window.memory_list.count()):
+            parts.append(self.window.memory_list.item(row).text())
+        return "\n".join(parts)
+
+    def test_第一次发密钥第二次留空就不发(self):
+        self.window.inputs["agent-token"].setText("sk-test-123456")
+        self.window.save()
+        self.assertEqual(self.window.inputs["agent-token"].text(), "")
+        self.window.save()
+
+        payloads = self._payloads()
+        self.assertEqual(len(payloads), 2)
+        self.assertEqual(payloads[0]["agent"]["auth_token"], "sk-test-123456")
+        self.assertNotIn("auth_token", payloads[1]["agent"])
+
+    def test_视觉密钥同样留空不改(self):
+        self.window.inputs["vision-key"].setText("vk-test-abcdef")
+        self.window.save()
+        self.window.save()
+        payloads = self._payloads()
+        self.assertEqual(payloads[0]["vision"]["api_key"], "vk-test-abcdef")
+        self.assertNotIn("api_key", payloads[1]["vision"])
+
+    def test_保存后界面只剩掩码(self):
+        secret = "sk-test-123456"
+        self.window.inputs["agent-token"].setText(secret)
+        self.window.save()
+        self.assertNotIn(secret, self._all_texts())
+        self.assertIn("••••d562", self.window.agent_token_hint.text())
+
+    def test_env_来源提示(self):
+        self.assertIn("来自环境变量",
+                      self.window.agent_token_hint.text())
+
+    def test_取消空密钥保存不触发_dirty(self):
+        self.assertFalse(self.window._dirty)
+        self.window.save()
+        payload = self._payloads()[-1]
+        self.assertNotIn("auth_token", payload["agent"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
