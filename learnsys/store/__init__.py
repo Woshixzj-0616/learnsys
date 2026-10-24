@@ -37,11 +37,11 @@ from .study import (add_frame_text, add_transcript, add_window_event,
                     session_summary, session_windows, start_session, window_titles)
 from .vocab import (add_vocab, delete_vocab, export_vocab, get_vocab, import_vocab,
                     list_vocab, update_vocab)
-from .wrongbook import (WRONG_SOURCES, add_wrong_item, bump_review_stage,
-                        delete_wrong_item, due_starred, get_wrong_item,
-                        review_wrong_item, set_wrong_mastered, toggle_ask_wrong,
-                        toggle_star, wrong_counts, wrong_due_items,
-                        wrong_fingerprint, wrong_items, wrong_material_facets)
+from .wrongbook import (WRONG_SOURCES, add_wrong_item, delete_wrong_item,
+                        due_starred, get_wrong_item, set_wrong_mastered,
+                        toggle_ask_wrong, toggle_star, wrong_counts,
+                        wrong_due_items, wrong_fingerprint, wrong_items,
+                        wrong_material_facets)
 
 __all__ = [
     "SCHEMA", "connect", "now", "stamp",
@@ -72,8 +72,8 @@ __all__ = [
     "session_windows", "start_session", "window_titles",
     "add_vocab", "delete_vocab", "export_vocab", "get_vocab", "import_vocab",
     "list_vocab", "update_vocab",
-    "WRONG_SOURCES", "add_wrong_item", "bump_review_stage", "delete_wrong_item",
-    "due_starred", "get_wrong_item", "review_wrong_item", "set_wrong_mastered",
-    "toggle_ask_wrong", "toggle_star", "wrong_counts", "wrong_due_items",
-    "wrong_fingerprint", "wrong_items", "wrong_material_facets",
+    "WRONG_SOURCES", "add_wrong_item", "delete_wrong_item", "due_starred",
+    "get_wrong_item", "set_wrong_mastered", "toggle_ask_wrong", "toggle_star",
+    "wrong_counts", "wrong_due_items", "wrong_fingerprint", "wrong_items",
+    "wrong_material_facets",
 ]

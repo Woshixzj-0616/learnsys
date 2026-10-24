@@ -15,6 +15,7 @@ from learnsys import config as app_config
 from learnsys import store
 from learnsys.agent import config as agent_config
 from learnsys.agent import tools
+from learnsys.services import review as review_service
 from learnsys.services import study
 from learnsys.core import db as core_db
 from learnsys.modules import load_registry
@@ -80,7 +81,7 @@ class TestWrongbookStore(unittest.TestCase):
         due = store.wrong_due_items(self.conn)
         self.assertEqual([item["id"] for item in due], [item_id])
 
-        item = store.review_wrong_item(self.conn, item_id, "remember")
+        item = review_service.review_wrong_item(self.conn, item_id, "remember")
         self.assertEqual(item["review_reps"], 1)
         self.assertFalse(item["mastered"])
         self.assertEqual(item["scheduled_days"], 3, "新卡「记得」= 3 天")
@@ -92,7 +93,7 @@ class TestWrongbookStore(unittest.TestCase):
             (_today().isoformat(), item_id))
         self.conn.commit()
         self.assertEqual(len(store.wrong_due_items(self.conn)), 1)
-        item = store.review_wrong_item(self.conn, item_id, "remember")
+        item = review_service.review_wrong_item(self.conn, item_id, "remember")
         self.assertEqual(item["review_reps"], 2)
         self.assertGreater(item["scheduled_days"], 3, "间隔随历史变长")
         self.assertFalse(item["mastered"], "FSRS 不自动判定掌握")
@@ -100,8 +101,8 @@ class TestWrongbookStore(unittest.TestCase):
     def test_forgot_resets_to_tomorrow(self):
         item_id, _ = store.add_wrong_item(self.conn, question="路由汇总")
         _shift(self.conn, item_id, 1)
-        store.review_wrong_item(self.conn, item_id, "remember")
-        item = store.review_wrong_item(self.conn, item_id, "forgot")
+        review_service.review_wrong_item(self.conn, item_id, "remember")
+        item = review_service.review_wrong_item(self.conn, item_id, "forgot")
         self.assertEqual(item["review_lapses"], 1)
         self.assertEqual(item["scheduled_days"], 1)
         self.assertFalse(item["mastered"])

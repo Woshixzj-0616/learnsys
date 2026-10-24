@@ -170,18 +170,6 @@ def wrong_counts(conn: sqlite3.Connection, today=None) -> dict:
             "due": len(wrong_due_items(conn)), "new_today": int(new_today or 0)}
 
 
-def review_wrong_item(conn: sqlite3.Connection, item_id: int, result: str) -> dict | None:
-    """兼容旧调用：remember → FSRS 评分 3，forgot → 评分 1。"""
-    from learnsys.services import review as review_service
-
-    rating = 1 if str(result or "").strip().lower() == "forgot" else 3
-    try:
-        review_service.review(conn, "wrong", int(item_id), rating)
-    except LookupError:
-        return None
-    return get_wrong_item(conn, int(item_id))
-
-
 def set_wrong_mastered(conn: sqlite3.Connection, item_id: int, mastered: bool) -> bool:
     """手动标记 / 取消掌握。取消后回到「新卡」，今天就能重新复习。"""
     with _LOCK:
@@ -217,9 +205,3 @@ def delete_wrong_item(conn: sqlite3.Connection, item_id: int) -> bool:
 def due_starred(conn: sqlite3.Connection, today) -> list[int]:
     """兼容旧名字：返回错题本条目 id（不是 ask id）。"""
     return [item["id"] for item in wrong_due_items(conn, today)]
-
-
-def bump_review_stage(conn: sqlite3.Connection, item_ids: list[int]) -> None:
-    """兼容旧名字：按「记得」推进一次 FSRS。"""
-    for item_id in item_ids or []:
-        review_wrong_item(conn, int(item_id), "remember")

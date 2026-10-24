@@ -56,6 +56,22 @@ def review(conn, item_type: str, item_id: int, rating: int,
     }
 
 
+def review_wrong_item(conn, item_id: int, result: str) -> dict | None:
+    """兼容旧调用：remember → FSRS 评分 3，forgot → 评分 1。"""
+    rating = 1 if str(result or "").strip().lower() == "forgot" else 3
+    try:
+        review(conn, "wrong", int(item_id), rating)
+    except LookupError:
+        return None
+    return store.get_wrong_item(conn, int(item_id))
+
+
+def bump_review_stage(conn, item_ids: list[int]) -> None:
+    """兼容旧名字：按「记得」推进一次 FSRS。"""
+    for item_id in item_ids or []:
+        review_wrong_item(conn, int(item_id), "remember")
+
+
 def queue(conn, *, limit: int = 50, item_type: str = "") -> dict:
     store.seed_review_states(conn)
     items = store.due_review_items(conn, limit=limit, item_type=item_type)

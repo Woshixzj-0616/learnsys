@@ -23,7 +23,7 @@ from PySide6 import QtCore, QtWidgets  # noqa: E402
 
 from learnsys import store  # noqa: E402
 from learnsys.ask import bar, liverec, scheduler  # noqa: E402
-from learnsys.services import ops, study  # noqa: E402
+from learnsys.services import ops, review as review_service, study  # noqa: E402
 from learnsys.ask.quickbar import streaming as quickbar_streaming  # noqa: E402
 
 
@@ -231,7 +231,7 @@ class TestStoreFrameTextAndReview(unittest.TestCase):
         conn.commit()
         due = store.due_starred(conn, today)
         self.assertEqual(len(due), 3, "今天收的不该提醒，1/3/7 天前的该提醒")
-        store.bump_review_stage(conn, due)
+        review_service.bump_review_stage(conn, due)
         self.assertEqual(len(store.due_starred(conn, today)), 0, "复习过推进度，不再重复")
 
 
