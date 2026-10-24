@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from PySide6 import QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from .widgets import FieldRow, Section, StatusLabel
 
@@ -32,6 +32,8 @@ class SettingsPageMixin:
         node = QtWidgets.QComboBox()
         for label, value in items:
             node.addItem(label, value)
+        # 只有点中/聚焦后才响应滚轮 —— 否则在滚动页面时会误改选项
+        node.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
         self.inputs[key] = node
         return node
 

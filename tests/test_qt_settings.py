@@ -256,6 +256,11 @@ class TestSettingsWindowRender(unittest.TestCase):
         self.assertTrue(self.window.inputs["data-root"].isReadOnly())
         self.assertTrue(self.window.save_button.isEnabled())
 
+    def test_下拉框要聚焦才吃滚轮(self):
+        for key in ("agent-auto-route", "agent-speed"):
+            self.assertEqual(self.window.inputs[key].focusPolicy(),
+                             QtCore.Qt.FocusPolicy.StrongFocus)
+
     def test_准备三份数据请求(self):
         paths = [call[1] for call in self.api.calls]
         self.assertEqual(paths, ["/api/settings", "/api/modules", "/api/memory"])

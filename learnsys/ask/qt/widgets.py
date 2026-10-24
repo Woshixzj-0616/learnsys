@@ -4,7 +4,7 @@
 """
 from __future__ import annotations
 
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 
 class StatusLabel(QtWidgets.QLabel):
@@ -39,6 +39,8 @@ class Section(QtWidgets.QWidget):
                  parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("Section")
+        # 自定义 QWidget 默认不画 QSS 背景，必须显式打开
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
 
         outer = QtWidgets.QVBoxLayout(self)
         outer.setContentsMargins(16, 14, 16, 14)
@@ -108,11 +110,12 @@ class FieldRow(QtWidgets.QWidget):
         self.extra = QtWidgets.QHBoxLayout()
         self.extra.setContentsMargins(0, 0, 0, 0)
         self.extra.setSpacing(8)
+        self.extra.addStretch(1)          # 尾随弹簧：按钮保持自然宽度，不被拉满
         grid.addLayout(self.extra, 2, 1)
         grid.setColumnStretch(1, 1)
 
     def add_extra(self, widget: QtWidgets.QWidget) -> QtWidgets.QWidget:
-        self.extra.addWidget(widget)
+        self.extra.insertWidget(self.extra.count() - 1, widget)
         return widget
 
     def set_hint(self, text: str) -> None:
