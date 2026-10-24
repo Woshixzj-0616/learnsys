@@ -4,7 +4,7 @@ from __future__ import annotations
 from PySide6 import QtWidgets
 
 from learnsys import config, product, store
-from learnsys.ask import ops
+from learnsys.services import ops
 
 
 class AssistantOpsMixin:

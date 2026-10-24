@@ -1,11 +1,11 @@
 """系统副作用工具：打开本机文件 / 启动程序。
 
 网页 Agent 只能碰资料库和轻量工具；这两个工具补上「真的在电脑上做一件事」，
-但全部走人工确认（`schemas.CONFIRM_TOOLS`），并且校验规则只在 `ask/ops.py` 里写一次。
+但全部走人工确认（`schemas.CONFIRM_TOOLS`），并且校验规则只在 `services/ops.py` 里写一次。
 """
 from __future__ import annotations
 
-from learnsys.ask import ops
+from learnsys.services import ops
 from learnsys.browser.manager import get_manager
 
 
