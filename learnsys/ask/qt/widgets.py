@@ -6,6 +6,9 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtWidgets
 
+from . import style
+from . import tokens as token_source
+
 
 class StatusLabel(QtWidgets.QLabel):
     """一行状态文字：普通提示 / 成功 / 失败。颜色靠动态属性 `state`。"""
@@ -36,15 +39,20 @@ class Section(QtWidgets.QWidget):
     """一个设置分组：标题、说明、内容区。内容用 `section.body` 往里加。"""
 
     def __init__(self, title: str, hint: str = "",
-                 parent: QtWidgets.QWidget | None = None):
+                 parent: QtWidgets.QWidget | None = None,
+                 tokens: dict[str, str] | None = None):
         super().__init__(parent)
         self.setObjectName("Section")
         # 自定义 QWidget 默认不画 QSS 背景，必须显式打开
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
 
+        values = token_source.merged(tokens)
+        pad = token_source.px(values, "--s4", 16)
+        gap = token_source.px(values, "--s2", 8)
+        row_gap = token_source.px(values, "--s3", 12)
         outer = QtWidgets.QVBoxLayout(self)
-        outer.setContentsMargins(16, 14, 16, 14)
-        outer.setSpacing(8)
+        outer.setContentsMargins(pad, pad, pad, pad)
+        outer.setSpacing(gap)
 
         self.title_label = QtWidgets.QLabel(title)
         self.title_label.setObjectName("SectionTitle")
@@ -59,7 +67,7 @@ class Section(QtWidgets.QWidget):
 
         self.body = QtWidgets.QVBoxLayout()
         self.body.setContentsMargins(0, 2, 0, 0)
-        self.body.setSpacing(10)
+        self.body.setSpacing(row_gap)
         outer.addLayout(self.body)
 
     def add_widget(self, widget: QtWidgets.QWidget) -> QtWidgets.QWidget:
@@ -81,14 +89,16 @@ class FieldRow(QtWidgets.QWidget):
 
         grid = QtWidgets.QGridLayout(self)
         grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(14)
-        grid.setVerticalSpacing(4)
+        grid.setHorizontalSpacing(style.FIELD_HSPACE)
+        grid.setVerticalSpacing(style.FIELD_GAP)
+        grid.setColumnMinimumWidth(0, style.LABEL_MIN)
 
         label_box = QtWidgets.QVBoxLayout()
         label_box.setContentsMargins(0, 0, 0, 0)
         label_box.setSpacing(2)
         name = QtWidgets.QLabel(label)
         name.setObjectName("FieldLabel")
+        name.setContentsMargins(0, 7, 0, 0)   # 对齐 Web `.setting-label { padding-top: 7px }`
         label_box.addWidget(name)
         if small:
             note = QtWidgets.QLabel(small)

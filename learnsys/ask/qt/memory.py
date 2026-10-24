@@ -4,7 +4,12 @@
 """
 from __future__ import annotations
 
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
+
+# 记忆行高度：输入框 36 + 上下留白。写死是为了不受 QSS 生效时机影响（否则行会被裁掉）
+MEMORY_ROW_H = 42
+MEMORY_MIN_H = 90
+MEMORY_MAX_H = 260
 
 
 class SettingsMemoryMixin:
@@ -15,7 +20,10 @@ class SettingsMemoryMixin:
         self.memory_rows.clear()
         if not items:
             self.memory_list.addItem("还没有记忆。Agent 听到「以后都…」会自动记；也可以手动加。")
+            self.memory_list.setFixedHeight(MEMORY_MIN_H)
             return
+        self.memory_list.setFixedHeight(min(
+            MEMORY_MAX_H, max(MEMORY_MIN_H, len(items) * MEMORY_ROW_H + 20)))
         for item in items:
             memory_id = int(item.get("id") or 0)
             if not memory_id:
@@ -27,13 +35,15 @@ class SettingsMemoryMixin:
             edit = QtWidgets.QLineEdit(str(item.get("content") or ""))
             edit.setMaxLength(500)
             save = QtWidgets.QPushButton("保存")
+            save.setObjectName("Quiet")
             remove = QtWidgets.QPushButton("删除")
+            remove.setObjectName("Danger")
             layout.addWidget(edit, 1)
             layout.addWidget(save)
             layout.addWidget(remove)
 
             holder = QtWidgets.QListWidgetItem()
-            holder.setSizeHint(row.sizeHint())
+            holder.setSizeHint(QtCore.QSize(0, MEMORY_ROW_H))
             self.memory_list.addItem(holder)
             self.memory_list.setItemWidget(holder, row)
 

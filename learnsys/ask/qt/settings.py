@@ -13,6 +13,7 @@ from PySide6 import QtCore, QtWidgets
 from learnsys import product
 
 from . import style
+from . import tokens as token_source
 from .memory import SettingsMemoryMixin
 from .page import SettingsPageMixin
 from .widgets import StatusLabel
@@ -48,9 +49,9 @@ class SettingsWindow(SettingsPageMixin, SettingsMemoryMixin, QtWidgets.QDialog):
         self._base_title = f"设置（Qt 试点）· {product.PRODUCT_NAME}"
         self.setObjectName("SettingsWindow")
         self.setWindowTitle(self._base_title)
-        self.setStyleSheet(style.QSS)
-        self.resize(820, 680)
-        self.setMinimumSize(620, 420)
+        self.tokens = style.apply_theme(self)   # 默认深色：令牌来自 web/css/tokens.css
+        self.resize(*style.WINDOW_SIZE)
+        self.setMinimumSize(*style.WINDOW_MIN)
 
         self.inputs: dict[str, QtWidgets.QWidget] = {}
         self.module_boxes: dict[str, QtWidgets.QCheckBox] = {}
@@ -61,13 +62,30 @@ class SettingsWindow(SettingsPageMixin, SettingsMemoryMixin, QtWidgets.QDialog):
         self._saving = False
         self._loading = False
 
-        outer = QtWidgets.QVBoxLayout(self)
-        outer.setContentsMargins(18, 16, 18, 16)
-        outer.setSpacing(12)
+        outer = QtWidgets.QGridLayout(self)
+        pad = token_source.px(self.tokens, "--s5", 24)
+        outer.setContentsMargins(pad, pad, pad, pad)
+        outer.setSpacing(0)
+
+        # 版心：内容列最大 780，居中（对齐 Web 的 .settings-page）
+        column_widget = QtWidgets.QWidget()
+        column_widget.setObjectName("SettingsColumn")
+        self.column_widget = column_widget
+        column_widget.setMaximumWidth(style.CONTENT_MAX)
+        column_widget.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,
+                                    QtWidgets.QSizePolicy.Policy.Expanding)
+        column = QtWidgets.QVBoxLayout(column_widget)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(token_source.px(self.tokens, "--s3", 12))
+        outer.addWidget(column_widget, 0, 1)
+        outer.setColumnStretch(0, 1)
+        outer.setColumnStretch(1, 100)
+        outer.setColumnStretch(2, 1)
+        outer.setRowStretch(0, 1)
 
         title = QtWidgets.QLabel(f"{product.PRODUCT_NAME} · 设置（Qt 试点）")
         title.setObjectName("PageTitle")
-        outer.addWidget(title)
+        column.addWidget(title)
 
         self.status_label = StatusLabel("正在连接后台…")
         self.retry_button = QtWidgets.QPushButton("重试")
@@ -76,10 +94,10 @@ class SettingsWindow(SettingsPageMixin, SettingsMemoryMixin, QtWidgets.QDialog):
         top = QtWidgets.QHBoxLayout()
         top.addWidget(self.status_label, 1)
         top.addWidget(self.retry_button)
-        outer.addLayout(top)
+        column.addLayout(top)
 
-        self._build_page(outer)
-        self._build_actions(outer)
+        self._build_page(column)
+        self._build_actions(column)
 
         self.api.ready.connect(self._on_ready)
         self.api.failed.connect(self._on_failed)

@@ -7,10 +7,17 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from . import tokens as token_source
 from .widgets import FieldRow, Section, StatusLabel
 
 
 class SettingsPageMixin:
+    def _px(self, name: str, default: int) -> int:
+        return token_source.px(getattr(self, "tokens", {}), name, default)
+
+    def _section(self, title: str, hint: str = "") -> Section:
+        return Section(title, hint, tokens=getattr(self, "tokens", None))
+
     def _line(self, key: str | None = None, *, password: bool = False,
               placeholder: str = "", max_length: int | None = None,
               validator: QtGui.QValidator | None = None) -> QtWidgets.QLineEdit:
@@ -41,10 +48,13 @@ class SettingsPageMixin:
         scroll = QtWidgets.QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         content = QtWidgets.QWidget()
+        content.setObjectName("SettingsContent")
         column = QtWidgets.QVBoxLayout(content)
         column.setContentsMargins(0, 0, 6, 0)
-        column.setSpacing(12)
+        column.setSpacing(self._px("--s5", 24))
 
         self._build_text_section(column)
         self._build_memory_section(column)
@@ -59,9 +69,10 @@ class SettingsPageMixin:
         outer.addWidget(scroll, 1)
 
     def _build_text_section(self, column: QtWidgets.QVBoxLayout) -> None:
-        section = Section("文本模型",
-                          "主对话用的 Anthropic Messages 兼容服务。密钥只保存在本机，"
-                          "页面拿不到明文。")
+        section = self._section(
+            "文本模型",
+            "主对话用的 Anthropic Messages 兼容服务。密钥只保存在本机，"
+            "页面拿不到明文。")
         section.add_widget(FieldRow(
             "服务地址", self._line("agent-base", placeholder="https://api.deepseek.com/anthropic"),
             small="填到 /anthropic 或 /v1 都行"))
@@ -104,12 +115,11 @@ class SettingsPageMixin:
         column.addWidget(section)
 
     def _build_memory_section(self, column: QtWidgets.QVBoxLayout) -> None:
-        section = Section(
+        section = self._section(
             "Agent 记忆",
             "你强调过的跨会话规矩（比如「回答用中文」「需要示例代码时用 C」）。"
             "Agent 每轮都会带上；这里也能自己加、改、删。")
         self.memory_list = QtWidgets.QListWidget()
-        self.memory_list.setMinimumHeight(90)
         section.add_widget(self.memory_list)
         self.memory_status = StatusLabel()
         section.add_widget(self.memory_status)
@@ -124,7 +134,7 @@ class SettingsPageMixin:
         column.addWidget(section)
 
     def _build_cost_section(self, column: QtWidgets.QVBoxLayout) -> None:
-        section = Section(
+        section = self._section(
             "成本估算",
             "填每 100 万 token 的单价（按你的服务商账单填）。不填就只统计 token，"
             "不猜价格；运行记录页会按这里的单价估算每次对话的成本。")
@@ -146,7 +156,7 @@ class SettingsPageMixin:
         column.addWidget(section)
 
     def _build_vision_section(self, column: QtWidgets.QVBoxLayout) -> None:
-        section = Section(
+        section = self._section(
             "视觉模型",
             "DeepSeek 直连不支持图片。这里填一个 OpenAI 兼容的视觉模型，"
             "截图会先转述成文字；不填就退回 OCR。")
@@ -171,7 +181,7 @@ class SettingsPageMixin:
         column.addWidget(section)
 
     def _build_hotkey_section(self, column: QtWidgets.QVBoxLayout) -> None:
-        section = Section("快捷栏")
+        section = self._section("快捷栏")
         section.add_widget(FieldRow(
             "框选快捷键", self._line("hotkey", placeholder="Alt+Q"),
             hint="修饰键 + 一个字母 / 数字 / F1–F24，例如 Alt+Q、Ctrl+Shift+F2",
@@ -180,9 +190,10 @@ class SettingsPageMixin:
         column.addWidget(section)
 
     def _build_data_section(self, column: QtWidgets.QVBoxLayout) -> None:
-        section = Section("数据与备份")
+        section = self._section("数据与备份")
         data_root = self._line("data-root")
         data_root.setReadOnly(True)
+        data_root.setClearButtonEnabled(False)   # 只读字段不给清除按钮
         self.settings_path_label = QtWidgets.QLabel("设置在：")
         self.settings_path_label.setObjectName("Hint")
         self.settings_path_label.setWordWrap(True)
@@ -216,11 +227,11 @@ class SettingsPageMixin:
         return holder
 
     def _build_modules_section(self, column: QtWidgets.QVBoxLayout) -> None:
-        section = Section("侧栏模块", "关掉的模块只是不显示在侧栏；数据不会被删。")
+        section = self._section("侧栏模块", "关掉的模块只是不显示在侧栏；数据不会被删。")
         self.module_container = QtWidgets.QWidget()
         self.module_layout = QtWidgets.QGridLayout(self.module_container)
         self.module_layout.setContentsMargins(0, 0, 0, 0)
-        self.module_layout.setHorizontalSpacing(24)
+        self.module_layout.setHorizontalSpacing(self._px("--s5", 24))
         self.module_layout.setVerticalSpacing(6)
         self.module_layout.setColumnStretch(0, 1)
         self.module_layout.setColumnStretch(1, 1)
@@ -237,6 +248,8 @@ class SettingsPageMixin:
 
     def _build_actions(self, outer: QtWidgets.QVBoxLayout) -> None:
         row = QtWidgets.QHBoxLayout()
+        row.setContentsMargins(0, self._px("--s2", 8), 0, 0)
+        row.setSpacing(self._px("--s3", 12))
         self.save_button = QtWidgets.QPushButton("保存设置")
         self.save_button.setObjectName("Primary")
         self.save_button.setEnabled(False)
