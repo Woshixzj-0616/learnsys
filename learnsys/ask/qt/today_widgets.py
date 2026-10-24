@@ -7,6 +7,23 @@ from __future__ import annotations
 from PySide6 import QtCore, QtGui, QtWidgets
 
 
+def minutes_parts(minutes) -> tuple[str, str]:
+    """和 `web/js/ui.js::minutesParts` 同口径。"""
+    total = max(0, int(round(float(minutes or 0))))
+    if total < 60:
+        return str(total), "分钟"
+    hours, rest = divmod(total, 60)
+    return (f"{hours} 时 {rest}" if rest else str(hours),
+            "分" if rest else "小时")
+
+
+def chars_parts(chars) -> tuple[str, str]:
+    total = max(0, float(chars or 0))
+    if total < 10000:
+        return str(int(total)), "字"
+    return f"{total / 10000:.1f}", "万字"
+
+
 def _label(text: str = "", name: str = "") -> QtWidgets.QLabel:
     node = QtWidgets.QLabel(text)
     if name:

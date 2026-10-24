@@ -206,4 +206,137 @@ QLabel#BannerText {
     color: {{text_dim}};
     font-size: {{fs_sm}};
 }
+
+/* ---------- R5：底栏时间线与侧栏面板 ---------- */
+
+QWidget#TodayBottom, QWidget#TodaySide {
+    background: transparent;
+}
+QLabel#EmptyState {
+    color: {{text_faint}};
+    font-size: {{fs_sm}};
+    padding: {{s4}} 0;
+}
+QWidget#TimelineItem {
+    background: transparent;
+    border-radius: {{r_sm}};
+}
+QWidget#TimelineItem:hover {
+    background: {{bg_raised}};
+}
+QWidget#TimelineItem:focus {
+    border: 1px solid {{accent_line}};
+}
+QLabel#TimelineTime {
+    color: {{text_faint}};
+    font-size: {{fs_xs}};
+}
+QLabel#TimelineQ {
+    color: {{text}};
+    font-size: {{fs_base}};
+}
+QLabel#TimelineA {
+    color: {{text_faint}};
+    font-size: {{fs_sm}};
+}
+QLabel#TimelineTag {
+    color: {{text_faint}};
+    border: 1px solid {{line}};
+    border-radius: 4px;
+    padding: 0 5px;
+    font-size: 10px;
+}
+QWidget#InfoPanel {
+    background: {{bg_raised}};
+    border: 1px solid {{line}};
+    border-radius: {{r_md}};
+}
+QWidget#PanelHead {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid {{line}};
+}
+QLabel#PanelTitle {
+    color: {{text_dim}};
+    font-size: {{fs_sm}};
+    font-weight: 600;
+}
+QLabel#PanelHint {
+    color: {{text_faint}};
+    font-size: {{fs_xs}};
+}
+QWidget#PanelBody {
+    background: transparent;
+}
+QWidget#PanelRow {
+    background: transparent;
+    border-radius: {{r_sm}};
+}
+QWidget#PanelRow[clickable="true"]:hover {
+    background: {{accent_soft}};
+}
+QWidget#PanelRow:focus {
+    border: 1px solid {{accent_line}};
+}
+QLabel#PanelRowLabel {
+    color: {{text_dim}};
+    font-size: {{fs_sm}};
+}
+QLabel#PanelRowValue {
+    color: {{text_faint}};
+    font-size: {{fs_xs}};
+}
+QFrame#PanelSep {
+    background: {{line}};
+    border: none;
+}
+QLabel#PanelNote {
+    color: {{text_faint}};
+    font-size: {{fs_xs}};
+}
+QWidget#AchRow {
+    background: transparent;
+    border-radius: {{r_sm}};
+}
+QWidget#AchRow[earned="true"] {
+    background: {{mark_soft}};
+}
+QLabel#AchDot {
+    color: {{mark}};
+    font-size: {{fs_xs}};
+}
+QWidget#AchRow[earned="false"] QLabel#AchDot {
+    color: {{text_faint}};
+}
+QLabel#AchName {
+    color: {{text}};
+    font-size: {{fs_xs}};
+}
+QWidget#AchRow[earned="false"] QLabel#AchName {
+    color: {{text_dim}};
+}
+QLabel#AchProgress {
+    color: {{text_faint}};
+    font-size: 11px;
+}
+QWidget#Shortcut {
+    background: transparent;
+    border: 1px solid {{line}};
+    border-radius: {{r_sm}};
+}
+QWidget#Shortcut:hover {
+    border-color: {{line_strong}};
+    background: {{bg_raised}};
+}
+QWidget#Shortcut:focus {
+    border-color: {{accent_line}};
+}
+QLabel#ShortcutText {
+    color: {{text_dim}};
+    font-size: {{fs_sm}};
+}
+QLabel#ShortcutHint {
+    color: {{text_faint}};
+    font-size: {{fs_xs}};
+}
 """

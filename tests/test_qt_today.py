@@ -16,6 +16,7 @@ from PySide6 import QtCore, QtGui, QtWidgets  # noqa: E402
 
 from learnsys.ask.desktop.qt_pilot import QtPilotMixin, open_workbench_link  # noqa: E402
 from learnsys.ask.qt.today import TodayWindow, chars_parts, date_label, minutes_parts  # noqa: E402
+from learnsys.ask.qt.today_panels import AchievementRow, plain  # noqa: E402
 
 
 def _app():
@@ -261,6 +262,215 @@ class TestTodayWindow(unittest.TestCase):
         self.assertEqual(palette.color(QtGui.QPalette.ColorRole.Window).name(),
                          "#1b1e23")
         self.assertTrue(self.window.styleSheet().strip())
+
+
+PANEL_OVERVIEW = {
+    **copy.deepcopy(OVERVIEW),
+    "week": {"active_days": 4, "minutes": 180, "asks": 12},
+    "achievements": [
+        {"id": "first_ask", "name": "第一问", "desc": "问出第一个问题",
+         "value": 1, "target": 1, "earned": True},
+        {"id": "asks_50", "name": "五十问", "desc": "累计问过 50 个问题",
+         "value": 3, "target": 50, "earned": False},
+        {"id": "streak_3", "name": "连续三天", "desc": "连续 3 天都有学习记录",
+         "value": 3, "target": 3, "earned": True},
+        {"id": "star_10", "name": "错题十道", "desc": "错题本收了 10 道题",
+         "value": 0, "target": 10, "earned": False},
+    ],
+}
+
+PANEL_TODAY = {
+    "date": "2026-10-24",
+    "focus": {"minutes": 45, "switches": 3,
+              "apps": [["VS Code", 30.4], ["Edge", 14.6]]},
+    "asks": [
+        {"ts": "2026-10-24 14:03:12", "question": "什么是 RBAC",
+         "answer": "## 标题\n\n**权限** `role` [文档](https://x)\n"
+                   "```py\nprint(1)\n```",
+         "kind": "text", "conversation_id": 42},
+        {"ts": "2026-10-24 09:01:00", "question": "图上是什么",
+         "answer": "一张图", "kind": "image", "conversation_id": None},
+    ],
+    "ask_count": 2,
+    "transcripts": {"count": 0, "chars": 0},
+    "due_reviews": 0,
+    "actions": [],
+    "cet6": [{"paper": "强化卷三", "section": "Section C",
+              "item": "Recording 3", "count": 5, "paper_id": "paper-3"}],
+}
+
+PANEL_CONVERSATIONS = {"items": [{"id": 7, "messages": 3},
+                                 {"id": 8, "messages": 5}]}
+
+
+def _panel_api(**overrides):
+    responses = {
+        "/api/overview": PANEL_OVERVIEW,
+        "/api/today": PANEL_TODAY,
+        "/api/modules": MODULES,
+        "/api/settings": SETTINGS,
+        "/api/review/stats": REVIEW,
+        "/api/conversations?limit=8": PANEL_CONVERSATIONS,
+    }
+    responses.update(overrides)
+    return FakeApi(responses=responses)
+
+
+class TestTodayPanels(unittest.TestCase):
+    """R5：时间线 / 本周 / 专注 / 六级 / 成就 / 快捷入口。"""
+
+    def _window(self, navigate=None, **overrides):
+        _app()
+        api = _panel_api(**overrides)
+        opened = navigate if navigate is not None else []
+        window = TodayWindow(api, navigate=opened.append)
+        self.addCleanup(window.deleteLater)
+        window.load()
+        api.ready.emit()
+        return window, opened
+
+    def test_纯文本摘要与_Web_同口径(self):
+        raw = "## 标题\n\n**权限** `role` [文档](https://x)\n```py\nprint(1)\n```"
+        self.assertEqual(plain(raw), "标题 权限 role 文档 ［代码］")
+        self.assertEqual(plain("短文本"), "短文本")
+        long = plain("字" * 200)
+        self.assertEqual(len(long), 181)
+        self.assertTrue(long.endswith("…"))
+
+    def test_时间线渲染(self):
+        window, _ = self._window()
+        self.assertEqual(window.timeline.count.text(), "最近 2 条")
+        self.assertEqual(len(window.timeline.items), 2)
+        first, second = window.timeline.items
+        self.assertEqual(first.time.text(), "14:03")
+        self.assertEqual(first.question.text(), "什么是 RBAC")
+        self.assertEqual(first.answer.text(), "标题 权限 role 文档 ［代码］")
+        self.assertTrue(first.tag.isHidden())
+        self.assertFalse(second.tag.isHidden())
+        self.assertEqual(second.question.text(), "图上是什么")
+        self.assertTrue(window.timeline.empty.isHidden())
+
+    def test_时间线空状态(self):
+        window, _ = self._window(**{"/api/today": {**PANEL_TODAY, "asks": []}})
+        self.assertEqual(window.timeline.count.text(), "")
+        self.assertFalse(window.timeline.empty.isHidden())
+        self.assertEqual(window.timeline.items, [])
+
+    def test_时间线点击跳转与快捷栏提示(self):
+        window, opened = self._window()
+        window.timeline.items[0].clicked.emit()
+        self.assertEqual(opened, ["#/ask/42"])
+        window.timeline.items[1].clicked.emit()
+        self.assertEqual(opened, ["#/ask/42"])
+        self.assertIn("快捷栏", window.status_label.text())
+
+    def test_本周面板(self):
+        window, _ = self._window()
+        rows = window.week_panel.rows
+        self.assertEqual([row.label.text() for row in rows],
+                         ["活跃天数", "专注时长", "问答"])
+        self.assertEqual([row.value.text() for row in rows],
+                         ["4 / 7", "3 小时", "12 条"])
+
+    def test_专注明细(self):
+        window, _ = self._window()
+        values = [row.value.text() for row in window.focus_panel.rows]
+        self.assertEqual(values, ["45 分钟", "3 次", "30 分钟", "15 分钟"])
+        labels = [row.label.text() for row in window.focus_panel.rows]
+        self.assertEqual(labels[2:], ["VS Code", "Edge"])
+        self.assertEqual(window.focus_panel.findChildren(
+            QtWidgets.QLabel, "PanelNote"), [])
+
+    def test_专注空状态提示(self):
+        today = {**PANEL_TODAY,
+                 "focus": {"minutes": 0, "switches": 0, "apps": []}}
+        window, _ = self._window(**{"/api/today": today})
+        notes = window.focus_panel.findChildren(QtWidgets.QLabel, "PanelNote")
+        self.assertEqual(len(notes), 1)
+        self.assertIn("开始完整录制", notes[0].text())
+
+    def test_六级断点面板与跳转(self):
+        window, opened = self._window()
+        self.assertFalse(window.cet6_panel.isHidden())
+        self.assertEqual(len(window.cet6_panel.rows), 1)
+        row = window.cet6_panel.rows[0]
+        self.assertEqual(row.label.text(), "强化卷三 · Section C · Recording 3")
+        self.assertEqual(row.value.text(), "5 个断点")
+        row.clicked.emit()
+        self.assertEqual(opened, ["#/cet6?paper=paper-3"])
+
+    def test_六级无数据时隐藏(self):
+        window, _ = self._window(
+            **{"/api/today": {**PANEL_TODAY, "cet6": []}})
+        self.assertTrue(window.cet6_panel.isHidden())
+
+    def test_成就排序与计数(self):
+        window, _ = self._window()
+        self.assertEqual(window.ach_panel.hint.text(), "2 / 4")
+        rows = window.ach_panel.findChildren(AchievementRow)
+        self.assertEqual([row.name.text() for row in rows],
+                         ["第一问", "连续三天", "五十问", "错题十道"])
+        self.assertTrue(rows[0].earned)
+        self.assertFalse(rows[2].earned)
+        self.assertEqual(rows[0].progress.text(), "1/1")
+        self.assertEqual(rows[2].progress.text(), "3/50")
+
+    def test_成就最多显示八条(self):
+        items = [{"id": f"a{i}", "name": f"成就{i}", "desc": "",
+                  "value": i, "target": 10, "earned": i % 2 == 0}
+                 for i in range(12)]
+        window, _ = self._window(
+            **{"/api/overview": {**PANEL_OVERVIEW, "achievements": items}})
+        rows = window.ach_panel.findChildren(AchievementRow)
+        self.assertEqual(len(rows), 8)
+        self.assertTrue(all(row.earned for row in rows[:6]))
+
+    def test_快捷入口跳转(self):
+        window, opened = self._window()
+        window.ask_shortcut.clicked.emit()
+        window.netlab_shortcut.clicked.emit()
+        self.assertEqual(opened, ["#/ask", "#/netlab"])
+
+    def test_继续最近会话(self):
+        window, opened = self._window()
+        self.assertEqual(window._continue_conv, "7")
+        window.continue_shortcut.clicked.emit()
+        self.assertEqual(opened, ["#/ask/7"])
+
+    def test_没有会话时提示(self):
+        window, opened = self._window(
+            **{"/api/conversations?limit=8": {"items": []}})
+        window.continue_shortcut.clicked.emit()
+        self.assertIn("还没有会话", window.status_label.text())
+        self.assertEqual(opened, ["#/ask"])
+
+    def test_底栏响应式堆叠(self):
+        window, _ = self._window()
+        window.show()
+        _app().processEvents()
+        self.assertTrue(window._bottom_stacked)      # offscreen 工作区小，先堆叠
+        index = window.bottom_grid.indexOf(window.side)
+        self.assertEqual(window.bottom_grid.getItemPosition(index)[:2], (1, 0))
+        window.resize(1000, 700)
+        _app().processEvents()
+        self.assertFalse(window._bottom_stacked)
+        index = window.bottom_grid.indexOf(window.side)
+        self.assertEqual(window.bottom_grid.getItemPosition(index)[:2], (0, 1))
+        window.resize(800, 600)
+        _app().processEvents()
+        self.assertTrue(window._bottom_stacked)
+        index = window.bottom_grid.indexOf(window.side)
+        self.assertEqual(window.bottom_grid.getItemPosition(index)[:2], (1, 0))
+
+    def test_缺字段不崩(self):
+        today = {"asks": [{"question": "只有问题"}]}
+        overview = {"today": {}, "total": {}, "week": {}, "achievements": []}
+        window, _ = self._window(**{"/api/today": today,
+                                    "/api/overview": overview})
+        self.assertEqual(len(window.timeline.items), 1)
+        self.assertEqual(window.week_panel.rows[0].value.text(), "0 / 7")
+        self.assertTrue(window.cet6_panel.isHidden())
+        self.assertEqual(window.ach_panel.hint.text(), "0 / 0")
 
 
 class FakeTodayWindow:

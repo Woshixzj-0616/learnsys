@@ -30,6 +30,7 @@ _FALLBACK = {
     "--accent-soft": "rgba(77, 139, 255, 0.13)",
     "--accent-line": "rgba(77, 139, 255, 0.42)",
     "--mark": "#f0b45e",
+    "--mark-soft": "rgba(240, 180, 94, 0.14)",
     "--ok": "#63c08f",
     "--warn": "#e0a35c",
     "--err": "#e37b7b",

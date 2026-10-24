@@ -13,31 +13,15 @@ from learnsys import product
 
 from . import style
 from . import tokens as token_source
+from .today_bottom import BREAK, TodayBottomMixin
 from .today_widgets import (ActionCard, HeroCard, OnboardingBanner, PluginCard,
-                            StatStrip)
+                            StatStrip, chars_parts, minutes_parts)
 from .widgets import StatusLabel
 
 TODAY_SIZE = (1040, 700)
 TODAY_MIN = (760, 560)
 CONTENT_MAX = 1040
-BREAK = 880              # 低于这个宽度：行动卡 1 列、插件卡 2 列
-
-
-def minutes_parts(minutes) -> tuple[str, str]:
-    """和 `web/js/ui.js::minutesParts` 同口径。"""
-    total = max(0, int(round(float(minutes or 0))))
-    if total < 60:
-        return str(total), "分钟"
-    hours, rest = divmod(total, 60)
-    return (f"{hours} 时 {rest}" if rest else str(hours),
-            "分" if rest else "小时")
-
-
-def chars_parts(chars) -> tuple[str, str]:
-    total = max(0, float(chars or 0))
-    if total < 10000:
-        return str(int(total)), "字"
-    return f"{total / 10000:.1f}", "万字"
+# BREAK 由 today_bottom 统一提供：行动卡/插件卡/底栏堆叠共用一个断点。
 
 
 def date_label(now: datetime.date | None = None) -> str:
@@ -46,7 +30,7 @@ def date_label(now: datetime.date | None = None) -> str:
     return f"{now.year} 年 {now.month} 月 {now.day} 日 · 周{week}"
 
 
-class TodayWindow(QtWidgets.QDialog):
+class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
     """非模态今日页；每次打开/刷新都重新拉一次数据。"""
 
     def __init__(self, api, navigate=None, open_settings=None,
@@ -71,6 +55,8 @@ class TodayWindow(QtWidgets.QDialog):
         self._required_failed = False
         self._action_cols = 0
         self._plugin_cols = 0
+        self._bottom_stacked = False
+        self._continue_conv = ""
         self.action_cards: list[ActionCard] = []
         self.plugin_cards: list[PluginCard] = []
 
@@ -161,6 +147,8 @@ class TodayWindow(QtWidgets.QDialog):
         self.action_section, self.action_grid = self._grid_section("今天最值得做的三件事")
         body.addWidget(self.action_section)
 
+        self._build_bottom(body)
+
         body.addStretch(1)
         scroll.setWidget(content)
         column.addWidget(scroll, 1)
@@ -201,7 +189,8 @@ class TodayWindow(QtWidgets.QDialog):
         self.api.start()
 
     def _on_ready(self) -> None:
-        self._pending = {"overview", "today", "modules", "settings", "review"}
+        self._pending = {"overview", "today", "modules", "settings", "review",
+                         "conversations"}
         self.api.get("/api/overview", lambda data: self._ok("overview", data),
                      lambda message: self._fail("overview", message))
         self.api.get("/api/today", lambda data: self._ok("today", data),
@@ -212,6 +201,9 @@ class TodayWindow(QtWidgets.QDialog):
                      lambda message: self._fail("settings", message))
         self.api.get("/api/review/stats", lambda data: self._ok("review", data),
                      lambda message: self._fail("review", message))
+        self.api.get("/api/conversations?limit=8",
+                     lambda data: self._ok("conversations", data),
+                     lambda message: self._fail("conversations", message))
 
     def _on_failed(self, message: str) -> None:
         self.status_label.show_err(message)
@@ -223,13 +215,20 @@ class TodayWindow(QtWidgets.QDialog):
         self._pending.discard(key)
         if key == "overview":
             self.hero.update_overview(self._data[key])
+            self._render_week()
+            self._render_achievements()
         if key == "today":
             self._render_stats()
             self._render_actions(self._data[key].get("actions") or [])
+            self._render_timeline()
+            self._render_focus()
+            self._render_cet6()
         if key in {"overview", "today", "modules", "settings"}:
             self._render_plugins()
         if key == "settings":
             self._render_onboarding()
+        if key == "conversations":
+            self._render_continue()
         if key == "review":
             self._render_stats()
         self._finish()
@@ -255,7 +254,7 @@ class TodayWindow(QtWidgets.QDialog):
             return
         if self._errors:
             names = {"modules": "插件清单", "settings": "设置",
-                     "review": "复习统计"}
+                     "review": "复习统计", "conversations": "最近会话"}
             missed = "、".join(names.get(key, key) for key in self._errors)
             self.status_label.show_info(f"已更新（{missed}没读到）")
             return
@@ -363,6 +362,8 @@ class TodayWindow(QtWidgets.QDialog):
         self._apply_columns()
 
     def _apply_columns(self) -> None:
+        if not hasattr(self, "bottom_grid"):
+            return
         action_cols = 3 if self.width() >= BREAK else 1
         plugin_cols = 3 if self.width() >= BREAK else 2
         if self.action_cards and action_cols != self._action_cols:
@@ -371,6 +372,7 @@ class TodayWindow(QtWidgets.QDialog):
         if self.plugin_cards and plugin_cols != self._plugin_cols:
             self._plugin_cols = plugin_cols
             self._place(self.plugin_grid, self.plugin_cards, plugin_cols)
+        self._apply_bottom_layout()
 
     @staticmethod
     def _place(grid: QtWidgets.QGridLayout, cards: list, cols: int) -> None:
