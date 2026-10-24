@@ -10,9 +10,9 @@ import sys
 SPECPATH_ROOT = SPECPATH
 sys.path.insert(0, SPECPATH_ROOT)
 
-# 版本号**只写一处**：learnsys/ask/__init__.py 的 VERSION。
+# 版本号**只写一处**：learnsys/product.py 的 VERSION。
 # 这里把它变成 exe 的版本资源（任务管理器 / 文件属性里看到的那个），不用再手改 版本信息.txt。
-from learnsys.ask import VERSION  # noqa: E402
+from learnsys.product import VERSION  # noqa: E402
 from PyInstaller.utils.win32.versioninfo import (  # noqa: E402
     FixedFileInfo,
     StringFileInfo,

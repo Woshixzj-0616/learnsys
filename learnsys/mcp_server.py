@@ -20,7 +20,6 @@ import urllib.parse
 import urllib.request
 
 from learnsys import product
-from learnsys.ask import VERSION
 
 PROTOCOL_VERSION = "2024-11-05"
 DEFAULT_URL = os.environ.get("LEARNSYS_MCP_URL", "http://127.0.0.1:8765").rstrip("/")
@@ -329,7 +328,7 @@ def handle(message: dict, client: Client | None = None):
         return {"jsonrpc": "2.0", "id": request_id, "result": {
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "learnsys", "version": VERSION,
+            "serverInfo": {"name": "learnsys", "version": product.VERSION,
                            "title": product.PRODUCT_NAME},
         }}
     if method == "ping":

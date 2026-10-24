@@ -12,7 +12,8 @@ import urllib.request
 from PySide6 import QtGui
 
 from learnsys import config, product
-from learnsys.ask import VERSION, icon as icon_mod, shortcuts, workbench
+from learnsys.ask import icon as icon_mod, shortcuts, workbench
+from learnsys.product import VERSION
 
 
 def _server_info(port: int, timeout: float = 0.5) -> dict:

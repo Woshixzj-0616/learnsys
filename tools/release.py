@@ -27,7 +27,7 @@ EXCLUDE_NAMES = {"设置.json", "界面设置.json", "学习档案.md"}
 
 def version_from_code() -> str:
     sys.path.insert(0, str(ROOT))
-    from learnsys.ask import VERSION
+    from learnsys.product import VERSION
     return VERSION
 
 

@@ -10,6 +10,7 @@
     core / store / browser  ← 不得依赖 services / agent / ask / server
     agent                   ← 不得依赖 ask / server
     services                ← 不得依赖 ask / server
+    server                  ← 不得依赖 ask（HTTP 层不反向依赖桌面入口）
 
 门禁零白名单：出现反向依赖就修依赖，不要把文件塞进豁免表。
 """
@@ -30,6 +31,7 @@ RULES: dict[str, tuple[str, ...]] = {
     "browser": ("services", "agent", "ask", "server"),
     "agent": ("ask", "server"),
     "services": ("ask", "server"),
+    "server": ("ask",),
 }
 
 
@@ -95,7 +97,7 @@ def scan(root: pathlib.Path | None = None) -> list[dict]:
 def report(rows: list[dict] | None = None) -> str:
     rows = rows if rows is not None else scan()
     lines = ["分层报告（低层不得依赖高层：core/store/browser → services/agent/ask/server；"
-             "agent/services → ask/server）", ""]
+             "agent/services → ask/server；server → ask）", ""]
     if not rows:
         lines.append("反向依赖 0 处 —— 通过。")
     else:

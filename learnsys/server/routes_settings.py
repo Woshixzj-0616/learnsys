@@ -298,7 +298,7 @@ def test_settings(req: TestRequest, _=Depends(require_token)):
 
 @router.post("/api/settings/backup")
 def backup_now(_=Depends(require_token)):
-    from learnsys.ask import backup
+    from learnsys.services import backup
     raw = app_config.load_settings()
     try:
         path = backup.do_backup(app_config.DATA_ROOT, _backup_dir(raw))

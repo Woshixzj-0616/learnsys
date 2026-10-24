@@ -21,7 +21,6 @@ from fastapi.staticfiles import StaticFiles
 
 from learnsys import config, product
 from learnsys.agent.config import load_config
-from learnsys.ask import VERSION
 from learnsys.modules import web_dir
 from learnsys.server import (routes_agent, routes_browser, routes_cet6, routes_data,
                              routes_knowledge, routes_materials, routes_memory,
@@ -44,7 +43,7 @@ async def _lifespan(_app):
 
 
 def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
-    app = FastAPI(title=product.PRODUCT_NAME, version=VERSION, docs_url="/docs",
+    app = FastAPI(title=product.PRODUCT_NAME, version=product.VERSION, docs_url="/docs",
                   redoc_url=None, lifespan=_lifespan)
     app.state.token = token or os.environ.get("LEARNSYS_TOKEN") or secrets.token_urlsafe(24)
     app.state.port = port
@@ -103,7 +102,7 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
         cfg = load_config()
         return {
             "ok": True,
-            "version": VERSION,
+            "version": product.VERSION,
             "model": cfg.model,
             "vision_ready": cfg.vision_ready,
             "token": app.state.token,
@@ -145,7 +144,7 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
 <style>body{{background:#1b1e23;color:#dfe6ee;font-family:'Microsoft YaHei UI',sans-serif;
 padding:40px;line-height:1.7}}a{{color:#6ea8ff}}</style>
 <h1>{product.PRODUCT_NAME}后台已启动</h1>
-<p>版本 {VERSION} · 服务在 127.0.0.1:{port}</p>
+<p>版本 {product.VERSION} · 服务在 127.0.0.1:{port}</p>
 <p>没找到 <code>web/index.html</code>，Web 工作台还没装进来。</p>
 <ul><li><a href="/api/health">/api/health</a> —— 存活、模型、令牌</li></ul></html>"""
 
