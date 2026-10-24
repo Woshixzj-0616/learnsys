@@ -9,6 +9,8 @@ import sys
 import traceback
 import urllib.request
 
+from PySide6 import QtGui
+
 from learnsys import config, product
 from learnsys.ask import VERSION, icon as icon_mod, shortcuts, workbench
 

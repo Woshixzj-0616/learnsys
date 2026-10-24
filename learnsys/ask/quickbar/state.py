@@ -4,7 +4,7 @@ from __future__ import annotations
 import time
 import uuid
 
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui
 
 from learnsys import config
 from .common import (CARD_PAD_X, STATE_DONE, STATE_HISTORY, STATE_IDLE,

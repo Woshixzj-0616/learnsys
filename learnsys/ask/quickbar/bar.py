@@ -17,6 +17,7 @@ from .common import STATE_IDLE, _as_bool
 from .layout import LayoutMixin
 from .state import StateMixin
 from .streaming import StreamMixin
+from .workers import _AskWorker
 
 
 class AskBar(BuildMixin, LayoutMixin, StateMixin, StreamMixin, ActionsMixin,

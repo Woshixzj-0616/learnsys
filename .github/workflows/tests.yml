@@ -13,8 +13,23 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - run: pip install -r requirements.txt
+      - run: pip install ruff==0.17.2
+      - name: Lint (syntax + undefined names)
+        # 存量 F401/F841 等还有 65 处；先只拦会直接报错的语法问题与未定义名，
+        # 不为了上 lint 改一堆无关代码。
+        run: ruff check --select E9,F821,F822,F823 learnsys tests tools
       - name: Run unit tests
         env:
           QT_QPA_PLATFORM: offscreen
         run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Run web frontend tests
+        shell: bash
+        # 用 bash 展开 glob：PowerShell 会把 *.mjs 原样传给 node。
+        run: node --test web/tests/*.mjs
+      - name: Run CET6 frontend tests
+        shell: bash
+        run: node --test cet6-src/workbench_src/tests/*.mjs
