@@ -10,6 +10,9 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
+import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -33,11 +36,23 @@ def main() -> int:
     parser.add_argument("--mode", default="explain",
                         choices=["explain", "guide", "quiz", "quick"])
     parser.add_argument("--max-tokens", type=int, default=0, help="覆盖 max_tokens")
+    parser.add_argument("--speed", default="", choices=["fast", "balanced", "deep"],
+                        help="覆盖设置里的回答速度档（默认用设置）")
+    parser.add_argument("--history-file", default="",
+                        help="多轮评测用：JSON 文件，内容为 [[问题, 回答], ...]")
+    parser.add_argument("--json-out", default="",
+                        help="把结果写成 JSON（答案、字数、代码块数、耗时）")
     args = parser.parse_args()
 
     cfg = load_config()
     if args.max_tokens:
         cfg = cfg.__class__(**{**cfg.__dict__, "max_tokens": args.max_tokens})
+    if args.speed:
+        cfg = dataclasses.replace(cfg, speed=args.speed)
+    history = None
+    if args.history_file:
+        history = [(str(q), str(a)) for q, a in
+                   json.loads(Path(args.history_file).read_text(encoding="utf-8"))]
     print(f"模型：{cfg.model} ｜ 视觉：{'已配置 ' + cfg.vision_model if cfg.vision_ready else '未配置（OCR 兜底）'}")
     print(f"地址：{cfg.base_url}")
     if not cfg.ready:
@@ -49,12 +64,17 @@ def main() -> int:
     started = time.monotonic()
     thinking_shown = False
     final = ""
+    first_ms = 0
+    meta: dict = {}
     request = AgentRequest(
         message=args.question,
+        history=history,
         image_path=args.image or None,
         mode=args.mode,
     )
     for event in run(request, cfg=cfg):
+        if event.kind in ("text", "thinking") and not first_ms:
+            first_ms = int((time.monotonic() - started) * 1000)
         if event.kind == "thinking":
             if not thinking_shown:
                 print("（推理中…）", end="", flush=True)
@@ -79,12 +99,39 @@ def main() -> int:
             return 1
         elif event.kind == "done":
             final = str(event.data.get("text") or "")
-            usage = event.data.get("usage") or {}
+            meta = dict(event.data)
+            usage = meta.get("usage") or {}
             print(f"\n\n{'=' * 60}")
-            print(f"用时 {time.monotonic() - started:.1f} 秒 ｜ 步数 {event.data.get('steps')} "
-                  f"｜ 结束 {event.data.get('stop_reason')} ｜ tokens {usage or '—'}")
+            print(f"用时 {time.monotonic() - started:.1f} 秒 ｜ 步数 {meta.get('steps')} "
+                  f"｜ 结束 {meta.get('stop_reason')} ｜ tokens {usage or '—'}")
             if final:
                 print(f"正文 {len(final)} 字")
+    if args.json_out and final:
+        blocks = final.count("```") // 2
+        prose = re.sub(r"```.*?```", "", final, flags=re.DOTALL)
+        prose = re.sub(r"[#*`>|\-\s]+", "", prose)
+        record = {
+            "question": args.question,
+            "mode": args.mode,
+            "speed": cfg.speed,
+            "model": cfg.model,
+            "answer": final,
+            "chars_total": len(final),
+            "chars_prose": len(prose),
+            "code_blocks": blocks,
+            "has_thinking_section": any(word in final for word in
+                                        ("想一想", "思考题", "自测题")),
+            "latency_ms": int((time.monotonic() - started) * 1000),
+            "first_ms": first_ms,
+            "steps": meta.get("steps"),
+            "stop_reason": meta.get("stop_reason"),
+            "usage": meta.get("usage") or {},
+        }
+        path = Path(args.json_out)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(record, ensure_ascii=False, indent=2),
+                        encoding="utf-8")
+        print(f"已写入 {path}")
     return 0
 
 

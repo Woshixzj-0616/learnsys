@@ -110,11 +110,26 @@ class TestSSE(unittest.TestCase):
 
 
 class TestPrompts(unittest.TestCase):
-    def test_contract_mentions_thinking_questions_and_markdown(self):
+    def test_contract_is_short_by_default(self):
         system = prompts.build_system("explain")
-        self.assertIn("想一想", system)
+        self.assertIn("按问题复杂度", system)
+        self.assertIn("直接给结论", system)
         self.assertIn("Markdown", system)
-        self.assertIn("先给结论", system)
+        # 「想一想」只能作为负面规则出现，不能再是无条件要求
+        self.assertNotIn("最后给「想一想」", system)
+
+    def test_code_and_questions_are_opt_in(self):
+        system = prompts.build_system("explain")
+        self.assertIn("默认不贴代码块", system)
+        self.assertIn("按需开启", system)
+        self.assertIn("考考我", system)
+
+    def test_style_examples_only_for_explain_standard(self):
+        self.assertIn("只学取舍", prompts.build_system("explain"))
+        self.assertNotIn("只学取舍", prompts.build_system("quiz"))
+        self.assertNotIn("只学取舍", prompts.build_system("guide"))
+        self.assertNotIn("只学取舍", prompts.build_system("quick"))
+        self.assertNotIn("只学取舍", prompts.build_system("explain", concise=False))
 
     def test_modes(self):
         self.assertIn("引导式", prompts.build_system("guide"))

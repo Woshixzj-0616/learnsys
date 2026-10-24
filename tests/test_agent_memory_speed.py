@@ -112,9 +112,12 @@ class PromptTest(unittest.TestCase):
     def test_concise_and_deep_use_different_length_contracts(self):
         concise = prompts.build_system("explain", concise=True)
         deep = prompts.build_system("explain", concise=False)
-        self.assertIn("1200–1800", concise)
+        self.assertIn("按问题复杂度", concise)
+        self.assertIn("≤300 字", concise)
+        self.assertNotIn("1200–1800", concise)
         self.assertNotIn("1200–1800", deep)
         self.assertIn("回答长度：深入", deep)
+        self.assertIn("1.5 倍", deep)
 
 
 class SpeedConfigTest(unittest.TestCase):

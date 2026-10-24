@@ -44,6 +44,10 @@ class ControlModeTest(unittest.TestCase):
             self.assertNotIn("make_plan", system)
             self.assertNotIn("run_code", system)
             self.assertIn("长期记忆纪律", system)
+            # 对照组必须同时回到旧的长度口径与旧示例，否则 A/B 测不出差异
+            self.assertIn("1200–1800", system)
+            self.assertNotIn("按问题复杂度", system)
+            self.assertNotIn("只学取舍", system)
         self.assertIn("计划纪律", prompts.BASE_SYSTEM)
 
 

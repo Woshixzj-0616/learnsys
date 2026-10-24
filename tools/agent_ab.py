@@ -31,6 +31,10 @@ from learnsys.agent import cost as agent_cost
 from learnsys.agent import loop, prompts, selfcheck, tools
 from learnsys.agent.config import load_config
 
+from tools.baseline_prompt import (BASE_SYSTEM as _BASELINE_BASE_SYSTEM,
+                                   CONCISE_ADDITION as _BASELINE_CONCISE_ADDITION,
+                                   DEEP_ADDITION as _BASELINE_DEEP_ADDITION)
+
 CONTROL_TOOLS = {
     "search_records", "today_summary", "read_attachment", "ocr_image",
     "search_materials", "read_material", "get_cet6_context",
@@ -91,6 +95,7 @@ def _seed_settings(root: pathlib.Path, source: pathlib.Path) -> dict:
         data = {}
     agent = data.setdefault("agent", {})
     agent.pop("data_root", None)
+    agent.pop("routes", None)   # 两组必须跑同一个模型，否则 A/B 结论失真
     agent["speed"] = "balanced"
     agent["thinking"] = False
     for key, value in (("price_input", 1.0), ("price_output", 2.0),
@@ -179,6 +184,7 @@ def _activate(root: pathlib.Path, settings: dict):
         app_config.USER, app_config.DATA_ROOT, app_config.SETTINGS_FILE = old
 
 
+
 @contextlib.contextmanager
 def _control_mode(enabled: bool):
     if not enabled:
@@ -187,6 +193,9 @@ def _control_mode(enabled: bool):
     original_schemas = tools.schemas_for
     original_verify = selfcheck.verify
     original_base = prompts.BASE_SYSTEM
+    original_concise = prompts.CONCISE_ADDITION
+    original_deep = prompts.DEEP_ADDITION
+    original_examples = prompts.STYLE_EXAMPLES
 
     def schemas_for(mode="explain", *, use_tools=True):
         schemas = original_schemas(mode, use_tools=use_tools)
@@ -195,29 +204,21 @@ def _control_mode(enabled: bool):
         return [schema for schema in schemas
                 if schema.get("name") in CONTROL_TOOLS]
 
-    def control_base_system() -> str:
-        """去掉 P16 加的计划/引用纪律和新增工具说明，回到 2.10.2 口径。"""
-        text = original_base
-        text = re.sub(r"\n计划纪律：.*?(?=\n长期记忆纪律：)", "\n",
-                      text, flags=re.DOTALL)
-        kept = []
-        for line in text.splitlines():
-            if any(token in line for token in
-                   ("make_plan", "recent_wrong_items", "run_code",
-                    "save_material_note", "write_study_file")):
-                continue
-            kept.append(line)
-        return "\n".join(kept)
-
     tools.schemas_for = schemas_for
     selfcheck.verify = lambda *args, **kwargs: []
-    prompts.BASE_SYSTEM = control_base_system()
+    prompts.BASE_SYSTEM = _BASELINE_BASE_SYSTEM
+    prompts.CONCISE_ADDITION = _BASELINE_CONCISE_ADDITION
+    prompts.DEEP_ADDITION = _BASELINE_DEEP_ADDITION
+    prompts.STYLE_EXAMPLES = ""
     try:
         yield
     finally:
         tools.schemas_for = original_schemas
         selfcheck.verify = original_verify
         prompts.BASE_SYSTEM = original_base
+        prompts.CONCISE_ADDITION = original_concise
+        prompts.DEEP_ADDITION = original_deep
+        prompts.STYLE_EXAMPLES = original_examples
 
 
 def _score(task: dict, answer: str, haystack: str, side_ok: bool,
