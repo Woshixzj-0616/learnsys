@@ -12,7 +12,7 @@ import re
 import threading
 import time
 
-from learnsys import agent, store
+from learnsys import agent, diagnostics, store
 from learnsys.agent.config import load_config
 from learnsys.services import observability, results
 
@@ -255,8 +255,8 @@ def _ensure_worker() -> None:
                 results.recover_orphans(conn)
             finally:
                 conn.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            diagnostics.log_swallow("六级分析：恢复孤儿任务", exc)
     with _LOCK:
         if _WORKER is None or not _WORKER.is_alive():
             _WORKER = threading.Thread(
@@ -269,9 +269,9 @@ def _worker_loop() -> None:
         result_id, record = _QUEUE.get()
         try:
             run_job(result_id, record)
-        except Exception:
+        except Exception as exc:
             # 单条任务失败不能带走整个 worker；行状态由 run_job 尽量写好
-            pass
+            diagnostics.log_swallow("六级分析：worker 单条任务", exc)
         finally:
             _QUEUE.task_done()
 

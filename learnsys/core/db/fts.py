@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import sqlite3
 
+from learnsys import diagnostics
+
 from .connection import _LOCK
 from .schema import FTS_SCHEMA
 
@@ -47,8 +49,9 @@ def index_row(conn: sqlite3.Connection, module: str, ref_id, ts: str, body: str)
                 "INSERT INTO search_idx (body, module, ref_id, ts) VALUES (?, ?, ?, ?)",
                 (body, module, ref_id, ts))
             conn.commit()
-    except sqlite3.Error:
-        pass          # 索引是锦上添花，失败不能拖垮写入
+    except sqlite3.Error as exc:
+        # 索引是锦上添花，失败不能拖垮写入；但失败本身要留痕。
+        diagnostics.log_swallow("写检索索引", exc)
 
 
 def search(conn: sqlite3.Connection, query: str, limit: int = 20) -> list[dict]:

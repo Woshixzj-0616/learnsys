@@ -5,6 +5,7 @@ import json
 import re
 import sqlite3
 
+from learnsys import diagnostics
 from learnsys.core import db as core_db
 from ._base import _LOCK, now
 
@@ -177,8 +178,8 @@ def delete_material_row(conn: sqlite3.Connection, item_id: int) -> bool:
         try:
             conn.execute("DELETE FROM search_idx WHERE module = 'material' AND ref_id = ?",
                          (int(item_id),))
-        except sqlite3.Error:
-            pass
+        except sqlite3.Error as exc:
+            diagnostics.log_swallow("删除资料检索索引", exc)
         conn.commit()
     return bool(cur.rowcount)
 

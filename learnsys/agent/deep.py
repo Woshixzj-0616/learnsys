@@ -20,7 +20,7 @@ import time
 import uuid
 
 from learnsys import config as app_config
-from learnsys import store
+from learnsys import diagnostics, store
 from learnsys.agent import provider_anthropic
 from learnsys.agent.config import load_config
 
@@ -168,5 +168,5 @@ def _audit(run_id: str, *, prompt: str, model: str, provider: str,
                 trace=[{"kind": "deep", "provider": provider}])
         finally:
             conn.close()
-    except Exception:
-        pass
+    except Exception as exc:
+        diagnostics.log_swallow("写深度分析审计流水", exc)

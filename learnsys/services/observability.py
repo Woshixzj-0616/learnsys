@@ -5,7 +5,7 @@ import json
 import sqlite3
 import uuid
 
-from learnsys import store
+from learnsys import diagnostics, store
 
 
 def start_run(*, surface: str = "", kind: str = "", model: str = "",
@@ -27,7 +27,8 @@ def start_run(*, surface: str = "", kind: str = "", model: str = "",
         finally:
             if own:
                 conn.close()
-    except Exception:
+    except Exception as exc:
+        diagnostics.log_swallow("写 service_runs 开始流水", exc)
         return 0
 
 
@@ -50,8 +51,8 @@ def finish_run(run_id: int, *, status: str, ms: int, tokens_in: int = 0,
         finally:
             if own:
                 conn.close()
-    except Exception:
-        pass
+    except Exception as exc:
+        diagnostics.log_swallow("写 service_runs 完成流水", exc)
 
 
 def recent_runs(conn: sqlite3.Connection, limit: int = 50) -> list[dict]:

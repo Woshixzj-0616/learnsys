@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from learnsys import agent, store
+from learnsys import agent, diagnostics, store
 from learnsys.agent import cost as agent_cost
 from learnsys.agent.config import load_config
 from learnsys.context import ContextSnapshot
@@ -227,8 +227,8 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                             conversation_id=conv_id, first_ms=first_ms)
                 elif error:
                     store.add_message(conn, conv_id, "assistant", {"error": error})
-            except Exception:
-                pass
+            except Exception as exc:
+                diagnostics.log_swallow("对话落库（消息/问答）", exc)
             conn.close()
 
     headers = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}

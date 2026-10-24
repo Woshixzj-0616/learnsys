@@ -6,6 +6,8 @@ import json
 import pathlib
 import sqlite3
 
+from learnsys import diagnostics
+
 from .connection import connect, counts, now
 from .fts import index_row
 
@@ -92,8 +94,8 @@ def _import_starred_rows(conn: sqlite3.Connection) -> int:
                 (ts or now(), f"ask:{ask_id}", question or "", answer or ""))
             moved += 1 if cur.rowcount else 0
         conn.commit()
-    except sqlite3.Error:
-        pass
+    except sqlite3.Error as exc:
+        diagnostics.log_swallow("迁移旧收藏到错题本", exc)
     return moved
 
 
@@ -109,8 +111,8 @@ def _import_legacy_starred(conn: sqlite3.Connection) -> None:
             "INSERT OR REPLACE INTO meta (key, value) VALUES ('wrongbook_imported_at', ?)",
             (now(),))
         conn.commit()
-    except sqlite3.Error:
-        pass
+    except sqlite3.Error as exc:
+        diagnostics.log_swallow("旧收藏迁移标记", exc)
 
 
 # ---- v1 按天库 → v2 单库 ----
