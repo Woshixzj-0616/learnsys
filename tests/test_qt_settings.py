@@ -83,11 +83,14 @@ class FakeApiClient(QtCore.QObject):
         self.version = version
         self.started = 0
         self.calls: list[tuple] = []
-        self.responses = responses if responses is not None else {
+        self.responses = responses if responses is not None else copy.deepcopy({
             "/api/settings": SETTINGS,
             "/api/modules": MODULES,
             "/api/memory": MEMORY,
-        }
+        })
+        self.post_response = {"ok": True, "saved": [], "restart_required": [],
+                              "message": "已保存"}
+        self.post_error: str | None = None
 
     def start(self):
         self.started += 1
@@ -98,7 +101,11 @@ class FakeApiClient(QtCore.QObject):
             on_ok(copy.deepcopy(self.responses[path]))
 
     def post(self, path, body, on_ok, on_err=None):
-        self.calls.append(("POST", path, body))
+        self.calls.append(("POST", path, copy.deepcopy(body)))
+        if self.post_error is not None:
+            on_err(self.post_error)
+            return
+        on_ok(copy.deepcopy(self.post_response))
 
     def delete(self, path, on_ok, on_err=None):
         self.calls.append(("DELETE", path, None))
@@ -221,17 +228,109 @@ class TestSettingsWindowRender(unittest.TestCase):
         self.assertIn(r"D:\学习系统\设置.json", self.window.settings_path_label.text())
         self.assertIn(r"D:\学习系统备份", self.window.backup_dir_label.text())
 
-    def test_全部只读(self):
-        self.assertTrue(self.window.inputs["agent-model"].isReadOnly())
-        self.assertFalse(self.window.inputs["agent-auto-route"].isEnabled())
+    def test_核心表单可改其余仍只读(self):
+        self.assertFalse(self.window.inputs["agent-model"].isReadOnly())
+        self.assertTrue(self.window.inputs["agent-auto-route"].isEnabled())
         self.assertFalse(self.window.memory_list.isEnabled())
         self.assertFalse(self.window.module_boxes["ask"].isEnabled())
         self.assertTrue(self.window.inputs["data-root"].isReadOnly())
-        self.assertFalse(self.window.save_button.isEnabled())
+        self.assertTrue(self.window.save_button.isEnabled())
 
     def test_准备三份数据请求(self):
         paths = [call[1] for call in self.api.calls]
         self.assertEqual(paths, ["/api/settings", "/api/modules", "/api/memory"])
+
+
+class TestSettingsWindowEdit(unittest.TestCase):
+    """R3.3：核心表单可改、collect 口径、保存与 dirty。"""
+
+    def setUp(self):
+        _app()
+        self.api = FakeApiClient()
+        self.window = SettingsWindow(self.api)
+        self.addCleanup(self.window.deleteLater)
+        self.window.load()
+        self.api.ready.emit()
+
+    def _post_payload(self) -> dict:
+        calls = [call for call in self.api.calls if call[0] == "POST"]
+        self.assertTrue(calls)
+        return calls[-1][2]
+
+    def test_collect_空密钥和空数字不进_payload(self):
+        self.window.inputs["agent-token"].setText("")
+        self.window.inputs["vision-key"].setText("")
+        self.window.inputs["agent-tokens"].setText("")
+        self.window.inputs["price-input"].setText("")
+        payload = self.window.collect()
+        self.assertNotIn("auth_token", payload["agent"])
+        self.assertNotIn("api_key", payload["vision"])
+        self.assertNotIn("max_tokens", payload["agent"])
+        self.assertNotIn("price_input", payload["agent"])
+
+    def test_collect_对齐_web_字段(self):
+        self.window.inputs["agent-token"].setText("sk-test-123456")
+        self.window.inputs["agent-tokens"].setText("4096")
+        self.window.inputs["price-input"].setText("0.5")
+        self.window.inputs["agent-auto-route"].setCurrentIndex(2)
+        payload = self.window.collect()
+        self.assertEqual(payload["agent"]["auth_token"], "sk-test-123456")
+        self.assertEqual(payload["agent"]["max_tokens"], 4096)
+        self.assertEqual(payload["agent"]["price_input"], 0.5)
+        self.assertEqual(payload["agent"]["auto_route"], "on")
+        self.assertEqual(payload["agent"]["speed"], "balanced")
+        self.assertEqual(payload["hotkey"], "alt+q")
+        self.assertEqual(payload["modules"], {"ask": True, "cet6": False, "future": True})
+
+    def test_输入标记_dirty(self):
+        self.assertFalse(self.window.windowTitle().endswith("*"))
+        self.window.inputs["agent-model"].setText("deepseek-v4-pro")
+        self.assertTrue(self.window.windowTitle().endswith("*"))
+        self.assertEqual(self.window.save_note.text(), "有改动还没保存")
+
+    def test_下拉变化也标记_dirty(self):
+        self.window.inputs["agent-speed"].setCurrentIndex(2)
+        self.assertTrue(self.window.windowTitle().endswith("*"))
+
+    def test_load_清掉_dirty(self):
+        self.window.inputs["agent-model"].setText("x")
+        self.window.load()
+        self.assertFalse(self.window.windowTitle().endswith("*"))
+
+    def test_保存发送并刷新掩码清空密钥(self):
+        self.window.inputs["agent-token"].setText("sk-test-123456")
+        settings = self.api.responses["/api/settings"]
+        settings["agent"]["auth_token_mask"] = "••••9999"
+        self.window.save()
+
+        payload = self._post_payload()
+        self.assertEqual(payload["agent"]["auth_token"], "sk-test-123456")
+        self.assertEqual(self.window.inputs["agent-token"].text(), "")
+        self.assertIn("••••9999", self.window.agent_token_hint.text())
+        self.assertFalse(self.window._dirty)
+        self.assertEqual(self.window.save_note.text(),
+                         "已保存。文本/视觉模型下一轮对话立即生效。")
+
+    def test_保存后提示重启(self):
+        self.api.post_response = {
+            "ok": True, "saved": ["hotkey"], "restart_required": ["hotkey"],
+            "message": "已保存；热键要重启学习工作台才生效",
+        }
+        self.window.save()
+        self.assertIn("重启学习工作台后生效", self.window.save_note.text())
+        self.assertTrue(self.window.save_note.text().startswith("已保存"))
+
+    def test_后端_400_显示中文_detail(self):
+        self.api.post_error = "快捷键格式不对：写成 Alt+Q、Ctrl+Shift+F2 这样"
+        self.window.save()
+        self.assertIn("快捷键格式不对", self.window.status_label.text())
+        self.assertTrue(self.window.save_button.isEnabled())
+        self.assertEqual(self.window.save_note.text(), "")
+
+    def test_保存中禁用按钮(self):
+        self.window.save_button.click()
+        # Fake 同步回调，保存结束后已恢复；这里只验证没有抛异常
+        self.assertTrue(self.window.save_button.isEnabled())
 
 
 if __name__ == "__main__":

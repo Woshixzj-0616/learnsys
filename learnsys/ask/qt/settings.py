@@ -17,6 +17,16 @@ from .page import SettingsPageMixin
 from .widgets import StatusLabel
 
 
+# R3.3 可编辑的核心字段；数据目录、记忆、模块、动作按钮各自在后续步骤放开
+CORE_FIELDS = frozenset({
+    "agent-base", "agent-token", "agent-model", "agent-fast", "agent-strong",
+    "agent-auto-route", "agent-tokens", "agent-speed",
+    "price-input", "price-output", "price-cache", "price-currency",
+    "vision-base", "vision-key", "vision-model",
+    "hotkey",
+})
+
+
 def key_hint(has: bool, mask: str, source: str) -> str:
     """和 `web/js/pages/settings.js::keyHint` 同一口径。"""
     if not has:
@@ -34,8 +44,9 @@ class SettingsWindow(SettingsPageMixin, QtWidgets.QDialog):
         if isinstance(api, QtCore.QObject):
             api.setParent(self)
 
+        self._base_title = f"设置（Qt 试点）· {product.PRODUCT_NAME}"
         self.setObjectName("SettingsWindow")
-        self.setWindowTitle(f"设置（Qt 试点）· {product.PRODUCT_NAME}")
+        self.setWindowTitle(self._base_title)
         self.setStyleSheet(style.QSS)
         self.resize(820, 680)
         self.setMinimumSize(620, 420)
@@ -44,7 +55,9 @@ class SettingsWindow(SettingsPageMixin, QtWidgets.QDialog):
         self.module_boxes: dict[str, QtWidgets.QCheckBox] = {}
         self._settings: dict = {}
         self._modules: list[dict] = []
-        self._readonly = True
+        self._dirty = False
+        self._saving = False
+        self._loading = False
 
         outer = QtWidgets.QVBoxLayout(self)
         outer.setContentsMargins(18, 16, 18, 16)
@@ -68,12 +81,23 @@ class SettingsWindow(SettingsPageMixin, QtWidgets.QDialog):
 
         self.api.ready.connect(self._on_ready)
         self.api.failed.connect(self._on_failed)
-        self.set_readonly(True)          # R3.2：整页先只读；R3.3 再按组放开
+        self.save_button.clicked.connect(self.save)
+        self.set_editable(CORE_FIELDS)   # R3.3：核心表单可改；其余步骤再放开
+        self.save_button.setEnabled(True)
+        self._wire_dirty()
+        # 记忆 / 动作按钮 / 模块留给 R3.5–R3.7 逐个放开
+        self.memory_list.setEnabled(False)
+        self.memory_input.setEnabled(False)
+        self.memory_add_button.setEnabled(False)
+        self.test_text_button.setEnabled(False)
+        self.test_vision_button.setEnabled(False)
+        self.backup_button.setEnabled(False)
 
     # ---- 加载 ----
 
     def load(self) -> None:
         """每次打开都重新拉：避免显示上次的旧值（R3.8）。"""
+        self.set_dirty(False)
         self.status_label.show_info("正在连接后台…")
         self.retry_button.hide()
         self.api.start()
@@ -110,8 +134,15 @@ class SettingsWindow(SettingsPageMixin, QtWidgets.QDialog):
 
     def _fill_settings(self, data: dict) -> None:
         self._settings = data or {}
-        agent = self._settings.get("agent") or {}
-        vision = self._settings.get("vision") or {}
+        self._loading = True              # 程序回填不算用户改动
+        try:
+            self._apply_settings(self._settings)
+        finally:
+            self._loading = False
+
+    def _apply_settings(self, data: dict) -> None:
+        agent = data.get("agent") or {}
+        vision = data.get("vision") or {}
 
         self._set("agent-base", agent.get("base_url"))
         self._set("agent-model", agent.get("model"))
@@ -163,7 +194,7 @@ class SettingsWindow(SettingsPageMixin, QtWidgets.QDialog):
                 label += "（待建）"
             box = QtWidgets.QCheckBox(label)
             box.setProperty("module_id", module_id)
-            box.setEnabled(not self._readonly)
+            box.setEnabled(False)             # R3.7 再放开
             self.module_layout.addWidget(box)
             self.module_boxes[module_id] = box
         self.module_layout.addStretch(1)
@@ -184,23 +215,126 @@ class SettingsWindow(SettingsPageMixin, QtWidgets.QDialog):
         for item in items:
             self.memory_list.addItem(str(item.get("content") or ""))
 
-    # ---- 只读 / 可编辑 ----
+    # ---- 可编辑 / dirty ----
 
-    def set_readonly(self, readonly: bool) -> None:
-        """R3.2 全只读；R3.3 起逐组放开时改这里的分组。"""
-        self._readonly = bool(readonly)
+    def set_editable(self, editable: set[str] | frozenset[str]) -> None:
+        """只放开点名的那几组；数据目录永远只读。"""
         for key, node in self.inputs.items():
             if key == "data-root":
-                continue                       # 数据目录永远只读
+                continue
+            on = key in editable
             if isinstance(node, QtWidgets.QLineEdit):
-                node.setReadOnly(self._readonly)
+                node.setReadOnly(not on)
             else:
-                node.setEnabled(not self._readonly)
-        self.memory_list.setEnabled(not self._readonly)
-        self.memory_input.setEnabled(not self._readonly)
-        self.memory_add_button.setEnabled(not self._readonly)
-        self.test_text_button.setEnabled(not self._readonly)
-        self.test_vision_button.setEnabled(not self._readonly)
-        self.backup_button.setEnabled(not self._readonly)
-        for box in self.module_boxes.values():
-            box.setEnabled(not self._readonly)
+                node.setEnabled(on)
+
+    def _wire_dirty(self) -> None:
+        for key in CORE_FIELDS:
+            node = self.inputs.get(key)
+            if isinstance(node, QtWidgets.QLineEdit):
+                node.textChanged.connect(self.mark_dirty)
+            elif isinstance(node, QtWidgets.QComboBox):
+                node.currentIndexChanged.connect(self.mark_dirty)
+
+    def mark_dirty(self, *_args) -> None:
+        if self._loading or self._dirty:
+            return
+        self.set_dirty(True)
+
+    def set_dirty(self, dirty: bool) -> None:
+        self._dirty = bool(dirty)
+        self.setWindowTitle(self._base_title + (" *" if self._dirty else ""))
+        if self._dirty:
+            if not self._saving:
+                self.save_note.setText("有改动还没保存")
+        else:
+            self.save_note.setText("")
+
+    def _value(self, key: str) -> str:
+        node = self.inputs.get(key)
+        if isinstance(node, QtWidgets.QLineEdit):
+            return node.text().strip()
+        if isinstance(node, QtWidgets.QComboBox):
+            return str(node.currentData() or "")
+        return ""
+
+    def collect(self) -> dict:
+        """对齐 `web/js/pages/settings.js::collect()`：空密钥 / 空数字不进 payload。"""
+        agent = {
+            "base_url": self._value("agent-base"),
+            "model": self._value("agent-model"),
+            "fast_model": self._value("agent-fast"),
+            "strong_model": self._value("agent-strong"),
+            "auto_route": self._value("agent-auto-route") or "off",
+            "speed": self._value("agent-speed") or "balanced",
+        }
+        tokens = self._value("agent-tokens")
+        if tokens:
+            try:
+                value = int(tokens)
+            except ValueError:
+                pass
+            else:
+                if value > 0:
+                    agent["max_tokens"] = value
+        for key, name in (("price-input", "price_input"),
+                          ("price-output", "price_output"),
+                          ("price-cache", "price_cache_read")):
+            raw = self._value(key)
+            if raw == "":
+                continue
+            try:
+                value = float(raw)
+            except ValueError:
+                continue
+            if value >= 0:
+                agent[name] = value
+        currency = self._value("price-currency")
+        if currency:
+            agent["currency"] = currency
+        token = self._value("agent-token")
+        if token:
+            agent["auth_token"] = token
+
+        vision = {
+            "base_url": self._value("vision-base"),
+            "model": self._value("vision-model"),
+        }
+        vision_key = self._value("vision-key")
+        if vision_key:
+            vision["api_key"] = vision_key
+
+        modules = {module_id: box.isChecked()
+                   for module_id, box in self.module_boxes.items()}
+        return {"agent": agent, "vision": vision,
+                "hotkey": self._value("hotkey"), "modules": modules}
+
+    def save(self) -> None:
+        if self._saving:
+            return
+        self._saving = True
+        self.save_button.setEnabled(False)
+        self.save_note.setText("正在保存…")
+        self.api.post("/api/settings", self.collect(),
+                      self._on_saved, self._on_save_failed)
+
+    def _on_saved(self, result: dict) -> None:
+        result = result or {}
+        self._saving = False
+        self.save_button.setEnabled(True)
+        self.inputs["agent-token"].clear()
+        self.inputs["vision-key"].clear()
+        self.set_dirty(False)
+        restart = bool(result.get("restart_required"))
+        message = str(result.get("message") or "已保存")
+        self.save_note.setText(
+            f"{message}（重启学习工作台后生效）" if restart
+            else "已保存。文本/视觉模型下一轮对话立即生效。")
+        # 重新拉一次：掩码、来源、模块勾选都以服务端为准
+        self.api.get("/api/settings", self._fill_settings, self._fetch_failed)
+
+    def _on_save_failed(self, message: str) -> None:
+        self._saving = False
+        self.save_button.setEnabled(True)
+        self.save_note.setText("")
+        self.status_label.show_err(message)
