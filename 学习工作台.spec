@@ -7,6 +7,8 @@
 import os
 import sys
 
+from PyInstaller.utils.hooks import collect_submodules
+
 SPECPATH_ROOT = SPECPATH
 sys.path.insert(0, SPECPATH_ROOT)
 
@@ -97,6 +99,8 @@ a = Analysis(
         'docx',
         'pptx',
         'rapidocr_onnxruntime',
+        # Qt 设置试点是函数内懒加载，PyInstaller 扫不到 —— 整包点名
+        *collect_submodules('learnsys.ask.qt'),
     ],
     hookspath=[],
     hooksconfig={},

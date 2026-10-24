@@ -25,6 +25,7 @@ class TrayMixin:
         self.record_action.triggered.connect(self._toggle_record)
         menu.addAction("展开横栏", self.show_bar)
         menu.addAction(f"打开{product.PRODUCT_NAME}（独立窗口）", self.open_web)
+        menu.addAction("设置（Qt 试点）", self.open_qt_settings)
         menu.addAction("收起成小条", lambda: self.bar.set_collapsed(True))
         menu.addAction("回到屏幕上方居中", self.bar.center_top)
         menu.addAction("打开今天的数据文件夹", self.open_today)

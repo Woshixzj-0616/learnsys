@@ -344,6 +344,8 @@ class TestAskAppBoots(unittest.TestCase):
         self.assertIsNotNone(app_obj._ocr)
         # 托盘菜单动作都在
         self.assertIsNotNone(app_obj.record_action)
+        labels = [action.text() for action in app_obj.tray.contextMenu().actions()]
+        self.assertIn("设置（Qt 试点）", labels)
 
 
 if __name__ == "__main__":
