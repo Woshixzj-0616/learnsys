@@ -6,10 +6,12 @@ import pathlib
 import sqlite3
 import tempfile
 import unittest
+from unittest import mock
 
 from learnsys import store
 from learnsys.ask import study
 from learnsys.core import db as core_db
+from learnsys.core.db import connection as db_connection
 
 
 def make_day_db(root: pathlib.Path, day: datetime.date,
@@ -46,6 +48,74 @@ class TestUnifiedSchema(unittest.TestCase):
         self.assertEqual(short_hits, [], "没有的内容不该凭空命中")
         store.add_ask(conn, "栈和队列的区别", "后进先出 / 先进先出", 80, "test")
         self.assertTrue(core_db.search(conn, "栈", limit=5), "1 字应该退回 LIKE 命中")
+
+
+class TestSchemaVersion(unittest.TestCase):
+    def test_new_db_records_current_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = core_db.connect(pathlib.Path(tmp) / "learning.db")
+            try:
+                version = conn.execute("PRAGMA user_version").fetchone()[0]
+                self.assertEqual(version, core_db.SCHEMA_VERSION)
+            finally:
+                conn.close()
+
+    def test_second_connect_skips_ddl_and_seed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "learning.db"
+            core_db.connect(path).close()
+
+            statements: list[str] = []
+            real_connect = sqlite3.connect
+
+            def traced(*args, **kwargs):
+                conn = real_connect(*args, **kwargs)
+                conn.set_trace_callback(statements.append)
+                return conn
+
+            with mock.patch.object(db_connection.sqlite3, "connect",
+                                   side_effect=traced):
+                conn = db_connection.connect(path)
+            try:
+                self.assertEqual(
+                    conn.execute("PRAGMA user_version").fetchone()[0],
+                    core_db.SCHEMA_VERSION)
+            finally:
+                conn.close()
+
+            writes = [sql for sql in statements if sql.strip().upper().startswith(
+                ("CREATE", "ALTER", "DROP", "INSERT", "UPDATE", "DELETE"))]
+            self.assertEqual(writes, [], f"第二次连接不该再写库：{writes}")
+            self.assertTrue(any("user_version" in sql.lower() for sql in statements),
+                            "第二次连接应该先读 user_version 再决定")
+
+    def test_old_db_upgrades_and_records_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "learning.db"
+            old = sqlite3.connect(str(path))
+            old.executescript("""
+                CREATE TABLE asks (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ts TEXT NOT NULL, question TEXT NOT NULL, answer TEXT NOT NULL,
+                    ms INTEGER, backend TEXT);
+                INSERT INTO asks (ts, question, answer, ms, backend)
+                VALUES ('2026-09-01 10:00:00', '旧问题', '旧答案', 10, 'old');
+            """)
+            old.commit()
+            old.close()
+
+            conn = core_db.connect(path)
+            try:
+                cols = {row[1] for row in conn.execute("PRAGMA table_info(asks)")}
+                for column in ("kind", "first_ms", "conversation_id", "model"):
+                    self.assertIn(column, cols)
+                self.assertEqual(
+                    conn.execute("PRAGMA user_version").fetchone()[0],
+                    core_db.SCHEMA_VERSION)
+                row = conn.execute(
+                    "SELECT question, answer FROM asks").fetchone()
+                self.assertEqual(row, ("旧问题", "旧答案"))
+            finally:
+                conn.close()
 
 
 class TestMigration(unittest.TestCase):

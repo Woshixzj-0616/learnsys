@@ -4,6 +4,10 @@
 """
 from __future__ import annotations
 
+# 统一库结构版本。改了 `SCHEMA` 或 `_migrate_columns` 就 +1：
+# `connect()` 只在版本不一致时跑建表/补列/种子，一致时只建连接。
+SCHEMA_VERSION = 1
+
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (

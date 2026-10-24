@@ -158,6 +158,8 @@ class TestLegacyStarredMigration(unittest.TestCase):
                 "INSERT INTO asks (ts, question, answer, starred) VALUES (?, ?, ?, 1)",
                 ("2026-10-01 09:00:00", "旧收藏题", "旧答案"))
             conn.execute("DELETE FROM meta WHERE key = 'wrongbook_imported_at'")
+            # 模拟 v2 之前的老库：结构版本回到 0，下一次 connect 才会跑迁移。
+            conn.execute("PRAGMA user_version = 0")
             conn.commit()
             conn.close()
 

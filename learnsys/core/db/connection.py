@@ -8,7 +8,7 @@ import threading
 
 from learnsys import config
 
-from .schema import SCHEMA
+from .schema import SCHEMA, SCHEMA_VERSION
 
 _LOCK = threading.Lock()
 
@@ -44,11 +44,18 @@ def connect(path=None) -> sqlite3.Connection:
         target.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(target), check_same_thread=False, timeout=15)
     conn.execute("PRAGMA journal_mode=WAL")
+    # 版本一致 = 结构已经就绪：只保留连接与 WAL，跳过一次建表/补列/种子。
+    # 0 是旧库或新库，走完整迁移；比当前版本新（降级打开）就不动它。
+    version = int(conn.execute("PRAGMA user_version").fetchone()[0] or 0)
+    if version >= SCHEMA_VERSION:
+        return conn
     conn.executescript(SCHEMA)
     _migrate_columns(conn)
     _ensure_fts(conn)
     _import_legacy_starred(conn)
     _seed_knowledge(conn)
+    conn.execute(f"PRAGMA user_version = {int(SCHEMA_VERSION)}")
+    conn.commit()
     return conn
 
 
