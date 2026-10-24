@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from learnsys.agent import AgentRequest, run          # noqa: E402
-from learnsys.agent.config import load_config         # noqa: E402
+from learnsys.llm.config import load_config         # noqa: E402
 
 
 def main() -> int:

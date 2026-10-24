@@ -27,6 +27,7 @@ class ArchitectureTest(unittest.TestCase):
             for row in bad)
         self.assertEqual(bad, [], f"这些地方反向依赖了上层包（改依赖，不加白名单）：{detail}")
 
+
     def test_layering_rules_cover_existing_packages(self):
         packages = {path.name for path in (ROOT / "learnsys").iterdir()
                     if path.is_dir() and (path / "__init__.py").exists()}

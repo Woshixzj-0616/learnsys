@@ -13,8 +13,8 @@ from fastapi.testclient import TestClient
 from learnsys import config as app_config
 from learnsys import store
 from learnsys.agent import loop, tools
-from learnsys.agent.config import AgentConfig
-from learnsys.agent.provider_anthropic import ProviderEvent, ProviderResult, ToolCall
+from learnsys.llm.config import AgentConfig
+from learnsys.llm.provider_anthropic import ProviderEvent, ProviderResult, ToolCall
 from learnsys.browser import cdp, urls
 from learnsys.browser.manager import BrowserManager, launch_args
 from learnsys.server.app import create_app

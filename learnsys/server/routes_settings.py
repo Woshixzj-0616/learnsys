@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from learnsys import config as app_config
-from learnsys.agent.config import load_config
+from learnsys.llm.config import load_config
 from learnsys.agent import vision
 from learnsys.modules import load_registry
 from learnsys.server.security import require_token
@@ -232,7 +232,7 @@ class TestRequest(BaseModel):
 def _test_text(cfg) -> dict:
     if not cfg.ready:
         return {"ok": False, "message": "还没配置：地址、密钥、模型名至少缺一项"}
-    from learnsys.agent import provider_anthropic
+    from learnsys.llm import provider_anthropic
     tiny = dataclasses.replace(cfg, max_tokens=8, thinking=False)
     started = time.monotonic()
     text = ""

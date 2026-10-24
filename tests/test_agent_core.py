@@ -11,9 +11,9 @@ from unittest import mock
 from learnsys import config as app_config
 from learnsys import store
 from learnsys.agent import loop, prompts, tools, vision
-from learnsys.agent.config import AgentConfig, clean_model, load_config
+from learnsys.llm.config import AgentConfig, clean_model, load_config
 from learnsys.agent.events import AgentEvent
-from learnsys.agent.provider_anthropic import (
+from learnsys.llm.provider_anthropic import (
     ProviderError,
     ProviderEvent,
     ProviderResult,
@@ -54,7 +54,7 @@ class TestConfig(unittest.TestCase):
             "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-flash[1M]",
         }
         with mock.patch.object(app_config, "USER", {}), \
-                mock.patch("learnsys.agent.config._claude_env", return_value=env):
+                mock.patch("learnsys.llm.config._claude_env", return_value=env):
             cfg = load_config()
         self.assertTrue(cfg.ready)
         self.assertEqual(cfg.model, "deepseek-v4-pro")

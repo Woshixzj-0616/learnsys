@@ -29,7 +29,7 @@ from learnsys import config as app_config
 from learnsys import store
 from learnsys.agent import cost as agent_cost
 from learnsys.agent import loop, prompts, selfcheck, tools
-from learnsys.agent.config import load_config
+from learnsys.llm.config import load_config
 
 from tools.baseline_prompt import (BASE_SYSTEM as _BASELINE_BASE_SYSTEM,
                                    CONCISE_ADDITION as _BASELINE_CONCISE_ADDITION,

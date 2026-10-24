@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from learnsys import config as app_config
 from learnsys import store
-from learnsys.agent import config as agent_config
+from learnsys.llm import config as agent_config
 from learnsys.agent import tools
 from learnsys.agent.events import AgentEvent
 from learnsys.materials import search as material_search

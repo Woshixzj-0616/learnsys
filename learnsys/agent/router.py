@@ -13,7 +13,7 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass
 
-from learnsys.agent.config import AgentConfig
+from learnsys.llm.config import AgentConfig
 
 # 难度信号：命中两个以上才算“需要深入”。这些词不是绝对标准，只是可解释的粗筛。
 HARD_WORDS = (

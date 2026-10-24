@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from learnsys import store
 from learnsys.agent import cost as agent_cost
-from learnsys.agent.config import load_config
+from learnsys.llm.config import load_config
 from learnsys.server.security import require_token
 
 router = APIRouter()

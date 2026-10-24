@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from learnsys import config, product
-from learnsys.agent.config import load_config
+from learnsys.llm.config import load_config
 from learnsys.modules import web_dir
 from learnsys.server import (routes_agent, routes_browser, routes_cet6, routes_data,
                              routes_knowledge, routes_materials, routes_memory,

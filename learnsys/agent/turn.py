@@ -12,10 +12,10 @@ from collections.abc import Generator
 from dataclasses import dataclass, field
 
 from learnsys.agent import planning, selfcheck, tools
-from learnsys.agent.config import AgentConfig
+from learnsys.llm.config import AgentConfig
 from learnsys.agent.events import AgentEvent
 from learnsys.agent.fallback import stream_with_fallback
-from learnsys.agent.provider_anthropic import ProviderResult
+from learnsys.llm.provider_anthropic import ProviderResult
 
 
 class AgentError(Exception):

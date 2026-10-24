@@ -21,8 +21,8 @@ import uuid
 
 from learnsys import config as app_config
 from learnsys import diagnostics, store
-from learnsys.agent import provider_anthropic
-from learnsys.agent.config import load_config
+from learnsys.llm import provider_anthropic
+from learnsys.llm.config import load_config
 
 MAX_INPUT = 20000
 MAX_OUTPUT = 64000

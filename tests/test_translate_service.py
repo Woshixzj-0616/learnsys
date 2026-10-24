@@ -56,7 +56,7 @@ class TranslateServiceTest(unittest.TestCase):
         self.assertTrue(second["cached"])
 
     def test_translate_honours_route_model(self):
-        from learnsys.agent.config import AgentConfig
+        from learnsys.llm.config import AgentConfig
         cfg = AgentConfig(
             base_url="http://x", auth_token="t", model="main-model",
             fast_model="fast-model", max_tokens=1000, thinking=False,

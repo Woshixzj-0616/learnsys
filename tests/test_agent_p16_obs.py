@@ -7,9 +7,9 @@ import tempfile
 import unittest
 
 from learnsys.agent import cost, loop
-from learnsys.agent.config import AgentConfig
+from learnsys.llm.config import AgentConfig
 from learnsys.agent.events import AgentEvent
-from learnsys.agent.provider_anthropic import (
+from learnsys.llm.provider_anthropic import (
     ProviderEvent,
     ProviderResult,
     ToolCall,

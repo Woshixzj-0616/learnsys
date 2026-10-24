@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import dataclasses
 
-from learnsys.agent.config import AgentConfig
+from learnsys.llm.config import AgentConfig
 from learnsys.agent.events import AgentEvent
-from learnsys.agent.provider_anthropic import ProviderError
+from learnsys.llm.provider_anthropic import ProviderError
 
 
 def fallback_config(cfg: AgentConfig) -> AgentConfig | None:

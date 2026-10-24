@@ -17,7 +17,7 @@ import threading
 import urllib.error
 import urllib.request
 
-from learnsys.agent.config import AgentConfig
+from learnsys.llm.config import AgentConfig
 
 VISION_SYSTEM = "你是图像转述器。你只做忠实转述，不回答问题、不评价、不省略。"
 

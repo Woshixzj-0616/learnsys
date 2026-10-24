@@ -9,8 +9,8 @@ from unittest import mock
 
 from learnsys import store
 from learnsys.agent import loop, tools
-from learnsys.agent.config import AgentConfig
-from learnsys.agent.provider_anthropic import ProviderEvent, ProviderResult, ToolCall
+from learnsys.llm.config import AgentConfig
+from learnsys.llm.provider_anthropic import ProviderEvent, ProviderResult, ToolCall
 from learnsys.services import ops
 
 

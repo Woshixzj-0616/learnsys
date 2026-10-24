@@ -20,9 +20,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from learnsys import store
 from learnsys.agent import loop, memory, prompts, tools
-from learnsys.agent.config import AgentConfig
+from learnsys.llm.config import AgentConfig
 from learnsys.agent.events import AgentEvent
-from learnsys.agent.provider_anthropic import ProviderEvent, ProviderResult, _body
+from learnsys.llm.provider_anthropic import ProviderEvent, ProviderResult, _body
 from PySide6 import QtCore, QtWidgets
 
 from fastapi.testclient import TestClient

@@ -20,7 +20,7 @@ import urllib.request
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 
-from learnsys.agent.config import AgentConfig
+from .config import AgentConfig
 
 ANTHROPIC_VERSION = "2023-06-01"
 

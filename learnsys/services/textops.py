@@ -1,13 +1,13 @@
 """通用文本服务：解释 / 摘要。
 
-和翻译一样只走一条模型调用路径（`agent.provider_anthropic`），
+和翻译一样只走一条模型调用路径（`llm.provider_anthropic`），
 不在 services 里另写一套 HTTP。查词（define）直接复用 `translate`，
 因为它本来就是「带音标和释义的单词翻译」。
 """
 from __future__ import annotations
 
-from learnsys.agent import provider_anthropic
-from learnsys.agent.config import load_config
+from learnsys.llm import provider_anthropic
+from learnsys.llm.config import load_config
 
 MAX_INPUT = 12000
 

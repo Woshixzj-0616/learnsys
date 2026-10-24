@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from learnsys import config as app_config
 from learnsys import store
-from learnsys.agent import config as agent_config
+from learnsys.llm import config as agent_config
 from learnsys.agent.events import AgentEvent
 from learnsys.server import routes_agent
 from learnsys.server.app import create_app

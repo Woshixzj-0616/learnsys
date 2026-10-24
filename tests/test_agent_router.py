@@ -8,8 +8,8 @@ import tempfile
 import unittest
 
 from learnsys.agent import loop, router
-from learnsys.agent.config import AgentConfig
-from learnsys.agent.provider_anthropic import ProviderEvent, ProviderResult
+from learnsys.llm.config import AgentConfig
+from learnsys.llm.provider_anthropic import ProviderEvent, ProviderResult
 
 
 def make_cfg(root: pathlib.Path, **overrides) -> AgentConfig:

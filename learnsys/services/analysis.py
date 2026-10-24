@@ -13,7 +13,7 @@ import threading
 import time
 
 from learnsys import agent, diagnostics, store
-from learnsys.agent.config import load_config
+from learnsys.llm.config import load_config
 from learnsys.services import observability, results
 
 ANALYSIS_KIND = "cet6_analyze"

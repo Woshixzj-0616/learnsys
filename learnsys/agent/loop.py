@@ -10,9 +10,9 @@ import threading
 from collections.abc import Iterator
 
 from learnsys.agent import memory, prompts, router, tools, vision
-from learnsys.agent.config import AgentConfig, load_config
+from learnsys.llm.config import AgentConfig, load_config
 from learnsys.agent.events import AgentEvent
-from learnsys.agent.provider_anthropic import ProviderError
+from learnsys.llm.provider_anthropic import ProviderError
 from learnsys.agent.turn import (
     AgentError,
     AgentRequest,
@@ -70,7 +70,7 @@ def _tool_context(request: AgentRequest, cfg: AgentConfig) -> tools.ToolContext:
 
 
 def _default_provider():
-    from learnsys.agent import provider_anthropic
+    from learnsys.llm import provider_anthropic
     return provider_anthropic
 
 

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from learnsys import agent, diagnostics, store
 from learnsys.agent import cost as agent_cost
-from learnsys.agent.config import load_config
+from learnsys.llm.config import load_config
 from learnsys.context import ContextSnapshot
 from learnsys.server.security import require_token
 from .common import _load_history, _sse, _trace_event

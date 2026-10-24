@@ -13,7 +13,7 @@ import threading
 import time
 
 from learnsys import agent, store
-from learnsys.agent.config import load_config
+from learnsys.llm.config import load_config
 from learnsys.services import analysis, observability, results
 
 TRANSLATE_KIND = "translate"

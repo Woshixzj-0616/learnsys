@@ -7,10 +7,10 @@
     .venv/Scripts/python.exe tools/layering_report.py --json     # 给脚本消费
 
 方向约定（数字越小越底层）：
-    core / store / browser  ← 不得依赖 services / agent / ask / server
-    agent                   ← 不得依赖 ask / server
-    services                ← 不得依赖 ask / server
-    server                  ← 不得依赖 ask（HTTP 层不反向依赖桌面入口）
+    core / store / browser / llm  ← 不得依赖 services / agent / ask / server
+    agent                         ← 不得依赖 ask / server
+    services                      ← 不得依赖 ask / server
+    server                        ← 不得依赖 ask（HTTP 层不反向依赖桌面入口）
 
 门禁零白名单：出现反向依赖就修依赖，不要把文件塞进豁免表。
 """
@@ -29,6 +29,7 @@ RULES: dict[str, tuple[str, ...]] = {
     "core": ("services", "agent", "ask", "server"),
     "store": ("services", "agent", "ask", "server"),
     "browser": ("services", "agent", "ask", "server"),
+    "llm": ("store", "services", "agent", "ask", "server"),
     "agent": ("ask", "server"),
     "services": ("ask", "server"),
     "server": ("ask",),
@@ -94,10 +95,60 @@ def scan(root: pathlib.Path | None = None) -> list[dict]:
     return rows
 
 
-def report(rows: list[dict] | None = None) -> str:
+def package_edges(root: pathlib.Path | None = None) -> dict[str, set[str]]:
+    """包级导入图：`{包: {它导入的其他包}}`。"""
+    base = pathlib.Path(root or PACKAGE_ROOT)
+    packages = {path.name for path in base.iterdir()
+                if path.is_dir() and (path / "__init__.py").exists()
+                and path.name != "__pycache__"}
+    graph: dict[str, set[str]] = {name: set() for name in packages}
+    for package in packages:
+        for path in (base / package).rglob("*.py"):
+            for _, module in _module_candidates(path):
+                parts = module.split(".")
+                if (len(parts) >= 2 and parts[0] == "learnsys"
+                        and parts[1] in packages and parts[1] != package):
+                    graph[package].add(parts[1])
+    return graph
+
+
+def cycles(graph: dict[str, set[str]] | None = None) -> list[list[str]]:
+    """包级循环依赖；每条环只报一次（按包集合去重）。"""
+    graph = graph if graph is not None else package_edges()
+    found: list[list[str]] = []
+    seen: set[frozenset[str]] = set()
+    done: set[str] = set()
+    stack: list[str] = []
+    position: dict[str, int] = {}
+
+    def visit(node: str) -> None:
+        position[node] = len(stack)
+        stack.append(node)
+        for nxt in sorted(graph.get(node, ())):
+            if nxt in position:
+                loop = stack[position[nxt]:] + [nxt]
+                key = frozenset(loop)
+                if key not in seen:
+                    seen.add(key)
+                    found.append(loop)
+            elif nxt not in done:
+                visit(nxt)
+        stack.pop()
+        position.pop(node, None)
+        done.add(node)
+
+    for node in sorted(graph):
+        if node not in done:
+            visit(node)
+    return found
+
+
+def report(rows: list[dict] | None = None,
+           loops: list[list[str]] | None = None) -> str:
     rows = rows if rows is not None else scan()
+    loops = loops if loops is not None else cycles()
     lines = ["分层报告（低层不得依赖高层：core/store/browser → services/agent/ask/server；"
-             "agent/services → ask/server；server → ask）", ""]
+             "llm → store/services/agent/ask/server；agent/services → ask/server；server → ask）", ""]
     if not rows:
         lines.append("反向依赖 0 处 —— 通过。")
     else:
@@ -106,6 +157,12 @@ def report(rows: list[dict] | None = None) -> str:
             lines.append(
                 f"  ✗ {row['file']}:{row['line']}  {row['package']} → {row['imported']}"
                 f"（{row['module']}）")
+    if loops:
+        # 同级复用的循环（如 services 调用 agent.run）由规则允许，不计入失败；
+        # 这里只报告，方便评审时看见全图，不用它卡 CI。
+        lines.append(f"包级循环依赖 {len(loops)} 个（同级复用，不计入失败）：")
+        for loop in loops:
+            lines.append("  · " + " → ".join(loop))
     lines.append("")
     lines.append("规则：`tools/layering_report.py` 的 RULES；索引：`docs/架构-前后端.md`")
     return "\n".join(lines)
@@ -118,10 +175,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     rows = scan()
+    loops = cycles()
     if args.json:
-        print(json.dumps(rows, ensure_ascii=False, indent=1))
+        print(json.dumps({"violations": rows, "cycles": loops},
+                         ensure_ascii=False, indent=1))
     else:
-        print(report(rows))
+        print(report(rows, loops))
     if args.check and rows:
         return 1
     return 0

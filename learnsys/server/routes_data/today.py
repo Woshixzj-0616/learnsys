@@ -7,7 +7,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends
 
 from learnsys import store
-from learnsys.agent.config import load_config
+from learnsys.llm.config import load_config
 from learnsys.knowledge import CATEGORY_NAMES
 from learnsys.server.security import require_token
 from learnsys.services import knowledge as knowledge_service

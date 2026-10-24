@@ -10,7 +10,7 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from learnsys import store
-from learnsys.agent.config import load_config
+from learnsys.llm.config import load_config
 from learnsys.agent.events import AgentEvent
 from learnsys.server.app import create_app
 
