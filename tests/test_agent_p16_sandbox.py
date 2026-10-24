@@ -5,6 +5,7 @@ import pathlib
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
 from learnsys import store
 from learnsys.agent import sandbox, tools
@@ -32,6 +33,23 @@ class SandboxTest(unittest.TestCase):
         self.assertIn("42", result.stdout)
         self.assertEqual(result.exit_code, 0)
         self.assertFalse(result.truncated)
+
+    def test_python_forces_utf8_mode_despite_isolated_flag(self):
+        """-I 会忽略 PYTHONIOENCODING；必须用命令行 -X utf8 兜住 cp1252 环境。"""
+        captured = {}
+
+        def fake_run(argv, **kwargs):
+            captured["argv"] = argv
+            return {"stdout": "你好", "stderr": "", "exit_code": 0,
+                    "timed_out": False, "truncated": False, "duration_ms": 1}
+
+        with mock.patch.object(sandbox, "runtime_available", return_value=True), \
+             mock.patch.object(sandbox, "_run_process", side_effect=fake_run):
+            result = sandbox.run("python", "print('你好')")
+        self.assertTrue(result.ok, result.stderr)
+        self.assertEqual(result.stdout, "你好")
+        self.assertIn("-X", captured["argv"])
+        self.assertIn("utf8", captured["argv"])
 
     def test_python_syntax_error_is_chinese(self):
         result = sandbox.run("python", "print(")

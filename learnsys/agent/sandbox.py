@@ -406,7 +406,10 @@ def run(language: str, code: str, *, stdin_text: str = "",
             argv = [str(exe)]
         else:
             command = sys.executable
-            argv = [sys.executable, "-I", "-B", str(source)]
+            # `-I` 会忽略 PYTHONIOENCODING / PYTHONUTF8（隔离模式连环境变量也不看），
+            # 英文 Windows（cp1252）下 print('你好') 会直接 UnicodeEncodeError。
+            # 用命令行 `-X utf8` 强制 UTF-8 模式，和 -I 的隔离不冲突。
+            argv = [sys.executable, "-I", "-B", "-X", "utf8", str(source)]
 
         result = _run_process(argv, cwd=workdir, timeout=timeout,
                               output_limit=output_limit, memory_mb=memory_mb,
