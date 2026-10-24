@@ -216,9 +216,12 @@ class SettingsPageMixin:
     def _build_modules_section(self, column: QtWidgets.QVBoxLayout) -> None:
         section = Section("侧栏模块", "关掉的模块只是不显示在侧栏；数据不会被删。")
         self.module_container = QtWidgets.QWidget()
-        self.module_layout = QtWidgets.QVBoxLayout(self.module_container)
+        self.module_layout = QtWidgets.QGridLayout(self.module_container)
         self.module_layout.setContentsMargins(0, 0, 0, 0)
-        self.module_layout.setSpacing(6)
+        self.module_layout.setHorizontalSpacing(24)
+        self.module_layout.setVerticalSpacing(6)
+        self.module_layout.setColumnStretch(0, 1)
+        self.module_layout.setColumnStretch(1, 1)
         section.add_widget(self.module_container)
         self.modules_section = section
         column.addWidget(section)

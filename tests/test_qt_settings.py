@@ -252,7 +252,7 @@ class TestSettingsWindowRender(unittest.TestCase):
         self.assertFalse(self.window.inputs["agent-model"].isReadOnly())
         self.assertTrue(self.window.inputs["agent-auto-route"].isEnabled())
         self.assertTrue(self.window.memory_list.isEnabled())
-        self.assertFalse(self.window.module_boxes["ask"].isEnabled())
+        self.assertTrue(self.window.module_boxes["ask"].isEnabled())
         self.assertTrue(self.window.inputs["data-root"].isReadOnly())
         self.assertTrue(self.window.save_button.isEnabled())
 
@@ -566,6 +566,53 @@ class TestSettingsWindowMemory(unittest.TestCase):
         row["delete"].click()
         self.assertIn("数据库忙", self.window.memory_status.text())
         self.assertTrue(row["delete"].isEnabled())
+
+
+class TestSettingsWindowModules(unittest.TestCase):
+    """R3.7：模块开关两列展示、勾选可保存、重新加载保持。"""
+
+    def setUp(self):
+        _app()
+        self.api = FakeApiClient()
+        self.window = SettingsWindow(self.api)
+        self.addCleanup(self.window.deleteLater)
+        self.window.load()
+        self.api.ready.emit()
+
+    def _last_payload(self) -> dict:
+        calls = [call for call in self.api.calls if call[0] == "POST"
+                 and call[1] == "/api/settings"]
+        return calls[-1][2]
+
+    def test_两列布局(self):
+        positions = [self.window.module_layout.getItemPosition(index)[:2]
+                     for index in range(3)]
+        self.assertEqual(positions, [(0, 0), (0, 1), (1, 0)])
+
+    def test_待建标记(self):
+        self.assertTrue(self.window.module_boxes["future"].text().endswith("（待建）"))
+
+    def test_勾选标记_dirty(self):
+        self.window.module_boxes["cet6"].setChecked(True)
+        self.assertTrue(self.window._dirty)
+        self.assertTrue(self.window.windowTitle().endswith("*"))
+
+    def test_保存带上模块勾选(self):
+        self.window.module_boxes["ask"].setChecked(False)
+        self.window.save()
+        payload = self._last_payload()
+        self.assertFalse(payload["modules"]["ask"])
+        self.assertFalse(payload["modules"]["cet6"])
+
+    def test_保存后重新加载保持(self):
+        self.api.responses["/api/settings"]["modules"]["ask"] = False
+        self.window.module_boxes["ask"].setChecked(False)
+        self.window.save()
+        self.assertFalse(self.window.module_boxes["ask"].isChecked())
+        self.assertFalse(self.window._dirty)
+
+    def test_回填不误标_dirty(self):
+        self.assertFalse(self.window._dirty)
 
 
 if __name__ == "__main__":

@@ -180,27 +180,30 @@ class SettingsWindow(SettingsPageMixin, SettingsMemoryMixin, QtWidgets.QDialog):
         modules = (data or {}).get("modules")
         self._modules = modules if isinstance(modules, list) else []
 
-        while self.module_layout.count():
-            item = self.module_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
-        self.module_boxes.clear()
+        self._loading = True              # 建控件/回填勾选不算用户改动
+        try:
+            while self.module_layout.count():
+                item = self.module_layout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
+            self.module_boxes.clear()
 
-        for module in self._modules:
-            module_id = str(module.get("id") or "")
-            if not module_id:
-                continue
-            label = str(module.get("name") or module_id)
-            if module.get("status") == "planned":
-                label += "（待建）"
-            box = QtWidgets.QCheckBox(label)
-            box.setProperty("module_id", module_id)
-            box.setEnabled(False)             # R3.7 再放开
-            self.module_layout.addWidget(box)
-            self.module_boxes[module_id] = box
-        self.module_layout.addStretch(1)
-        self._apply_module_checks()
+            for index, module in enumerate(self._modules):
+                module_id = str(module.get("id") or "")
+                if not module_id:
+                    continue
+                label = str(module.get("name") or module_id)
+                if module.get("status") == "planned":
+                    label += "（待建）"
+                box = QtWidgets.QCheckBox(label)
+                box.setProperty("module_id", module_id)
+                box.toggled.connect(self.mark_dirty)
+                self.module_layout.addWidget(box, index // 2, index % 2)
+                self.module_boxes[module_id] = box
+            self._apply_module_checks()
+        finally:
+            self._loading = False
 
     def _apply_module_checks(self) -> None:
         saved = self._settings.get("modules") or {}
