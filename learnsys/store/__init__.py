@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from ._base import SCHEMA, _LOCK, _migrate, connect, now, stamp
-from .agent_runs import add_agent_run, get_agent_run, list_agent_runs
+from .agent_runs import add_agent_run, get_agent_run, list_agent_runs, route_stats
 from .asks import add_ask, recent_asks, starred_asks
 from .browser import (add_browser_event, cleanup_browser_events,
                       clear_browser_events, list_browser_events)
@@ -45,7 +45,7 @@ from .wrongbook import (WRONG_SOURCES, add_wrong_item, bump_review_stage,
 
 __all__ = [
     "SCHEMA", "connect", "now", "stamp",
-    "add_agent_run", "get_agent_run", "list_agent_runs",
+    "add_agent_run", "get_agent_run", "list_agent_runs", "route_stats",
     "add_ask", "recent_asks", "starred_asks",
     "add_browser_event", "cleanup_browser_events", "clear_browser_events",
     "list_browser_events",

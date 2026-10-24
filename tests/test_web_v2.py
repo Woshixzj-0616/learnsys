@@ -124,6 +124,25 @@ class WebTest(unittest.TestCase):
         self.assertEqual(bad.status_code, 400)
         self.assertIn("自动路由", bad.json()["detail"])
 
+    def test_agent_route_stats_api(self):
+        conn = store.connect(self.db_path)
+        store.add_agent_run(
+            conn, run_id="route-1", question="为什么并发会死锁",
+            started_at=store.now(), trace=[{
+                "kind": "route",
+                "data": {"tier": "standard", "model": "deepseek-flash",
+                         "auto": "shadow",
+                         "recommended": {"tier": "deep", "model": "deepseek-v4-pro",
+                                         "thinking": True,
+                                         "reason": "复杂度 3：5 个难度词"}},
+            }])
+        conn.close()
+
+        data = self.client.get("/api/agent/routes/stats?days=7", headers=AUTH).json()
+        self.assertEqual(data["with_route"], 1)
+        self.assertEqual(data["escalations"], 1)
+        self.assertEqual(data["recommended_tiers"], {"deep": 1})
+
     def test_settings_reject_bad_hotkey(self):
         bad = self.client.post("/api/settings", json={"hotkey": "Q"},
                                headers=AUTH)

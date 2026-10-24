@@ -36,6 +36,17 @@ def agent_run(run_id: str, _=Depends(require_token)):
         conn.close()
 
 
+@router.get("/api/agent/routes/stats")
+def agent_route_stats(days: int = 14, _=Depends(require_token)):
+    """影子路由汇总：建议档分布、升级率、每日明细；只读 agent_runs。"""
+    days = max(0, min(int(days or 14), 365))
+    conn = store.connect()
+    try:
+        return store.route_stats(conn, days=days)
+    finally:
+        conn.close()
+
+
 def _percentile(values: list[int], ratio: float) -> int:
     if not values:
         return 0
