@@ -42,7 +42,15 @@ class DeployError(Exception):
 # ---- 小工具 ----
 
 def say(message: str) -> None:
-    print(message, flush=True)
+    """打印中文；控制台/管道编码不支持中文时退回 UTF-8 字节，不让脚本崩。"""
+    text = str(message)
+    try:
+        print(text, flush=True)
+    except UnicodeEncodeError:
+        stream = getattr(sys.stdout, "buffer", None)
+        if stream is not None:
+            stream.write((text + "\n").encode("utf-8", "replace"))
+            stream.flush()
 
 
 def stamp() -> str:

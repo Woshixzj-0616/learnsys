@@ -1,6 +1,7 @@
 """部署脚本：目录换入/回滚、健康检查筛选、守护开关顺序（不真起进程）。"""
 from __future__ import annotations
 
+import io
 import os
 import pathlib
 import tempfile
@@ -8,6 +9,27 @@ import unittest
 from unittest import mock
 
 from tools import deploy
+
+
+class FakeCp1252Stdout:
+    """模拟英文 Windows 管道：写中文就抛 UnicodeEncodeError。"""
+
+    def __init__(self):
+        self.buffer = io.BytesIO()
+
+    def write(self, text):
+        raise UnicodeEncodeError("cp1252", text, 0, 1, "character maps to <undefined>")
+
+    def flush(self):
+        pass
+
+
+class TestSay(unittest.TestCase):
+    def test_chinese_falls_back_to_utf8_bytes(self):
+        fake = FakeCp1252Stdout()
+        with mock.patch.object(deploy.sys, "stdout", fake):
+            deploy.say("保护中文")
+        self.assertEqual(fake.buffer.getvalue().decode("utf-8"), "保护中文\n")
 
 
 def make_layout(root: pathlib.Path) -> tuple[pathlib.Path, pathlib.Path]:
