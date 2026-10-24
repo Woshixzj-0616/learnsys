@@ -82,16 +82,16 @@ class SettingsWindow(SettingsPageMixin, QtWidgets.QDialog):
         self.api.ready.connect(self._on_ready)
         self.api.failed.connect(self._on_failed)
         self.save_button.clicked.connect(self.save)
+        self.test_text_button.clicked.connect(lambda: self.test_connection("text"))
+        self.test_vision_button.clicked.connect(lambda: self.test_connection("vision"))
+        self.backup_button.clicked.connect(self.backup)
         self.set_editable(CORE_FIELDS)   # R3.3：核心表单可改；其余步骤再放开
         self.save_button.setEnabled(True)
         self._wire_dirty()
-        # 记忆 / 动作按钮 / 模块留给 R3.5–R3.7 逐个放开
+        # 记忆 / 模块留给 R3.6–R3.7 逐个放开
         self.memory_list.setEnabled(False)
         self.memory_input.setEnabled(False)
         self.memory_add_button.setEnabled(False)
-        self.test_text_button.setEnabled(False)
-        self.test_vision_button.setEnabled(False)
-        self.backup_button.setEnabled(False)
 
     # ---- 加载 ----
 
@@ -338,3 +338,48 @@ class SettingsWindow(SettingsPageMixin, QtWidgets.QDialog):
         self.save_button.setEnabled(True)
         self.save_note.setText("")
         self.status_label.show_err(message)
+
+    # ---- 测试连接 / 立即备份 ----
+
+    def test_connection(self, kind: str) -> None:
+        if self._dirty:
+            self.save_note.setText("先保存再测：测试用的是已保存的配置")
+            return
+        if kind == "vision":
+            button, result = self.test_vision_button, self.test_vision_result
+        else:
+            button, result = self.test_text_button, self.test_text_result
+        button.setEnabled(False)
+        result.show_info("测试中…")
+
+        def done(data: dict) -> None:
+            button.setEnabled(True)
+            data = data or {}
+            message = str(data.get("message") or ("可用" if data.get("ok") else "不可用"))
+            if data.get("ok"):
+                result.show_ok(message)
+            else:
+                result.show_err(message)
+
+        def failed(message: str) -> None:
+            button.setEnabled(True)
+            result.show_err(message)
+
+        self.api.post("/api/settings/test", {"kind": kind}, done, failed)
+
+    def backup(self) -> None:
+        self.backup_button.setEnabled(False)
+        self.backup_result.show_info("备份中…")
+
+        def done(data: dict) -> None:
+            self.backup_button.setEnabled(True)
+            data = data or {}
+            self.backup_result.show_ok(str(data.get("message") or "备份完成"))
+            if data.get("path"):
+                self.last_backup_label.setText(f"最近备份：{data['path']}")
+
+        def failed(message: str) -> None:
+            self.backup_button.setEnabled(True)
+            self.backup_result.show_err(message)
+
+        self.api.post("/api/settings/backup", {}, done, failed)

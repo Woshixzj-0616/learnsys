@@ -90,7 +90,11 @@ class FakeApiClient(QtCore.QObject):
         })
         self.post_response = {"ok": True, "saved": [], "restart_required": [],
                               "message": "已保存"}
+        self.post_responses: dict[str, dict] = {}
         self.post_error: str | None = None
+        self.post_errors: dict[str, str] = {}
+        self.deferred = False
+        self.pending: list[tuple] = []
 
     def start(self):
         self.started += 1
@@ -102,6 +106,15 @@ class FakeApiClient(QtCore.QObject):
 
     def post(self, path, body, on_ok, on_err=None):
         self.calls.append(("POST", path, copy.deepcopy(body)))
+        if self.deferred:
+            self.pending.append((path, on_ok, on_err))
+            return
+        if path in self.post_errors:
+            on_err(self.post_errors[path])
+            return
+        if path in self.post_responses:
+            on_ok(copy.deepcopy(self.post_responses[path]))
+            return
         if self.post_error is not None:
             on_err(self.post_error)
             return
@@ -393,6 +406,83 @@ class TestKeySemantics(unittest.TestCase):
         self.window.save()
         payload = self._payloads()[-1]
         self.assertNotIn("auth_token", payload["agent"])
+
+
+class TestSettingsWindowActions(unittest.TestCase):
+    """R3.5：测试连接与立即备份。"""
+
+    def setUp(self):
+        _app()
+        self.api = FakeApiClient()
+        self.window = SettingsWindow(self.api)
+        self.addCleanup(self.window.deleteLater)
+        self.window.load()
+        self.api.ready.emit()
+
+    def test_文本测试成功(self):
+        self.api.post_responses["/api/settings/test"] = {
+            "ok": True, "message": "文本模型可用（deepseek-flash，700 毫秒）"}
+        self.window.test_text_button.click()
+        call = [c for c in self.api.calls if c[1] == "/api/settings/test"][-1]
+        self.assertEqual(call[2], {"kind": "text"})
+        self.assertEqual(self.window.test_text_result.text(),
+                         "文本模型可用（deepseek-flash，700 毫秒）")
+        self.assertEqual(self.window.test_text_result.property("state"), "ok")
+        self.assertTrue(self.window.test_text_button.isEnabled())
+
+    def test_视觉测试用_vision(self):
+        self.api.post_responses["/api/settings/test"] = {
+            "ok": True, "message": "视觉模型可用"}
+        self.window.test_vision_button.click()
+        call = [c for c in self.api.calls if c[1] == "/api/settings/test"][-1]
+        self.assertEqual(call[2], {"kind": "vision"})
+        self.assertIn("视觉模型可用", self.window.test_vision_result.text())
+
+    def test_测试失败显示红色(self):
+        self.api.post_responses["/api/settings/test"] = {
+            "ok": False, "message": "连不上：超时"}
+        self.window.test_text_button.click()
+        self.assertEqual(self.window.test_text_result.property("state"), "err")
+        self.assertIn("连不上", self.window.test_text_result.text())
+
+    def test_有改动先保存再测(self):
+        self.window.inputs["agent-model"].setText("deepseek-v4-pro")
+        self.window.test_text_button.click()
+        self.assertFalse([c for c in self.api.calls if c[1] == "/api/settings/test"])
+        self.assertIn("先保存再测", self.window.save_note.text())
+
+    def test_请求期间按钮禁用并显示测试中(self):
+        self.api.deferred = True
+        self.window.test_text_button.click()
+        self.assertFalse(self.window.test_text_button.isEnabled())
+        self.assertEqual(self.window.test_text_result.text(), "测试中…")
+        _path, on_ok, _on_err = self.api.pending[-1]
+        on_ok({"ok": True, "message": "可用"})
+        self.assertTrue(self.window.test_text_button.isEnabled())
+        self.assertEqual(self.window.test_text_result.text(), "可用")
+
+    def test_网络失败也恢复按钮(self):
+        self.api.post_errors["/api/settings/test"] = "本地服务没起来或已断开"
+        self.window.test_text_button.click()
+        self.assertIn("本地服务没起来", self.window.test_text_result.text())
+        self.assertTrue(self.window.test_text_button.isEnabled())
+
+    def test_备份成功显示路径(self):
+        self.api.post_responses["/api/settings/backup"] = {
+            "ok": True, "path": r"D:\学习系统备份\学习系统-20261024.zip",
+            "size_mb": 12.3, "message": "备份完成：学习系统-20261024.zip（12.3 MB）"}
+        self.window.backup_button.click()
+        self.assertIn("备份完成", self.window.backup_result.text())
+        self.assertIn(r"D:\学习系统备份", self.window.last_backup_label.text())
+        self.assertEqual(self.window.backup_result.property("state"), "ok")
+        self.assertTrue(self.window.backup_button.isEnabled())
+
+    def test_备份失败显示红色(self):
+        self.api.post_errors["/api/settings/backup"] = "备份失败：磁盘满了"
+        self.window.backup_button.click()
+        self.assertEqual(self.window.backup_result.property("state"), "err")
+        self.assertIn("磁盘满了", self.window.backup_result.text())
+        self.assertTrue(self.window.backup_button.isEnabled())
 
 
 if __name__ == "__main__":
