@@ -9,7 +9,7 @@ import unittest
 from unittest import mock
 
 from learnsys import store
-from learnsys.ask import study
+from learnsys.services import study
 from learnsys.core import db as core_db
 from learnsys.core.db import connection as db_connection
 

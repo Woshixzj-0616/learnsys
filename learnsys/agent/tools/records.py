@@ -5,7 +5,7 @@ import datetime
 import pathlib
 
 from learnsys import config, store
-from learnsys.ask import study
+from learnsys.services import study
 from .context import ToolContext, _one_line, _safe_path, _stamp
 
 

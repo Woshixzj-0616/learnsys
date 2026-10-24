@@ -11,7 +11,7 @@ from urllib.parse import unquote
 from fastapi.testclient import TestClient
 
 from learnsys import store
-from learnsys.ask import study
+from learnsys.services import study
 from learnsys.server.app import create_app
 from learnsys.services import knowledge as service
 

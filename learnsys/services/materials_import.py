@@ -14,7 +14,7 @@ import uuid
 
 from learnsys import config as app_config
 from learnsys import store
-from learnsys.ask import study
+from learnsys.services import study
 
 SUFFIXES = {".pdf", ".docx", ".pptx", ".txt", ".md"}
 MAX_FILES = 300

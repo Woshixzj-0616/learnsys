@@ -88,7 +88,7 @@ def upload(req: UploadRequest, _=Depends(require_token)):
     tmp = tmp_dir / f"{uuid.uuid4().hex[:12]}{suffix}"
     try:
         tmp.write_bytes(blob)
-        from learnsys.ask.study import extract_doc_text
+        from learnsys.services.study import extract_doc_text
         text = extract_doc_text(str(tmp)) or ""
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"读文档失败：{exc}") from exc

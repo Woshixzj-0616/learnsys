@@ -113,7 +113,7 @@ def delete_wrongbook(item_id: int, _=Depends(require_token)):
 @router.get("/api/wrongbook/export")
 def export_wrongbook(_=Depends(require_token)):
     """全部错题 → Anki CSV（utf-8-sig）。导出是只读操作，走 GET。"""
-    from learnsys.ask import study as study_mod
+    from learnsys.services import study as study_mod
     conn = _conn()
     try:
         items = store.wrong_items(conn, status="all", limit=1000)

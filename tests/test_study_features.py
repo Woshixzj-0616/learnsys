@@ -21,7 +21,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PySide6 import QtWidgets  # noqa: E402
 
 from learnsys import store  # noqa: E402
-from learnsys.ask import backup, bar, study  # noqa: E402
+from learnsys.ask import backup, bar  # noqa: E402
+from learnsys.services import study  # noqa: E402
 from learnsys.ask.quickbar import streaming as quickbar_streaming  # noqa: E402
 
 

@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from learnsys import store
 from learnsys.agent import prompts, selfcheck
-from learnsys.ask import study
+from learnsys.services import study
 from learnsys.knowledge import CATEGORIES, normalize_points, prompt_rules
 from learnsys.server.app import create_app
 from learnsys.services import knowledge as service

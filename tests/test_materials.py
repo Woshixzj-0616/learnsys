@@ -75,7 +75,7 @@ class TestMaterialStore(unittest.TestCase):
 class TestDocumentExtraction(unittest.TestCase):
     def test_pdf_pages_use_form_feed(self):
         import pymupdf
-        from learnsys.ask import study
+        from learnsys.services import study
 
         with tempfile.TemporaryDirectory() as tmp:
             path = pathlib.Path(tmp) / "课件.pdf"
@@ -92,7 +92,7 @@ class TestDocumentExtraction(unittest.TestCase):
         self.assertIn("\f", result["text"], "PDF 分页要留换页符，检索才能算页码")
 
     def test_txt_passthrough(self):
-        from learnsys.ask import study
+        from learnsys.services import study
 
         with tempfile.TemporaryDirectory() as tmp:
             path = pathlib.Path(tmp) / "笔记.txt"
@@ -302,7 +302,7 @@ class MaterialApiTest(unittest.TestCase):
 
 class TestMaterialQuizPrompt(unittest.TestCase):
     def test_builder_mentions_material_and_tools(self):
-        from learnsys.ask import study
+        from learnsys.services import study
 
         prompt = study.build_material_quiz_question({
             "id": 7, "title": "子网课件", "body": "第一页\f/27 可用主机 30 个。",
@@ -315,7 +315,7 @@ class TestMaterialQuizPrompt(unittest.TestCase):
         self.assertIn("save_wrongbook", prompt)
 
     def test_builder_truncates_long_body(self):
-        from learnsys.ask import study
+        from learnsys.services import study
 
         prompt = study.build_material_quiz_question({
             "id": 8, "title": "长资料", "body": "字" * 500, "chars": 500,

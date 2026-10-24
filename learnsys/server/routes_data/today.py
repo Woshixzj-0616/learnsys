@@ -145,7 +145,7 @@ def study_today(focus: str = "", _=Depends(require_token)):
 
     `focus` 只接受 8 个类目里除「其他」以外的值；其余一律忽略，不拼进提示词。
     """
-    from learnsys.ask import study as study_mod
+    from learnsys.services import study as study_mod
     conn = _conn()
     try:
         day = datetime.date.today().isoformat()

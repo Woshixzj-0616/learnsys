@@ -10,7 +10,7 @@ from PySide6 import QtWidgets
 
 from learnsys import config, product, store
 from . import NL
-from learnsys.ask import study
+from learnsys.services import study
 from learnsys.services import ops
 
 

@@ -19,7 +19,7 @@ from starlette.concurrency import run_in_threadpool
 
 from learnsys import config as app_config
 from learnsys import store
-from learnsys.ask import study
+from learnsys.services import study
 from learnsys.materials import search as material_search
 from learnsys.services import materials_import
 from learnsys.server.security import require_token

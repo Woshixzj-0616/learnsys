@@ -22,7 +22,8 @@ import numpy as np  # noqa: E402
 from PySide6 import QtCore, QtWidgets  # noqa: E402
 
 from learnsys import store  # noqa: E402
-from learnsys.ask import bar, liverec, ops, scheduler, study  # noqa: E402
+from learnsys.ask import bar, liverec, scheduler  # noqa: E402
+from learnsys.services import ops, study  # noqa: E402
 from learnsys.ask.quickbar import streaming as quickbar_streaming  # noqa: E402
 
 

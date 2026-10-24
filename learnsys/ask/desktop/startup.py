@@ -6,7 +6,8 @@ import pathlib
 from PySide6 import QtCore
 
 from learnsys import config, store
-from learnsys.ask import backup, study
+from learnsys.ask import backup
+from learnsys.services import study
 from .web_service import check_new_version
 
 
