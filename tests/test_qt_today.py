@@ -426,7 +426,7 @@ class TestTodayPanels(unittest.TestCase):
         window, _ = self._window(**{"/api/today": today})
         notes = window.focus_panel.findChildren(QtWidgets.QLabel, "PanelNote")
         self.assertEqual(len(notes), 1)
-        self.assertIn("开始完整录制", notes[0].text())
+        self.assertIn("开始录像", notes[0].text())
 
     def test_六级断点面板与跳转(self):
         window, opened = self._window()

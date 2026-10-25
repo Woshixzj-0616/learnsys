@@ -49,13 +49,17 @@ def connect(path=None) -> sqlite3.Connection:
     version = int(conn.execute("PRAGMA user_version").fetchone()[0] or 0)
     if version >= SCHEMA_VERSION:
         return conn
-    conn.executescript(SCHEMA)
-    _migrate_columns(conn)
-    _ensure_fts(conn)
-    _import_legacy_starred(conn)
-    _seed_knowledge(conn)
-    conn.execute(f"PRAGMA user_version = {int(SCHEMA_VERSION)}")
-    conn.commit()
+    try:
+        conn.executescript(SCHEMA)
+        _migrate_columns(conn)
+        _ensure_fts(conn)
+        _import_legacy_starred(conn)
+        _seed_knowledge(conn)
+        conn.execute(f"PRAGMA user_version = {int(SCHEMA_VERSION)}")
+        conn.commit()
+    except Exception:
+        conn.close()          # 迁移失败别把文件锁住（Windows 下临时目录删不掉）
+        raise
     return conn
 
 

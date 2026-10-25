@@ -126,6 +126,7 @@ def today(_=Depends(require_token)):
             "asks": [_ask_dict(row) for row in asks],
             "ask_count": ask_count,
             "transcripts": {"count": int(transcript_count or 0), "chars": int(chars or 0)},
+            "recordings": store.recording_totals(conn, day=day),
             "due_reviews": len(due),
             "actions": _today_actions(conn, day, due),
             "cet6": [

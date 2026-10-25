@@ -119,12 +119,19 @@ def mark_superseded(conn: sqlite3.Connection, *, kind: str, target_type: str,
     return int(cur.rowcount or 0)
 
 
-def recover_orphans(conn: sqlite3.Connection) -> int:
-    """进程重启后，把卡在 pending/running 的行标成可重试的错误。"""
+def recover_orphans(conn: sqlite3.Connection, *, kind: str = "") -> int:
+    """进程重启后，把卡在 pending/running 的行标成可重试的错误。
+
+    `kind` 非空时只收这一种任务 —— 录像分析先起时别把六级分析一起标错。
+    """
+    where = "status IN ('pending', 'running')"
+    args: list = ["后台重启，任务中断，请重试", store.now()]
+    if kind:
+        where += " AND kind = ?"
+        args.append(str(kind))
     cur = conn.execute(
-        "UPDATE service_results SET status='error', error=?, updated_at=? "
-        "WHERE status IN ('pending', 'running')",
-        ("后台重启，任务中断，请重试", store.now()))
+        f"UPDATE service_results SET status='error', error=?, updated_at=? "
+        f"WHERE {where}", args)
     conn.commit()
     return int(cur.rowcount or 0)
 

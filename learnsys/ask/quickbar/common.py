@@ -48,7 +48,7 @@ QToolButton#tiny:checked { color: #5aaaff; }          /* 置顶开着时亮蓝 *
 QToolButton[role="accent"] { color: #6ea8ff; }         /* 复盘：主操作，蓝字 */
 QToolButton[role="accent"]:hover { color: #a8ccff; background: #243043; }
 QToolButton[role="danger"]:hover { color: #ff8177; background: #34262a; }  /* 清空：悬停泛红 */
-QToolButton[role="recording"] { color: #ff8177; }      /* 录制中：红字提醒 */
+QToolButton[role="recording"] { color: #ff8177; }      /* 录像中：红字提醒 */
 QToolButton[starred="true"] { color: #f5b74e; }        /* 已收藏：金字 */
 
 QLabel#status { color: #98a1ab; font-size: 12px; }

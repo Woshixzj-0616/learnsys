@@ -38,6 +38,7 @@ class AskApp(TrayMixin, WebServiceMixin, SessionsMixin, AssistantOpsMixin,
     # Web 工作台的请求从 FastAPI 线程发出来 → 发信号排队回 Qt 主线程
     show_bar_requested = QtCore.Signal()
     pick_requested_ui = QtCore.Signal()
+    record_requested_ui = QtCore.Signal()
 
     def __init__(self, app: QtWidgets.QApplication, background: bool = False,
                  qt_settings: bool = False, qt_today: bool = False):
@@ -48,10 +49,12 @@ class AskApp(TrayMixin, WebServiceMixin, SessionsMixin, AssistantOpsMixin,
         self.qt_today = qt_today            # --qt-today：开发用，只开 Qt 今日页，不弹 Web
         self.show_bar_requested.connect(self.show_bar)
         self.pick_requested_ui.connect(self.pick)
+        self.record_requested_ui.connect(self._toggle_record)
         try:
             from learnsys.server import runtime as web_runtime
             web_runtime.register_ui(show_bar=self.show_bar_requested.emit,
-                                    pick=self.pick_requested_ui.emit)
+                                    pick=self.pick_requested_ui.emit,
+                                    record=self.record_requested_ui.emit)
         except Exception as exc:
             print(f"工作台↔快捷栏桥没接上：{exc}", file=sys.stderr)
         self.conn = None
@@ -60,10 +63,17 @@ class AskApp(TrayMixin, WebServiceMixin, SessionsMixin, AssistantOpsMixin,
         self.hotkey = hotkey_mod.GlobalHotkey(config.ASK_HOTKEY)
         self.hotkey.triggered.connect(self.pick)
         self.hotkey.failed.connect(self._warn)
+        # 录像时横栏不藏（要方便点停止）；这个快捷键是托盘/横栏之外的兜底入口
+        self.stop_hotkey = hotkey_mod.GlobalHotkey(
+            config.RECORD_HOTKEY, self, hotkey_id=0xB002)
+        self.stop_hotkey.triggered.connect(self._stop_record_hotkey)
+        self.stop_hotkey.failed.connect(
+            lambda msg: self._warn(f"停止录像快捷键没注册：{msg}（托盘菜单仍能停止）"))
         self.bar = bar.AskBar(self.hotkey.pretty)     # 全程序唯一一条横栏
         self.bar.pick_requested.connect(self.pick)
         self.bar.answered.connect(self._remember)
         self.bar.workbench_requested.connect(self.open_web)
+        self.bar.open_link_requested.connect(self._open_workbench_link)
         # ✕ 只是把界面收进托盘 —— 图和答案都还在，**别在这儿删截图**（删截图只归
         # 「清空 / 换一张 / 退出」管）。以前接在 exited 上，正在问的那轮会被连累。
         self.bar.cleared.connect(self._shot_done)     # 点「清空」⇒ 临时截图也删掉
@@ -87,15 +97,21 @@ class AskApp(TrayMixin, WebServiceMixin, SessionsMixin, AssistantOpsMixin,
         self._backup_dir = (pathlib.Path(config.USER.get("backup_dir"))
                             if config.USER.get("backup_dir")
                             else config.DATA_ROOT.parent / "学习系统备份")
-        self.live = liverec.LiveRecorder(self._conn, self)   # 三路录制：声音+屏幕+窗口
+        self.live = liverec.LiveRecorder(self._conn, self)   # 录像：画面+系统声音+窗口
+        try:
+            from learnsys.server import runtime as web_runtime
+            web_runtime.register_state(record=self._record_state)
+        except Exception as exc:
+            print(f"录像状态桥没接上：{exc}", file=sys.stderr)
         self.scheduler = scheduler.Scheduler(self)           # 提醒/番茄钟/定时都挂这里
         self.scheduler.fired.connect(self._scheduler_fired)
         self.bar.computer_request.connect(self._computer_request)
         self.bar.remind_scheduled.connect(self._schedule_remind)
-        self._ocr = ocr.OcrQueue(self._conn, self)           # 快照 OCR 后台队列
-        self.live.frame_saved = self._ocr.enqueue            # 快照落盘即进队
+        self._ocr = ocr.OcrQueue(self._conn, self)           # 幻灯片 OCR 后台队列
+        self.live.slide_saved = self._ocr.enqueue            # 幻灯片落盘即进队
         self.live.ticked.connect(self._live_tick)
         self.live.info.connect(self._live_info)
+        self.live.saved.connect(self._live_saved)
         self.live.stopped.connect(self._live_stopped)
         self.caller = single.Server(self)      # 别人再点一次 → 把横栏叫回来（不再开第二个）
         self.caller.called.connect(self._called_back)
@@ -105,6 +121,7 @@ class AskApp(TrayMixin, WebServiceMixin, SessionsMixin, AssistantOpsMixin,
         day = self.prepare_today()          # 打开 app 就先把当天的文件夹建出来
         self._install_shortcuts()           # 开始菜单入口 + 清旧版残留
         ready = self.hotkey.register()      # 快捷键被占了也别把界面藏起来
+        self.stop_hotkey.register()         # 失败只提示，不影响托盘停止
         self.show_bar()
         message = f"{product.PRODUCT_NAME} {version_line()} ｜ 今天的数据放这儿：{day}"
         if self._exe_is_stale():
@@ -326,6 +343,7 @@ def main() -> int:
                      qt_today=qt_today)
     ask_app.start_web()                 # 本地服务与快捷栏同一个进程
     app.aboutToQuit.connect(ask_app.hotkey.unregister)
+    app.aboutToQuit.connect(ask_app.stop_hotkey.unregister)
     app.aboutToQuit.connect(ask_app.bar.shutdown)   # 兜底：走别的路径退出也先收线程
     QtCore.QTimer.singleShot(0, ask_app.start)
     if qt_settings:

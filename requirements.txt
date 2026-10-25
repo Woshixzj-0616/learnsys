@@ -6,6 +6,7 @@ numpy
 faster-whisper
 pyaudiowpatch
 pycaw
+mss>=10.2           # 屏幕录像抓帧（P23）
 # 电脑助手 / 文档问答 / 快照 OCR（2026.10 v1.4 起）
 PyMuPDF
 python-docx

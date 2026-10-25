@@ -90,6 +90,10 @@ a = Analysis(
         'tokenizers',
         'av',
         'numpy',
+        'mss',
+        'mss.windows',          # mss 在 MSS.__init__ 里按平台动态导入
+        'mss.screenshot',
+        'mss.tools',
         'pyaudiowpatch',
         'pycaw',
         'pycaw.pycaw',

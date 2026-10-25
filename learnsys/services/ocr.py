@@ -14,6 +14,7 @@ from learnsys import store
 
 _engine = None
 _engine_error = ""
+_ENGINE_LOCK = threading.Lock()      # RapidOCR 引擎不是线程安全的；录像分析也会用它
 
 
 def _get_engine():
@@ -31,7 +32,8 @@ def _get_engine():
 
 def ocr_image(path: str) -> str:
     """一张图 → 按行拼好的文字（识别失败返回空串）。"""
-    result, _elapsed = _get_engine()(path)
+    with _ENGINE_LOCK:                 # 引擎是进程级单例，多个队列共用，必须串行
+        result, _elapsed = _get_engine()(path)
     lines = []
     for item in result or []:
         try:
@@ -54,8 +56,8 @@ class OcrQueue(QtCore.QObject):
         self._queue: queue.Queue = queue.Queue()
         self._thread: threading.Thread | None = None
 
-    def enqueue(self, path: str, ts: str) -> None:
-        self._queue.put((path, ts))
+    def enqueue(self, path: str, ts: str, session_id: int = 0) -> None:
+        self._queue.put((path, ts, int(session_id or 0)))
         if self._thread is None or not self._thread.is_alive():
             self._thread = threading.Thread(target=self._loop, name="ocr", daemon=True)
             self._thread.start()
@@ -77,7 +79,11 @@ class OcrQueue(QtCore.QObject):
             item = self._queue.get()
             if item is None:
                 return
-            path, ts = item
+            if len(item) == 2:               # 兼容旧入队（path, ts）
+                path, ts = item
+                session_id = 0
+            else:
+                path, ts, session_id = item
             try:
                 text = ocr_image(path)
             except Exception:
@@ -85,7 +91,8 @@ class OcrQueue(QtCore.QObject):
             if not text:
                 continue
             try:
-                store.add_frame_text(self._conn_getter(), path, ts, text)
+                store.add_frame_text(self._conn_getter(), path, ts, text,
+                                     session_id=session_id)
             except Exception:
                 continue
             self.text_ready.emit(path, text)

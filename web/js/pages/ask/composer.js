@@ -9,10 +9,11 @@ import { renderAttachments } from "./attachments.js";
 export function sendMessage() {
   if (state.streaming) return;
   const text = dom.input.value.trim();
-  if (!text && !state.image && !state.doc && !state.material) return;
+  if (!text && !state.image && !state.doc && !state.material && !state.recording) return;
 
   const message = text || (state.image ? "看看这张图"
-    : (state.material ? "看看这份资料" : "看看这份文档"));
+    : (state.recording ? "看看这段录像"
+      : (state.material ? "看看这份资料" : "看看这份文档")));
   const payload = {
     message,
     conversation_id: state.convId,
@@ -21,6 +22,7 @@ export function sendMessage() {
     attachment_name: state.material ? "" : (state.doc?.name || ""),
     attachment_text: state.material ? "" : (state.doc?.text || ""),
     material_id: state.material?.id || null,
+    recording_id: state.recording?.id || null,
     surface: "ask",
     context_snapshot: state.material ? buildSnapshot({
       surface: "ask",

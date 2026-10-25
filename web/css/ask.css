@@ -504,3 +504,14 @@
 
 .md .think-answer:hover { background: rgba(240, 180, 94, 0.1); }
 
+
+/* 会话来源：录像里问的对话在问一问历史里带一个小标记 */
+.conv-origin {
+  display: inline-block; margin-right: 6px; padding: 0 5px;
+  border-radius: 999px; background: var(--accent-soft);
+  color: var(--accent-strong); font-size: 10px; line-height: 16px;
+  vertical-align: 1px;
+}
+.conv-item .conv-meta {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}

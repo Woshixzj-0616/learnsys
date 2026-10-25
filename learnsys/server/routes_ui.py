@@ -59,3 +59,18 @@ def show_quickbar(_=Depends(require_token)):
 @router.post("/api/quickbar/pick")
 def pick_on_screen(_=Depends(require_token)):
     return _call("pick", "快捷栏没在运行：先打开学习工作台")
+
+
+@router.get("/api/quickbar/record")
+def record_state(_=Depends(require_token)):
+    """Web 工作台的「开始录像」按钮轮询：录像中 / 收尾中 / 倒计时。"""
+    state = runtime.call_state("record")
+    if state is None:
+        raise HTTPException(status_code=503, detail="后台没接在快捷栏上，无法读取录像状态")
+    return state
+
+
+@router.post("/api/quickbar/record")
+def toggle_record(_=Depends(require_token)):
+    """Web 工作台点「开始/停止录像」—— 和横栏、托盘、快捷键同一个开关。"""
+    return _call("record", "快捷栏没在跑，无法开始录像")

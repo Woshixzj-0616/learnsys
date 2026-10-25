@@ -196,14 +196,17 @@ class StateMixin:
 
     def set_recording(self, on: bool, minutes: float = 0.0, switches: int = 0,
                       detail: str = "") -> None:
-        """采集层开着的时候，横栏上给一行「● 录制中 …」—— 让人知道它在记。
+        """录像开着的时候，横栏上给一行「● 录像中 …」—— 让人知道它在记。
 
-        detail 是可选的追加信息（转写字数 / 快照张数 / 没听到声音提示）。
-        录制按钮同步换字 + 泛红（role 属性驱动 QSS）。
+        detail 是可选的追加信息（文件大小 / 转写字数 / 没听到声音提示）。
+        录像按钮同步换字 + 泛红（role 属性驱动 QSS）。
         """
         self._recording = on
         if on:
-            text = f"● 录制中 {minutes:.0f} 分 · 切了 {switches} 次窗口"
+            total = max(0, int(round(float(minutes) * 60)))
+            clock = (f"{total // 3600}:{total % 3600 // 60:02d}:{total % 60:02d}"
+                     if total >= 3600 else f"{total // 60:02d}:{total % 60:02d}")
+            text = f"● 录像中 {clock}"
             if detail:
                 text += f" · {detail}"
             self._set_rec(text)
@@ -211,12 +214,29 @@ class StateMixin:
             self._set_rec("")
         if self._status_text:           # 右侧让出的宽度变了，状态行重新截一次
             self._set_status(self._status_text)
-        self.rec_btn.setText("停止" if on else "录制")   # 「停止录制」四字在 68px 槽里会被截断
+        self._set_record_button(on)
+        # 录制行常驻固定高度 —— 开关录像只换字，窗口不动
+
+    def set_record_pending(self, left: int = 0) -> None:
+        """倒计时阶段：按钮变「取消 N」，再点一次就中止。"""
+        self._set_record_button(False)
+        if left:
+            self.rec_btn.setText(f"取消 {int(left)}")
+            self.rec_btn.setToolTip("再点一次取消录像")
+            self.rec_btn.setProperty("role", "recording")
+            style = self.rec_btn.style()
+            style.unpolish(self.rec_btn)
+            style.polish(self.rec_btn)
+
+    def _set_record_button(self, on: bool) -> None:
+        self.rec_btn.setText("停止" if on else "录像")
+        self.rec_btn.setToolTip(
+            "正在录像：点「停止」收尾（视频已落盘）"
+            if on else "录主屏 + 系统声音，存到「录像」文件夹；右键：暂停 / 定时停止")
         self.rec_btn.setProperty("role", "recording" if on else None)
         style = self.rec_btn.style()
         style.unpolish(self.rec_btn)
         style.polish(self.rec_btn)
-        # 录制行常驻固定高度 —— 开关录制只换字，窗口不动
 
     def refresh_usage(self) -> None:
         """占用数字在后台线程里算 —— walk 整个数据盘会卡界面，别放主线程。

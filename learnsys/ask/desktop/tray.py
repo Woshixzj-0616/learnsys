@@ -20,7 +20,7 @@ class TrayMixin:
         menu = QtWidgets.QMenu()
         menu.addAction(f"框选提问（{self.hotkey.pretty}）", self.pick)
         menu.addSeparator()
-        self.record_action = menu.addAction("开始完整录制（声音+屏幕+窗口）")
+        self.record_action = menu.addAction("开始录像（主屏+系统声音）")
         self.record_action.setCheckable(True)
         self.record_action.triggered.connect(self._toggle_record)
         menu.addAction("展开横栏", self.show_bar)

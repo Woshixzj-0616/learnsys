@@ -208,12 +208,13 @@ def focus_stats(conn: sqlite3.Connection, until: str = "", day: str = "") -> dic
 
 # ---- 快照 OCR 文字 / 复习提醒 ----
 
-def add_frame_text(conn: sqlite3.Connection, path: str, ts: str, text: str) -> None:
+def add_frame_text(conn: sqlite3.Connection, path: str, ts: str, text: str,
+                   session_id: int = 0) -> None:
     with _LOCK:
         conn.execute(
-            "INSERT INTO frame_text (path, ts, text) VALUES (?, ?, ?) "
-            "ON CONFLICT(path) DO UPDATE SET text = excluded.text",
-            (path, ts, text),
+            "INSERT INTO frame_text (path, ts, text, session_id) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(path) DO UPDATE SET text = excluded.text, session_id = excluded.session_id",
+            (path, ts, text, int(session_id or 0)),
         )
         conn.commit()
     core_db.index_row(conn, "frame", path, ts, text)

@@ -165,7 +165,7 @@ class BuildMixin:
         self.review_btn.setProperty("role", "accent")  # 复盘是主操作：常亮蓝字（见 QSS）
         self.review_btn.setText("复盘")
         self.review_btn.setCursor(QtCore.Qt.PointingHandCursor)
-        self.review_btn.setToolTip("拿今天记录的窗口和课堂转写问 AI：我刚才学了什么？（要先在托盘「开始记录」）")
+        self.review_btn.setToolTip("拿今天记录的窗口和课堂转写问 AI：我刚才学了什么？（要先在托盘「开始录像」）")
         self.review_btn.clicked.connect(self.review_requested.emit)
 
         self.workbench_btn = QtWidgets.QToolButton(card)
@@ -177,9 +177,11 @@ class BuildMixin:
 
         self.rec_btn = QtWidgets.QToolButton(card)
         self.rec_btn.setObjectName("tiny")
-        self.rec_btn.setText("录制")
+        self.rec_btn.setText("录像")
         self.rec_btn.setCursor(QtCore.Qt.PointingHandCursor)
-        self.rec_btn.setToolTip("录系统声音（不录麦克风）+ 每半分钟一张全屏快照 + 看过哪些窗口，全落今天的库，复盘直接吃；右键：暂停 / 定时停止")
+        self.rec_btn.setToolTip(
+            "录主屏 + 系统声音（不录麦克风），存成 MP4 到「录像」文件夹；"
+            "停止后可播放、导出、打开文件夹。右键：暂停 / 定时停止")
         self.rec_btn.clicked.connect(self.record_toggled.emit)
         self.rec_btn.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.rec_btn.customContextMenuRequested.connect(self._rec_menu)

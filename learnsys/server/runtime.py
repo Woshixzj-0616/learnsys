@@ -9,12 +9,31 @@ from __future__ import annotations
 from typing import Callable
 
 _ACTIONS: dict[str, Callable[[], None]] = {}
+_STATE: dict[str, Callable[[], dict]] = {}
 
 
 def register_ui(**actions: Callable[[], None]) -> None:
     """AskApp 启动时注册：show_bar / pick。"""
     _ACTIONS.clear()
     _ACTIONS.update({name: fn for name, fn in actions.items() if callable(fn)})
+
+
+def register_state(**states: Callable[[], dict]) -> None:
+    """AskApp 启动时注册只读状态（录像进度等）。"""
+    _STATE.clear()
+    _STATE.update({name: fn for name, fn in states.items() if callable(fn)})
+
+
+def call_state(name: str) -> dict | None:
+    """取一份只读状态；没接上/出错返回 None，不把异常抛给 HTTP 层。"""
+    fn = _STATE.get(name)
+    if fn is None:
+        return None
+    try:
+        value = fn()
+        return value if isinstance(value, dict) else None
+    except Exception:
+        return None
 
 
 def available() -> bool:
@@ -24,6 +43,7 @@ def available() -> bool:
 
 def clear_ui() -> None:
     _ACTIONS.clear()
+    _STATE.clear()
 
 
 def call_ui(name: str) -> bool:

@@ -38,7 +38,7 @@ class _AskWorker(QtCore.QThread):
         self._question = question
         self._history = history
         self._context = context      # 课上转写片段（追问时捎给 AI，界面不显示）
-        self._extra_images = list(extra_images or [])  # 复盘附带的屏幕快照
+        self._extra_images = list(extra_images or [])  # 复盘/测验附带的图片
         self._mode = mode
         self._system_override = ""     # 电脑助手等非导师任务用
         self._use_tools = True

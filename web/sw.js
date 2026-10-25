@@ -3,7 +3,7 @@
  * 目标：PWA 能装、断网时至少能打开壳并提示「后台未连接」；
  * 数据永远走本地 FastAPI，不在这里缓存。
  */
-const CACHE = "learnsys-web-v19";
+const CACHE = "learnsys-web-v24";
 const CORE = [
   "/",
   "/manifest.webmanifest",
@@ -23,6 +23,7 @@ const CORE = [
   "/web/css/vocab.css",
   "/web/css/knowledge.css",
   "/web/css/browser.css",
+  "/web/css/recordings.css",
   "/web/js/shell.js",
   "/web/js/nav_bridge.js",
   "/web/js/api.js",
@@ -38,6 +39,7 @@ const CORE = [
   "/web/pages/wrongbook.html",
   "/web/pages/materials.html",
   "/web/pages/knowledge.html",
+  "/web/pages/recordings.html",
   "/web/js/pages/today.js",
   "/web/js/pages/ask/state.js",
   "/web/js/pages/ask/attachments.js",
@@ -57,6 +59,10 @@ const CORE = [
   "/web/js/pages/materials.js",
   "/web/js/pages/quiz-parse.js",
   "/web/js/pages/knowledge.js",
+  "/web/js/pages/recordings.js",
+  "/web/js/pages/recordings/record-control.js",
+  "/web/js/pages/recordings/format.js",
+  "/web/js/pages/recordings/ai-panel.js",
   "/web/vendor/marked.min.js",
   "/web/vendor/purify.min.js",
   "/web/vendor/highlight.min.js",
@@ -128,9 +134,10 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/cet6/")
+      || url.pathname.startsWith("/media/")
       || url.pathname === "/docs" || url.pathname.startsWith("/docs/")
       || url.pathname === "/favicon.ico") {
-    return;                         // API / 六级 / 文档 / 图标：交给网络
+    return;                         // API / 六级 / 视频 / 文档 / 图标：交给网络
   }
   const isShell = request.mode === "navigate"
     || url.pathname === "/"

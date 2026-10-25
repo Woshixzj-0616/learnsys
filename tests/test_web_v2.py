@@ -199,12 +199,24 @@ class WebTest(unittest.TestCase):
         self.assertEqual(missing.status_code, 503)
         self.assertIn("快捷栏没在运行", missing.json()["detail"])
 
+        self.assertEqual(
+            self.client.get("/api/quickbar/record", headers=AUTH).status_code, 503)
+
         called = []
         runtime.register_ui(show_bar=lambda: called.append("show"),
-                            pick=lambda: called.append("pick"))
+                            pick=lambda: called.append("pick"),
+                            record=lambda: called.append("record"))
+        runtime.register_state(record=lambda: {
+            "recording": True, "finishing": False, "countdown": 0,
+            "duration": 3.0, "bytes": 1024, "chars": 8, "session_id": 5})
         self.assertEqual(self.client.post("/api/quickbar/show", headers=AUTH).status_code, 200)
         self.assertEqual(self.client.post("/api/quickbar/pick", headers=AUTH).status_code, 200)
-        self.assertEqual(called, ["show", "pick"])
+        self.assertEqual(self.client.post("/api/quickbar/record", headers=AUTH).status_code, 200)
+        self.assertEqual(called, ["show", "pick", "record"])
+        state = self.client.get("/api/quickbar/record", headers=AUTH)
+        self.assertEqual(state.status_code, 200)
+        self.assertTrue(state.json()["recording"])
+        self.assertEqual(state.json()["session_id"], 5)
         self.assertEqual(self.client.post("/api/quickbar/show").status_code, 403)
 
     def test_backup_endpoint(self):

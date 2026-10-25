@@ -8,7 +8,7 @@ from PySide6 import QtWidgets
 
 from learnsys import config, product, store
 from . import NL
-from learnsys.ask import backend, liverec
+from learnsys.ask import backend
 from learnsys.services import study
 
 
@@ -57,7 +57,8 @@ class StudyOpsMixin:
         conn = self._conn()
         starred = (store.wrong_counts(conn, datetime.date.today())["new_today"]
                    if conn else 0)
-        frames = len(list(liverec.frame_dir().glob("*.jpg")))
+        recordings = (store.recording_totals(
+            conn, day=datetime.date.today().isoformat())["count"] if conn else 0)
         summary_lines = []
         for sid, started, _ended in sessions:
             info = store.session_summary(conn, sid)
@@ -70,7 +71,7 @@ class StudyOpsMixin:
         dest = day / f"学习报告_{day.name}.md"
         if not dest.exists():
             dest.write_text(study.build_daily_report(day.name, summary_lines, asks,
-                                                     digest, starred, frames), encoding="utf-8")
+                                                     digest, starred, recordings), encoding="utf-8")
         if not digest and not sessions:
             self._warn("今天还没有记录可写进报告。")
             return
@@ -80,7 +81,7 @@ class StudyOpsMixin:
             try:
                 ai = backend.ask(None, question, timeout=90)
                 body = study.build_daily_report(day.name, summary_lines, asks,
-                                                digest, starred, frames, ai_summary=ai)
+                                                digest, starred, recordings, ai_summary=ai)
                 dest.write_text(body, encoding="utf-8")
             except Exception:
                 return                  # AI 不在就保留纯数据版报告

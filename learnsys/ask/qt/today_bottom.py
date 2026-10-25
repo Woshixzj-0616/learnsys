@@ -105,7 +105,7 @@ class TodayBottomMixin:
         self.focus_panel.set_rows(rows)
         if not apps:
             self.focus_panel.set_note(
-                "今天还没有开始录制。托盘里点「开始完整录制」才有专注数据。")
+                "今天还没有开始录像。托盘里点「开始录像」才有专注数据。")
 
     def _render_cet6(self) -> None:
         items = (self._data.get("today") or {}).get("cet6") or []

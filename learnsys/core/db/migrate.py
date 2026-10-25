@@ -55,6 +55,30 @@ def _migrate_columns(conn: sqlite3.Connection) -> None:
     if message_cols and "result_id" not in message_cols:
         conn.execute(
             "ALTER TABLE messages ADD COLUMN result_id INTEGER NOT NULL DEFAULT 0")
+    session_cols = {row[1] for row in conn.execute(
+        "PRAGMA table_info(sessions)").fetchall()}
+    for column, ddl in (
+        ("kind", "TEXT NOT NULL DEFAULT 'video'"),
+        ("title", "TEXT NOT NULL DEFAULT ''"),
+        ("video_path", "TEXT NOT NULL DEFAULT ''"),
+        ("video_bytes", "INTEGER NOT NULL DEFAULT 0"),
+        ("duration_ms", "INTEGER NOT NULL DEFAULT 0"),
+        ("thumb_path", "TEXT NOT NULL DEFAULT ''"),
+        ("slides_dir", "TEXT NOT NULL DEFAULT ''"),
+        ("material_id", "INTEGER NOT NULL DEFAULT 0"),
+        ("analysis_result_id", "INTEGER NOT NULL DEFAULT 0"),
+    ):
+        if session_cols and column not in session_cols:
+            conn.execute(f"ALTER TABLE sessions ADD COLUMN {column} {ddl}")
+    frame_cols = {row[1] for row in conn.execute(
+        "PRAGMA table_info(frame_text)").fetchall()}
+    if frame_cols and "session_id" not in frame_cols:
+        conn.execute(
+            "ALTER TABLE frame_text ADD COLUMN session_id INTEGER NOT NULL DEFAULT 0")
+    if frame_cols:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_frame_text_session "
+            "ON frame_text (session_id, ts)")
     cet6_cols = {row[1] for row in conn.execute(
         "PRAGMA table_info(cet6_events)").fetchall()}
     if cet6_cols and "dedupe_key" not in cet6_cols:
@@ -64,6 +88,18 @@ def _migrate_columns(conn: sqlite3.Connection) -> None:
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_cet6_dedupe "
             "ON cet6_events (dedupe_key) WHERE dedupe_key <> ''")
+    conversation_cols = {row[1] for row in conn.execute(
+        "PRAGMA table_info(conversations)").fetchall()}
+    for column, ddl in (
+        ("origin", "TEXT NOT NULL DEFAULT 'ask'"),
+        ("recording_id", "INTEGER NOT NULL DEFAULT 0"),
+    ):
+        if conversation_cols and column not in conversation_cols:
+            conn.execute(f"ALTER TABLE conversations ADD COLUMN {column} {ddl}")
+    if conversation_cols:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_conversations_origin "
+            "ON conversations (origin, recording_id, updated_at)")
     service_index = conn.execute(
         "SELECT sql FROM sqlite_master WHERE type = 'index' "
         "AND name = 'idx_service_results_key'").fetchone()

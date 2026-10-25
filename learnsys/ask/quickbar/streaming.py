@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import html as html_mod
 import time
+import uuid
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -91,6 +92,23 @@ class StreamMixin:
             return
         self._begin_turn(send_text, display_text, context, images, mode,
                          system_override, use_tools)
+
+    def show_recording_result(self, text: str, session_id: int = 0) -> None:
+        """停止录像后的汇总卡：写进答案区，带「打开录像页」深链。
+
+        不进入问答历史；下一次提问就是一轮新对话。
+        """
+        self._drop_running()
+        self._turns = []
+        self._thread = uuid.uuid4().hex[:12]
+        self._reset_answer()
+        self._start_turn("录像完成")
+        link = (f"#/recordings?session={int(session_id)}" if session_id
+                else "#/recordings")
+        body = (text or "").strip()
+        self._set_answer_markdown(f"{body}\n\n[打开录像页]({link})")
+        self.set_state(STATE_DONE, status="录像完成 —— 点链接打开录像页，或继续提问")
+        self.ask.setFocus()
 
     def _begin_turn(self, send_text: str, display_text: str, context: str,
                     images: list[str] | None = None, mode: str = "",
@@ -275,6 +293,9 @@ class StreamMixin:
                 self._answer_view = target
                 self._view_pinned = True
                 self._render_answer_view()
+            return
+        if text.startswith("#/"):
+            self.open_link_requested.emit(text)   # 屏内深链 → 交给 app 打开工作台页面
             return
         if url.scheme() in ("http", "https"):
             QtGui.QDesktopServices.openUrl(url)

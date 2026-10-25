@@ -148,7 +148,7 @@ function renderStats(today, reviewStats = {}) {
       label: "课堂转写",
       value: String(today.transcripts?.count ?? 0),
       unit: "段",
-      note: `${chars.value} ${chars.unit}`,
+      note: `${chars.value} ${chars.unit} · 录像 ${today.recordings?.count ?? 0} 段`,
     },
     {
       label: "今日计划",
@@ -253,7 +253,7 @@ function renderFocus(focus) {
     ${apps.length
       ? apps.map(([name, mins]) => `<div class="panel-row">
           <span>${escapeHtml(name)}</span><span>${Number(mins).toFixed(0)} 分钟</span></div>`).join("")
-      : '<div class="hint" style="padding-top:10px">今天还没有开始录制。托盘里点「开始完整录制」才有专注数据。</div>'}`;
+      : '<div class="hint" style="padding-top:10px">今天还没有开始录像。按 Alt+Q 打开快捷栏点「录像」，或托盘菜单「开始录像」。</div>'}`;
 }
 
 function renderCet6(items) {

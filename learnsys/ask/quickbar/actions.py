@@ -12,12 +12,12 @@ from .common import (MODE_LABELS, QSS, STATE_DONE, STATE_HISTORY, _answer_char,
 
 class ActionsMixin:
     def _rec_menu(self, pos) -> None:
-        """录制按钮右键：暂停/继续 + 定时停止（不用再加按钮占位置）。"""
+        """录像按钮右键：暂停/继续 + 定时停止（不用再加按钮占位置）。"""
         menu = QtWidgets.QMenu(self)
         menu.setStyleSheet(QSS)
-        menu.addAction("继续录制" if self.rec_paused else "暂停录制",
+        menu.addAction("继续录像" if self.rec_paused else "暂停录像",
                        self.rec_pause_toggled.emit)
-        timer_menu = menu.addMenu("定时停止")
+        timer_menu = menu.addMenu("定时停止录像")
         for minutes in (30, 45, 60, 90):
             timer_menu.addAction(f"{minutes} 分钟后",
                                  lambda m=minutes: self.rec_timer_set.emit(m))
@@ -111,9 +111,9 @@ class ActionsMixin:
         if not self._recording:
             return
         if paused:
-            self._set_rec("⏸ 已暂停 —— 右键「录制」继续")
+            self._set_rec("⏸ 已暂停 —— 右键「录像」继续")
         else:
-            self._set_rec("● 继续录制")
+            self._set_rec("● 继续录像")
 
     # ---- 复制 / 收藏 / 历史 ----
 

@@ -1,0 +1,40 @@
+<div class="recordings-page">
+  <section class="stage-hero recordings-hero">
+    <div>
+      <p class="stage-eyebrow">录像 · 转写 · 幻灯片</p>
+      <h2>录下来的课，随时能翻。</h2>
+      <p class="stage-sub">主屏 + 系统声音存成 MP4；转写、幻灯片和视频都在同一个文件夹里，
+        整个文件夹可以拷走。</p>
+      <div class="review-stats" id="rec-stats">
+        <div class="review-chip"><span>录像</span><strong>—</strong></div>
+        <div class="review-chip"><span>总时长</span><strong>—</strong></div>
+        <div class="review-chip"><span>占用</span><strong>—</strong></div>
+      </div>
+    </div>
+    <div class="wrongbook-hero-actions">
+      <button class="btn btn-primary" type="button" id="rec-refresh">刷新</button>
+      <button class="btn" type="button" id="rec-folder">打开录像文件夹</button>
+    </div>
+  </section>
+
+  <section class="panel recordings-panel" id="rec-panel">
+    <div class="panel-head recordings-toolbar">
+      <input class="input recordings-search" type="search" id="rec-search"
+             placeholder="搜转写内容 / 标题">
+      <span class="hint" id="rec-count"></span>
+    </div>
+    <div class="panel-body">
+      <div class="recordings-list" id="rec-list">
+        <div class="empty">正在读录像…</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel recordings-detail" id="rec-detail" hidden>
+    <div class="panel-head">
+      <strong id="rec-title">录像</strong>
+      <button class="btn" type="button" id="rec-close">收起</button>
+    </div>
+    <div class="panel-body" id="rec-detail-body"></div>
+  </section>
+</div>

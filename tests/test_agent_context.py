@@ -84,6 +84,91 @@ class AgentContextTest(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertIn("TCP 三次握手", self.seen[0].context)
 
+    def test_recording_transcript_is_attached(self):
+        conn = store.connect()
+        sid = store.start_session(conn)
+        store.add_transcript(conn, sid, store.now(), store.now(),
+                             "老师刚才讲了 TCP 三次握手")
+        conn.close()
+        with mock.patch("learnsys.server.routes_agent.agent.run", self._fake_run):
+            res = self.client.post("/api/agent/chat", headers=AUTH, json={
+                "message": "这段录像讲了什么", "recording_id": sid})
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("录像转写", self.seen[0].context)
+        self.assertIn("TCP 三次握手", self.seen[0].context)
+
+    def test_recording_without_transcript_adds_no_note(self):
+        conn = store.connect()
+        sid = store.start_session(conn)
+        conn.close()
+        with mock.patch("learnsys.server.routes_agent.agent.run", self._fake_run):
+            res = self.client.post("/api/agent/chat", headers=AUTH, json={
+                "message": "我帅吗", "surface": "video", "recording_id": sid})
+        self.assertEqual(res.status_code, 200)
+        self.assertNotIn("录像转写", self.seen[0].context)
+        self.assertNotIn("课堂转写", self.seen[0].context)
+
+    def test_unknown_recording_id_does_not_break(self):
+        with mock.patch("learnsys.server.routes_agent.agent.run", self._fake_run):
+            res = self.client.post("/api/agent/chat", headers=AUTH, json={
+                "message": "问", "recording_id": 99999})
+        self.assertEqual(res.status_code, 200)
+        self.assertNotIn("录像转写", self.seen[0].context)
+
+    def test_video_conversation_is_marked_and_unified(self):
+        conn = store.connect()
+        sid = store.start_session(conn)
+        store.update_video(conn, sid, title="测试录像", video_path="/tmp/video.mp4")
+        store.add_transcript(conn, sid, store.now(), store.now(), "老师讲了三次握手")
+        conn.close()
+        with mock.patch("learnsys.server.routes_agent.agent.run", self._fake_run):
+            res = self.client.post("/api/agent/chat", headers=AUTH, json={
+                "message": "这段讲了什么",
+                "surface": "video", "module": "ask", "recording_id": sid})
+        self.assertEqual(res.status_code, 200)
+        conn = store.connect()
+        try:
+            items = store.list_conversations(conn, module="ask")
+            self.assertEqual(len(items), 1)
+            self.assertEqual(items[0]["origin"], "video")
+            self.assertEqual(items[0]["recording_id"], sid)
+            self.assertEqual(items[0]["recording_title"], "测试录像")
+            filtered = store.list_conversations(
+                conn, module="ask", origin="video", recording_id=sid)
+            self.assertEqual(len(filtered), 1)
+            self.assertEqual(
+                store.list_conversations(conn, module="ask", recording_id=sid + 1), [])
+            row = store.get_conversation(conn, items[0]["id"])
+            self.assertEqual(row[7], "video")
+            self.assertEqual(row[8], sid)
+            asks = store.recent_asks(conn, with_origin=True)
+            self.assertEqual(asks[0][6], "video")
+            self.assertEqual(asks[0][7], "测试录像")
+        finally:
+            conn.close()
+        detail = self.client.get(
+            f"/api/conversations/{items[0]['id']}", headers=AUTH).json()
+        self.assertEqual(detail["origin"], "video")
+        self.assertEqual(detail["recording_id"], sid)
+        self.assertEqual(detail["recording_title"], "测试录像")
+        # 默认问一问列表也能看到（module=ask），靠 origin 区分
+        listed = self.client.get("/api/conversations?limit=10", headers=AUTH).json()
+        self.assertEqual(len(listed["items"]), 1)
+        self.assertEqual(listed["items"][0]["origin"], "video")
+
+    def test_plain_ask_conversation_stays_ask(self):
+        with mock.patch("learnsys.server.routes_agent.agent.run", self._fake_run):
+            res = self.client.post("/api/agent/chat", headers=AUTH, json={
+                "message": "普通问题", "surface": "ask"})
+        self.assertEqual(res.status_code, 200)
+        conn = store.connect()
+        try:
+            items = store.list_conversations(conn, module="ask")
+            self.assertEqual(items[0]["origin"], "ask")
+            self.assertEqual(items[0]["recording_id"], 0)
+        finally:
+            conn.close()
+
     def test_cet6_surface_uses_fast_model(self):
         seen = {}
 

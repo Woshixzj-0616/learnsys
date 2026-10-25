@@ -173,7 +173,7 @@ def export_anki_csv(rows, path: pathlib.Path) -> int:
 # ---- 每日报告 / 测验 / 笔记导出 ----
 
 def build_daily_report(day_name: str, summary_lines: list[str], asks: list,
-                       transcript_text: str, starred: int, frames: int,
+                       transcript_text: str, starred: int, recordings: int,
                        ai_summary: str = "") -> str:
     """把一天的数据拼成 Markdown 报告。ai_summary 是 AI 总结那段（可能为空）。"""
     lines = [f"# 学习报告 · {day_name}", ""]
@@ -181,7 +181,7 @@ def build_daily_report(day_name: str, summary_lines: list[str], asks: list,
         lines += ["## 要点", "", ai_summary, ""]
     lines += ["## 记录概览", ""]
     lines += (summary_lines or ["（今天没有开过录制）"])
-    lines += ["", f"问答 {len(asks)} 条 ｜ 错题本新增 {starred} 条 ｜ 屏幕快照 {frames} 张", ""]
+    lines += ["", f"问答 {len(asks)} 条 ｜ 错题本新增 {starred} 条 ｜ 录像 {recordings} 段", ""]
     if asks:
         lines += ["## 今天问过的", ""]
         for row in asks:

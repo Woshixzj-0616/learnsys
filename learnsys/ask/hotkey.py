@@ -85,9 +85,9 @@ class GlobalHotkey(QtCore.QObject):
     triggered = QtCore.Signal()
     failed = QtCore.Signal(str)
 
-    def __init__(self, spec: str, parent=None):
+    def __init__(self, spec: str, parent=None, hotkey_id: int = 0xB001):
         super().__init__(parent)
-        self._id = 0xB001
+        self._id = int(hotkey_id)
         self._filter = None
         self._ok = False
         self._error = ""
@@ -97,6 +97,10 @@ class GlobalHotkey(QtCore.QObject):
         except ValueError as exc:
             self._error = str(exc)
             self._mods = self._vk = 0
+
+    @property
+    def registered(self) -> bool:
+        return self._ok
 
     def register(self) -> bool:
         if self._error:

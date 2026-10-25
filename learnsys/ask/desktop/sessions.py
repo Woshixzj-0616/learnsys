@@ -6,7 +6,7 @@ import pathlib
 import shutil
 import sys
 
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from learnsys import config, product, store
 from . import NL
@@ -14,62 +14,197 @@ from learnsys.services import study
 from learnsys.services import ops
 
 
+def _human_size(value: int) -> str:
+    size = max(0.0, float(value or 0))
+    for unit in ("B", "KB", "MB", "GB"):
+        if size < 1024 or unit == "GB":
+            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} GB"
+
 
 class SessionsMixin:
-    # ---- 采集层：开始 / 结束完整录制（声音 + 屏幕 + 窗口）----
+    # ---- 采集层：开始 / 结束录像（画面 + 声音 + 窗口）----
 
     def _toggle_record(self, checked: bool = False) -> None:
-        """托盘菜单和横栏「录制」按钮共用这一个开关。"""
+        """托盘菜单和横栏「录像」按钮共用这一个开关。"""
         if self.live.recording:
             self.live.stop()
-            self.bar.show_message("正在收尾 —— 最后一块转写完（最多一两分钟）会汇报总结。")
+            self.bar.show_message("正在收尾 —— 视频已经落盘；最后一块转写完会汇报。")
+            return
+        if getattr(self, "_record_left", 0):
+            self._cancel_record_start()
+            return
+        self._begin_record_start()
+
+    def _begin_record_start(self) -> None:
+        """3 秒倒计时：留时间切到网课窗口，也留时间关掉不想被录的页面。"""
+        if not config.VIDEO_ENABLED:
+            self._warn("录像功能在 设置.json 里被关掉了（video_enabled=false）。")
+            return
+        try:
+            free = shutil.disk_usage(config.DATA_ROOT).free
+        except OSError:
+            free = 0
+        if free and free < 2 * 1024**3:
+            self._warn(f"磁盘只剩 {_human_size(free)}，至少留 2 GB 再录像。")
+            return
+        self._record_left = 3
+        timer = getattr(self, "_record_timer", None)
+        if timer is None:
+            timer = QtCore.QTimer(self)
+            timer.setInterval(1000)
+            timer.timeout.connect(self._record_countdown_tick)
+            self._record_timer = timer
+        timer.start()
+        self.show_bar()                     # 从托盘起录像时也把倒计时露出来
+        self.bar.show_message("3 秒后开始录像 —— 现在切到网课窗口；再点一次可取消。")
+        self.bar.set_record_pending(3)
+
+    def _record_countdown_tick(self) -> None:
+        self._record_left -= 1
+        if self._record_left > 0:
+            self.bar.show_message(f"{self._record_left} 秒后开始录像 —— 现在切到网课窗口。")
+            self.bar.set_record_pending(self._record_left)
+            return
+        self._record_timer.stop()
+        self._record_left = 0
+        self.bar.set_record_pending(0)
+        # 横栏**不藏**：用户要随时点「停止」。先排除截图，再开录 —— 第一帧也别带上横栏。
+        excluded = self.bar.set_capture_excluded(True)
+        self.live.start()
+        if self.live.recording:
+            how = (f"按 {self.stop_hotkey.pretty}、托盘菜单或快捷栏"
+                   if self.stop_hotkey.registered else "托盘菜单或快捷栏")
+            note = ("横栏已排除在画面外。" if excluded
+                    else "这台系统不能排除横栏，它会出现在录像里。")
+            self.tray.showMessage(
+                product.PRODUCT_NAME,
+                f"录像已开始。{how}「结束录像」停止。{note}",
+                QtWidgets.QSystemTrayIcon.Information, 8000)
         else:
-            self.live.start()
+            self.bar.set_capture_excluded(False)
+            self.show_bar()                 # 起不来就把横栏还给用户，错误信息在状态行
+
+    def _stop_record_hotkey(self) -> None:
+        """全局快捷键 / 托盘「结束录像」共用。"""
+        if self.live.recording:
+            self.live.stop()
+            self.bar.show_message("正在收尾录像 —— 视频已经落盘。")
+        else:
+            self.bar.show_message("现在没有在录像。")
+
+    def _open_workbench_link(self, href: str) -> None:
+        """答案区里的 `#/...` 深链：交给已有的深链桥，不开第二个窗口。"""
+        port = int(getattr(self, "_web_port", 0) or 0)
+        if not port:
+            self._warn("本地服务还没起来，等几秒再点。")
+            return
+        from learnsys.ask.desktop.qt_pilot import open_workbench_link
+        open_workbench_link(port, href)
+
+    def _cancel_record_start(self) -> None:
+        timer = getattr(self, "_record_timer", None)
+        if timer is not None:
+            timer.stop()
+        self._record_left = 0
+        self.bar.set_record_pending(0)
+        self.bar.show_message("已取消录像。")
 
     def _record_summary(self, done: dict) -> str:
-        """结束时那句话：记了多久、切了几次、转写多少、快照多少。"""
+        """结束时那句话：录了多久、多大、转写多少、幻灯片多少。"""
         if not done:
             return "这段没记下东西。"
         top_name, top_min = done.get("最久") or ("", 0)
-        text = f"录制完成：{done.get('分钟', 0)} 分钟 · 切了 {done.get('切换', 0)} 次窗口"
+        seconds = float(done.get("录像秒数") or 0)
+        text = (f"录像完成：{seconds / 60:.0f} 分钟 · "
+                f"{_human_size(int(done.get('录像字节') or 0))}")
         chars = int(done.get("转写字数") or 0)
-        frames = int(done.get("快照张数") or 0)
+        slides = int(done.get("幻灯片张数") or 0)
         if chars:
             text += f" · 转写 {chars} 字（{done.get('转写条数', 0)} 段）"
-        if frames:
-            text += f" · 快照 {frames} 张"
+        else:
+            text += " · 这段没有转写出文字"
+        if slides:
+            text += f" · 幻灯片 {slides} 张"
         if top_name and top_min:
             text += f"\n最久停在「{top_name}」约 {top_min} 分钟"
-        text += f"\n快照在 {done.get('快照目录', '')}；点「复盘」可以让 AI 帮你总结这段。"
+        text += f"\n文件在 {done.get('录像目录', '')}；点「录像」页可以播放、导出或打开文件夹。"
         return text
 
     def _live_tick(self) -> None:
-        """每秒：托盘菜单显示进度，横栏显示「● 录制中」+ 转写/快照计数。"""
+        """每秒：托盘菜单显示进度，横栏显示「● 录像中」+ 大小/转写计数。"""
         on = self.live.recording
         self.record_action.setChecked(on)
         if self.live.finishing:
-            self.record_action.setText("结束完整录制（正在收尾转写…）")
+            self.record_action.setText("结束录像（正在收尾转写…）")
             self.bar.set_recording(True, self.live.window_rec.elapsed,
                                    self.live.window_rec.switches, "正在收尾转写…")
+            self.bar.rec_btn.setText("收尾中")
+            self.bar.rec_btn.setEnabled(False)
         elif on:
+            self.bar.rec_btn.setEnabled(True)
+            if self.live.duration >= config.VIDEO_MAX_SECONDS:
+                self._warn("录像到单段时长上限，已自动停止。")
+                self.live.stop()
+                return
+            if self.live.bytes >= config.VIDEO_MAX_BYTES:
+                self._warn("录像到单段大小上限，已自动停止。")
+                self.live.stop()
+                return
+            size = _human_size(self.live.bytes)
             self.record_action.setText(
-                f"结束完整录制（已记 {self.live.window_rec.elapsed:.0f} 分 · 转写 {self.live.chars} 字）")
-            detail = f"转写 {self.live.chars} 字 · 快照 {self.live.frames} 张"
+                f"结束录像（已录 {self.live.duration / 60:.1f} 分 · "
+                f"{size} · 转写 {self.live.chars} 字）")
+            detail = f"{size} · 转写 {self.live.chars} 字"
             if self.live.chars == 0 and not self.live.listening:
                 detail += " · 还没听到声音"
-            self.bar.set_recording(True, self.live.window_rec.elapsed,
+            self.bar.set_recording(True, self.live.duration / 60,
                                    self.live.window_rec.switches, detail)
         else:
-            self.record_action.setText("开始完整录制（声音+屏幕+窗口）")
+            self.record_action.setText("开始录像（主屏+系统声音）")
             self.bar.set_recording(False)
+            self.bar.rec_btn.setEnabled(True)
+
+    def _record_state(self) -> dict:
+        """Web 工作台轮询用：录像中/收尾中/倒计时。只读，不碰界面。"""
+        live = getattr(self, "live", None)
+        return {
+            "recording": bool(live and live.recording),
+            "finishing": bool(live and live.finishing),
+            "countdown": int(getattr(self, "_record_left", 0) or 0),
+            "duration": round(live.duration, 1) if live else 0.0,
+            "bytes": int(live.bytes) if live else 0,
+            "chars": int(live.chars) if live else 0,
+            "session_id": int(live.session_id) if live else 0,
+        }
 
     def _live_info(self, text: str) -> None:
         self.bar.show_message(text)
 
+    def _live_saved(self, summary: dict) -> None:
+        """视频已落盘、库已更新 —— 立刻打开录像页；转写在后台补。"""
+        self.bar.set_capture_excluded(False)
+        self.show_bar()
+        session_id = int(summary.get("会话") or 0)
+        self.bar.show_message("录像已保存，正在后台转写 —— 已打开录像页。")
+        self.tray.showMessage(
+            product.PRODUCT_NAME,
+            "录像已保存。已打开录像页；转写会在后台补齐。",
+            QtWidgets.QSystemTrayIcon.Information, 8000)
+        if session_id:
+            self._open_workbench_link(f"#/recordings?session={session_id}")
+
     def _live_stopped(self, summary: dict) -> None:
+        """转写也收完了：只更新托盘/状态行，不再抢页面。"""
+        self.bar.set_capture_excluded(False)   # 兜底：saved 没走到时也要恢复
         text = self._record_summary(summary)
-        self.tray.showMessage(product.PRODUCT_NAME, text, QtWidgets.QSystemTrayIcon.Information, 12000)
-        self.bar.show_message(text.replace(chr(10), " "))
+        chars = int(summary.get("转写字数") or 0)
+        self.bar.show_message(
+            f"转写完成：{chars} 字。录像页已更新。" if chars else "录像收尾完成。")
+        self.tray.showMessage(product.PRODUCT_NAME, text,
+                              QtWidgets.QSystemTrayIcon.Information, 10000)
+
     def _conn(self):
         """今天的库 —— 跨天了（过了零点）自动换到新一天那个文件夹。
 
@@ -154,7 +289,7 @@ class SessionsMixin:
     def _recent_asks(self):
         """给横栏「历史」按钮用：今天的问答（新→旧），带 kind / image_path / id。"""
         try:
-            return store.recent_asks(self._conn(), limit=20)
+            return store.recent_asks(self._conn(), limit=20, with_origin=True)
         except Exception as exc:
             print(f"读历史失败：{exc}", file=sys.stderr)
             return []
@@ -201,7 +336,7 @@ class SessionsMixin:
             self._warn(f"读今天的记录失败：{exc}")
             return
         if not sessions and not transcript_rows:
-            self._warn("今天还没有可复盘的记录 —— 先点托盘里的「开始记录」，下课再来点复盘。")
+            self._warn("今天还没有可复盘的记录 —— 先点托盘里的「开始录像」，下课再来点复盘。")
             return
         summary_lines = []
         for sid, started, ended in sessions:

@@ -39,6 +39,7 @@ class AskBar(BuildMixin, LayoutMixin, StateMixin, StreamMixin, ActionsMixin,
     ops_result = QtCore.Signal(str)            # 电脑助手每步执行结果（后台线程发）
     remind_scheduled = QtCore.Signal(int, str)  # 计划里出现 remind → app 挂定时器
     workbench_requested = QtCore.Signal()      # 「工作台」→ app 打开独立学习台窗口
+    open_link_requested = QtCore.Signal(str)   # 答案区里的 `#/...` 深链 → app 打开工作台页面
 
     def __init__(self, tip: str):
         super().__init__(None)
@@ -109,3 +110,18 @@ class AskBar(BuildMixin, LayoutMixin, StateMixin, StreamMixin, ActionsMixin,
     @property
     def busy(self) -> bool:
         return self._worker is not None
+
+    def set_capture_excluded(self, excluded: bool) -> bool:
+        """录像时把横栏排除在屏幕捕获之外（Windows 10 2004+ 的 WDA_EXCLUDEFROMCAPTURE）。
+
+        用户要能一直点「停止」，所以横栏不能藏；但也不能出现在视频里。
+        这个 API 对 mss/BitBlt 实测有效（2026-10-25 本机验证）；老系统失败时返回 False，
+        横栏会留在画面里，不影响录像本身。
+        """
+        try:
+            import ctypes
+            value = 0x11 if excluded else 0x00   # WDA_EXCLUDEFROMCAPTURE / WDA_NONE
+            return bool(ctypes.windll.user32.SetWindowDisplayAffinity(
+                int(self.winId()), value))
+        except Exception:
+            return False

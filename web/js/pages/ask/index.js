@@ -65,6 +65,20 @@ export async function mount(ctx) {
       toast(error.message || "资料没挂上", "err");
     }
   }
+  const recordingId = Number(ctx.query?.get("recording") || 0);
+  if (recordingId) {
+    try {
+      const data = await api.get(`/api/recordings/${recordingId}`);
+      state.recording = {
+        id: data.id, title: data.title, chars: data.chars, duration: data.duration,
+      };
+      renderAttachments();
+      updateSendButton();
+      dom.status.textContent = `已挂录像：${data.title}`;
+    } catch (error) {
+      toast(error.message || "录像没挂上", "err");
+    }
+  }
   const prompt = ctx.query?.get("prompt");
   if (prompt) {
     dom.input.value = prompt;
@@ -146,6 +160,7 @@ export function bindEvents() {
       state.material = null;
       state.materialPinned = false;
     }
+    if (button.dataset.remove === "recording") state.recording = null;
     renderAttachments();
   });
 

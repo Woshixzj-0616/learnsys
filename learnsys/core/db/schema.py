@@ -6,7 +6,7 @@ from __future__ import annotations
 
 # 统一库结构版本。改了 `SCHEMA` 或 `_migrate_columns` 就 +1：
 # `connect()` 只在版本不一致时跑建表/补列/种子，一致时只建连接。
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 4
 
 
 SCHEMA = """
@@ -17,7 +17,16 @@ CREATE TABLE IF NOT EXISTS meta (
 CREATE TABLE IF NOT EXISTS sessions (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     started_at TEXT NOT NULL,
-    ended_at   TEXT
+    ended_at   TEXT,
+    kind       TEXT NOT NULL DEFAULT 'video',
+    title      TEXT NOT NULL DEFAULT '',
+    video_path TEXT NOT NULL DEFAULT '',
+    video_bytes INTEGER NOT NULL DEFAULT 0,
+    duration_ms INTEGER NOT NULL DEFAULT 0,
+    thumb_path TEXT NOT NULL DEFAULT '',
+    slides_dir TEXT NOT NULL DEFAULT '',
+    material_id INTEGER NOT NULL DEFAULT 0,
+    analysis_result_id INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS window_events (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,9 +67,12 @@ CREATE INDEX IF NOT EXISTS idx_asks_ts ON asks (ts);
 CREATE TABLE IF NOT EXISTS frame_text (
     path TEXT PRIMARY KEY,
     ts   TEXT NOT NULL,
-    text TEXT NOT NULL
+    text TEXT NOT NULL,
+    session_id INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_frame_text_ts ON frame_text (ts);
+-- 注意：idx_frame_text_session 建在 `_migrate_columns` 里 —— 老库的 frame_text
+-- 还没有 session_id，先把列补上再建索引，否则 executescript(SCHEMA) 会先报错。
 CREATE TABLE IF NOT EXISTS conversations (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     title      TEXT,
@@ -68,7 +80,9 @@ CREATE TABLE IF NOT EXISTS conversations (
     mode       TEXT,
     summary    TEXT,
     started_at TEXT,
-    updated_at TEXT
+    updated_at TEXT,
+    origin     TEXT NOT NULL DEFAULT 'ask',   -- ask / video / cet6
+    recording_id INTEGER NOT NULL DEFAULT 0   -- 录像里的会话指向 sessions.id
 );
 CREATE TABLE IF NOT EXISTS messages (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,

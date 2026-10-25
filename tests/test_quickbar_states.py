@@ -113,7 +113,7 @@ class TestFixedGeometry(AskBarFixture):
         self.b.set_recording(True, 3.0, 4, "转写 45 字 · 快照 2 张")
         QtWidgets.QApplication.processEvents()
         self.assertEqual(self.b.height(), base, "录制行常驻固定高度，开关录制不许推窗口")
-        self.assertIn("录制中", self.b.rec_line.text())
+        self.assertIn("录像中", self.b.rec_line.text())
         self.b.set_recording(False)
         self.assertEqual(self.b.height(), base)
         self.assertEqual(self.b.rec_line.text(), "")

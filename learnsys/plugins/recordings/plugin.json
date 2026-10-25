@@ -1,0 +1,15 @@
+{
+  "id": "recordings",
+  "name": "录像",
+  "icon": "◉",
+  "type": "native-page",
+  "entry": "pages/recordings.html",
+  "script": "js/pages/recordings.js",
+  "order": 60,
+  "status": "ready",
+  "version": "2.28.3",
+  "category": "回顾",
+  "home": true,
+  "tagline": "主屏 + 系统声音 → MP4",
+  "description": "录下网课/视频课的主屏和系统声音，存成标准 MP4；停止后可播放、看转写、看幻灯片，并让 AI 生成提纲、要点和术语表。"
+}

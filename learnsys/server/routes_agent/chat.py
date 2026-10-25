@@ -33,6 +33,7 @@ class ChatRequest(BaseModel):
     attachment_text: str = ""
     material_id: int | None = None   # 从资料库挂载：正文由后端按 id 取，前端不搬几十万字
     attach_material: bool = True     # False = 只给错题归档用，不把正文塞进这一轮
+    recording_id: int | None = None  # 从录像挂载：后端取这段转写，前端不搬正文
     module: str = "ask"          # ask / review / quiz ...（会话分组用，不进入时间线标题）
     internal: bool = False       # 插件内部提示词：保留会话上下文，但不记成一条「问答」
     surface: str = "ask"         # ask / cet6 / materials ...
@@ -60,6 +61,9 @@ def chat(req: ChatRequest, _=Depends(require_token)):
         except ValueError as exc:
             raise HTTPException(status_code=413, detail=str(exc)) from exc
     module = "cet6" if req.surface == "cet6" else (req.module or "ask")
+    origin = ("video" if req.surface == "video"
+              else ("cet6" if req.surface == "cet6" else "ask"))
+    recording_id = int(req.recording_id or 0)
     context_text = snapshot.render_text() if snapshot else req.context
     context_title = "当前学习上下文" if req.surface == "cet6" else ""
     conn = store.connect()
@@ -68,10 +72,16 @@ def chat(req: ChatRequest, _=Depends(require_token)):
         if conv_id is not None and store.get_conversation(conn, conv_id) is None:
             conv_id = None
         new_conv = conv_id is None
+        if recording_id:
+            hit = conn.execute(
+                "SELECT 1 FROM sessions WHERE id = ?", (recording_id,)).fetchone()
+            if hit is None:
+                recording_id = 0
         if conv_id is None:
             conv_id = store.create_conversation(
                 conn, title=req.message.strip()[:30] or "新对话",
-                module=module, mode=req.mode)
+                module=module, mode=req.mode,
+                origin=origin, recording_id=recording_id)
         history = _load_history(conn, conv_id)       # 先取旧账，再记这一问
         material_id = req.material_id
         material_title = ""
@@ -91,9 +101,27 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                                          "conversation_id": conv_id})
             else:
                 material_id = None
+        if recording_id:
+            recording = store.get_recording(conn, recording_id)
+            if recording is None:
+                recording_id = 0
+            else:
+                text = store.recording_transcript(conn, recording_id, cap=12000)
+                if text:
+                    # 只把真实转写当背景资料；没有转写就什么都不加 —— 否则模型会
+                    # 主动评论「课堂转写是空的」，把普通闲聊也带偏（2026-10-25 真机）。
+                    context_text += (
+                        "\n\n【录像转写（背景资料，只在问题需要时引用；"
+                        "不要主动评论转写是否完整）】\n" + text)
+                if new_conv and not req.internal:
+                    store.add_event(conn, "video", "ask", recording["title"],
+                                    {"session_id": recording_id,
+                                     "conversation_id": conv_id},
+                                    ref_id=recording_id)
         store.add_message(conn, conv_id, "user", {
             "text": req.message,
             "material_id": material_id,
+            "recording_id": recording_id,
             "surface": req.surface,
             "context_snapshot": req.context_snapshot,
             "result_id": req.result_id,

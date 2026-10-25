@@ -7,7 +7,7 @@ import { state, dom } from "./state.js";
 export function updateSendButton() {
   const hasText = dom.input.value.trim().length > 0;
   dom.send.disabled = state.streaming
-    || (!hasText && !state.image && !state.doc && !state.material);
+    || (!hasText && !state.image && !state.doc && !state.material && !state.recording);
 }
 
 export async function pickFile(input, kind) {
@@ -53,6 +53,11 @@ export function renderAttachments() {
   if (state.doc) {
     items.push(`<span class="attach-chip">文档 · ${escapeHtml(state.doc.name)} · ${state.doc.chars} 字
       <button type="button" data-remove="doc" aria-label="移除文档">×</button></span>`);
+  }
+  if (state.recording) {
+    items.push(`<span class="attach-chip">
+      <span class="attach-kind">上下文 · 录像</span> ${escapeHtml(state.recording.title)}${state.recording.chars ? ` · ${state.recording.chars} 字` : ""}
+      <button type="button" data-remove="recording" aria-label="移除录像">×</button></span>`);
   }
   if (state.material) {
     const pinned = state.materialPinned;

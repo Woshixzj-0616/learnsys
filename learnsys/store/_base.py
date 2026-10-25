@@ -7,14 +7,16 @@ from __future__ import annotations
 
 import datetime as dt
 import sqlite3
-import threading
 
 from learnsys.core import db as core_db
 
 
 SCHEMA = core_db.SCHEMA
 
-_LOCK = threading.Lock()
+# 和 core.db 的 FTS 索引共用**同一把**锁：连接被 ASR / 窗口 / 界面线程共用，
+# 两把锁各管一半，等于没锁 —— 曾在录像启停时复现
+# `sqlite3.OperationalError: cannot commit - no transaction is active`。
+_LOCK = core_db._LOCK
 
 
 def connect(path=None) -> sqlite3.Connection:

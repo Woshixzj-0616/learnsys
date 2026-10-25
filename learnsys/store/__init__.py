@@ -30,6 +30,13 @@ from .materials import (MATERIAL_KINDS, add_material, delete_material_row, get_m
 from .memories import add_memory, delete_memory, list_memories, update_memory
 from .model_usage import add_usage as add_model_usage, day_by_model, day_totals, \
     recent as recent_model_usage
+from .recordings import (default_title as recording_title,
+                         delete_recording, get_recording, list_recordings,
+                         recording_slides, recording_totals,
+                         set_analysis as set_recording_analysis,
+                         set_material as set_recording_material,
+                         transcript_text as recording_transcript,
+                         update_video)
 from .review import (REVIEW_ITEM_TYPES, add_review_log, due_review_items,
                      get_review_state, recent_review_log, review_stats,
                      save_review_state, seed_review_states)
@@ -67,6 +74,10 @@ __all__ = [
     "list_materials", "material_counts", "set_material_status", "touch_material",
     "update_material",
     "add_memory", "delete_memory", "list_memories", "update_memory",
+    "recording_title", "delete_recording", "get_recording", "list_recordings",
+    "recording_slides", "recording_totals", "set_recording_analysis",
+    "set_recording_material",
+    "recording_transcript", "update_video",
     "REVIEW_ITEM_TYPES", "add_review_log", "due_review_items", "get_review_state",
     "recent_review_log", "review_stats", "save_review_state", "seed_review_states",
     "add_frame_text", "add_transcript", "add_window_event", "add_window_event_at",

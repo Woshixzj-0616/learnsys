@@ -85,6 +85,8 @@ SETTINGS_TEMPLATE = {
     "api_model": "",
     "api_style": "",
     "hotkey": "",
+    "_record_hotkey": "停止录像的全局快捷键（默认 ctrl+alt+s；录像时横栏会藏起来）",
+    "record_hotkey": "",
     "system_prompt": "",
     "_system_prompt_text": "没框图、纯文字问的时候用的提示词（不填 = 用内置的）",
     "system_prompt_text": "",
@@ -97,8 +99,15 @@ SETTINGS_TEMPLATE = {
     "backup_dir": "",
     "_keep_days": "数据保留天数：超过这么多天的旧数据文件夹自动删除（0 = 永不删，默认）",
     "keep_days": 0,
-    "_frame_seconds": "录制时每隔多少秒截一张全屏快照（最小 5）",
-    "frame_seconds": 30,
+    "_video": "录像：video_enabled 开关；video_fps 帧率（5–15，默认 10）；video_max_width 最长边（默认 1600）；"
+              "video_dir 录像文件夹（留空 = 数据目录下的「录像」）；video_max_seconds 单段上限（默认 10800 秒）；"
+              "video_max_bytes 单段大小上限（默认 8GB）",
+    "video_enabled": True,
+    "video_fps": 10,
+    "video_max_width": 1600,
+    "video_dir": "",
+    "video_max_seconds": 10800,
+    "video_max_bytes": 8589934592,
     "_workbench_on_start": "打开学习工作台时，是否自动弹出网页工作台窗口（false = 只出快捷栏，从托盘再打开）",
     "workbench_on_start": True,
     "_pwa_app_id": "可选：已安装 PWA 的 app-id。填了就用它打开工作台（任务栏有独立的「学习工作台」按钮）；留空 = Edge 应用窗口。",
@@ -370,8 +379,18 @@ WORKBENCH_ON_START = _user_bool("workbench_on_start", True)
 # 已安装的 PWA app-id（如 ndclga…）：有的话打开工作台直接拉起它 —— 任务栏才有独立的
 # 「学习工作台」按钮；留空 = 退回 Edge --app 窗口（会和普通 Edge 窗口分到一组）。
 PWA_APP_ID = str(USER.get("pwa_app_id") or os.environ.get("LEARNSYS_PWA_APP_ID") or "").strip()
-# 录制时每隔多少秒截一张全屏快照（设置.json 里 frame_seconds 可改，最小 5 秒）
-ASK_FRAME_SECONDS = max(5.0, float(_user_int("frame_seconds", 30)))
+# ---- 录像（P23）：主屏 + 系统声音 → 标准 MP4 ----
+VIDEO_ENABLED = _user_bool("video_enabled", True)
+VIDEO_FPS = max(5, min(15, _user_int("video_fps", 10)))
+VIDEO_MAX_WIDTH = max(640, min(2560, _user_int("video_max_width", 1600)))
+VIDEO_MAX_SECONDS = max(600, _user_int("video_max_seconds", 3 * 3600))
+VIDEO_MAX_BYTES = max(256 * 1024 * 1024, _user_int("video_max_bytes", 8 * 1024**3))
+_raw_video_dir = str(USER.get("video_dir") or "").strip()
+VIDEO_DIR = pathlib.Path(_raw_video_dir) if _raw_video_dir else (DATA_ROOT / "录像")
+if not VIDEO_DIR.is_absolute():
+    VIDEO_DIR = DATA_ROOT / VIDEO_DIR
+# 录像开关/停止的全局快捷键：横栏会藏起来，靠它或托盘菜单停止
+RECORD_HOTKEY = str(USER.get("record_hotkey") or "ctrl+alt+s")
 ASK_TIMEOUT_SECONDS = 90.0      # 等 AI 回话的上限；超时就在横条里给中文提示，不装死
 # 答案最长多少 token —— **只用来防失控，不能用来提速**：
 # 实测 deepseek-flash 是推理模型，思考过程也吃这份配额（一次回答 240 token 里 117 个是推理），
