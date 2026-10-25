@@ -22,9 +22,8 @@
 
       if(e.key === " "){
         e.preventDefault();
-        if(WB.session.activeSentence >= 0) WB.audio.toggleSentence(WB.session.activeSentence);
-        else if(WB.audio.isPaused()) WB.audio.safePlay();
-        else WB.dom.audio.pause();
+        // 和底部播放键同一套规则，避免空格在单句模式里和播放键行为不一致。
+        WB.audio.togglePlayPause();
       }else if(e.key === "ArrowUp"){
         e.preventDefault();
         WB.audio.moveSentence(-1);

@@ -70,6 +70,26 @@
     S().followIndex = -1;
   }
 
+  // 撤掉当前播放区间（单句 / 整段 / 题目），播放头留在原处。
+  // 用在两处：全局控件（进度条、播放键、← →）接管时；一段自然播完时。
+  // 之后按整轨跟随，下一次播放从当前位置继续，不会卡回上一句。
+  function releaseRange(){
+    stopBoundaryTimer();
+    S().activeSentence = -1;
+    S().rangeStart = 0;
+    S().rangeEnd = 0;
+    S().repeatLeft = 0;
+    S().activeLoopCfg = {on:false, times:1};
+    S().ab = null;
+    document.querySelectorAll(".card.playing, .card.active").forEach(function(c){
+      c.classList.remove("playing");
+      c.classList.remove("active");
+    });
+    S().followActive = true;
+    S().followScope = "paper";
+    S().followPaused = false;
+  }
+
   function followScopeHit(hit){
     if(!hit) return false;
     if(S().followScope === "item"){
@@ -119,7 +139,13 @@
     if(!audio) return;
     const dur = Number(audio.duration);
     const max = isFinite(dur) && dur > 0 ? dur : 1e9;
-    audio.currentTime = U.clamp(audio.currentTime + Number(delta || 0), 0, max);
+    const t = U.clamp(audio.currentTime + Number(delta || 0), 0, max);
+    audio.currentTime = t;
+    // 单句模式下挪出这一句的范围，就退出单句，别再让下一次播放跳回去。
+    if(S().activeSentence >= 0){
+      const win = resolveWindow(S().activeSentence);
+      if(win && (t < win.start - 0.05 || t >= win.end - 0.05)) releaseRange();
+    }
     if(S().followActive) S().followPaused = false;
     updateFollow();
     notifyTick();
@@ -149,7 +175,13 @@
     if(!audio) return;
     const dur = Number(audio.duration);
     if(!isFinite(dur) || dur <= 0) return;
-    audio.currentTime = U.clamp(Number(frac) || 0, 0, 1) * dur;
+    const t = U.clamp(Number(frac) || 0, 0, 1) * dur;
+    // 全局进度条是整轨控制：单句窗口一律让路；整段窗口只在跳出去时让路。
+    if(S().activeSentence >= 0 ||
+       (S().rangeEnd > S().rangeStart && (t < S().rangeStart || t > S().rangeEnd))){
+      releaseRange();
+    }
+    audio.currentTime = t;
     if(S().followActive) S().followPaused = false;
     updateFollow();
     notifyTick();
@@ -157,12 +189,27 @@
 
   function togglePlayPause(){
     if(!audio) return;
-    if(audio.paused){
-      if(S().activeSentence >= 0) toggleSentence(S().activeSentence);
-      else safePlay();
-    }else{
+    if(!audio.paused){
       audio.pause();
+      return;
     }
+    const i = S().activeSentence;
+    if(i >= 0){
+      const win = resolveWindow(i);
+      const inside = win &&
+        audio.currentTime >= win.start - 0.05 && audio.currentTime < win.end - 0.05;
+      if(inside){
+        // 暂停在句内：继续这一句（循环 / 连播设置照旧生效）
+        safePlay();
+        startBoundaryTimer();
+        notifyTick();
+        return;
+      }
+      // 播放头已经不在这一句里（拖过进度条等）：退出单句，从当前位置继续。
+      releaseRange();
+    }
+    safePlay();
+    notifyTick();
   }
 
   function playRange(start, end, sentenceIndex, scope){
@@ -242,8 +289,11 @@
         safePlay();
         bumpLoops(S().activeSentence);
       }else{
+        // 这一句/这一段自然播完：撤掉区间，下一次播放从当前位置接着走。
         audio.pause();
         stopBoundaryTimer();
+        releaseRange();
+        notifyWindow();
       }
       notifyTick();
     }else{
@@ -292,6 +342,16 @@
 
   function seekFraction(i, value){
     const activeHere = (i === S().activeSentence);
+    // 整段/整篇跟随中拖单句滑块：只移动播放头，不把整段窗口缩成一句。
+    if(!activeHere && S().followActive){
+      const base = WB.paper.baseRangeByIndex(i);
+      if(!base) return;
+      audio.currentTime = base[0] + (Number(value) / 1000) * (base[1] - base[0]);
+      S().followPaused = false;
+      updateFollow();
+      notifyTick();
+      return;
+    }
     const win = (activeHere && S().rangeEnd > S().rangeStart)
       ? {start:S().rangeStart, end:S().rangeEnd, mode:(S().ab ? "ab" : "normal")}
       : resolveWindow(i);
@@ -338,6 +398,8 @@
 
   function replayActive(){
     let i = S().activeSentence;
+    // 整段/整篇跟随中按 R：重播正在跟的那一句，而不是第一句。
+    if(i < 0 && S().followActive && S().followIndex >= 0) i = S().followIndex;
     if(i < 0){
       const card = document.querySelector(".card");
       i = card ? Number(card.dataset.i) : -1;
@@ -467,8 +529,11 @@
       WB.status("音频就绪");
     });
     audio.addEventListener("durationchange", updatePlayerUI);
-    audio.addEventListener("timeupdate", updatePlayerUI);
     audio.addEventListener("ended", updatePlayerUI);
+    // 跟随由播放位置驱动，不靠边界定时器：暂停再继续也不会冻住。
+    audio.addEventListener("timeupdate", function(){
+      notifyTick();
+    });
     audio.addEventListener("play", function(){
       applyRate();
       // 直接点底部原生播放器（没有走 playRange）时，也按整卷跟随当前句。
@@ -478,6 +543,9 @@
         S().followSectionSi = S().currentSi;
         S().followPaused = false;
       }
+      // 暂停会停掉边界定时器；任何来源的继续播放都要把它接回来，
+      // 否则单句循环 / 整段播完自动停都失效。
+      if(S().rangeEnd > S().rangeStart) startBoundaryTimer();
       updateFollow();
       notifyTick();
     });
@@ -487,6 +555,8 @@
     });
     audio.addEventListener("ended", function(){
       stopBoundaryTimer();
+      releaseRange();
+      notifyWindow();
       notifyTick();
     });
     audio.addEventListener("error", function(){

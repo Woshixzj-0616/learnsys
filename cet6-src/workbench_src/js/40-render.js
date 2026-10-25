@@ -209,6 +209,8 @@
   function miniPlayer(){
     const cur = WB.paper.currentItem();
     if(!cur) return;
+    // 整段/整篇跟随时，正在跟的那一句也要显示句内进度（滑块可拖）。
+    const following = WB.session.followActive && WB.session.activeSentence < 0;
     document.querySelectorAll(".mini-range").forEach(function(r){
       const i = Number(r.dataset.range);
       const idx = WB.paper.findIndex(i);
@@ -216,13 +218,17 @@
       const s = cur.sentences[idx];
       const base = WB.paper.baseRange(s, idx);
       const curEl = document.querySelector('[data-cur="' + i + '"]');
-      if(i === WB.session.activeSentence && WB.session.rangeEnd > WB.session.rangeStart){
-        const len = WB.session.rangeEnd - WB.session.rangeStart;
-        const p = U.clamp((WB.dom.audio.currentTime - WB.session.rangeStart) / len, 0, 1);
+      const inRange = (i === WB.session.activeSentence && WB.session.rangeEnd > WB.session.rangeStart);
+      const isFollow = following && i === WB.session.followIndex;
+      if(inRange || isFollow){
+        const start = inRange ? WB.session.rangeStart : base[0];
+        const end = inRange ? WB.session.rangeEnd : base[1];
+        const len = end - start;
+        const p = U.clamp((WB.dom.audio.currentTime - start) / len, 0, 1);
         r.value = String(Math.round(p * 1000));
         if(curEl){
           curEl.textContent =
-            U.fmtMini(Math.max(0, WB.dom.audio.currentTime - WB.session.rangeStart)) +
+            U.fmtMini(Math.max(0, WB.dom.audio.currentTime - start)) +
             " / " + U.fmtMini(len);
         }
       }else{
