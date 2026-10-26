@@ -30,8 +30,9 @@ _HOTKEY_RE = re.compile(r"^(?:(?:alt|ctrl|control|shift|win)\+)+([a-z]|f(?:[1-9]
                         re.IGNORECASE)
 
 # 1×1 透明 PNG：测视觉链路用，真发一张图才算测到「模型收不收图」
-_TINY_PNG = ("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC"
-             "AAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=")
+# 96×96 白底绿框、中间一个「好」字。
+# 1×1 的 PNG 会被 DeepSeek 判「unsupported image」，测试连接必须用正常尺寸。
+_TINY_PNG = ("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAIAAABt+uBvAAABOElEQVR42u3dsW3CQBiA0bvIkldAsljD8gjQgNxTeJMoFWN4ASrYgMryGidmcOHCtBE4RSIFUPK+zu3Tf2cXPl2cpino694QAAL0m2WfH+JHJBJCmN4nE/SjCbr3+2/dryETZJMGBAgQIECAAAkQIECAAAECBEiAAAECBAgQIEACBAgQIECAAAECJECAwmN+4nxkMcbtdptl2TiOx+PxBc9FPHmCyrJcr9eHw2Gz2VRVZYndtlwu8zzvuq4oiqIoAM202+32+/1qtbJJz9e2bdM0p9MJ0EwppWEY6rpOKV0uF2+x2/q+XywW5/N5HMeu6wDd9vrnHX0oAgIECBAgQIAACRAgQIAAAQIESIAAAQIECBAgQAIECBAgQIAAAQIkQIAAAQIU/sBxKHcjmKBvFN3tY4IAAXpiV4ENQGNNMkQIAAAAAElFTkSuQmCC")
 
 
 def _mask(value: str) -> str:
