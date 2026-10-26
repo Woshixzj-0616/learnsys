@@ -17,6 +17,7 @@ import threading
 import urllib.error
 import urllib.request
 
+from learnsys.agent import usage as agent_usage
 from learnsys.llm.config import AgentConfig
 
 VISION_SYSTEM = "你是图像转述器。你只做忠实转述，不回答问题、不评价、不省略。"
@@ -123,6 +124,11 @@ def _call_vision(cfg: AgentConfig, data_url: str, timeout: float = 60.0) -> str:
     text = text.strip()
     if not text:
         raise VisionError("视觉服务返回了空描述")
+    usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
+    if usage:
+        # 看图也是真实花费：记进同一本账，设置页和每日上限才看得见。
+        agent_usage.record(cfg.data_root, source="vision",
+                           model=cfg.vision_model, usage=usage, cfg=cfg)
     return text[:6000]
 
 

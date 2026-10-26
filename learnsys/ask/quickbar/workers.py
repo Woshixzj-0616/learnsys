@@ -89,6 +89,7 @@ class _AskWorker(QtCore.QThread):
                 extra_images=self._extra_images,
                 context=self._context,
                 mode=self._mode,
+                surface="quickbar",
                 system_override=self._system_override,
                 use_tools=self._use_tools,
                 conversation_key=self._conversation_key,

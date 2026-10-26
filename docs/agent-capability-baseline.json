@@ -1,0 +1,85 @@
+{
+  "generated_at": "2026-10-26T19:49:40",
+  "db": "D:\\学习系统\\learning.db",
+  "days": 7,
+  "perception": {
+    "vision_ready": false,
+    "vision_model": "",
+    "web_tools": [],
+    "materials": 0,
+    "recordings": 3
+  },
+  "tools": {
+    "total": 23,
+    "surface_quickbar": 15,
+    "surface_cet6": 16,
+    "surface_quick": 2,
+    "writes": [
+      "forget_memory",
+      "launch_app",
+      "open_file",
+      "open_url",
+      "run_code",
+      "save_material_note",
+      "save_memory",
+      "write_study_file"
+    ],
+    "domains": {
+      "知识点/BKT": true,
+      "复习队列": true,
+      "写作/翻译训练": true,
+      "录像": true,
+      "资料库": true,
+      "六级精听": true,
+      "问答/转写": true
+    },
+    "mcp_tools": 5,
+    "mcp_read_only": 4
+  },
+  "memory": {
+    "memories_active": 2,
+    "memories_total": 5,
+    "conversations": 28,
+    "conversation_summaries": 0,
+    "asks": 138,
+    "history_turns": 4
+  },
+  "reliability": {
+    "auto_route": "shadow",
+    "strong_model": "deepseek-v4-pro",
+    "runs": 60,
+    "runs_with_tools": 6,
+    "errors": 1,
+    "check_ok": 2,
+    "check_failed": 0,
+    "prompt_tokens": 65002,
+    "completion_tokens": 4671,
+    "cache_read_tokens": 55936,
+    "calls_by_model": {
+      "deepseek-flash": 25
+    },
+    "calls_by_source": {
+      "explain": 12,
+      "quick": 13
+    },
+    "tool_calls": {
+      "launch_app": 2,
+      "browser_history": 1,
+      "open_url": 1,
+      "open_file": 1,
+      "save_memory": 1,
+      "search_records": 1,
+      "search_materials": 1
+    },
+    "tool_failures": {
+      "open_url": 1,
+      "launch_app": 1
+    }
+  },
+  "proactivity": {
+    "write_tools": 8,
+    "deep_available": false,
+    "deep_calls": 0,
+    "vision_calls": 0
+  }
+}

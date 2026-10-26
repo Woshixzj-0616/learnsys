@@ -5,16 +5,15 @@
 """
 from __future__ import annotations
 
-import contextlib
 import dataclasses
 import time
 import uuid
 from collections.abc import Generator
 from dataclasses import dataclass, field
 
-from learnsys import config, diagnostics, store
-from learnsys.agent import cost as agent_cost
+from learnsys import config
 from learnsys.agent import planning, selfcheck, tools
+from learnsys.agent import usage as agent_usage
 from learnsys.llm.config import AgentConfig
 from learnsys.agent.events import AgentEvent
 from learnsys.agent.fallback import stream_with_fallback
@@ -37,6 +36,7 @@ class AgentRequest:
     attachment_text: str = ""
     mode: str = "explain"
     module: str = "ask"
+    surface: str = "ask"            # ask / cet6 / video / quickbar —— 决定工具裁剪
     system_override: str = ""       # 非导师任务（如电脑助手出 JSON 计划）用
     use_tools: bool = True          # 纯生成任务别让它去查记录
     conversation_id: int | None = None   # 测验自动收题的去重键要用
@@ -98,19 +98,11 @@ def _record_usage(state: _RunState, cfg, model: str, usage,
     model = str(model or "")
     _merge_usage(state.usage, usage)
     _merge_usage(state.usage_by_model.setdefault(model, {}), usage)
-    amount, currency, _ = agent_cost.estimate(usage, cfg, model)
+    amount, currency = agent_usage.record(
+        getattr(cfg, "data_root", config.DATA_ROOT),
+        source=source, model=model, usage=usage, cfg=cfg)
     state.cost = round(state.cost + amount, 8)
     state.currency = currency or state.currency
-    try:
-        path = config.db_path_in(getattr(cfg, "data_root", config.DATA_ROOT))
-        with contextlib.closing(store.connect(path)) as conn:
-            store.add_model_usage(
-                conn, source=source, model=model,
-                counts=agent_cost.normalize_usage(usage),
-                cost=amount, currency=currency)
-    except Exception as exc:  # noqa: BLE001 —— 记账失败不能挡住对话
-        diagnostics.log_swallow("记录模型用量", exc,
-                                data_root=getattr(cfg, "data_root", None))
 
 
 def _aborted(state: _RunState) -> AgentEvent:

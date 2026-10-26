@@ -143,7 +143,8 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
               or prompts.build_system(request.mode, has_image=bool(image_paths),
                                       profile=profile, memories=memory_text,
                                       concise=concise))
-    tool_schemas = tools.schemas_for(request.mode, use_tools=request.use_tools)
+    tool_schemas = tools.schemas_for(request.mode, use_tools=request.use_tools,
+                                     surface=request.surface)
     messages = _history_messages(request.history, image_text)
     current_text = prompts.build_user_text(
         request.message,

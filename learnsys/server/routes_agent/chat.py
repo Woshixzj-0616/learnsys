@@ -193,6 +193,7 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 attachment_text=attachment_text,
                 mode=req.mode,
                 module=module,
+                surface=req.surface,
                 conversation_id=conv_id,
                 conversation_key=str(conv_id),
                 material_id=material_id or 0,

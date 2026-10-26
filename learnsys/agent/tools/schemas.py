@@ -113,6 +113,13 @@ GET_CET6_CONTEXT_SCHEMA = {
 TOOL_SCHEMAS.append(GET_CET6_CONTEXT_SCHEMA)
 
 
+from .schemas_learning import (DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
+                               GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA)
+
+TOOL_SCHEMAS.extend([DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
+                     GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA])
+
+
 OPEN_FILE_SCHEMA = {
     "name": "open_file",
     "description": (
@@ -367,17 +374,35 @@ WRITE_LABELS = {
 }
 
 
-def schemas_for(mode: str = "explain", *, use_tools: bool = True):
-    """按模式给工具清单：错题本只写工具只在测验里暴露；记忆工具所有模式都有。"""
+def schemas_for(mode: str = "explain", *, use_tools: bool = True,
+                surface: str = "ask"):
+    """按入口和模式给工具清单。
+
+    - 速答（quick）只留记忆工具：一两句话的任务不该带 20 多个工具；
+    - 快捷栏 / 六级 / 录像：只给学习读取工具，不放本机文件、程序、代码执行；
+    - 工作台问答页：完整清单（仍是唯一能打开文件/启动程序/跑代码的入口）；
+    - 测验模式不暴露系统工具；错题本写工具只在测验里出现。
+    """
     if not use_tools:
         return None
-    schemas = [MAKE_PLAN_SCHEMA, RECENT_WRONG_ITEMS_SCHEMA] + list(TOOL_SCHEMAS)
+    surface = str(surface or "ask").lower()
+    memory = [SAVE_MEMORY_SCHEMA, FORGET_MEMORY_SCHEMA]
+    if mode == "quick":
+        return list(memory)
+
+    learning = [MAKE_PLAN_SCHEMA, RECENT_WRONG_ITEMS_SCHEMA]
+    core = learning + list(TOOL_SCHEMAS)
+    if surface in ("cet6", "video"):
+        return core + memory + [SAVE_MATERIAL_NOTE_SCHEMA]
+    if surface == "quickbar":
+        return core + memory
+
+    schemas = list(core) + list(memory)
     if mode != "quiz":
-        # 测验页不该顺手打开本机文件 / 程序 / 网页；只在普通问答里暴露。
+        # 测验页不该顺手打开本机文件 / 程序 / 网页；只在工作台问答页暴露。
         schemas += [OPEN_FILE_SCHEMA, LAUNCH_APP_SCHEMA,
                     OPEN_URL_SCHEMA, BROWSER_STATUS_SCHEMA, BROWSER_HISTORY_SCHEMA]
-    schemas += [SAVE_MEMORY_SCHEMA, FORGET_MEMORY_SCHEMA,
-                SAVE_MATERIAL_NOTE_SCHEMA, WRITE_STUDY_FILE_SCHEMA, RUN_CODE_SCHEMA]
+    schemas += [SAVE_MATERIAL_NOTE_SCHEMA, WRITE_STUDY_FILE_SCHEMA, RUN_CODE_SCHEMA]
     if mode == "quiz":
         schemas.append(SAVE_WRONGBOOK_SCHEMA)
     return schemas

@@ -21,6 +21,8 @@ import uuid
 
 from learnsys import config as app_config
 from learnsys import diagnostics, store
+from learnsys.agent import budget
+from learnsys.agent import usage as agent_usage
 from learnsys.llm import provider_anthropic
 from learnsys.llm.config import load_config
 
@@ -122,6 +124,10 @@ def _run_api(text: str, settings: dict) -> str:
               else "".join(parts)).strip()
     if not answer:
         raise RuntimeError("深度分析没有返回内容。")
+    if result is not None and getattr(result, "usage", None):
+        # 深度分析也走同一本账：否则每日上限看不见它。
+        agent_usage.record(cfg.data_root, source="deep", model=model,
+                           usage=result.usage, cfg=cfg)
     return answer[:MAX_OUTPUT]
 
 
@@ -132,6 +138,10 @@ def run(prompt: str, context: str = "") -> dict:
             "深度分析还没启用：到设置里填 agent.deep（enabled=true，"
             "再配 command/args 或 api_key/model）。")
     settings = _settings()
+    base_cfg = load_config()
+    blocked = budget.check(base_cfg)
+    if blocked:
+        raise RuntimeError(blocked)
     text = _input(prompt, context)
     started = time.monotonic()
     run_id = uuid.uuid4().hex[:12]
@@ -149,15 +159,17 @@ def run(prompt: str, context: str = "") -> dict:
     finally:
         elapsed = int((time.monotonic() - started) * 1000)
         _audit(run_id, prompt=prompt, model=model, provider=provider,
-               ms=elapsed, error=error)
+               ms=elapsed, error=error, data_root=base_cfg.data_root)
     return {"text": answer, "provider": provider, "model": model,
             "ms": elapsed, "run_id": run_id}
 
 
 def _audit(run_id: str, *, prompt: str, model: str, provider: str,
-           ms: int, error: str) -> None:
+           ms: int, error: str, data_root) -> None:
     """审计失败不能盖掉主结果 —— 用户要的是答案，不是一条流水。"""
     try:
+        # 不传路径：走全局数据目录（LEARNSYS_DATA_ROOT 生效），测试也能用
+        # `store.connect` 的替身把它重定向到临时库。
         conn = store.connect()
         try:
             store.add_agent_run(
@@ -169,4 +181,4 @@ def _audit(run_id: str, *, prompt: str, model: str, provider: str,
         finally:
             conn.close()
     except Exception as exc:
-        diagnostics.log_swallow("写深度分析审计流水", exc)
+        diagnostics.log_swallow("写深度分析审计流水", exc, data_root=data_root)

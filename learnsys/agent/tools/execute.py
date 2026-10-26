@@ -6,8 +6,9 @@ from .context import ToolContext
 from .files import run_code, write_study_file
 from .materials import read_material, save_material_note, search_materials
 from .records import ocr_image, read_attachment, search_records, today_summary
-from .study_tools import (forget_memory, get_cet6_context, recent_wrong_items,
-                          save_memory, save_wrongbook)
+from .study_tools import (due_reviews, forget_memory, get_cet6_context,
+                          get_mastery, get_train_summary, list_recordings,
+                          recent_wrong_items, save_memory, save_wrongbook)
 from .system_tools import (browser_history, browser_status, launch_app, open_file,
                            open_url)
 
@@ -38,6 +39,20 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
                                        int(args.get("days") or 0),
                                        int(args.get("material_id") or 0), ctx=ctx),
                     "读了最近的错题", True)
+        if name == "due_reviews":
+            text = due_reviews(int(args.get("limit") or 20),
+                               str(args.get("item_type") or ""), ctx=ctx)
+            return text, "查了到期复习", not text.startswith("读到复习队列失败")
+        if name == "get_mastery":
+            text = get_mastery(int(args.get("days") or 0), ctx=ctx)
+            return text, "查了知识点掌握度", not text.startswith("读知识点掌握度失败")
+        if name == "get_train_summary":
+            text = get_train_summary(int(args.get("days") or 30), ctx=ctx)
+            return text, "看了写作翻译训练概况", not text.startswith("读训练概况失败")
+        if name == "list_recordings":
+            text = list_recordings(str(args.get("query") or ""),
+                                   int(args.get("limit") or 10), ctx=ctx)
+            return text, "查了录像列表", not text.startswith("读录像列表失败")
         if name == "read_attachment":
             return read_attachment(int(args.get("offset") or 0), ctx=ctx), "读了挂载文档", True
         if name == "ocr_image":
