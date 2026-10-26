@@ -2,6 +2,7 @@
 import { api } from "../../api.js";
 import { renderInto } from "../../markdown.js";
 import { escapeHtml, toast } from "../../ui.js";
+import { reviewKey } from "./review-keys.js";
 
 const RATING_LABELS = { 1: "忘了", 2: "模糊", 3: "记得", 4: "简单" };
 const SOURCE_LABELS = { writing: "写作", translation: "翻译" };
@@ -11,6 +12,8 @@ let ctx = null;
 let items = [];
 let index = 0;
 let revealed = false;
+let typed = "";
+let busy = false;
 let stats = { done: 0, forgot: 0 };
 
 function current() {
@@ -28,6 +31,8 @@ async function load() {
     items = Array.isArray(data.items) ? data.items : [];
     index = 0;
     revealed = false;
+    typed = "";
+    busy = false;
     stats = { done: 0, forgot: 0 };
     render();
   } catch (error) {
@@ -64,8 +69,15 @@ function doneHtml() {
 }
 
 function cardHtml(item) {
+  const input = revealed ? "" : `<label class="cet6-review-input">
+      <span>先自己写一遍（可留空）</span>
+      <textarea id="cet6-review-answer" rows="2"
+        placeholder="写下改后的短语或句子…">${escapeHtml(typed)}</textarea>
+    </label>`;
   const answer = revealed ? `<div class="cet6-review-answer">
-      <div class="cet6-review-line"><span>答案</span><div class="cet6-review-answer-text"></div></div>
+      <div class="cet6-review-line"><span>参考</span><div class="cet6-review-answer-text"></div></div>
+      ${typed.trim() ? `<div class="cet6-review-line"><span>你这次的答案</span>
+        <p class="cet6-review-typed">${escapeHtml(typed.trim())}</p></div>` : ""}
       ${item.my_answer ? `<div class="cet6-review-line"><span>你当时写的</span>
         <p>${escapeHtml(item.my_answer)}</p></div>` : ""}
       ${item.note ? `<p class="hint">${escapeHtml(item.note)}</p>` : ""}
@@ -73,7 +85,7 @@ function cardHtml(item) {
   const actions = revealed
     ? Object.entries(RATING_LABELS).map(([rating, label]) => `
         <button class="btn ${rating === "3" ? "btn-primary" : ""}" type="button"
-          data-act="rate" data-rating="${rating}">${label}</button>`).join("")
+          data-act="rate" data-rating="${rating}">${label} <kbd>${rating}</kbd></button>`).join("")
     : '<button class="btn btn-primary" type="button" data-act="reveal">显示答案</button>';
   const progress = Math.round((index) * 100 / Math.max(items.length, 1));
   return `<div class="cet6-review">
@@ -88,10 +100,11 @@ function cardHtml(item) {
         ${item.tags ? `<span>${escapeHtml(item.tags)}</span>` : ""}
         ${item.next_review ? `<span>原定 ${escapeHtml(item.next_review)}</span>` : ""}
       </div>
+      ${input}
       ${answer}
       <div class="cet6-actions">${actions}</div>
     </article>
-    <p class="hint">先自己在心里改一遍，再显示答案；四档反馈决定下次什么时候出现。</p>
+    <p class="hint">先自己写一遍再对答案；Ctrl+Enter 显示答案，显示后按 1–4 评档。</p>
   </div>`;
 }
 
@@ -105,12 +118,21 @@ function render() {
   panel.innerHTML = cardHtml(item);
   const target = panel.querySelector(".cet6-review-answer-text");
   if (target) renderInto(target, item.answer || "（这道题还没有记录答案）");
+  panel.querySelector("#cet6-review-answer")?.focus();
   ctx.setSub(`复习 · 到期 ${items.length} 张 · 已完成 ${stats.done}`);
+}
+
+function reveal() {
+  const box = panel?.querySelector("#cet6-review-answer");
+  typed = box ? box.value : typed;
+  revealed = true;
+  render();
 }
 
 async function rate(rating, button) {
   const item = current();
-  if (!item) return;
+  if (!item || busy) return;
+  busy = true;
   if (button) button.disabled = true;
   try {
     const data = await api.post(`/api/review/wrong/${item.id}`, { rating });
@@ -119,6 +141,7 @@ async function rate(rating, button) {
     toast(`${RATING_LABELS[rating]} · 下次 ${data.next_review || "已排期"}`, "ok");
     index += 1;
     revealed = false;
+    typed = "";
     if (index >= items.length) {
       panel.innerHTML = doneHtml();
       ctx.setSub(`复习 · 完成 ${stats.done} 张`);
@@ -128,6 +151,8 @@ async function rate(rating, button) {
   } catch (error) {
     if (button) button.disabled = false;
     toast(error.message || "复习没记上", "err");
+  } finally {
+    busy = false;
   }
 }
 
@@ -136,12 +161,30 @@ function onClick(event) {
   if (!target || !panel?.contains(target)) return;
   event.preventDefault();
   if (target.dataset.act === "reveal") {
-    revealed = true;
-    render();
+    reveal();
   } else if (target.dataset.act === "rate") {
     rate(Number(target.dataset.rating || 3), target);
   } else if (target.dataset.act === "again") {
     load();
+  }
+}
+
+function onKey(event) {
+  if (!panel) return;
+  const el = event.target;
+  const typing = el instanceof HTMLElement && (
+    el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+  const action = reviewKey(event.key, {
+    revealed, typing, ctrl: event.ctrlKey || event.metaKey,
+  });
+  if (!action) return;
+  event.preventDefault();
+  if (action === "reveal") {
+    reveal();
+  } else if (action.startsWith("rate:")) {
+    const rating = Number(action.slice(5));
+    rate(rating, panel.querySelector(
+      `[data-act="rate"][data-rating="${rating}"]`));
   }
 }
 
@@ -150,9 +193,11 @@ export async function mount(context) {
   ctx = context.ctx;
   ctx.setActions('<a class="btn btn-small" href="#/wrongbook">全部错题</a>');
   panel.addEventListener("click", onClick);
+  document.addEventListener("keydown", onKey);
   await load();
   return () => {
     panel?.removeEventListener("click", onClick);
+    document.removeEventListener("keydown", onKey);
     panel = null;
     ctx = null;
     items = [];
