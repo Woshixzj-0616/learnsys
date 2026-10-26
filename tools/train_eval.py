@@ -4,6 +4,7 @@
     .venv/Scripts/python.exe -X utf8 tools/train_eval.py
     ... --limit 3 --samples 1          # 便宜的小样本冒烟
     ... --kind writing --limit 5
+    ... --ids w13,w14,t13 --samples 1  # 只测新增题
 
 样本取内容包自带的范文/参考译文（不是第三方真题答案），每篇跑 N 次（默认 3）。
 结果写到 `eval/train/`，临时数据根跑完即删，不碰生产库。
@@ -33,19 +34,25 @@ def _temp_root() -> pathlib.Path:
     return root
 
 
-def _samples(kind: str, limit: int) -> list[dict]:
+def _samples(kind: str, limit: int, ids: list[str] | None = None) -> list[dict]:
     from learnsys.train import content
     rows: list[dict] = []
     if kind in ("", "writing"):
-        for item in content.writing_items()[:limit]:
+        for item in content.writing_items():
             rows.append({"id": item["id"], "kind": "writing",
                          "prompt_id": item["id"],
                          "text": item["model_essay"]["text"]})
     if kind in ("", "translation"):
-        for item in content.translation_items()[:limit]:
+        for item in content.translation_items():
             rows.append({"id": item["id"], "kind": "translation",
                          "prompt_id": item["id"], "text": item["reference"]})
-    return rows
+    if ids:
+        wanted = {value.strip() for value in ids if value.strip()}
+        unknown = wanted - {row["id"] for row in rows}
+        if unknown:
+            raise ValueError(f"未知题目 id：{', '.join(sorted(unknown))}")
+        return [row for row in rows if row["id"] in wanted]
+    return rows[:max(1, limit)]
 
 
 def _report_md(report: dict) -> str:
@@ -86,6 +93,8 @@ def main() -> int:
     parser.add_argument("--samples", type=int, default=3, help="每篇跑几次（默认 3）")
     parser.add_argument("--kind", choices=["writing", "translation"], default="",
                         help="只测一类")
+    parser.add_argument("--ids", default="",
+                        help="只测指定题目，逗号分隔（如 w13,w14,t13）")
     args = parser.parse_args()
 
     temp_root = _temp_root()
@@ -100,7 +109,15 @@ def main() -> int:
         if not cfg.ready:
             print("失败：没有可用的模型配置（设置.json 缺 key 或 base_url）")
             return 2
-        rows = _samples(args.kind, max(1, args.limit))
+        ids = [part for part in args.ids.split(",") if part.strip()]
+        try:
+            rows = _samples(args.kind, max(1, args.limit), ids)
+        except ValueError as exc:
+            print(f"失败：{exc}")
+            return 2
+        if not rows:
+            print("失败：没有符合条件的题目")
+            return 2
         print(f"训练批改评测：{len(rows)} 篇 × {args.samples} 次，模型 {cfg.model}")
         print("会调用真实模型并产生费用。")
         samples: list[dict] = []

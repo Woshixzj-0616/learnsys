@@ -7,600 +7,2342 @@
       "skill": "断句意群",
       "zh": "随着城市人口不断增加，住房、交通和教育都面临新的压力。",
       "reference": "As the urban population keeps growing, housing, transport and education all face new pressure.",
-      "variants": ["With the continued growth of city populations, housing, transport and education are under new pressure."],
-      "keywords": ["urban population", "housing", "transport", "education"],
+      "variants": [
+        "With the continued growth of city populations, housing, transport and education are under new pressure."
+      ],
+      "keywords": [
+        "urban population",
+        "housing",
+        "transport",
+        "education"
+      ],
       "skeleton": "As A grows, B, C and D + face + pressure",
-      "info_points": ["城市人口增长", "住房交通教育面临压力"]
+      "info_points": [
+        "城市人口增长",
+        "住房交通教育面临压力"
+      ]
     },
     {
       "id": "x002",
       "skill": "断句意群",
       "zh": "中国地域辽阔，不同地区的气候、饮食和生活方式差异很大。",
       "reference": "China is a vast country, and climate, food and ways of life vary greatly from region to region.",
-      "variants": ["As a vast country, China shows great differences in climate, food and lifestyle across regions."],
-      "keywords": ["vast country", "climate", "food", "ways of life"],
+      "variants": [
+        "As a vast country, China shows great differences in climate, food and lifestyle across regions."
+      ],
+      "keywords": [
+        "vast country",
+        "climate",
+        "food",
+        "ways of life"
+      ],
       "skeleton": "China + is + vast; climate, food and ways + vary",
-      "info_points": ["中国地域辽阔", "气候饮食生活方式差异大"]
+      "info_points": [
+        "中国地域辽阔",
+        "气候饮食生活方式差异大"
+      ]
     },
     {
       "id": "x003",
       "skill": "断句意群",
       "zh": "这项政策实施后，农村学生的辍学率明显下降。",
       "reference": "After the policy was introduced, the dropout rate among rural students fell noticeably.",
-      "variants": ["The introduction of the policy led to a clear drop in the rural student dropout rate."],
-      "keywords": ["policy", "dropout rate", "rural students", "fell"],
+      "variants": [
+        "The introduction of the policy led to a clear drop in the rural student dropout rate."
+      ],
+      "keywords": [
+        "policy",
+        "dropout rate",
+        "rural students",
+        "fell"
+      ],
       "skeleton": "After the policy + was introduced, the rate + fell",
-      "info_points": ["政策实施", "农村学生辍学率下降"]
+      "info_points": [
+        "政策实施",
+        "农村学生辍学率下降"
+      ]
     },
     {
       "id": "x004",
       "skill": "断句意群",
       "zh": "博物馆免费开放，使更多普通家庭有机会接触历史文物。",
       "reference": "Free admission to museums gives more ordinary families access to historical relics.",
-      "variants": ["Because museums are free, more ordinary families can see historical relics."],
-      "keywords": ["free admission", "ordinary families", "access", "historical relics"],
+      "variants": [
+        "Because museums are free, more ordinary families can see historical relics."
+      ],
+      "keywords": [
+        "free admission",
+        "ordinary families",
+        "access",
+        "historical relics"
+      ],
       "skeleton": "Free admission + gives + families access to relics",
-      "info_points": ["博物馆免费开放", "普通家庭接触文物"]
+      "info_points": [
+        "博物馆免费开放",
+        "普通家庭接触文物"
+      ]
     },
     {
       "id": "x005",
       "skill": "断句意群",
       "zh": "研究表明，睡眠不足会影响记忆，也会降低学习和工作的效率。",
       "reference": "Research shows that lack of sleep affects memory and reduces efficiency in study and work.",
-      "variants": ["Studies indicate that insufficient sleep harms memory and lowers efficiency in learning and work."],
-      "keywords": ["research shows", "lack of sleep", "memory", "efficiency"],
+      "variants": [
+        "Studies indicate that insufficient sleep harms memory and lowers efficiency in learning and work."
+      ],
+      "keywords": [
+        "research shows",
+        "lack of sleep",
+        "memory",
+        "efficiency"
+      ],
       "skeleton": "Research + shows that A + affects B and reduces C",
-      "info_points": ["睡眠不足影响记忆", "降低学习工作效率"]
+      "info_points": [
+        "睡眠不足影响记忆",
+        "降低学习工作效率"
+      ]
     },
     {
       "id": "x006",
       "skill": "断句意群",
       "zh": "这座桥建成以后，两岸居民的往来时间从两个小时缩短到二十分钟。",
       "reference": "After the bridge was completed, travel time between the two banks fell from two hours to twenty minutes.",
-      "variants": ["The bridge cut residents' travel time between the two banks from two hours to twenty minutes."],
-      "keywords": ["bridge completed", "travel time", "two hours", "twenty minutes"],
+      "variants": [
+        "The bridge cut residents' travel time between the two banks from two hours to twenty minutes."
+      ],
+      "keywords": [
+        "bridge completed",
+        "travel time",
+        "two hours",
+        "twenty minutes"
+      ],
       "skeleton": "After the bridge + was completed, travel time + fell from A to B",
-      "info_points": ["桥建成", "往来时间从两小时缩短到二十分钟"]
+      "info_points": [
+        "桥建成",
+        "往来时间从两小时缩短到二十分钟"
+      ]
     },
     {
       "id": "x007",
       "skill": "主干识别",
       "zh": "越来越多的年轻人选择在节假日到乡村旅行，体验与城市不同的生活节奏。",
       "reference": "More and more young people choose to travel to the countryside during holidays and experience a pace of life different from that of the city.",
-      "variants": ["An increasing number of young people spend holidays in the countryside to experience a slower pace of life."],
-      "keywords": ["young people", "countryside", "holidays", "pace of life"],
+      "variants": [
+        "An increasing number of young people spend holidays in the countryside to experience a slower pace of life."
+      ],
+      "keywords": [
+        "young people",
+        "countryside",
+        "holidays",
+        "pace of life"
+      ],
       "skeleton": "young people + choose + to travel and experience",
-      "info_points": ["年轻人节假日去乡村", "体验不同生活节奏"]
+      "info_points": [
+        "年轻人节假日去乡村",
+        "体验不同生活节奏"
+      ]
     },
     {
       "id": "x008",
       "skill": "主干识别",
       "zh": "学校应当为有困难的学生提供心理辅导和经济支持。",
       "reference": "Schools should provide psychological counselling and financial support for students in need.",
-      "variants": ["Students facing difficulties should receive both counselling and financial help from their schools."],
-      "keywords": ["schools", "psychological counselling", "financial support", "students in need"],
+      "variants": [
+        "Students facing difficulties should receive both counselling and financial help from their schools."
+      ],
+      "keywords": [
+        "schools",
+        "psychological counselling",
+        "financial support",
+        "students in need"
+      ],
       "skeleton": "schools + should provide + A and B for C",
-      "info_points": ["学校提供心理辅导", "提供经济支持"]
+      "info_points": [
+        "学校提供心理辅导",
+        "提供经济支持"
+      ]
     },
     {
       "id": "x009",
       "skill": "主干识别",
       "zh": "长期使用电子设备可能损害视力，尤其是在光线不足的环境中。",
       "reference": "Long-term use of electronic devices may damage eyesight, especially in poor light.",
-      "variants": ["Using electronic devices for long periods can harm eyesight, particularly when the light is dim."],
-      "keywords": ["long-term use", "electronic devices", "damage eyesight", "poor light"],
+      "variants": [
+        "Using electronic devices for long periods can harm eyesight, particularly when the light is dim."
+      ],
+      "keywords": [
+        "long-term use",
+        "electronic devices",
+        "damage eyesight",
+        "poor light"
+      ],
       "skeleton": "long-term use + may damage + eyesight",
-      "info_points": ["长期用电子设备损害视力", "光线不足时更明显"]
+      "info_points": [
+        "长期用电子设备损害视力",
+        "光线不足时更明显"
+      ]
     },
     {
       "id": "x010",
       "skill": "主干识别",
       "zh": "许多传统手工艺因为缺少年轻学徒而面临失传的危险。",
       "reference": "Many traditional crafts face the danger of dying out because they lack young apprentices.",
-      "variants": ["A lack of young apprentices puts many traditional crafts at risk of disappearing."],
-      "keywords": ["traditional crafts", "danger", "dying out", "young apprentices"],
+      "variants": [
+        "A lack of young apprentices puts many traditional crafts at risk of disappearing."
+      ],
+      "keywords": [
+        "traditional crafts",
+        "danger",
+        "dying out",
+        "young apprentices"
+      ],
       "skeleton": "crafts + face + the danger + because they lack apprentices",
-      "info_points": ["传统手工艺面临失传", "缺少年轻学徒"]
+      "info_points": [
+        "传统手工艺面临失传",
+        "缺少年轻学徒"
+      ]
     },
     {
       "id": "x011",
       "skill": "主干识别",
       "zh": "政府在改善农村医疗条件方面投入了大量资金。",
       "reference": "The government has invested heavily in improving medical conditions in rural areas.",
-      "variants": ["A large amount of government funding has gone into rural healthcare."],
-      "keywords": ["government", "invested heavily", "medical conditions", "rural areas"],
+      "variants": [
+        "A large amount of government funding has gone into rural healthcare."
+      ],
+      "keywords": [
+        "government",
+        "invested heavily",
+        "medical conditions",
+        "rural areas"
+      ],
       "skeleton": "the government + has invested + in improving conditions",
-      "info_points": ["政府投入资金", "改善农村医疗"]
+      "info_points": [
+        "政府投入资金",
+        "改善农村医疗"
+      ]
     },
     {
       "id": "x012",
       "skill": "主干识别",
       "zh": "阅读经典作品可以帮助我们理解不同时代的人如何思考和生活。",
       "reference": "Reading classic works helps us understand how people in different periods thought and lived.",
-      "variants": ["Classic literature offers insight into how people of other eras thought and lived."],
-      "keywords": ["reading classics", "understand", "different periods", "thought and lived"],
+      "variants": [
+        "Classic literature offers insight into how people of other eras thought and lived."
+      ],
+      "keywords": [
+        "reading classics",
+        "understand",
+        "different periods",
+        "thought and lived"
+      ],
       "skeleton": "reading classics + helps + us understand",
-      "info_points": ["阅读经典", "理解不同时代的人"]
+      "info_points": [
+        "阅读经典",
+        "理解不同时代的人"
+      ]
     },
     {
       "id": "x013",
       "skill": "语序调整",
       "zh": "直到最近几年，人们才开始重视心理健康问题。",
       "reference": "Only in recent years have people begun to pay attention to mental health.",
-      "variants": ["People did not pay much attention to mental health until recent years."],
-      "keywords": ["only in recent years", "pay attention", "mental health"],
+      "variants": [
+        "People did not pay much attention to mental health until recent years."
+      ],
+      "keywords": [
+        "only in recent years",
+        "pay attention",
+        "mental health"
+      ],
       "skeleton": "Only in recent years + have people + begun to ...",
-      "info_points": ["最近几年", "开始重视心理健康"]
+      "info_points": [
+        "最近几年",
+        "开始重视心理健康"
+      ]
     },
     {
       "id": "x014",
       "skill": "语序调整",
       "zh": "他不仅完成了自己的任务，还主动帮助了其他同学。",
       "reference": "He not only completed his own task but also offered to help other students.",
-      "variants": ["Besides finishing his own work, he took the initiative to help his classmates."],
-      "keywords": ["not only ... but also", "completed", "offered to help"],
+      "variants": [
+        "Besides finishing his own work, he took the initiative to help his classmates."
+      ],
+      "keywords": [
+        "not only ... but also",
+        "completed",
+        "offered to help"
+      ],
       "skeleton": "He + not only completed + but also offered",
-      "info_points": ["完成自己的任务", "主动帮助同学"]
+      "info_points": [
+        "完成自己的任务",
+        "主动帮助同学"
+      ]
     },
     {
       "id": "x015",
       "skill": "语序调整",
       "zh": "正是这次失败让他意识到准备的重要性。",
       "reference": "It was this failure that made him realise the importance of preparation.",
-      "variants": ["This failure was what made him aware of how important preparation is."],
-      "keywords": ["it was ... that", "failure", "realise", "preparation"],
+      "variants": [
+        "This failure was what made him aware of how important preparation is."
+      ],
+      "keywords": [
+        "it was ... that",
+        "failure",
+        "realise",
+        "preparation"
+      ],
       "skeleton": "It was + this failure + that made him realise",
-      "info_points": ["这次失败", "意识到准备的重要性"]
+      "info_points": [
+        "这次失败",
+        "意识到准备的重要性"
+      ]
     },
     {
       "id": "x016",
       "skill": "语序调整",
       "zh": "为了方便居民，社区在周末也开放了服务中心。",
       "reference": "To make things easier for residents, the community keeps its service centre open at weekends.",
-      "variants": ["The community service centre also opens at weekends for the convenience of residents."],
-      "keywords": ["to make things easier", "residents", "service centre", "weekends"],
+      "variants": [
+        "The community service centre also opens at weekends for the convenience of residents."
+      ],
+      "keywords": [
+        "to make things easier",
+        "residents",
+        "service centre",
+        "weekends"
+      ],
       "skeleton": "To + make things easier, the community + keeps + the centre open",
-      "info_points": ["方便居民", "周末开放服务中心"]
+      "info_points": [
+        "方便居民",
+        "周末开放服务中心"
+      ]
     },
     {
       "id": "x017",
       "skill": "语序调整",
       "zh": "只有在实践中不断尝试，才能真正掌握一门技能。",
       "reference": "Only by constantly trying in practice can one truly master a skill.",
-      "variants": ["A skill can be truly mastered only through repeated practice."],
-      "keywords": ["only by", "constantly trying", "truly master", "skill"],
+      "variants": [
+        "A skill can be truly mastered only through repeated practice."
+      ],
+      "keywords": [
+        "only by",
+        "constantly trying",
+        "truly master",
+        "skill"
+      ],
       "skeleton": "Only by + trying + can one + master + a skill",
-      "info_points": ["在实践中尝试", "真正掌握技能"]
+      "info_points": [
+        "在实践中尝试",
+        "真正掌握技能"
+      ]
     },
     {
       "id": "x018",
       "skill": "语序调整",
       "zh": "随着网络的普及，人们获取信息的方式发生了很大变化。",
       "reference": "With the spread of the internet, the way people obtain information has changed greatly.",
-      "variants": ["The spread of the internet has greatly changed how people get information."],
-      "keywords": ["with the spread of the internet", "obtain information", "changed greatly"],
+      "variants": [
+        "The spread of the internet has greatly changed how people get information."
+      ],
+      "keywords": [
+        "with the spread of the internet",
+        "obtain information",
+        "changed greatly"
+      ],
       "skeleton": "With + the spread, the way + has changed",
-      "info_points": ["网络普及", "获取信息方式变化"]
+      "info_points": [
+        "网络普及",
+        "获取信息方式变化"
+      ]
     },
     {
       "id": "x019",
       "skill": "长句拆分",
       "zh": "虽然这项工程耗资巨大，但它改善了数百万人的出行条件，因此得到了广泛支持。",
       "reference": "Although the project cost a great deal, it improved travel conditions for millions of people and therefore won wide support.",
-      "variants": ["The project was expensive, but it won wide support because it improved travel for millions."],
-      "keywords": ["although", "cost a great deal", "improved travel conditions", "wide support"],
+      "variants": [
+        "The project was expensive, but it won wide support because it improved travel for millions."
+      ],
+      "keywords": [
+        "although",
+        "cost a great deal",
+        "improved travel conditions",
+        "wide support"
+      ],
       "skeleton": "Although A, it + improved + B and won + support",
-      "info_points": ["工程耗资巨大", "改善数百万人出行", "得到广泛支持"]
+      "info_points": [
+        "工程耗资巨大",
+        "改善数百万人出行",
+        "得到广泛支持"
+      ]
     },
     {
       "id": "x020",
       "skill": "长句拆分",
       "zh": "那些从小接触音乐的孩子，往往在语言学习和团队合作中表现得更自信。",
       "reference": "Children who are exposed to music from an early age often show greater confidence in language learning and teamwork.",
-      "variants": ["Early exposure to music often makes children more confident in learning languages and working in teams."],
-      "keywords": ["exposed to music", "from an early age", "confidence", "teamwork"],
+      "variants": [
+        "Early exposure to music often makes children more confident in learning languages and working in teams."
+      ],
+      "keywords": [
+        "exposed to music",
+        "from an early age",
+        "confidence",
+        "teamwork"
+      ],
       "skeleton": "Children who + are exposed to music + often show + confidence",
-      "info_points": ["从小接触音乐", "语言学习与团队合作更自信"]
+      "info_points": [
+        "从小接触音乐",
+        "语言学习与团队合作更自信"
+      ]
     },
     {
       "id": "x021",
       "skill": "长句拆分",
       "zh": "城市里的老建筑不仅记录了历史，也为今天的社区提供了独特的公共空间。",
       "reference": "Old buildings in cities not only record history but also provide distinctive public spaces for today's communities.",
-      "variants": ["Besides preserving history, old urban buildings offer communities unusual public space."],
-      "keywords": ["old buildings", "record history", "public spaces", "communities"],
+      "variants": [
+        "Besides preserving history, old urban buildings offer communities unusual public space."
+      ],
+      "keywords": [
+        "old buildings",
+        "record history",
+        "public spaces",
+        "communities"
+      ],
       "skeleton": "Old buildings + not only record + but also provide + spaces",
-      "info_points": ["老建筑记录历史", "提供独特公共空间"]
+      "info_points": [
+        "老建筑记录历史",
+        "提供独特公共空间"
+      ]
     },
     {
       "id": "x022",
       "skill": "长句拆分",
       "zh": "如果学校只重视考试分数，学生就可能缺少独立思考和解决实际问题的机会。",
       "reference": "If schools focus only on test scores, students may lack opportunities to think independently and solve practical problems.",
-      "variants": ["A narrow focus on exam results may leave students with few chances to think for themselves and solve real problems."],
-      "keywords": ["focus only on scores", "lack opportunities", "think independently", "practical problems"],
+      "variants": [
+        "A narrow focus on exam results may leave students with few chances to think for themselves and solve real problems."
+      ],
+      "keywords": [
+        "focus only on scores",
+        "lack opportunities",
+        "think independently",
+        "practical problems"
+      ],
       "skeleton": "If schools + focus on + scores, students + may lack + opportunities",
-      "info_points": ["只重视分数", "缺少独立思考和解决问题机会"]
+      "info_points": [
+        "只重视分数",
+        "缺少独立思考和解决问题机会"
+      ]
     },
     {
       "id": "x023",
       "skill": "长句拆分",
       "zh": "这家企业通过改进技术降低了成本，同时减少了对环境的污染。",
       "reference": "By improving its technology, the company reduced costs while cutting environmental pollution.",
-      "variants": ["Technological improvements allowed the company to lower costs and reduce pollution at the same time."],
-      "keywords": ["by improving technology", "reduced costs", "environmental pollution"],
+      "variants": [
+        "Technological improvements allowed the company to lower costs and reduce pollution at the same time."
+      ],
+      "keywords": [
+        "by improving technology",
+        "reduced costs",
+        "environmental pollution"
+      ],
       "skeleton": "By + improving technology, the company + reduced + costs",
-      "info_points": ["改进技术降低成本", "减少环境污染"]
+      "info_points": [
+        "改进技术降低成本",
+        "减少环境污染"
+      ]
     },
     {
       "id": "x024",
       "skill": "长句拆分",
       "zh": "许多游客选择淡季出行，因为此时景点人少，价格也更便宜。",
       "reference": "Many tourists choose to travel in the off-season, when attractions are less crowded and prices are lower.",
-      "variants": ["Off-season travel appeals to many tourists because attractions are quieter and cheaper."],
-      "keywords": ["off-season", "less crowded", "prices lower"],
+      "variants": [
+        "Off-season travel appeals to many tourists because attractions are quieter and cheaper."
+      ],
+      "keywords": [
+        "off-season",
+        "less crowded",
+        "prices lower"
+      ],
       "skeleton": "tourists + choose + to travel in the off-season",
-      "info_points": ["游客选择淡季", "景点人少价格低"]
+      "info_points": [
+        "游客选择淡季",
+        "景点人少价格低"
+      ]
     },
     {
       "id": "x025",
       "skill": "词性转换",
       "zh": "成功的关键在于坚持，而不是天赋。",
       "reference": "The key to success lies in persistence rather than talent.",
-      "variants": ["Perseverance, not natural talent, is what matters most for success."],
-      "keywords": ["key to success", "persistence", "rather than", "talent"],
+      "variants": [
+        "Perseverance, not natural talent, is what matters most for success."
+      ],
+      "keywords": [
+        "key to success",
+        "persistence",
+        "rather than",
+        "talent"
+      ],
       "skeleton": "The key + lies in + persistence",
-      "info_points": ["成功关键在于坚持", "不是天赋"]
+      "info_points": [
+        "成功关键在于坚持",
+        "不是天赋"
+      ]
     },
     {
       "id": "x026",
       "skill": "词性转换",
       "zh": "他的演讲给听众留下了深刻的印象。",
       "reference": "His speech left a deep impression on the audience.",
-      "variants": ["The audience was deeply impressed by his speech."],
-      "keywords": ["speech", "left a deep impression", "audience"],
+      "variants": [
+        "The audience was deeply impressed by his speech."
+      ],
+      "keywords": [
+        "speech",
+        "left a deep impression",
+        "audience"
+      ],
       "skeleton": "His speech + left + an impression on the audience",
-      "info_points": ["演讲", "给听众深刻印象"]
+      "info_points": [
+        "演讲",
+        "给听众深刻印象"
+      ]
     },
     {
       "id": "x027",
       "skill": "词性转换",
       "zh": "这项发明对医学的发展产生了重要影响。",
       "reference": "This invention had a significant influence on the development of medicine.",
-      "variants": ["The development of medicine was significantly influenced by this invention."],
-      "keywords": ["invention", "significant influence", "development of medicine"],
+      "variants": [
+        "The development of medicine was significantly influenced by this invention."
+      ],
+      "keywords": [
+        "invention",
+        "significant influence",
+        "development of medicine"
+      ],
       "skeleton": "This invention + had + an influence on development",
-      "info_points": ["这项发明", "对医学发展有重要影响"]
+      "info_points": [
+        "这项发明",
+        "对医学发展有重要影响"
+      ]
     },
     {
       "id": "x028",
       "skill": "词性转换",
       "zh": "我们应该更加重视传统文化的保护。",
       "reference": "We should pay more attention to the protection of traditional culture.",
-      "variants": ["Greater importance should be attached to preserving traditional culture."],
-      "keywords": ["pay attention to", "protection", "traditional culture"],
+      "variants": [
+        "Greater importance should be attached to preserving traditional culture."
+      ],
+      "keywords": [
+        "pay attention to",
+        "protection",
+        "traditional culture"
+      ],
       "skeleton": "We + should pay + attention to protection",
-      "info_points": ["重视保护", "传统文化"]
+      "info_points": [
+        "重视保护",
+        "传统文化"
+      ]
     },
     {
       "id": "x029",
       "skill": "词性转换",
       "zh": "他能够用简单的方式解释复杂的概念。",
       "reference": "He is able to explain complex concepts in a simple way.",
-      "variants": ["He can make complex ideas easy to understand."],
-      "keywords": ["able to explain", "complex concepts", "simple way"],
+      "variants": [
+        "He can make complex ideas easy to understand."
+      ],
+      "keywords": [
+        "able to explain",
+        "complex concepts",
+        "simple way"
+      ],
       "skeleton": "He + is able to explain + concepts",
-      "info_points": ["解释复杂概念", "方式简单"]
+      "info_points": [
+        "解释复杂概念",
+        "方式简单"
+      ]
     },
     {
       "id": "x030",
       "skill": "词性转换",
       "zh": "这本书之所以受欢迎，是因为它把理论讲得生动有趣。",
       "reference": "The book is popular because it presents theory in a lively and interesting way.",
-      "variants": ["Readers like the book for its lively presentation of theory."],
-      "keywords": ["popular", "presents theory", "lively and interesting"],
+      "variants": [
+        "Readers like the book for its lively presentation of theory."
+      ],
+      "keywords": [
+        "popular",
+        "presents theory",
+        "lively and interesting"
+      ],
       "skeleton": "The book + is popular + because it presents theory",
-      "info_points": ["书受欢迎", "理论讲得生动有趣"]
+      "info_points": [
+        "书受欢迎",
+        "理论讲得生动有趣"
+      ]
     },
     {
       "id": "x031",
       "skill": "增补省译",
       "zh": "春节期间，家家户户都会准备丰盛的饭菜。",
       "reference": "During the Spring Festival, every household prepares a rich meal.",
-      "variants": ["At Spring Festival time, families everywhere cook generous meals."],
-      "keywords": ["Spring Festival", "every household", "rich meal"],
+      "variants": [
+        "At Spring Festival time, families everywhere cook generous meals."
+      ],
+      "keywords": [
+        "Spring Festival",
+        "every household",
+        "rich meal"
+      ],
       "skeleton": "every household + prepares + a rich meal",
-      "info_points": ["春节", "家家准备丰盛饭菜"]
+      "info_points": [
+        "春节",
+        "家家准备丰盛饭菜"
+      ]
     },
     {
       "id": "x032",
       "skill": "增补省译",
       "zh": "他每天早上六点起床，然后跑步半小时。",
       "reference": "He gets up at six every morning and then runs for half an hour.",
-      "variants": ["Every morning he rises at six and goes for a thirty-minute run."],
-      "keywords": ["gets up at six", "runs", "half an hour"],
+      "variants": [
+        "Every morning he rises at six and goes for a thirty-minute run."
+      ],
+      "keywords": [
+        "gets up at six",
+        "runs",
+        "half an hour"
+      ],
       "skeleton": "He + gets up + and runs",
-      "info_points": ["六点起床", "跑步半小时"]
+      "info_points": [
+        "六点起床",
+        "跑步半小时"
+      ]
     },
     {
       "id": "x033",
       "skill": "增补省译",
       "zh": "这个问题很复杂，需要从多个角度来分析。",
       "reference": "This problem is complex and needs to be analysed from several perspectives.",
-      "variants": ["Several perspectives are needed to analyse this complicated issue."],
-      "keywords": ["complex", "analysed", "several perspectives"],
+      "variants": [
+        "Several perspectives are needed to analyse this complicated issue."
+      ],
+      "keywords": [
+        "complex",
+        "analysed",
+        "several perspectives"
+      ],
       "skeleton": "This problem + needs to be analysed + from perspectives",
-      "info_points": ["问题复杂", "多角度分析"]
+      "info_points": [
+        "问题复杂",
+        "多角度分析"
+      ]
     },
     {
       "id": "x034",
       "skill": "增补省译",
       "zh": "随着人口老龄化，社会对护理人员的需求不断增加。",
       "reference": "As the population ages, society's demand for care workers keeps rising.",
-      "variants": ["An ageing population has steadily increased the need for care workers."],
-      "keywords": ["population ages", "demand", "care workers", "keeps rising"],
+      "variants": [
+        "An ageing population has steadily increased the need for care workers."
+      ],
+      "keywords": [
+        "population ages",
+        "demand",
+        "care workers",
+        "keeps rising"
+      ],
       "skeleton": "As + the population ages, demand + keeps rising",
-      "info_points": ["人口老龄化", "护理人员需求增加"]
+      "info_points": [
+        "人口老龄化",
+        "护理人员需求增加"
+      ]
     },
     {
       "id": "x035",
       "skill": "增补省译",
       "zh": "这家博物馆收藏了大量珍贵的文物。",
       "reference": "The museum houses a large collection of valuable cultural relics.",
-      "variants": ["A great number of valuable relics are kept in this museum."],
-      "keywords": ["museum", "collection", "valuable relics"],
+      "variants": [
+        "A great number of valuable relics are kept in this museum."
+      ],
+      "keywords": [
+        "museum",
+        "collection",
+        "valuable relics"
+      ],
       "skeleton": "The museum + houses + a collection",
-      "info_points": ["博物馆", "收藏大量珍贵文物"]
+      "info_points": [
+        "博物馆",
+        "收藏大量珍贵文物"
+      ]
     },
     {
       "id": "x036",
       "skill": "增补省译",
       "zh": "为了保护环境，许多城市开始限制一次性塑料制品的使用。",
       "reference": "To protect the environment, many cities have begun to restrict the use of disposable plastics.",
-      "variants": ["Many cities now limit single-use plastics in order to protect the environment."],
-      "keywords": ["protect the environment", "restrict", "disposable plastics"],
+      "variants": [
+        "Many cities now limit single-use plastics in order to protect the environment."
+      ],
+      "keywords": [
+        "protect the environment",
+        "restrict",
+        "disposable plastics"
+      ],
       "skeleton": "To + protect + the environment, cities + restrict + the use",
-      "info_points": ["保护环境", "限制一次性塑料"]
+      "info_points": [
+        "保护环境",
+        "限制一次性塑料"
+      ]
     },
     {
       "id": "x037",
       "skill": "文化术语",
       "zh": "中秋节是家人团聚、赏月的日子。",
       "reference": "The Mid-Autumn Festival is a time for family reunion and moon watching.",
-      "variants": ["Families come together and admire the moon during the Mid-Autumn Festival."],
-      "keywords": ["Mid-Autumn Festival", "family reunion", "moon watching"],
+      "variants": [
+        "Families come together and admire the moon during the Mid-Autumn Festival."
+      ],
+      "keywords": [
+        "Mid-Autumn Festival",
+        "family reunion",
+        "moon watching"
+      ],
       "skeleton": "The festival + is + a time for A and B",
-      "info_points": ["中秋节", "家人团聚赏月"]
+      "info_points": [
+        "中秋节",
+        "家人团聚赏月"
+      ]
     },
     {
       "id": "x038",
       "skill": "文化术语",
       "zh": "中医强调通过调节身体来预防疾病。",
       "reference": "Traditional Chinese Medicine emphasises preventing illness by regulating the body.",
-      "variants": ["Chinese medicine stresses keeping the body in balance to prevent disease."],
-      "keywords": ["Traditional Chinese Medicine", "preventing illness", "regulating the body"],
+      "variants": [
+        "Chinese medicine stresses keeping the body in balance to prevent disease."
+      ],
+      "keywords": [
+        "Traditional Chinese Medicine",
+        "preventing illness",
+        "regulating the body"
+      ],
       "skeleton": "TCM + emphasises + preventing illness",
-      "info_points": ["中医", "调节身体预防疾病"]
+      "info_points": [
+        "中医",
+        "调节身体预防疾病"
+      ]
     },
     {
       "id": "x039",
       "skill": "文化术语",
       "zh": "四合院是北京传统民居的典型形式。",
       "reference": "The courtyard house is a typical form of traditional housing in Beijing.",
-      "variants": ["Beijing's traditional homes are typically built as courtyard houses."],
-      "keywords": ["courtyard house", "typical form", "traditional housing"],
+      "variants": [
+        "Beijing's traditional homes are typically built as courtyard houses."
+      ],
+      "keywords": [
+        "courtyard house",
+        "typical form",
+        "traditional housing"
+      ],
       "skeleton": "The courtyard house + is + a typical form",
-      "info_points": ["四合院", "北京传统民居"]
+      "info_points": [
+        "四合院",
+        "北京传统民居"
+      ]
     },
     {
       "id": "x040",
       "skill": "文化术语",
       "zh": "二十四节气反映了中国古代对自然规律的认识。",
       "reference": "The twenty-four solar terms reflect ancient China's understanding of natural patterns.",
-      "variants": ["Ancient Chinese knowledge of nature is embodied in the twenty-four solar terms."],
-      "keywords": ["twenty-four solar terms", "reflect", "natural patterns"],
+      "variants": [
+        "Ancient Chinese knowledge of nature is embodied in the twenty-four solar terms."
+      ],
+      "keywords": [
+        "twenty-four solar terms",
+        "reflect",
+        "natural patterns"
+      ],
       "skeleton": "The solar terms + reflect + understanding",
-      "info_points": ["二十四节气", "反映对自然规律的认识"]
+      "info_points": [
+        "二十四节气",
+        "反映对自然规律的认识"
+      ]
     },
     {
       "id": "x041",
       "skill": "文化术语",
       "zh": "太极拳动作缓慢，强调呼吸与身体的协调。",
       "reference": "Tai Chi moves slowly and emphasises coordination between breathing and the body.",
-      "variants": ["Tai Chi is slow and focuses on coordinating breath and movement."],
-      "keywords": ["Tai Chi", "moves slowly", "coordination", "breathing"],
+      "variants": [
+        "Tai Chi is slow and focuses on coordinating breath and movement."
+      ],
+      "keywords": [
+        "Tai Chi",
+        "moves slowly",
+        "coordination",
+        "breathing"
+      ],
       "skeleton": "Tai Chi + moves slowly and emphasises + coordination",
-      "info_points": ["太极拳动作缓慢", "强调呼吸与身体协调"]
+      "info_points": [
+        "太极拳动作缓慢",
+        "强调呼吸与身体协调"
+      ]
     },
     {
       "id": "x042",
       "skill": "文化术语",
       "zh": "元宵节人们吃汤圆、看花灯，象征团圆和幸福。",
       "reference": "During the Lantern Festival, people eat sweet rice balls and watch lanterns, which symbolise reunion and happiness.",
-      "variants": ["Sweet rice balls and lanterns at the Lantern Festival stand for family reunion and joy."],
-      "keywords": ["Lantern Festival", "sweet rice balls", "lanterns", "reunion"],
+      "variants": [
+        "Sweet rice balls and lanterns at the Lantern Festival stand for family reunion and joy."
+      ],
+      "keywords": [
+        "Lantern Festival",
+        "sweet rice balls",
+        "lanterns",
+        "reunion"
+      ],
       "skeleton": "people + eat + and watch + lanterns",
-      "info_points": ["元宵节吃汤圆看花灯", "象征团圆幸福"]
+      "info_points": [
+        "元宵节吃汤圆看花灯",
+        "象征团圆幸福"
+      ]
     },
     {
       "id": "x043",
       "skill": "数字比较",
       "zh": "中国的人口数量居世界前列，但近年来增长明显放缓。",
       "reference": "China has one of the largest populations in the world, but its growth has slowed noticeably in recent years.",
-      "variants": ["While China remains among the most populous countries, population growth has clearly slowed."],
-      "keywords": ["one of the largest populations", "growth", "slowed noticeably"],
+      "variants": [
+        "While China remains among the most populous countries, population growth has clearly slowed."
+      ],
+      "keywords": [
+        "one of the largest populations",
+        "growth",
+        "slowed noticeably"
+      ],
       "skeleton": "China + has + one of the largest populations",
-      "info_points": ["人口数量世界前列", "增长明显放缓"]
+      "info_points": [
+        "人口数量世界前列",
+        "增长明显放缓"
+      ]
     },
     {
       "id": "x044",
       "skill": "数字比较",
       "zh": "这条高铁线路全长约一千公里，把两地之间的旅行时间缩短了一半。",
       "reference": "The high-speed line is about one thousand kilometres long and has cut travel time between the two cities by half.",
-      "variants": ["The roughly 1,000-kilometre high-speed line has halved the journey time between the two cities."],
-      "keywords": ["one thousand kilometres", "cut travel time", "by half"],
+      "variants": [
+        "The roughly 1,000-kilometre high-speed line has halved the journey time between the two cities."
+      ],
+      "keywords": [
+        "one thousand kilometres",
+        "cut travel time",
+        "by half"
+      ],
       "skeleton": "The line + is + about 1000 km long and has cut + time",
-      "info_points": ["线路约一千公里", "旅行时间缩短一半"]
+      "info_points": [
+        "线路约一千公里",
+        "旅行时间缩短一半"
+      ]
     },
     {
       "id": "x045",
       "skill": "数字比较",
       "zh": "与十年前相比，网上购物的人数增加了三倍多。",
       "reference": "Compared with ten years ago, the number of online shoppers has more than tripled.",
-      "variants": ["The number of people shopping online is more than three times what it was a decade ago."],
-      "keywords": ["compared with", "online shoppers", "more than tripled"],
+      "variants": [
+        "The number of people shopping online is more than three times what it was a decade ago."
+      ],
+      "keywords": [
+        "compared with",
+        "online shoppers",
+        "more than tripled"
+      ],
       "skeleton": "Compared with + ten years ago, the number + has tripled",
-      "info_points": ["与十年前相比", "网购人数增加三倍多"]
+      "info_points": [
+        "与十年前相比",
+        "网购人数增加三倍多"
+      ]
     },
     {
       "id": "x046",
       "skill": "数字比较",
       "zh": "这项调查覆盖了全国二十个城市的三千名受访者。",
       "reference": "The survey covered three thousand respondents in twenty cities across the country.",
-      "variants": ["Three thousand people from twenty cities nationwide took part in the survey."],
-      "keywords": ["survey", "three thousand respondents", "twenty cities"],
+      "variants": [
+        "Three thousand people from twenty cities nationwide took part in the survey."
+      ],
+      "keywords": [
+        "survey",
+        "three thousand respondents",
+        "twenty cities"
+      ],
       "skeleton": "The survey + covered + respondents in cities",
-      "info_points": ["调查覆盖二十个城市", "三千名受访者"]
+      "info_points": [
+        "调查覆盖二十个城市",
+        "三千名受访者"
+      ]
     },
     {
       "id": "x047",
       "skill": "数字比较",
       "zh": "会议持续了三个小时，比原计划多出一个小时。",
       "reference": "The meeting lasted three hours, one hour longer than planned.",
-      "variants": ["The meeting ran for three hours instead of the planned two."],
-      "keywords": ["lasted three hours", "one hour longer", "than planned"],
+      "variants": [
+        "The meeting ran for three hours instead of the planned two."
+      ],
+      "keywords": [
+        "lasted three hours",
+        "one hour longer",
+        "than planned"
+      ],
       "skeleton": "The meeting + lasted + three hours",
-      "info_points": ["会议持续三小时", "比计划多一小时"]
+      "info_points": [
+        "会议持续三小时",
+        "比计划多一小时"
+      ]
     },
     {
       "id": "x048",
       "skill": "数字比较",
       "zh": "研究表明，每天步行三十分钟可以显著降低患病风险。",
       "reference": "Research shows that walking for thirty minutes a day can significantly reduce the risk of illness.",
-      "variants": ["A daily thirty-minute walk may greatly lower the chance of disease."],
-      "keywords": ["walking thirty minutes a day", "significantly reduce", "risk of illness"],
+      "variants": [
+        "A daily thirty-minute walk may greatly lower the chance of disease."
+      ],
+      "keywords": [
+        "walking thirty minutes a day",
+        "significantly reduce",
+        "risk of illness"
+      ],
       "skeleton": "Research + shows that walking + can reduce + risk",
-      "info_points": ["每天步行三十分钟", "显著降低患病风险"]
+      "info_points": [
+        "每天步行三十分钟",
+        "显著降低患病风险"
+      ]
     },
     {
       "id": "x049",
       "skill": "无主句",
       "zh": "近年来，越来越多的家庭开始重视孩子的早期教育。",
       "reference": "In recent years, more and more families have begun to value early childhood education.",
-      "variants": ["Early childhood education has gained growing attention from families in recent years."],
-      "keywords": ["in recent years", "families", "early childhood education"],
+      "variants": [
+        "Early childhood education has gained growing attention from families in recent years."
+      ],
+      "keywords": [
+        "in recent years",
+        "families",
+        "early childhood education"
+      ],
       "skeleton": "families + have begun to value + education",
-      "info_points": ["越来越多家庭", "重视早期教育"]
+      "info_points": [
+        "越来越多家庭",
+        "重视早期教育"
+      ]
     },
     {
       "id": "x050",
       "skill": "无主句",
       "zh": "据报道，今年夏天的平均气温创下了历史新高。",
       "reference": "It is reported that this summer's average temperature reached a record high.",
-      "variants": ["Reports say that average temperatures this summer hit an all-time high."],
-      "keywords": ["it is reported", "average temperature", "record high"],
+      "variants": [
+        "Reports say that average temperatures this summer hit an all-time high."
+      ],
+      "keywords": [
+        "it is reported",
+        "average temperature",
+        "record high"
+      ],
       "skeleton": "It is reported that + temperature + reached + a record high",
-      "info_points": ["据报道", "今夏平均气温创新高"]
+      "info_points": [
+        "据报道",
+        "今夏平均气温创新高"
+      ]
     },
     {
       "id": "x051",
       "skill": "无主句",
       "zh": "有必要为老年人提供更多的公共活动空间。",
       "reference": "It is necessary to provide more public space for older people.",
-      "variants": ["More public space should be made available for the elderly."],
-      "keywords": ["it is necessary", "public space", "older people"],
+      "variants": [
+        "More public space should be made available for the elderly."
+      ],
+      "keywords": [
+        "it is necessary",
+        "public space",
+        "older people"
+      ],
       "skeleton": "It is necessary + to provide + space",
-      "info_points": ["有必要", "为老年人提供公共空间"]
+      "info_points": [
+        "有必要",
+        "为老年人提供公共空间"
+      ]
     },
     {
       "id": "x052",
       "skill": "无主句",
       "zh": "可以通过减少一次性用品来降低垃圾数量。",
       "reference": "The amount of waste can be reduced by using fewer disposable products.",
-      "variants": ["Using less disposable packaging helps cut the volume of rubbish."],
-      "keywords": ["amount of waste", "reduced", "disposable products"],
+      "variants": [
+        "Using less disposable packaging helps cut the volume of rubbish."
+      ],
+      "keywords": [
+        "amount of waste",
+        "reduced",
+        "disposable products"
+      ],
       "skeleton": "The amount of waste + can be reduced + by using fewer products",
-      "info_points": ["减少一次性用品", "降低垃圾数量"]
+      "info_points": [
+        "减少一次性用品",
+        "降低垃圾数量"
+      ]
     },
     {
       "id": "x053",
       "skill": "无主句",
       "zh": "希望学校能够为学生提供更多实践机会。",
       "reference": "It is hoped that schools will offer students more opportunities for practice.",
-      "variants": ["Schools are expected to give students more hands-on experience."],
-      "keywords": ["it is hoped", "schools", "opportunities for practice"],
+      "variants": [
+        "Schools are expected to give students more hands-on experience."
+      ],
+      "keywords": [
+        "it is hoped",
+        "schools",
+        "opportunities for practice"
+      ],
       "skeleton": "It is hoped that + schools + will offer + opportunities",
-      "info_points": ["希望学校", "提供更多实践机会"]
+      "info_points": [
+        "希望学校",
+        "提供更多实践机会"
+      ]
     },
     {
       "id": "x054",
       "skill": "无主句",
       "zh": "应该鼓励年轻人参与社区服务。",
       "reference": "Young people should be encouraged to take part in community service.",
-      "variants": ["Community service is something young people should be urged to join."],
-      "keywords": ["encouraged", "take part in", "community service"],
+      "variants": [
+        "Community service is something young people should be urged to join."
+      ],
+      "keywords": [
+        "encouraged",
+        "take part in",
+        "community service"
+      ],
       "skeleton": "Young people + should be encouraged + to take part",
-      "info_points": ["鼓励年轻人", "参与社区服务"]
+      "info_points": [
+        "鼓励年轻人",
+        "参与社区服务"
+      ]
     },
     {
       "id": "x055",
       "skill": "指代一致",
       "zh": "这项政策旨在帮助低收入家庭，但它也需要更多的资金支持。",
       "reference": "The policy aims to help low-income families, but it also needs more funding.",
-      "variants": ["Although the policy targets low-income families, it still requires additional funding."],
-      "keywords": ["policy", "low-income families", "funding"],
+      "variants": [
+        "Although the policy targets low-income families, it still requires additional funding."
+      ],
+      "keywords": [
+        "policy",
+        "low-income families",
+        "funding"
+      ],
       "skeleton": "The policy + aims to help + families, but it + needs + funding",
-      "info_points": ["政策帮助低收入家庭", "需要更多资金"]
+      "info_points": [
+        "政策帮助低收入家庭",
+        "需要更多资金"
+      ]
     },
     {
       "id": "x056",
       "skill": "指代一致",
       "zh": "许多学生喜欢在线课程，因为它可以让他们自由安排时间。",
       "reference": "Many students like online courses because they allow them to arrange their time freely.",
-      "variants": ["Online courses appeal to many students since they offer flexible schedules."],
-      "keywords": ["online courses", "allow them", "arrange time freely"],
+      "variants": [
+        "Online courses appeal to many students since they offer flexible schedules."
+      ],
+      "keywords": [
+        "online courses",
+        "allow them",
+        "arrange time freely"
+      ],
       "skeleton": "students + like + courses because they + allow + them",
-      "info_points": ["学生喜欢在线课程", "自由安排时间"]
+      "info_points": [
+        "学生喜欢在线课程",
+        "自由安排时间"
+      ]
     },
     {
       "id": "x057",
       "skill": "指代一致",
       "zh": "父母应该倾听孩子的想法，而不是替他们做所有决定。",
       "reference": "Parents should listen to their children's ideas instead of making every decision for them.",
-      "variants": ["Rather than deciding everything for their children, parents should hear what the children think."],
-      "keywords": ["listen to", "children's ideas", "instead of", "make decisions"],
+      "variants": [
+        "Rather than deciding everything for their children, parents should hear what the children think."
+      ],
+      "keywords": [
+        "listen to",
+        "children's ideas",
+        "instead of",
+        "make decisions"
+      ],
       "skeleton": "Parents + should listen + instead of making decisions",
-      "info_points": ["父母倾听孩子想法", "不替孩子做所有决定"]
+      "info_points": [
+        "父母倾听孩子想法",
+        "不替孩子做所有决定"
+      ]
     },
     {
       "id": "x058",
       "skill": "指代一致",
       "zh": "这家公司重视员工的意见，因此员工也愿意为公司付出更多努力。",
       "reference": "The company values its employees' opinions, so they are willing to make more effort for it.",
-      "variants": ["Because employees' views are valued, they are ready to work harder for the company."],
-      "keywords": ["values opinions", "willing to make effort"],
+      "variants": [
+        "Because employees' views are valued, they are ready to work harder for the company."
+      ],
+      "keywords": [
+        "values opinions",
+        "willing to make effort"
+      ],
       "skeleton": "The company + values + opinions, so they + are willing",
-      "info_points": ["公司重视员工意见", "员工愿意付出更多"]
+      "info_points": [
+        "公司重视员工意见",
+        "员工愿意付出更多"
+      ]
     },
     {
       "id": "x059",
       "skill": "指代一致",
       "zh": "传统文化需要保护，但保护并不意味着把它固定在博物馆里。",
       "reference": "Traditional culture needs protection, but protection does not mean fixing it in a museum.",
-      "variants": ["Protecting traditional culture is necessary, yet it should not be locked away in museums."],
-      "keywords": ["needs protection", "does not mean", "fixing in a museum"],
+      "variants": [
+        "Protecting traditional culture is necessary, yet it should not be locked away in museums."
+      ],
+      "keywords": [
+        "needs protection",
+        "does not mean",
+        "fixing in a museum"
+      ],
       "skeleton": "culture + needs + protection, but protection + does not mean + fixing",
-      "info_points": ["传统文化需要保护", "保护不等于放进博物馆"]
+      "info_points": [
+        "传统文化需要保护",
+        "保护不等于放进博物馆"
+      ]
     },
     {
       "id": "x060",
       "skill": "指代一致",
       "zh": "阅读能拓宽视野，因此我们应该让它在日常生活中占有一席之地。",
       "reference": "Reading broadens our horizons, so we should give it a place in our daily lives.",
-      "variants": ["Since reading widens our horizons, it deserves a regular place in daily life."],
-      "keywords": ["broadens horizons", "give it a place", "daily lives"],
+      "variants": [
+        "Since reading widens our horizons, it deserves a regular place in daily life."
+      ],
+      "keywords": [
+        "broadens horizons",
+        "give it a place",
+        "daily lives"
+      ],
       "skeleton": "Reading + broadens + horizons, so we + should give + it a place",
-      "info_points": ["阅读拓宽视野", "应在日常生活中占位置"]
+      "info_points": [
+        "阅读拓宽视野",
+        "应在日常生活中占位置"
+      ]
+    },
+    {
+      "id": "x061",
+      "skill": "断句意群",
+      "zh": "近年来，随着远程医疗的推广，偏远地区的患者不必长途奔波就能获得专家的建议。",
+      "reference": "In recent years, with the spread of remote medicine, patients in remote areas can get expert advice without travelling long distances.",
+      "variants": [
+        "As remote medicine has become more common in recent years, patients far from cities no longer need to travel far for expert advice."
+      ],
+      "keywords": [
+        "remote medicine",
+        "remote areas",
+        "expert advice",
+        "travel long distances"
+      ],
+      "skeleton": "with the spread of A, B + can get + C without D",
+      "info_points": [
+        "远程医疗推广",
+        "偏远患者免于长途奔波"
+      ]
+    },
+    {
+      "id": "x062",
+      "skill": "断句意群",
+      "zh": "为了保护水环境，沿线城市关闭了一批污染企业，并投入资金建设污水处理设施。",
+      "reference": "To protect the water environment, cities along the route closed a number of polluting factories and invested in sewage treatment facilities.",
+      "variants": [
+        "Cities along the river shut down polluting plants and spent money on sewage treatment in order to protect water quality."
+      ],
+      "keywords": [
+        "water environment",
+        "polluting factories",
+        "invested in",
+        "sewage treatment"
+      ],
+      "skeleton": "to protect A, cities + closed + B and invested in + C",
+      "info_points": [
+        "关闭污染企业",
+        "建设污水处理设施"
+      ]
+    },
+    {
+      "id": "x063",
+      "skill": "断句意群",
+      "zh": "中国的高铁网络连接了越来越多的大中城市，使人们的出行时间明显缩短。",
+      "reference": "China's high-speed rail network connects a growing number of large and medium-sized cities, significantly shortening travel time.",
+      "variants": [
+        "More and more cities are linked by high-speed rail in China, which has cut journey times noticeably."
+      ],
+      "keywords": [
+        "high-speed rail network",
+        "large and medium-sized cities",
+        "travel time"
+      ],
+      "skeleton": "the network + connects + cities, shortening + time",
+      "info_points": [
+        "高铁连接更多城市",
+        "出行时间缩短"
+      ]
+    },
+    {
+      "id": "x064",
+      "skill": "断句意群",
+      "zh": "许多年轻人选择回到家乡创业，他们把新的理念带回农村，也创造了新的就业机会。",
+      "reference": "Many young people choose to return to their hometowns to start businesses, bringing new ideas back to rural areas and creating jobs.",
+      "variants": [
+        "A large number of young people go back home to set up businesses, introducing fresh ideas and new employment opportunities to the countryside."
+      ],
+      "keywords": [
+        "return to their hometowns",
+        "start businesses",
+        "new ideas",
+        "jobs"
+      ],
+      "skeleton": "young people + return + to start businesses, bringing + and creating +",
+      "info_points": [
+        "回乡创业",
+        "带回理念、创造就业"
+      ]
+    },
+    {
+      "id": "x065",
+      "skill": "断句意群",
+      "zh": "传统手工艺在现代化进程中一度衰落，但近年来又重新受到年轻人的关注。",
+      "reference": "Traditional crafts declined for a time during modernization, but in recent years they have attracted young people's attention again.",
+      "variants": [
+        "Although traditional handicrafts lost ground as the country modernized, they are now drawing interest from a new generation."
+      ],
+      "keywords": [
+        "traditional crafts",
+        "declined",
+        "modernization",
+        "attracted attention"
+      ],
+      "skeleton": "crafts + declined + but have attracted + attention again",
+      "info_points": [
+        "手工艺一度衰落",
+        "近年重新受关注"
+      ]
+    },
+    {
+      "id": "x066",
+      "skill": "断句意群",
+      "zh": "在城市化快速推进的同时，如何保留城市的历史记忆，成为规划者必须面对的问题。",
+      "reference": "As urbanization advances rapidly, how to preserve the historical memory of cities has become a question planners must face.",
+      "variants": [
+        "Rapid urban growth has left planners with a difficult question: how to keep the memory of a city's past."
+      ],
+      "keywords": [
+        "urbanization",
+        "preserve",
+        "historical memory",
+        "planners"
+      ],
+      "skeleton": "as urbanization + advances, how to preserve + memory + has become + a question",
+      "info_points": [
+        "城市化推进",
+        "保留历史记忆"
+      ]
+    },
+    {
+      "id": "x067",
+      "skill": "主干识别",
+      "zh": "竹子在中国文化中象征着正直与坚韧。",
+      "reference": "Bamboo symbolizes integrity and perseverance in Chinese culture.",
+      "variants": [
+        "In Chinese culture, bamboo stands for uprightness and endurance."
+      ],
+      "keywords": [
+        "bamboo",
+        "symbolize",
+        "integrity",
+        "perseverance"
+      ],
+      "skeleton": "bamboo + symbolizes + integrity and perseverance",
+      "info_points": [
+        "竹子象征正直坚韧"
+      ]
+    },
+    {
+      "id": "x068",
+      "skill": "主干识别",
+      "zh": "自动化设备的广泛应用显著提高了港口的装卸效率。",
+      "reference": "The widespread use of automated equipment has significantly raised the port's loading efficiency.",
+      "variants": [
+        "Ports now load and unload goods much faster thanks to automated machinery."
+      ],
+      "keywords": [
+        "widespread use",
+        "automated equipment",
+        "loading efficiency"
+      ],
+      "skeleton": "the use of equipment + has raised + efficiency",
+      "info_points": [
+        "自动化设备",
+        "提高装卸效率"
+      ]
+    },
+    {
+      "id": "x069",
+      "skill": "主干识别",
+      "zh": "跨境电子商务为中小企业进入国际市场提供了新的渠道。",
+      "reference": "Cross-border e-commerce offers small and medium-sized enterprises a new channel into international markets.",
+      "variants": [
+        "Small and medium-sized firms can now reach overseas markets through cross-border online trade."
+      ],
+      "keywords": [
+        "cross-border e-commerce",
+        "small and medium-sized enterprises",
+        "international markets"
+      ],
+      "skeleton": "e-commerce + offers + enterprises + a channel",
+      "info_points": [
+        "跨境电商",
+        "中小企业进入国际市场"
+      ]
+    },
+    {
+      "id": "x070",
+      "skill": "主干识别",
+      "zh": "社区志愿者定期走访独居老人，帮助他们解决生活中的实际困难。",
+      "reference": "Community volunteers visit older people who live alone on a regular basis and help them with practical difficulties.",
+      "variants": [
+        "Volunteers from the community call on elderly residents living alone and assist them with everyday problems."
+      ],
+      "keywords": [
+        "community volunteers",
+        "live alone",
+        "practical difficulties"
+      ],
+      "skeleton": "volunteers + visit + older people and help them +",
+      "info_points": [
+        "志愿者走访独居老人",
+        "解决实际困难"
+      ]
+    },
+    {
+      "id": "x071",
+      "skill": "主干识别",
+      "zh": "北斗系统为渔民在海上遇险时提供了可靠的求助方式。",
+      "reference": "The BeiDou system provides fishermen with a reliable way to ask for help when they are in danger at sea.",
+      "variants": [
+        "When fishermen face danger at sea, BeiDou gives them a dependable means of calling for rescue."
+      ],
+      "keywords": [
+        "BeiDou system",
+        "fishermen",
+        "reliable",
+        "ask for help"
+      ],
+      "skeleton": "the system + provides + fishermen + with a way",
+      "info_points": [
+        "北斗提供求助方式",
+        "海上遇险"
+      ]
+    },
+    {
+      "id": "x072",
+      "skill": "主干识别",
+      "zh": "农村电商的发展带动了包装、物流和培训等相关行业。",
+      "reference": "The growth of rural e-commerce has driven related industries such as packaging, logistics and training.",
+      "variants": [
+        "Packaging, delivery and training businesses have all benefited from the expansion of online trade in the countryside."
+      ],
+      "keywords": [
+        "rural e-commerce",
+        "driven",
+        "packaging",
+        "logistics",
+        "training"
+      ],
+      "skeleton": "the growth + has driven + industries",
+      "info_points": [
+        "农村电商发展",
+        "带动相关行业"
+      ]
+    },
+    {
+      "id": "x073",
+      "skill": "语序调整",
+      "zh": "中国传统婚礼上，新人通常要向双方父母敬茶。",
+      "reference": "At traditional Chinese weddings, the couple usually serve tea to both sets of parents.",
+      "variants": [
+        "It is customary for the bride and groom to offer tea to their parents during a traditional Chinese wedding."
+      ],
+      "keywords": [
+        "traditional Chinese weddings",
+        "the couple",
+        "serve tea",
+        "parents"
+      ],
+      "skeleton": "at weddings, the couple + serve tea + to parents",
+      "info_points": [
+        "婚礼上敬茶"
+      ]
+    },
+    {
+      "id": "x074",
+      "skill": "语序调整",
+      "zh": "过去十年间，中国在可再生能源领域的投资持续增长。",
+      "reference": "Over the past decade, China's investment in renewable energy has continued to grow.",
+      "variants": [
+        "China has kept increasing its spending on renewable energy during the last ten years."
+      ],
+      "keywords": [
+        "over the past decade",
+        "investment",
+        "renewable energy",
+        "continued to grow"
+      ],
+      "skeleton": "over the decade, investment + has continued + to grow",
+      "info_points": [
+        "十年间投资增长"
+      ]
+    },
+    {
+      "id": "x075",
+      "skill": "语序调整",
+      "zh": "为了应对人口老龄化，许多城市正在建设社区养老服务中心。",
+      "reference": "To respond to population ageing, many cities are building community care centres for older people.",
+      "variants": [
+        "Many cities are setting up community centres for the elderly in response to an ageing population."
+      ],
+      "keywords": [
+        "population ageing",
+        "community care centres",
+        "older people"
+      ],
+      "skeleton": "to respond to A, cities + are building + centres",
+      "info_points": [
+        "应对老龄化",
+        "建设社区养老中心"
+      ]
+    },
+    {
+      "id": "x076",
+      "skill": "语序调整",
+      "zh": "在粤港澳大湾区，跨海大桥和高铁把原本分散的城市连接起来。",
+      "reference": "In the Greater Bay Area, sea-crossing bridges and high-speed rail link cities that were once separated.",
+      "variants": [
+        "Bridges across the sea and fast trains now connect previously disconnected cities in the Greater Bay Area."
+      ],
+      "keywords": [
+        "Greater Bay Area",
+        "sea-crossing bridges",
+        "high-speed rail",
+        "link"
+      ],
+      "skeleton": "bridges and rail + link + cities",
+      "info_points": [
+        "大桥高铁连接城市"
+      ]
+    },
+    {
+      "id": "x077",
+      "skill": "语序调整",
+      "zh": "只有在技术创新与规则建设之间取得平衡，无人机行业才能健康发展。",
+      "reference": "Only by balancing technological innovation with rule-making can the drone industry develop healthily.",
+      "variants": [
+        "The drone industry will grow in a healthy way only if innovation and regulation are balanced."
+      ],
+      "keywords": [
+        "balance",
+        "technological innovation",
+        "rule-making",
+        "drone industry"
+      ],
+      "skeleton": "only by balancing A with B + can + industry + develop",
+      "info_points": [
+        "创新与规则平衡"
+      ]
+    },
+    {
+      "id": "x078",
+      "skill": "语序调整",
+      "zh": "春节前夕，数以亿计的人从工作地返回家乡与亲人团聚。",
+      "reference": "On the eve of the Spring Festival, hundreds of millions of people return from where they work to reunite with their families.",
+      "variants": [
+        "Hundreds of millions travel home to be with their families just before the Spring Festival."
+      ],
+      "keywords": [
+        "Spring Festival",
+        "hundreds of millions",
+        "return home",
+        "reunite"
+      ],
+      "skeleton": "on the eve of A, people + return + to reunite",
+      "info_points": [
+        "节前返乡",
+        "与亲人团聚"
+      ]
+    },
+    {
+      "id": "x079",
+      "skill": "长句拆分",
+      "zh": "由于北方水资源短缺，南水北调工程把长江流域的水输送到北方，缓解了居民生活和工业用水的压力。",
+      "reference": "Because northern China lacks water, the South-to-North Water Diversion carries water from the Yangtze basin to the north, easing pressure on household and industrial use.",
+      "variants": [
+        "The project moves water north from the Yangtze to relieve shortages that have long affected homes and factories in the north."
+      ],
+      "keywords": [
+        "water shortage",
+        "South-to-North Water Diversion",
+        "Yangtze basin",
+        "ease pressure"
+      ],
+      "skeleton": "because A lacks water, the project + carries + to B, easing + pressure",
+      "info_points": [
+        "北方缺水",
+        "调水缓解用水压力"
+      ]
+    },
+    {
+      "id": "x080",
+      "skill": "长句拆分",
+      "zh": "洋山港通过跨海大桥与大陆相连，货物可以快速运往各地，上海港口的吞吐能力也因此得到提升。",
+      "reference": "Yangshan Port is linked to the mainland by a sea-crossing bridge, so goods can be moved quickly and Shanghai's handling capacity has improved.",
+      "variants": [
+        "A bridge connects the island port to the mainland, allowing fast transport of goods and raising Shanghai's port capacity."
+      ],
+      "keywords": [
+        "Yangshan Port",
+        "sea-crossing bridge",
+        "goods",
+        "handling capacity"
+      ],
+      "skeleton": "the port + is linked + by a bridge, so goods + move and capacity + improves",
+      "info_points": [
+        "跨海大桥连接",
+        "货物快速运输",
+        "吞吐能力提升"
+      ]
+    },
+    {
+      "id": "x081",
+      "skill": "长句拆分",
+      "zh": "在线教育让偏远地区的学生接触到优质课程，但长时间面对屏幕也带来了疲劳和注意力下降的问题。",
+      "reference": "Online education gives students in remote areas access to quality courses, but long hours in front of a screen also cause fatigue and poor concentration.",
+      "variants": [
+        "While online learning brings good courses to distant places, staring at a screen for too long makes students tired and less focused."
+      ],
+      "keywords": [
+        "online education",
+        "remote areas",
+        "quality courses",
+        "fatigue",
+        "concentration"
+      ],
+      "skeleton": "online education + gives + access, but long screen time + causes + problems",
+      "info_points": [
+        "优质课程可及",
+        "屏幕时间长带来疲劳"
+      ]
+    },
+    {
+      "id": "x082",
+      "skill": "长句拆分",
+      "zh": "竹编、竹刻等传统手工艺流传至今，成为地方文化的重要组成部分，并在近年重新受到市场关注。",
+      "reference": "Traditional crafts such as bamboo weaving and carving have survived to this day, become an important part of local culture and recently regained market attention.",
+      "variants": [
+        "Bamboo weaving and carving are still practised today; they form part of local identity and have drawn fresh interest from buyers."
+      ],
+      "keywords": [
+        "bamboo weaving",
+        "carving",
+        "local culture",
+        "market attention"
+      ],
+      "skeleton": "crafts + have survived, become + part of culture and regained + attention",
+      "info_points": [
+        "手工艺流传",
+        "地方文化组成",
+        "重新受市场关注"
+      ]
+    },
+    {
+      "id": "x083",
+      "skill": "长句拆分",
+      "zh": "一些设计师把传统竹艺与现代设计结合，让竹子走进城市生活，也为手艺人带来了新的收入。",
+      "reference": "Some designers combine traditional bamboo craft with modern design, bringing bamboo into city life and giving craftspeople new income.",
+      "variants": [
+        "By blending old bamboo techniques with contemporary design, designers have brought the material into urban homes and created work for artisans."
+      ],
+      "keywords": [
+        "designers",
+        "traditional craft",
+        "modern design",
+        "city life",
+        "income"
+      ],
+      "skeleton": "designers + combine + A with B, bringing + and giving +",
+      "info_points": [
+        "竹艺与现代设计结合",
+        "进入城市生活",
+        "手艺人增收"
+      ]
+    },
+    {
+      "id": "x084",
+      "skill": "长句拆分",
+      "zh": "中国航天事业经过几十年的发展，取得了举世瞩目的成就，也培养了大批年轻的科研人员。",
+      "reference": "After decades of development, China's space programme has achieved remarkable results and trained a large number of young researchers.",
+      "variants": [
+        "China's space industry has grown over several decades, producing major achievements and a new generation of scientists."
+      ],
+      "keywords": [
+        "space programme",
+        "decades",
+        "remarkable results",
+        "young researchers"
+      ],
+      "skeleton": "after decades, the programme + has achieved + results and trained + researchers",
+      "info_points": [
+        "航天发展成就",
+        "培养年轻科研人员"
+      ]
+    },
+    {
+      "id": "x085",
+      "skill": "词性转换",
+      "zh": "远程医疗的普及极大地方便了患者就诊。",
+      "reference": "The spread of remote medicine has made it much easier for patients to see a doctor.",
+      "variants": [
+        "Remote medical services have greatly improved access to care for patients."
+      ],
+      "keywords": [
+        "spread",
+        "remote medicine",
+        "easier",
+        "see a doctor"
+      ],
+      "skeleton": "the spread + has made it easier + for patients + to see a doctor",
+      "info_points": [
+        "远程医疗普及",
+        "方便患者就诊"
+      ]
+    },
+    {
+      "id": "x086",
+      "skill": "词性转换",
+      "zh": "港口的自动化程度不断提高，人工操作明显减少。",
+      "reference": "The level of automation at the port has kept rising, and manual work has fallen noticeably.",
+      "variants": [
+        "As the port becomes more automated, the need for manual labour has declined sharply."
+      ],
+      "keywords": [
+        "level of automation",
+        "manual work",
+        "fallen"
+      ],
+      "skeleton": "automation + has risen, and manual work + has fallen",
+      "info_points": [
+        "自动化提高",
+        "人工减少"
+      ]
+    },
+    {
+      "id": "x087",
+      "skill": "词性转换",
+      "zh": "随着环保意识的增强，竹制品的需求逐年上升。",
+      "reference": "As environmental awareness grows, demand for bamboo products rises year by year.",
+      "variants": [
+        "Growing concern for the environment has led to increasing demand for goods made of bamboo."
+      ],
+      "keywords": [
+        "environmental awareness",
+        "demand",
+        "bamboo products",
+        "rises"
+      ],
+      "skeleton": "as awareness + grows, demand + rises",
+      "info_points": [
+        "环保意识增强",
+        "竹制品需求上升"
+      ]
+    },
+    {
+      "id": "x088",
+      "skill": "词性转换",
+      "zh": "大湾区城市之间的合作日益密切。",
+      "reference": "Cooperation among cities in the Greater Bay Area is becoming increasingly close.",
+      "variants": [
+        "Cities in the Greater Bay Area are working together more closely than before."
+      ],
+      "keywords": [
+        "cooperation",
+        "cities",
+        "increasingly close"
+      ],
+      "skeleton": "cooperation + is becoming + close",
+      "info_points": [
+        "城市合作密切"
+      ]
+    },
+    {
+      "id": "x089",
+      "skill": "词性转换",
+      "zh": "北斗系统的建成提高了中国在导航领域的技术自主性。",
+      "reference": "The completion of the BeiDou system has increased China's technological independence in navigation.",
+      "variants": [
+        "With BeiDou in place, China relies less on foreign technology for navigation."
+      ],
+      "keywords": [
+        "completion",
+        "technological independence",
+        "navigation"
+      ],
+      "skeleton": "the completion + has increased + independence",
+      "info_points": [
+        "北斗建成",
+        "技术自主性提高"
+      ]
+    },
+    {
+      "id": "x090",
+      "skill": "词性转换",
+      "zh": "南水北调工程对北方地区的生态产生了深远影响。",
+      "reference": "The South-to-North Water Diversion has had a profound impact on the ecology of northern China.",
+      "variants": [
+        "The project has deeply affected the environment in the north."
+      ],
+      "keywords": [
+        "profound impact",
+        "ecology",
+        "northern China"
+      ],
+      "skeleton": "the project + has had + an impact on + ecology",
+      "info_points": [
+        "工程影响北方生态"
+      ]
+    },
+    {
+      "id": "x091",
+      "skill": "增补省译",
+      "zh": "水墨画讲究留白，给观者留下想象的空间。",
+      "reference": "Traditional ink painting values blank space, leaving room for the viewer's imagination.",
+      "variants": [
+        "In Chinese ink paintings, empty areas are deliberately left to invite the viewer to imagine."
+      ],
+      "keywords": [
+        "ink painting",
+        "blank space",
+        "viewer's imagination"
+      ],
+      "skeleton": "ink painting + values + blank space, leaving + room",
+      "info_points": [
+        "水墨画留白",
+        "给观者想象空间"
+      ]
+    },
+    {
+      "id": "x092",
+      "skill": "增补省译",
+      "zh": "端午节吃粽子、赛龙舟，纪念爱国诗人屈原。",
+      "reference": "At the Dragon Boat Festival, people eat zongzi and hold dragon boat races to commemorate the patriotic poet Qu Yuan.",
+      "variants": [
+        "The Dragon Boat Festival is marked by eating rice dumplings and racing dragon boats in memory of Qu Yuan."
+      ],
+      "keywords": [
+        "Dragon Boat Festival",
+        "zongzi",
+        "dragon boat races",
+        "commemorate"
+      ],
+      "skeleton": "people + eat + and hold + races to commemorate +",
+      "info_points": [
+        "端午习俗",
+        "纪念屈原"
+      ]
+    },
+    {
+      "id": "x093",
+      "skill": "增补省译",
+      "zh": "高铁速度快、准点率高，已经成为许多人出行的首选。",
+      "reference": "High-speed rail is fast and punctual, and it has become the first choice for many travellers.",
+      "variants": [
+        "Because it is quick and reliable, high-speed rail is now preferred by many passengers."
+      ],
+      "keywords": [
+        "high-speed rail",
+        "fast",
+        "punctual",
+        "first choice"
+      ],
+      "skeleton": "high-speed rail + is + and has become + the first choice",
+      "info_points": [
+        "高铁快且准点",
+        "成为出行首选"
+      ]
+    },
+    {
+      "id": "x094",
+      "skill": "增补省译",
+      "zh": "直播带货帮助农民把水果直接卖给消费者，减少了中间环节。",
+      "reference": "Live-stream selling helps farmers sell fruit directly to consumers and reduces the number of middlemen.",
+      "variants": [
+        "Through live streaming, farmers can reach buyers themselves, cutting out intermediaries."
+      ],
+      "keywords": [
+        "live-stream selling",
+        "farmers",
+        "directly",
+        "middlemen"
+      ],
+      "skeleton": "live-stream selling + helps + farmers + sell directly and reduces +",
+      "info_points": [
+        "直播卖水果",
+        "减少中间环节"
+      ]
+    },
+    {
+      "id": "x095",
+      "skill": "增补省译",
+      "zh": "中国空间站向国际合作伙伴开放，体现了合作共赢的理念。",
+      "reference": "China's space station is open to international partners, reflecting the idea of win-win cooperation.",
+      "variants": [
+        "By welcoming foreign partners, China's space station embodies a spirit of mutual benefit."
+      ],
+      "keywords": [
+        "space station",
+        "international partners",
+        "win-win cooperation"
+      ],
+      "skeleton": "the station + is open + to partners, reflecting +",
+      "info_points": [
+        "空间站开放",
+        "合作共赢"
+      ]
+    },
+    {
+      "id": "x096",
+      "skill": "增补省译",
+      "zh": "无人机在农业、物流和救援等领域得到广泛应用。",
+      "reference": "Drones are widely used in fields such as agriculture, logistics and rescue.",
+      "variants": [
+        "Agriculture, delivery and emergency rescue are among the many areas where drones are now common."
+      ],
+      "keywords": [
+        "drones",
+        "widely used",
+        "agriculture",
+        "logistics",
+        "rescue"
+      ],
+      "skeleton": "drones + are used + in fields",
+      "info_points": [
+        "无人机广泛应用"
+      ]
+    },
+    {
+      "id": "x097",
+      "skill": "文化术语",
+      "zh": "京剧融合了唱、念、做、打四种表演形式。",
+      "reference": "Peking opera combines four performance forms: singing, recitation, acting and acrobatic fighting.",
+      "variants": [
+        "Singing, spoken dialogue, movement and martial arts are all part of Peking opera."
+      ],
+      "keywords": [
+        "Peking opera",
+        "singing",
+        "recitation",
+        "acting",
+        "acrobatic fighting"
+      ],
+      "skeleton": "Peking opera + combines + four forms",
+      "info_points": [
+        "京剧四种表演形式"
+      ]
+    },
+    {
+      "id": "x098",
+      "skill": "文化术语",
+      "zh": "中秋节象征团圆，人们在这一天赏月、吃月饼。",
+      "reference": "The Mid-Autumn Festival symbolizes reunion, and people admire the moon and eat mooncakes on that day.",
+      "variants": [
+        "On the Mid-Autumn Festival, families gather to watch the full moon and share mooncakes, a symbol of reunion."
+      ],
+      "keywords": [
+        "Mid-Autumn Festival",
+        "reunion",
+        "admire the moon",
+        "mooncakes"
+      ],
+      "skeleton": "the festival + symbolizes + reunion, and people + admire + and eat +",
+      "info_points": [
+        "中秋象征团圆",
+        "赏月吃月饼"
+      ]
+    },
+    {
+      "id": "x099",
+      "skill": "文化术语",
+      "zh": "书法讲究笔画的力度与整体的气韵。",
+      "reference": "Calligraphy stresses the strength of each stroke and the overall spirit of the work.",
+      "variants": [
+        "In calligraphy, both the power of individual strokes and the rhythm of the whole piece matter."
+      ],
+      "keywords": [
+        "calligraphy",
+        "strength of strokes",
+        "overall spirit"
+      ],
+      "skeleton": "calligraphy + stresses + strength and spirit",
+      "info_points": [
+        "笔画力度",
+        "整体气韵"
+      ]
+    },
+    {
+      "id": "x100",
+      "skill": "文化术语",
+      "zh": "中医强调人与自然的平衡，注重预防而非只治病。",
+      "reference": "Traditional Chinese medicine emphasizes balance between people and nature and focuses on prevention rather than merely treating illness.",
+      "variants": [
+        "Rather than only curing disease, Chinese medicine stresses harmony with nature and the prevention of illness."
+      ],
+      "keywords": [
+        "traditional Chinese medicine",
+        "balance",
+        "prevention",
+        "treating illness"
+      ],
+      "skeleton": "Chinese medicine + emphasizes + balance and focuses on + prevention",
+      "info_points": [
+        "人与自然平衡",
+        "注重预防"
+      ]
+    },
+    {
+      "id": "x101",
+      "skill": "文化术语",
+      "zh": "四合院是北京传统民居的代表，体现了家族聚居的生活方式。",
+      "reference": "The courtyard house is a representative form of traditional Beijing housing and reflects the way extended families lived together.",
+      "variants": [
+        "Traditional Beijing courtyard homes show how several generations of a family once shared a single compound."
+      ],
+      "keywords": [
+        "courtyard house",
+        "traditional housing",
+        "extended families"
+      ],
+      "skeleton": "the courtyard house + is + a representative form and reflects +",
+      "info_points": [
+        "四合院代表民居",
+        "家族聚居"
+      ]
+    },
+    {
+      "id": "x102",
+      "skill": "文化术语",
+      "zh": "丝绸之路不仅是贸易通道，也是东西方文化交流的桥梁。",
+      "reference": "The Silk Road was not only a trade route but also a bridge for cultural exchange between East and West.",
+      "variants": [
+        "More than a trading route, the Silk Road connected Eastern and Western cultures."
+      ],
+      "keywords": [
+        "Silk Road",
+        "trade route",
+        "cultural exchange",
+        "East and West"
+      ],
+      "skeleton": "the Silk Road + was not only + a route but also + a bridge",
+      "info_points": [
+        "贸易通道",
+        "文化交流桥梁"
+      ]
+    },
+    {
+      "id": "x103",
+      "skill": "数字比较",
+      "zh": "中国的高铁运营里程居世界前列，超过四万公里。",
+      "reference": "China's high-speed rail network is among the longest in the world, covering more than 40,000 kilometres.",
+      "variants": [
+        "With over 40,000 kilometres in operation, China ranks near the top globally for high-speed rail."
+      ],
+      "keywords": [
+        "high-speed rail",
+        "among the longest",
+        "more than 40,000 kilometres"
+      ],
+      "skeleton": "the network + is among the longest + covering + kilometres",
+      "info_points": [
+        "里程居前列",
+        "超过四万公里"
+      ]
+    },
+    {
+      "id": "x104",
+      "skill": "数字比较",
+      "zh": "与十年前相比，农村地区的网络覆盖率大幅提高。",
+      "reference": "Compared with ten years ago, network coverage in rural areas has increased substantially.",
+      "variants": [
+        "Rural areas now have much wider internet access than they did a decade ago."
+      ],
+      "keywords": [
+        "compared with",
+        "network coverage",
+        "rural areas",
+        "increased substantially"
+      ],
+      "skeleton": "compared with ten years ago, coverage + has increased",
+      "info_points": [
+        "与十年前比较",
+        "覆盖率提高"
+      ]
+    },
+    {
+      "id": "x105",
+      "skill": "数字比较",
+      "zh": "这座跨海大桥全长数十公里，连接了三座城市。",
+      "reference": "The sea-crossing bridge stretches for dozens of kilometres and links three cities.",
+      "variants": [
+        "Dozens of kilometres long, the bridge across the sea connects three cities."
+      ],
+      "keywords": [
+        "sea-crossing bridge",
+        "dozens of kilometres",
+        "links three cities"
+      ],
+      "skeleton": "the bridge + stretches + and links + cities",
+      "info_points": [
+        "全长数十公里",
+        "连接三座城市"
+      ]
+    },
+    {
+      "id": "x106",
+      "skill": "数字比较",
+      "zh": "今年上半年，该港口的集装箱吞吐量比去年同期增长了百分之八。",
+      "reference": "In the first half of this year, the port's container throughput rose by eight percent compared with the same period last year.",
+      "variants": [
+        "The port handled eight percent more containers in the first six months than a year earlier."
+      ],
+      "keywords": [
+        "first half of this year",
+        "container throughput",
+        "eight percent"
+      ],
+      "skeleton": "throughput + rose + by eight percent",
+      "info_points": [
+        "上半年",
+        "增长百分之八"
+      ]
+    },
+    {
+      "id": "x107",
+      "skill": "数字比较",
+      "zh": "中国人口老龄化速度加快，六十五岁以上人口比例持续上升。",
+      "reference": "China's population is ageing faster, and the share of people aged 65 and above keeps rising.",
+      "variants": [
+        "The proportion of Chinese citizens over 65 continues to climb as the population ages more quickly."
+      ],
+      "keywords": [
+        "population ageing",
+        "share",
+        "65 and above",
+        "rising"
+      ],
+      "skeleton": "the population + is ageing + and the share + keeps rising",
+      "info_points": [
+        "老龄化加快",
+        "六十五岁以上比例上升"
+      ]
+    },
+    {
+      "id": "x108",
+      "skill": "数字比较",
+      "zh": "无人机喷洒农药的效率大约是人工的数倍。",
+      "reference": "Spraying pesticide by drone is several times more efficient than doing it by hand.",
+      "variants": [
+        "A drone can apply pesticide several times faster than a person working manually."
+      ],
+      "keywords": [
+        "spraying pesticide",
+        "by drone",
+        "several times",
+        "efficient"
+      ],
+      "skeleton": "spraying by drone + is + several times more efficient",
+      "info_points": [
+        "无人机效率",
+        "约为人工数倍"
+      ]
+    },
+    {
+      "id": "x109",
+      "skill": "无主句",
+      "zh": "必须看到，农村电商的发展仍面临不少困难。",
+      "reference": "It must be recognized that rural e-commerce still faces many difficulties.",
+      "variants": [
+        "Rural e-commerce, for all its progress, continues to face considerable obstacles."
+      ],
+      "keywords": [
+        "it must be recognized",
+        "rural e-commerce",
+        "difficulties"
+      ],
+      "skeleton": "it must be recognized + that + e-commerce + faces + difficulties",
+      "info_points": [
+        "农村电商仍有困难"
+      ]
+    },
+    {
+      "id": "x110",
+      "skill": "无主句",
+      "zh": "要进一步加强对传统文化的保护，让年轻人了解它的价值。",
+      "reference": "Efforts should be made to strengthen the protection of traditional culture and help young people understand its value.",
+      "variants": [
+        "Traditional culture needs stronger protection so that young people can appreciate what it is worth."
+      ],
+      "keywords": [
+        "efforts should be made",
+        "protection",
+        "traditional culture",
+        "value"
+      ],
+      "skeleton": "efforts + should be made + to strengthen + and help +",
+      "info_points": [
+        "加强保护",
+        "让年轻人了解价值"
+      ]
+    },
+    {
+      "id": "x111",
+      "skill": "无主句",
+      "zh": "应鼓励企业加大研发投入，提高自主创新能力。",
+      "reference": "Companies should be encouraged to increase investment in research and development and improve their capacity for independent innovation.",
+      "variants": [
+        "Policymakers should push firms to spend more on R&D and develop their own technologies."
+      ],
+      "keywords": [
+        "encouraged",
+        "research and development",
+        "independent innovation"
+      ],
+      "skeleton": "companies + should be encouraged + to increase + and improve +",
+      "info_points": [
+        "鼓励研发投入",
+        "提高自主创新"
+      ]
+    },
+    {
+      "id": "x112",
+      "skill": "无主句",
+      "zh": "只有通过长期监测，才能及时发现工程带来的生态变化。",
+      "reference": "Only through long-term monitoring can ecological changes caused by the project be identified in time.",
+      "variants": [
+        "Ecological effects of the project will be detected promptly only if monitoring continues over many years."
+      ],
+      "keywords": [
+        "long-term monitoring",
+        "ecological changes",
+        "in time"
+      ],
+      "skeleton": "only through monitoring + can changes + be identified",
+      "info_points": [
+        "长期监测",
+        "及时发现生态变化"
+      ]
+    },
+    {
+      "id": "x113",
+      "skill": "无主句",
+      "zh": "要在保持各自特色的同时，推动区域深度融合。",
+      "reference": "Regional integration should be promoted while each area's distinctive features are preserved.",
+      "variants": [
+        "Deeper regional cooperation should go hand in hand with keeping local identities."
+      ],
+      "keywords": [
+        "regional integration",
+        "distinctive features",
+        "preserved"
+      ],
+      "skeleton": "integration + should be promoted + while features + are preserved",
+      "info_points": [
+        "推动区域融合",
+        "保持各自特色"
+      ]
+    },
+    {
+      "id": "x114",
+      "skill": "无主句",
+      "zh": "要坚持节水优先，把水资源管理放在更重要的位置。",
+      "reference": "Priority should be given to saving water, and water resource management should be placed higher on the agenda.",
+      "variants": [
+        "Water conservation must come first, with management of water resources treated as a greater priority."
+      ],
+      "keywords": [
+        "priority",
+        "saving water",
+        "water resource management",
+        "agenda"
+      ],
+      "skeleton": "priority + should be given + and management + placed higher",
+      "info_points": [
+        "节水优先",
+        "重视水资源管理"
+      ]
+    },
+    {
+      "id": "x115",
+      "skill": "指代一致",
+      "zh": "竹子生长迅速，用途广泛，它既可以建房，也可以制作乐器。",
+      "reference": "Bamboo grows quickly and has many uses: it can be used both to build houses and to make musical instruments.",
+      "variants": [
+        "Because bamboo grows fast and is so versatile, people use it for everything from housing to musical instruments."
+      ],
+      "keywords": [
+        "bamboo",
+        "grows quickly",
+        "many uses",
+        "musical instruments"
+      ],
+      "skeleton": "bamboo + grows + and has uses: it + can be used +",
+      "info_points": [
+        "竹子用途广泛"
+      ]
+    },
+    {
+      "id": "x116",
+      "skill": "指代一致",
+      "zh": "北斗系统为用户提供定位服务，其信号在城市和山区都较稳定。",
+      "reference": "The BeiDou system provides positioning services, and its signal is relatively stable in both cities and mountains.",
+      "variants": [
+        "BeiDou offers location services and maintains a fairly reliable signal in urban and mountainous areas."
+      ],
+      "keywords": [
+        "BeiDou",
+        "positioning services",
+        "its signal",
+        "stable"
+      ],
+      "skeleton": "the system + provides + services, and its signal + is stable",
+      "info_points": [
+        "北斗定位服务",
+        "信号稳定"
+      ]
+    },
+    {
+      "id": "x117",
+      "skill": "指代一致",
+      "zh": "传统婚礼的细节因地区而异，但它们都强调家庭团圆。",
+      "reference": "The details of traditional weddings vary from region to region, but they all emphasize family reunion.",
+      "variants": [
+        "Although wedding customs differ across regions, all of them stress the reunion of the family."
+      ],
+      "keywords": [
+        "wedding details",
+        "vary",
+        "they",
+        "family reunion"
+      ],
+      "skeleton": "details + vary + but they + emphasize + reunion",
+      "info_points": [
+        "细节因地区而异",
+        "都强调团圆"
+      ]
+    },
+    {
+      "id": "x118",
+      "skill": "指代一致",
+      "zh": "港口通过跨海大桥与大陆相连，这使货物运输更加便捷。",
+      "reference": "The port is connected to the mainland by a sea-crossing bridge, which makes the transport of goods more convenient.",
+      "variants": [
+        "A bridge links the port to the mainland, allowing goods to move more easily."
+      ],
+      "keywords": [
+        "connected",
+        "sea-crossing bridge",
+        "which",
+        "transport of goods"
+      ],
+      "skeleton": "the port + is connected + by a bridge, which makes + convenient",
+      "info_points": [
+        "大桥连接",
+        "运输更便捷"
+      ]
+    },
+    {
+      "id": "x119",
+      "skill": "指代一致",
+      "zh": "许多患者使用远程问诊，这为他们节省了大量时间。",
+      "reference": "Many patients use online consultations, which saves them a great deal of time.",
+      "variants": [
+        "Online consultations save many patients a lot of time."
+      ],
+      "keywords": [
+        "online consultations",
+        "which",
+        "saves",
+        "time"
+      ],
+      "skeleton": "patients + use + consultations, which saves + time",
+      "info_points": [
+        "远程问诊",
+        "节省时间"
+      ]
+    },
+    {
+      "id": "x120",
+      "skill": "指代一致",
+      "zh": "年轻人把传统竹艺与现代设计结合，这为手艺人带来了新的机会。",
+      "reference": "Young people combine traditional bamboo craft with modern design, which brings new opportunities to craftspeople.",
+      "variants": [
+        "By mixing old bamboo techniques with contemporary design, young designers create fresh chances for artisans."
+      ],
+      "keywords": [
+        "combine",
+        "bamboo craft",
+        "modern design",
+        "which",
+        "opportunities"
+      ],
+      "skeleton": "young people + combine + A with B, which brings + opportunities",
+      "info_points": [
+        "竹艺与现代设计结合",
+        "手艺人获新机会"
+      ]
     }
   ]
 }

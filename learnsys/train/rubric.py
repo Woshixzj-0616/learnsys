@@ -149,6 +149,10 @@ def inspect(kind: str, text: str, pack_item: dict | None = None,
         paragraphs = [p for p in re.split(r"\n\s*\n", text.strip()) if p.strip()]
         if len(paragraphs) < 2:
             rows.append(_flag("paragraphs", "一般", "没有分段。"))
+        lead = " ".join(str((pack_item or {}).get("lead_sentence") or "").split())
+        if lead and not " ".join(text.split()).startswith(lead):
+            rows.append(_flag("lead_sentence", "一般",
+                              "没有以给定首句开头，或未逐字照抄。"))
         if template["ratio"] >= 0.3:
             rows.append(_flag("template", "提示",
                               f"模板短语占 {template['ratio']:.0%}，换题盲写时留意。"))

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from . import rubric
 
-PROMPT_VERSION = "train-review-v2"
+PROMPT_VERSION = "train-review-v3"
 
 SYSTEM = (
     "你是严谨的中国大学英语六级（CET-6）评分员。"
@@ -39,11 +39,13 @@ def _error_schema(kind: str) -> str:
 def writing_review_prompt(pack: dict, text: str, hard: dict) -> str:
     flags = hard.get("flags") or []
     flag_lines = "\n".join(f"- {row['level']}：{row['message']}" for row in flags)
+    lead = str(pack.get("lead_sentence") or "").strip()
+    lead_block = (f"\n【给定首句】（必须在正文开头逐字照抄）\n{lead}\n" if lead else "")
     return f"""【任务】给下面这篇六级作文定档并列出影响分数的错误。
 
 【题目】
 {pack.get('prompt_en') or ''}
-
+{lead_block}
 【中文提示】
 {pack.get('prompt_zh') or ''}
 
@@ -77,6 +79,7 @@ def writing_review_prompt(pack: dict, text: str, hard: dict) -> str:
 2. 最多 12 条错误；只列真正影响分数的，不要为了凑数挑无关小错。
 3. 只有整篇明显跑题才把 off_topic 设为 true。
 4. 不要给本题范文，不要输出任何 Markdown。
+5. 有给定首句时：检查正文是否逐字照抄并置于开头。未照抄算审题问题，写进 band_reason 或 priorities，不要把它当成语言错误，也不要因此单独扣某条错误的 why。
 """
 
 

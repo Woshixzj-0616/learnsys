@@ -6,13 +6,17 @@ import re
 
 from . import content, rubric
 
-WRITING_COUNT = 12
-TRANSLATION_COUNT = 12
-MIN_DERIVED_SENTENCES = 70
-MIN_EXTRA_SENTENCES = 60
+WRITING_COUNT = 24
+TRANSLATION_COUNT = 24
+MIN_DERIVED_SENTENCES = 192
+MIN_EXTRA_SENTENCES = 120
 _ID = re.compile(r"^(w|t)\d{2}$")
 _XID = re.compile(r"^x\d{3}$")
 _IPID = re.compile(r"^ip\d+$")
+
+
+def _flat(text) -> str:
+    return " ".join(str(text or "").split())
 
 
 def _rows(value, name: str, low: int, high: int | None,
@@ -48,6 +52,22 @@ def _writing(item: dict, errors: list[str]) -> None:
             errors.append(f"{where}：缺 {key}")
     if len(str(item.get("prompt_en") or "")) < 80:
         errors.append(f"{where}：prompt_en 太短，至少 80 字符")
+    lead = str(item.get("lead_sentence") or "").strip()
+    if item.get("type") == "首句续写" and not lead:
+        errors.append(f"{where}：首句续写题缺 lead_sentence")
+    if lead:
+        if not 40 <= len(lead) <= 300:
+            errors.append(f"{where}：lead_sentence 需要 40–300 字符")
+        if "\n" in lead or "\r" in lead:
+            errors.append(f"{where}：lead_sentence 必须单行")
+        if item.get("type") != "首句续写":
+            errors.append(f"{where}：有 lead_sentence 的题 type 必须是「首句续写」")
+        prompt_en = str(item.get("prompt_en") or "")
+        if prompt_en.count(lead) != 1:
+            errors.append(f"{where}：prompt_en 必须恰好引用一次 lead_sentence")
+        essay_text = str((item.get("model_essay") or {}).get("text") or "")
+        if essay_text and not _flat(essay_text).startswith(_flat(lead)):
+            errors.append(f"{where}：范文没有以 lead_sentence 开头")
     words = item.get("target_words")
     if not (isinstance(words, list) and len(words) == 2
             and all(isinstance(x, int) for x in words) and words[0] < words[1]):

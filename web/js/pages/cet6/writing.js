@@ -3,7 +3,7 @@ import { api } from "../../api.js";
 import { escapeHtml, relative, toast } from "../../ui.js";
 import { createEditor } from "./editor.js";
 import { feedbackHtml } from "./feedback.js";
-import { MODE_LABEL, statusLabel } from "./format.js";
+import { MODE_LABEL, filterByField, statusLabel } from "./format.js";
 import { pollSubmission } from "./poll.js";
 
 const KIND = "writing";
@@ -16,6 +16,7 @@ let current = null;
 let promptsCache = null;
 let historyCache = null;
 let view = "home";
+let libFilter = "";
 
 function clearPoll() {
   if (poller) {
@@ -134,10 +135,20 @@ async function renderLibrary() {
   panel.innerHTML = `${subnav("library")}<div class="empty">正在加载题库…</div>`;
   try {
     const prompts = await loadPrompts();
+    const types = [...new Set(prompts.map((item) => item.type).filter(Boolean))];
+    if (libFilter && !types.includes(libFilter)) libFilter = "";
+    const rows = filterByField(prompts, "type", libFilter);
+    const chips = [["", "全部", prompts.length], ...types.map((type) => [
+      type, type, prompts.filter((item) => item.type === type).length,
+    ])].map(([value, label, count]) => `<button
+      class="cet6-chip${libFilter === value ? " active" : ""}" type="button"
+      data-act="filter" data-type="${escapeHtml(value)}">${escapeHtml(label)}
+      <span>${count}</span></button>`).join("");
     panel.innerHTML = `${subnav("library")}
-      <div class="cet6-grid">${prompts.map(promptCard).join("")}</div>
+      <div class="cet6-filters">${chips}</div>
+      <div class="cet6-grid">${rows.map(promptCard).join("")}</div>
       <p class="hint">限时模式只给题目；练习模式额外给审题要点与分论点。两者都要提交后才有批改和范文。</p>`;
-    ctx.setSub(`写作 · ${prompts.length} 题`);
+    ctx.setSub(`写作 · ${rows.length}/${prompts.length} 题`);
   } catch (error) {
     panel.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
   }
@@ -156,6 +167,7 @@ async function renderPrompt(promptId) {
           ${escapeHtml(String((prompt.target_words || [150, 200]).join("–")))} 词</span>
         <h2>${escapeHtml(prompt.title)}</h2>
         <p class="cet6-prompt-en">${escapeHtml(prompt.prompt_en || "")}</p>
+        ${prompt.lead_sentence ? `<p class="cet6-lead"><strong>给定首句（必须逐字照抄，计入词数）</strong><span>${escapeHtml(prompt.lead_sentence)}</span></p>` : ""}
         ${prompt.prompt_zh ? `<p class="hint">${escapeHtml(prompt.prompt_zh)}</p>` : ""}
         <div class="cet6-actions">
           <button class="btn btn-primary" type="button" data-act="start"
@@ -406,6 +418,9 @@ function onClick(event) {
     if (next === "library") renderLibrary();
     else if (next === "history") renderHistory();
     else renderHome();
+  } else if (act === "filter") {
+    libFilter = target.dataset.type || "";
+    renderLibrary();
   } else if (act === "open-prompt") {
     renderPrompt(target.dataset.id);
   } else if (act === "start") {

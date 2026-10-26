@@ -73,6 +73,18 @@ class SentenceServiceTest(unittest.TestCase):
         finally:
             conn.close()
 
+    def test_list_returns_every_sentence(self):
+        conn = store.connect()
+        try:
+            data = service.list_sentences(conn, limit=500)
+            self.assertEqual(data["count"], 312)
+            self.assertEqual(len(data["items"]), 312)
+            ids = {item["id"] for item in data["items"]}
+            self.assertIn("x120", ids)
+            self.assertIn("t24-s8", ids)
+        finally:
+            conn.close()
+
     def test_review_persists_attempt_and_only_must_fix_cards(self):
         conn = store.connect()
         try:

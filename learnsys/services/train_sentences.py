@@ -52,7 +52,7 @@ def list_sentences(conn, *, skill: str = "", limit: int = 30,
         rows = [item for item in rows if item.get("skill") == skill]
     attempted = _attempted(conn)
     items = []
-    for item in rows[offset:offset + max(1, min(200, int(limit)))]:
+    for item in rows[offset:offset + max(1, min(500, int(limit)))]:
         row = _public(item)
         row["attempted"] = row["id"] in attempted
         items.append(row)

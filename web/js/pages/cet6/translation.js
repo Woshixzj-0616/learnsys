@@ -78,7 +78,7 @@ async function loadTerms(packId = "") {
 
 async function loadSentences() {
   if (!sentenceCache) {
-    const data = await api.get("/api/cet6/train/sentences?limit=200");
+    const data = await api.get("/api/cet6/train/sentences?limit=500");
     sentenceCache = data;
   }
   return sentenceCache;

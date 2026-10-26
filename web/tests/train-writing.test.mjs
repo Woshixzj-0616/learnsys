@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  cjkCount, clock, countWords, splitSentences, statusLabel,
+  cjkCount, clock, countWords, filterByField, initialEditorText,
+  splitSentences, statusLabel,
 } from "../js/pages/cet6/format.js";
 import { feedbackHtml } from "../js/pages/cet6/feedback.js";
 
@@ -153,4 +154,34 @@ test("批改视图：翻译信息点漏译", () => {
   assert.match(html, /7 \/ 10/);
   assert.match(html, /漏译：春节起源、年夜饭/);
   assert.match(html, /漏掉两层意思/);
+});
+
+test("编辑器初始文本：二稿 > 草稿 > 首句预填 > 空", () => {
+  const lead = "Although cities grow, nature still matters.";
+  assert.equal(initialEditorText({
+    initialText: "rewrite", submissionText: "", mode: "rewrite", leadSentence: lead,
+  }), "rewrite");
+  assert.equal(initialEditorText({
+    submissionText: "draft text", mode: "practice", leadSentence: lead,
+  }), "draft text");
+  assert.equal(initialEditorText({
+    mode: "practice", leadSentence: lead,
+  }), `${lead}\n\n`);
+  assert.equal(initialEditorText({
+    mode: "rewrite", leadSentence: lead,
+  }), "");
+  assert.equal(initialEditorText({ mode: "practice" }), "");
+});
+
+test("题库筛选：空值全部、命中、无命中", () => {
+  const rows = [
+    { id: "w13", type: "首句续写" }, { id: "w19", type: "首句续写" },
+    { id: "w01", type: "观点论证" },
+  ];
+  assert.equal(filterByField(rows, "type", "").length, 3);
+  assert.deepEqual(
+    filterByField(rows, "type", "首句续写").map((row) => row.id),
+    ["w13", "w19"]);
+  assert.deepEqual(filterByField(rows, "type", "不存在"), []);
+  assert.deepEqual(filterByField(null, "type", "x"), []);
 });

@@ -15,7 +15,8 @@ from learnsys.services import train_review, train_submissions as service
 from learnsys.train import content
 
 WRITING = ("I think part-time jobs are good because students can learn many "
-           "things from them. This gives them useful experience.")
+           "things from them. This gives them useful experience. Working also "
+           "teaches students how to manage their time.")
 
 
 def writing_json(band: int = 12) -> str:
@@ -117,6 +118,32 @@ class TrainSubmissionTest(unittest.TestCase):
             self.assertNotIn("upgrades", detail)
         finally:
             conn.close()
+
+    def test_lead_only_submission_is_rejected(self):
+        lead = content.pack("writing", "w13")["lead_sentence"]
+        conn = store.connect()
+        try:
+            sub = service.create_submission(
+                conn, kind="writing", prompt_id="w13")
+            service.patch_submission(conn, sub["id"], text=lead)
+            with self.assertRaises(ValueError):
+                service.submit_submission(conn, sub["id"])
+
+            service.patch_submission(conn, sub["id"], text=f"{lead}\n\n{WRITING}")
+            self.assertEqual(
+                service.submit_submission(conn, sub["id"])["status"],
+                "reviewing")
+
+            deleted = service.create_submission(
+                conn, kind="writing", prompt_id="w13")
+            service.patch_submission(conn, deleted["id"], text=WRITING)
+            self.assertEqual(
+                service.submit_submission(conn, deleted["id"])["status"],
+                "reviewing")
+        finally:
+            conn.close()
+        self._wait(sub["id"])
+        self._wait(deleted["id"])
 
     def test_rewrite_links_parent_and_external_score(self):
         conn = store.connect()

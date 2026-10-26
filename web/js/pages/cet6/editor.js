@@ -1,7 +1,7 @@
 // 限时 / 练习 / 二稿编辑器：自动保存、倒计时、粘贴与离开记录。
 import { api } from "../../api.js";
 import { escapeHtml } from "../../ui.js";
-import { cjkCount, clock, countWords } from "./format.js";
+import { cjkCount, clock, countWords, initialEditorText } from "./format.js";
 
 function practiceNotes(prompt) {
   const angles = prompt?.angle_points || [];
@@ -31,6 +31,7 @@ export function createEditor(options) {
   let dirty = false;
   let submitting = false;
   let stopped = false;
+  let autoSubmitTried = false;
   let autosaveTimer = null;
   let clockTimer = null;
   let armed = false;
@@ -48,6 +49,7 @@ export function createEditor(options) {
     ? `<p class="cet6-source-zh">${escapeHtml(prompt?.source_zh || "")}</p>
        <p class="hint">先自己译，提交后才给参考译文；卡住时用「一句一译」的两级提示。</p>`
     : `<p class="cet6-prompt-en">${escapeHtml(prompt?.prompt_en || "")}</p>
+       ${prompt?.lead_sentence ? `<p class="cet6-lead"><strong>给定首句（必须逐字照抄）</strong><span>${escapeHtml(prompt.lead_sentence)}</span></p>` : ""}
        ${prompt?.prompt_zh ? `<p class="hint">${escapeHtml(prompt.prompt_zh)}</p>` : ""}
        ${submission.mode === "rewrite" && priorities.length
          ? `<div class="cet6-rewrite-list"><h4>二稿只改这三处</h4><ol>${priorities.map((x) => `<li>${escapeHtml(x)}</li>`).join("")}</ol></div>`
@@ -87,7 +89,15 @@ export function createEditor(options) {
   const submitButton = el.querySelector("#cet6-submit");
   const leaveButton = el.querySelector("#cet6-leave");
   const target = (prompt?.target_words || [150, 200]);
-  textarea.value = initialText || submission.text || "";
+  textarea.value = initialEditorText({
+    initialText,
+    submissionText: submission.text,
+    mode: submission.mode,
+    leadSentence: prompt?.lead_sentence,
+  });
+  if (textarea.value) {
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  }
 
   function renderCounts() {
     const words = countWords(textarea.value);
@@ -110,7 +120,8 @@ export function createEditor(options) {
     const left = totalSeconds - elapsed();
     timerNode.textContent = clock(left);
     timerNode.classList.toggle("bad", left <= 300);
-    if (left <= 0 && armed && !submitting) {
+    if (left <= 0 && armed && !submitting && !autoSubmitTried) {
+      autoSubmitTried = true;
       onToast?.("时间到，正在自动提交");
       doSubmit();
     }

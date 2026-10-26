@@ -18,6 +18,23 @@
 .cet6-subtab:hover{border-color:var(--line-strong);color:var(--text)}
 .cet6-subtab.active{border-color:var(--accent-line);color:var(--accent);background:var(--accent-soft)}
 
+.cet6-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.cet6-chip{
+  display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;
+  border:1px solid var(--line);border-radius:999px;background:transparent;
+  color:var(--text-dim);font:inherit;font-size:12px;cursor:pointer;
+}
+.cet6-chip:hover{border-color:var(--line-strong);color:var(--text)}
+.cet6-chip.active{border-color:var(--accent-line);color:var(--accent);background:var(--accent-soft)}
+.cet6-chip span{font-size:11px;opacity:.7}
+
+.cet6-lead{
+  display:flex;flex-direction:column;gap:4px;margin:0 0 10px;padding:10px 12px;
+  border-left:3px solid var(--accent-line);border-radius:var(--r-sm);
+  background:var(--accent-soft);font-size:13px;line-height:1.7;color:var(--text);
+}
+.cet6-lead strong{font-size:11.5px;color:var(--accent);font-weight:600}
+
 .cet6-kicker{display:block;font-size:11.5px;letter-spacing:.04em;color:var(--text-faint);margin-bottom:4px}
 .cet6-hero{
   display:grid;grid-template-columns:minmax(0,1.7fr) minmax(220px,.8fr);gap:16px;

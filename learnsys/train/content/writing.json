@@ -7,7 +7,10 @@
       "title": "大学生该不该做兼职",
       "type": "观点论证",
       "minutes": 30,
-      "target_words": [150, 200],
+      "target_words": [
+        150,
+        200
+      ],
       "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on whether college students should take part-time jobs. You should state your opinion clearly and support it with reasons. You should write at least 150 words but no more than 200 words.",
       "prompt_zh": "写一篇短文，谈谈大学生是否应该做兼职，明确立场并给出理由。",
       "angle_points": [
@@ -49,18 +52,50 @@
         "band": 14,
         "text": "Part-time jobs are now common among college students, yet whether they are worth the time remains debated. In my view, a well-chosen part-time job can be valuable, provided that academic work stays the priority.\n\nThe benefits are practical rather than theoretical. A campus cafe or a tutoring position teaches punctuality, communication and the habit of meeting other people's expectations. Students also learn how to manage a schedule, a skill no lecture can fully deliver. Moreover, a modest income eases the financial burden on parents and gives young people their first taste of independence.\n\nHowever, the risk of overwork is real. Some students take night shifts simply to earn more, then sleep through morning classes. To prevent this, universities could set a weekly hour limit and offer advice on choosing jobs related to one's major.\n\nIn short, part-time work is neither a shortcut to success nor a waste of time. It is a tool, and its value depends on how deliberately we use it.",
         "notes": [
-          {"paragraph": 1, "note": "首段两句话完成背景 + 立场，用 provided that 把绝对判断改成有条件的判断，避免一边倒。"},
-          {"paragraph": 2, "note": "三个好处分别落在软技能、时间管理、经济独立，例子具体（咖啡馆、家教），没有空喊 important。"},
-          {"paragraph": 3, "note": "主动让步并给制度性方案，体现思辨；overwork 与 night shifts 让风险可感。"},
-          {"paragraph": 4, "note": "结尾用 neither ... nor ... 收束，并把判断标准交回「怎么用」，呼应首段条件。"}
+          {
+            "paragraph": 1,
+            "note": "首段两句话完成背景 + 立场，用 provided that 把绝对判断改成有条件的判断，避免一边倒。"
+          },
+          {
+            "paragraph": 2,
+            "note": "三个好处分别落在软技能、时间管理、经济独立，例子具体（咖啡馆、家教），没有空喊 important。"
+          },
+          {
+            "paragraph": 3,
+            "note": "主动让步并给制度性方案，体现思辨；overwork 与 night shifts 让风险可感。"
+          },
+          {
+            "paragraph": 4,
+            "note": "结尾用 neither ... nor ... 收束，并把判断标准交回「怎么用」，呼应首段条件。"
+          }
         ]
       },
       "upgrades": [
-        {"low": "Part-time jobs are very very good for students.", "high": "A well-chosen part-time job can be valuable, provided that academic work stays the priority.", "why": "去掉空洞的程度副词，换成有条件判断，信息量立刻增加。"},
-        {"low": "Students can learn many things from part-time jobs.", "high": "A campus cafe or a tutoring position teaches punctuality and the habit of meeting other people's expectations.", "why": "many things 太抽象；用具体岗位和具体能力替换。"},
-        {"low": "But some students work too much and it is bad.", "high": "Some students take night shifts simply to earn more, then sleep through morning classes.", "why": "用动作和后果代替形容词，bad 变成可验证的画面。"},
-        {"low": "So universities should do something.", "high": "Universities could set a weekly hour limit and offer advice on choosing jobs related to one's major.", "why": "something 是空话；给出可执行的两个动作。"},
-        {"low": "In conclusion, part-time jobs have advantages and disadvantages.", "high": "Part-time work is neither a shortcut to success nor a waste of time; it is a tool.", "why": "advantages and disadvantages 是套话；用 neither ... nor ... 给出自己的判断。"}
+        {
+          "low": "Part-time jobs are very very good for students.",
+          "high": "A well-chosen part-time job can be valuable, provided that academic work stays the priority.",
+          "why": "去掉空洞的程度副词，换成有条件判断，信息量立刻增加。"
+        },
+        {
+          "low": "Students can learn many things from part-time jobs.",
+          "high": "A campus cafe or a tutoring position teaches punctuality and the habit of meeting other people's expectations.",
+          "why": "many things 太抽象；用具体岗位和具体能力替换。"
+        },
+        {
+          "low": "But some students work too much and it is bad.",
+          "high": "Some students take night shifts simply to earn more, then sleep through morning classes.",
+          "why": "用动作和后果代替形容词，bad 变成可验证的画面。"
+        },
+        {
+          "low": "So universities should do something.",
+          "high": "Universities could set a weekly hour limit and offer advice on choosing jobs related to one's major.",
+          "why": "something 是空话；给出可执行的两个动作。"
+        },
+        {
+          "low": "In conclusion, part-time jobs have advantages and disadvantages.",
+          "high": "Part-time work is neither a shortcut to success nor a waste of time; it is a tool.",
+          "why": "advantages and disadvantages 是套话；用 neither ... nor ... 给出自己的判断。"
+        }
       ],
       "pitfalls": [
         "把「该不该」写成「兼职有哪些好处」，漏掉反方与条件。",
@@ -75,7 +110,10 @@
       "title": "通才还是专才",
       "type": "对比选择",
       "minutes": 30,
-      "target_words": [150, 200],
+      "target_words": [
+        150,
+        200
+      ],
       "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on whether students should become generalists or specialists. You should compare the two choices and explain your own position. You should write at least 150 words but no more than 200 words.",
       "prompt_zh": "写一篇短文，比较「通才」与「专才」两条路径，并说明你的选择。",
       "angle_points": [
@@ -117,19 +155,54 @@
         "band": 14,
         "text": "Students often ask whether they should become a generalist or a specialist. My answer is that the two are not opposites; the sensible path is to build one firm specialty and then extend it with related knowledge.\n\nA specialist goes deep. When a company needs someone to fix a database or design a bridge, depth is what gets hired. Years of focused practice create a kind of judgment that scattered reading cannot replace. This is why medical training insists on long specialization.\n\nYet today's problems rarely stay inside one field. An engineer who understands finance can spot cost risks; a designer who knows psychology can make a product easier to use. Breadth supplies the connections that make deep knowledge useful.\n\nThe practical strategy is therefore T-shaped: one strong vertical skill, supported by a broad horizontal base. Students can choose a major and a first job that demand real expertise, while using electives, projects and reading to explore neighboring fields.\n\nDepth without breadth is narrow; breadth without depth is shallow. The T shape keeps both.",
         "notes": [
-          {"paragraph": 1, "note": "开头不直接站队，先拆掉假二选一，给出 T 型路径，立意高于题目。"},
-          {"paragraph": 2, "note": "专才段落用「数据库 / 桥梁」这种可被雇佣的具体任务说明深度价值。"},
-          {"paragraph": 3, "note": "通才段落用两个职业场景说明「连接」如何让深度有用，避免抽象赞美。"},
-          {"paragraph": 4, "note": "把观点落成学生可执行的动作：主修 + 第一份工作 + 选修/项目。"},
-          {"paragraph": 5, "note": "对偶句收尾，短而有力，回扣 T 型。"}
+          {
+            "paragraph": 1,
+            "note": "开头不直接站队，先拆掉假二选一，给出 T 型路径，立意高于题目。"
+          },
+          {
+            "paragraph": 2,
+            "note": "专才段落用「数据库 / 桥梁」这种可被雇佣的具体任务说明深度价值。"
+          },
+          {
+            "paragraph": 3,
+            "note": "通才段落用两个职业场景说明「连接」如何让深度有用，避免抽象赞美。"
+          },
+          {
+            "paragraph": 4,
+            "note": "把观点落成学生可执行的动作：主修 + 第一份工作 + 选修/项目。"
+          },
+          {
+            "paragraph": 5,
+            "note": "对偶句收尾，短而有力，回扣 T 型。"
+          }
         ]
       },
       "upgrades": [
-        {"low": "Specialists are better because they know more.", "high": "When a company needs someone to fix a database or design a bridge, depth is what gets hired.", "why": "用招聘场景代替 know more，说明「深度为什么值钱」。"},
-        {"low": "Generalists can do many different things.", "high": "An engineer who understands finance can spot cost risks.", "why": "many different things 没有信息；具体组合才说明广度的用途。"},
-        {"low": "I think students should be both.", "high": "The practical strategy is T-shaped: one strong vertical skill, supported by a broad horizontal base.", "why": "both 太含糊；T 型给出可操作的形状。"},
-        {"low": "It is important to read widely.", "high": "Students can use electives, projects and reading to explore neighboring fields.", "why": "把 important 换成三个具体动作。"},
-        {"low": "In a word, both are important.", "high": "Depth without breadth is narrow; breadth without depth is shallow.", "why": "对偶句总结两边风险，比 both are important 有判断。"}
+        {
+          "low": "Specialists are better because they know more.",
+          "high": "When a company needs someone to fix a database or design a bridge, depth is what gets hired.",
+          "why": "用招聘场景代替 know more，说明「深度为什么值钱」。"
+        },
+        {
+          "low": "Generalists can do many different things.",
+          "high": "An engineer who understands finance can spot cost risks.",
+          "why": "many different things 没有信息；具体组合才说明广度的用途。"
+        },
+        {
+          "low": "I think students should be both.",
+          "high": "The practical strategy is T-shaped: one strong vertical skill, supported by a broad horizontal base.",
+          "why": "both 太含糊；T 型给出可操作的形状。"
+        },
+        {
+          "low": "It is important to read widely.",
+          "high": "Students can use electives, projects and reading to explore neighboring fields.",
+          "why": "把 important 换成三个具体动作。"
+        },
+        {
+          "low": "In a word, both are important.",
+          "high": "Depth without breadth is narrow; breadth without depth is shallow.",
+          "why": "对偶句总结两边风险，比 both are important 有判断。"
+        }
       ],
       "pitfalls": [
         "只写专才好，完全不理通才，变成单边论证。",
@@ -144,7 +217,10 @@
       "title": "失败在学习中的价值",
       "type": "观点论证",
       "minutes": 30,
-      "target_words": [150, 200],
+      "target_words": [
+        150,
+        200
+      ],
       "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on the value of failure in learning. You should explain why failure can be useful and what conditions make it useful. You should write at least 150 words but no more than 200 words.",
       "prompt_zh": "写一篇短文，论述失败在学习中的价值，并说明在什么条件下失败才真正有用。",
       "angle_points": [
@@ -186,19 +262,54 @@
         "band": 14,
         "text": "Failure is usually treated as something to hide, especially on a campus where grades are public and success stories spread fast. In my view, failure is valuable only when it is examined rather than avoided.\n\nFirst, failure exposes the gap between what we believe and what we can actually do. A student who fails a speaking contest may discover that memorized sentences collapse under pressure. That discovery is more useful than another encouraging comment.\n\nSecond, failure teaches the process of recovery. People who have never failed often treat a setback as a verdict on their ability; those who have failed learn to separate a bad result from a bad self-image.\n\nHowever, this value is not automatic. Without reflection, failure merely produces fear. Students should write down what went wrong, ask for specific feedback, and design one small change for the next attempt.\n\nSuccess tells us what worked; failure tells us what to fix. A learner who can use both grows faster than one who only collects wins.",
         "notes": [
-          {"paragraph": 1, "note": "先写校园语境（成绩公开、成功故事传播快），让「藏失败」有画面，再给出限定立场。"},
-          {"paragraph": 2, "note": "第一个价值用演讲比赛的具体失手说明「背过的句子会崩」，可验证。"},
-          {"paragraph": 3, "note": "第二个价值转向心理层面：把结果与自我评价分开，这是比「涨经验」更深的点。"},
-          {"paragraph": 4, "note": "主动限定价值不是自动发生的，并给出三步复盘动作。"},
-          {"paragraph": 5, "note": "对偶收尾，最后一句把「只用成功」和「两者都用」作对比。"}
+          {
+            "paragraph": 1,
+            "note": "先写校园语境（成绩公开、成功故事传播快），让「藏失败」有画面，再给出限定立场。"
+          },
+          {
+            "paragraph": 2,
+            "note": "第一个价值用演讲比赛的具体失手说明「背过的句子会崩」，可验证。"
+          },
+          {
+            "paragraph": 3,
+            "note": "第二个价值转向心理层面：把结果与自我评价分开，这是比「涨经验」更深的点。"
+          },
+          {
+            "paragraph": 4,
+            "note": "主动限定价值不是自动发生的，并给出三步复盘动作。"
+          },
+          {
+            "paragraph": 5,
+            "note": "对偶收尾，最后一句把「只用成功」和「两者都用」作对比。"
+          }
         ]
       },
       "upgrades": [
-        {"low": "Failure is good for us.", "high": "Failure is valuable only when it is examined rather than avoided.", "why": "给 good 加上条件和机制，避免廉价正能量。"},
-        {"low": "We can learn a lot from failure.", "high": "A student who fails a speaking contest may discover that memorized sentences collapse under pressure.", "why": "用具体场景替代 a lot，让读者看到差距如何被暴露。"},
-        {"low": "Some people are afraid of failure.", "high": "People who have never failed often treat a setback as a verdict on their ability.", "why": "afraid 是情绪标签；verdict 说明怕的到底是什么。"},
-        {"low": "We should think about our mistakes.", "high": "Students should write down what went wrong, ask for specific feedback, and design one small change.", "why": "think about 太空；三个动作才可执行。"},
-        {"low": "In conclusion, failure is important.", "high": "Success tells us what worked; failure tells us what to fix.", "why": "用对偶句给出功能区分，代替空洞结论。"}
+        {
+          "low": "Failure is good for us.",
+          "high": "Failure is valuable only when it is examined rather than avoided.",
+          "why": "给 good 加上条件和机制，避免廉价正能量。"
+        },
+        {
+          "low": "We can learn a lot from failure.",
+          "high": "A student who fails a speaking contest may discover that memorized sentences collapse under pressure.",
+          "why": "用具体场景替代 a lot，让读者看到差距如何被暴露。"
+        },
+        {
+          "low": "Some people are afraid of failure.",
+          "high": "People who have never failed often treat a setback as a verdict on their ability.",
+          "why": "afraid 是情绪标签；verdict 说明怕的到底是什么。"
+        },
+        {
+          "low": "We should think about our mistakes.",
+          "high": "Students should write down what went wrong, ask for specific feedback, and design one small change.",
+          "why": "think about 太空；三个动作才可执行。"
+        },
+        {
+          "low": "In conclusion, failure is important.",
+          "high": "Success tells us what worked; failure tells us what to fix.",
+          "why": "用对偶句给出功能区分，代替空洞结论。"
+        }
       ],
       "pitfalls": [
         "把失败写成励志口号，缺少「为什么有用」的机制。",
@@ -213,7 +324,10 @@
       "title": "学术写作该不该允许 AI 工具",
       "type": "现象分析",
       "minutes": 30,
-      "target_words": [150, 200],
+      "target_words": [
+        150,
+        200
+      ],
       "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on whether AI tools should be allowed in academic writing. You should make a clear argument and address the risks involved. You should write at least 150 words but no more than 200 words.",
       "prompt_zh": "写一篇短文，论述学术写作是否应该允许使用 AI 工具，并回应其中的风险。",
       "angle_points": [
@@ -255,19 +369,54 @@
         "band": 14,
         "text": "Generative AI can now produce a passable essay in seconds, and universities are struggling to decide whether to ban it or accept it. I believe AI should be allowed as an assistant, but only under clear limits.\n\nThe reason is simple: AI is already part of professional writing. Journalists use it to draft summaries, researchers use it to check grammar, and programmers use it to explain unfamiliar code. Banning it on campus would prepare students for a workplace that no longer exists.\n\nThe danger lies in outsourcing thought. If a student asks AI to choose the argument, select the evidence and polish the conclusion, the essay no longer reflects the student's learning. Worse, the student may not notice the fabricated facts that AI sometimes produces.\n\nA workable rule is to require disclosure and process. Students could submit drafts, prompts and revision notes alongside the final essay, and be assessed on how they judged and corrected AI output.\n\nUsed this way, AI is a writing partner, not a substitute for thinking.",
         "notes": [
-          {"paragraph": 1, "note": "用「几秒钟写出及格作文」制造现实压力，再提出「允许 + 限制」的立场。"},
-          {"paragraph": 2, "note": "三个职业例子证明 AI 已是专业写作的一部分，禁令反而不合职场。"},
-          {"paragraph": 3, "note": "把风险落到「外包思考」和「编造事实」，比空谈学术诚信更具体。"},
-          {"paragraph": 4, "note": "给出可执行的披露方案，并改变评估对象：看学生如何判断和修正。"},
-          {"paragraph": 5, "note": "用 partner / substitute 的对比收尾，短句有力。"}
+          {
+            "paragraph": 1,
+            "note": "用「几秒钟写出及格作文」制造现实压力，再提出「允许 + 限制」的立场。"
+          },
+          {
+            "paragraph": 2,
+            "note": "三个职业例子证明 AI 已是专业写作的一部分，禁令反而不合职场。"
+          },
+          {
+            "paragraph": 3,
+            "note": "把风险落到「外包思考」和「编造事实」，比空谈学术诚信更具体。"
+          },
+          {
+            "paragraph": 4,
+            "note": "给出可执行的披露方案，并改变评估对象：看学生如何判断和修正。"
+          },
+          {
+            "paragraph": 5,
+            "note": "用 partner / substitute 的对比收尾，短句有力。"
+          }
         ]
       },
       "upgrades": [
-        {"low": "AI is very useful for students.", "high": "AI should be allowed as an assistant, but only under clear limits.", "why": "useful 没有边界；assistant + limits 同时给出用途和约束。"},
-        {"low": "Many people use AI now.", "high": "Journalists use it to draft summaries, researchers use it to check grammar.", "why": "用职业和动作替代 many people，证明 AI 已进入专业写作。"},
-        {"low": "Students may cheat with AI.", "high": "If a student asks AI to choose the argument and select the evidence, the essay no longer reflects the student's learning.", "why": "cheat 是结论；写出具体外包动作才说明问题。"},
-        {"low": "Schools should make rules.", "high": "Students could submit drafts, prompts and revision notes alongside the final essay.", "why": "make rules 太泛；列出提交物才可执行。"},
-        {"low": "In short, AI has two sides.", "high": "AI is a writing partner, not a substitute for thinking.", "why": "two sides 是套话；partner/substitute 给出明确边界。"}
+        {
+          "low": "AI is very useful for students.",
+          "high": "AI should be allowed as an assistant, but only under clear limits.",
+          "why": "useful 没有边界；assistant + limits 同时给出用途和约束。"
+        },
+        {
+          "low": "Many people use AI now.",
+          "high": "Journalists use it to draft summaries, researchers use it to check grammar.",
+          "why": "用职业和动作替代 many people，证明 AI 已进入专业写作。"
+        },
+        {
+          "low": "Students may cheat with AI.",
+          "high": "If a student asks AI to choose the argument and select the evidence, the essay no longer reflects the student's learning.",
+          "why": "cheat 是结论；写出具体外包动作才说明问题。"
+        },
+        {
+          "low": "Schools should make rules.",
+          "high": "Students could submit drafts, prompts and revision notes alongside the final essay.",
+          "why": "make rules 太泛；列出提交物才可执行。"
+        },
+        {
+          "low": "In short, AI has two sides.",
+          "high": "AI is a writing partner, not a substitute for thinking.",
+          "why": "two sides 是套话；partner/substitute 给出明确边界。"
+        }
       ],
       "pitfalls": [
         "只写「AI 是双刃剑」，没有自己的方案。",
@@ -282,7 +431,10 @@
       "title": "短视频与注意力",
       "type": "现象分析",
       "minutes": 30,
-      "target_words": [150, 200],
+      "target_words": [
+        150,
+        200
+      ],
       "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on how short videos affect young people's attention. You should analyze the effects and suggest practical responses. You should write at least 150 words but no more than 200 words.",
       "prompt_zh": "写一篇短文，分析短视频如何影响年轻人的注意力，并提出可行的应对办法。",
       "angle_points": [
@@ -324,19 +476,54 @@
         "band": 14,
         "text": "Short videos have become the default way many young people relax. While they are entertaining, their cost to attention is often underestimated.\n\nThe first problem is interruption. A typical clip lasts fifteen to sixty seconds, and the next one starts automatically. The brain is trained to expect a new stimulus before boredom appears, so sustained reading feels unusually heavy.\n\nThe second problem is the illusion of learning. A three-minute video can introduce a concept, but it cannot build the patience required to master it. Viewers may feel informed while remembering almost nothing the next day.\n\nThis does not mean short videos are evil. Used deliberately, they are efficient for news, demonstrations and quick revision. The key is to separate consumption from study: keep the phone outside the desk, set a fixed viewing window, and protect at least one long reading session each day.\n\nAttention is not a fixed gift; it is a muscle. What we practice, we strengthen.",
         "notes": [
-          {"paragraph": 1, "note": "首段先承认娱乐价值，再指出代价被低估，避免一上来批判。"},
-          {"paragraph": 2, "note": "用 15–60 秒和自动播放解释机制，让「注意力变差」有因果链。"},
-          {"paragraph": 3, "note": "区分「感觉学到」与「真正记住」，这是常见误区。"},
-          {"paragraph": 4, "note": "主动为短视频保留合理用途，再给三条具体做法。"},
-          {"paragraph": 5, "note": "用肌肉比喻收尾，短句对仗。"}
+          {
+            "paragraph": 1,
+            "note": "首段先承认娱乐价值，再指出代价被低估，避免一上来批判。"
+          },
+          {
+            "paragraph": 2,
+            "note": "用 15–60 秒和自动播放解释机制，让「注意力变差」有因果链。"
+          },
+          {
+            "paragraph": 3,
+            "note": "区分「感觉学到」与「真正记住」，这是常见误区。"
+          },
+          {
+            "paragraph": 4,
+            "note": "主动为短视频保留合理用途，再给三条具体做法。"
+          },
+          {
+            "paragraph": 5,
+            "note": "用肌肉比喻收尾，短句对仗。"
+          }
         ]
       },
       "upgrades": [
-        {"low": "Short videos are bad for our attention.", "high": "A typical clip lasts fifteen to sixty seconds, and the next one starts automatically.", "why": "bad 是判断；写出时长与自动播放才是机制。"},
-        {"low": "We cannot focus on books anymore.", "high": "The brain is trained to expect a new stimulus before boredom appears, so sustained reading feels unusually heavy.", "why": "cannot focus 太绝对；用刺激预期和阅读体感解释。"},
-        {"low": "Videos do not teach us much.", "high": "A three-minute video can introduce a concept, but it cannot build the patience required to master it.", "why": "not much 含糊；区分 introduce 与 master。"},
-        {"low": "We should use phones less.", "high": "Keep the phone outside the desk, set a fixed viewing window, and protect one long reading session.", "why": "use less 不可执行；三条动作可当天做到。"},
-        {"low": "In conclusion, we should control ourselves.", "high": "Attention is not a fixed gift; it is a muscle. What we practice, we strengthen.", "why": "control ourselves 是口号；肌肉比喻给出可训练的方向。"}
+        {
+          "low": "Short videos are bad for our attention.",
+          "high": "A typical clip lasts fifteen to sixty seconds, and the next one starts automatically.",
+          "why": "bad 是判断；写出时长与自动播放才是机制。"
+        },
+        {
+          "low": "We cannot focus on books anymore.",
+          "high": "The brain is trained to expect a new stimulus before boredom appears, so sustained reading feels unusually heavy.",
+          "why": "cannot focus 太绝对；用刺激预期和阅读体感解释。"
+        },
+        {
+          "low": "Videos do not teach us much.",
+          "high": "A three-minute video can introduce a concept, but it cannot build the patience required to master it.",
+          "why": "not much 含糊；区分 introduce 与 master。"
+        },
+        {
+          "low": "We should use phones less.",
+          "high": "Keep the phone outside the desk, set a fixed viewing window, and protect one long reading session.",
+          "why": "use less 不可执行；三条动作可当天做到。"
+        },
+        {
+          "low": "In conclusion, we should control ourselves.",
+          "high": "Attention is not a fixed gift; it is a muscle. What we practice, we strengthen.",
+          "why": "control ourselves 是口号；肌肉比喻给出可训练的方向。"
+        }
       ],
       "pitfalls": [
         "通篇批判短视频，不承认它在新闻、演示上的效率。",
@@ -351,7 +538,10 @@
       "title": "为什么越来越多学生考研",
       "type": "原因分析",
       "minutes": 30,
-      "target_words": [150, 200],
+      "target_words": [
+        150,
+        200
+      ],
       "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on why an increasing number of students choose to pursue postgraduate study. You should analyze the reasons and comment on the trend. You should write at least 150 words but no more than 200 words.",
       "prompt_zh": "写一篇短文，分析越来越多学生选择读研的原因，并评价这一趋势。",
       "angle_points": [
@@ -393,19 +583,54 @@
         "band": 14,
         "text": "More students than ever are preparing for postgraduate entrance exams. The trend is often explained as a love of learning, but the reality is more practical.\n\nFirst, the job market has raised its entry requirements. Many positions that once accepted a bachelor's degree now list a master's as preferred, especially in finance, education and technology. Students rationally extend their education to avoid being filtered out at the first stage.\n\nSecond, the exam offers a second chance. Some students discover their real interest late, or perform poorly in their first degree. Postgraduate study allows them to change direction without starting over.\n\nThird, there is social pressure. When most classmates are preparing for the exam, finding a job can feel like giving up. Some students follow the group simply because the alternative is unclear.\n\nThese motives are understandable, but they are not equally healthy. Before enrolling, students should ask whether the degree serves a specific goal or merely postpones a decision. A master's degree is a tool, not a shelter.",
         "notes": [
-          {"paragraph": 1, "note": "先驳「热爱学习」这一常见解释，确立更现实的基调。"},
-          {"paragraph": 2, "note": "第一层原因给出具体行业与招聘措辞，说明门槛如何抬高。"},
-          {"paragraph": 3, "note": "第二层把考研写成「二次选择」，照顾兴趣转向和首学历不理想的人。"},
-          {"paragraph": 4, "note": "第三层承认同辈压力，并点出「替代方案不清晰」这一心理机制。"},
-          {"paragraph": 5, "note": "评价动机不等价，最后用 tool / shelter 对比收束。"}
+          {
+            "paragraph": 1,
+            "note": "先驳「热爱学习」这一常见解释，确立更现实的基调。"
+          },
+          {
+            "paragraph": 2,
+            "note": "第一层原因给出具体行业与招聘措辞，说明门槛如何抬高。"
+          },
+          {
+            "paragraph": 3,
+            "note": "第二层把考研写成「二次选择」，照顾兴趣转向和首学历不理想的人。"
+          },
+          {
+            "paragraph": 4,
+            "note": "第三层承认同辈压力，并点出「替代方案不清晰」这一心理机制。"
+          },
+          {
+            "paragraph": 5,
+            "note": "评价动机不等价，最后用 tool / shelter 对比收束。"
+          }
         ]
       },
       "upgrades": [
-        {"low": "Many students take the exam because they like studying.", "high": "The trend is often explained as a love of learning, but the reality is more practical.", "why": "先立一个常见解释再反转，比直接陈述更有分析感。"},
-        {"low": "Jobs are harder to find now.", "high": "Many positions that once accepted a bachelor's degree now list a master's as preferred.", "why": "harder 含糊；写出招聘要求的具体变化。"},
-        {"low": "Some students want to change their major.", "high": "Postgraduate study allows them to change direction without starting over.", "why": "change major 只是动作；without starting over 说明价值。"},
-        {"low": "Students follow others.", "high": "Some students follow the group simply because the alternative is unclear.", "why": "补出原因：不是盲从，而是替代方案看不清。"},
-        {"low": "In conclusion, students should think carefully.", "high": "A master's degree is a tool, not a shelter.", "why": "think carefully 是空话；tool/shelter 给出判断。"}
+        {
+          "low": "Many students take the exam because they like studying.",
+          "high": "The trend is often explained as a love of learning, but the reality is more practical.",
+          "why": "先立一个常见解释再反转，比直接陈述更有分析感。"
+        },
+        {
+          "low": "Jobs are harder to find now.",
+          "high": "Many positions that once accepted a bachelor's degree now list a master's as preferred.",
+          "why": "harder 含糊；写出招聘要求的具体变化。"
+        },
+        {
+          "low": "Some students want to change their major.",
+          "high": "Postgraduate study allows them to change direction without starting over.",
+          "why": "change major 只是动作；without starting over 说明价值。"
+        },
+        {
+          "low": "Students follow others.",
+          "high": "Some students follow the group simply because the alternative is unclear.",
+          "why": "补出原因：不是盲从，而是替代方案看不清。"
+        },
+        {
+          "low": "In conclusion, students should think carefully.",
+          "high": "A master's degree is a tool, not a shelter.",
+          "why": "think carefully 是空话；tool/shelter 给出判断。"
+        }
       ],
       "pitfalls": [
         "只写就业压力，漏掉二次选择与同辈压力。",
@@ -420,7 +645,10 @@
       "title": "年轻人参与志愿服务",
       "type": "现象分析",
       "minutes": 30,
-      "target_words": [150, 200],
+      "target_words": [
+        150,
+        200
+      ],
       "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on volunteering among young people. You should discuss its benefits and explain what makes volunteering meaningful. You should write at least 150 words but no more than 200 words.",
       "prompt_zh": "写一篇短文，讨论年轻人参与志愿服务的意义，并说明怎样的志愿服务才真正有价值。",
       "angle_points": [
@@ -462,19 +690,54 @@
         "band": 14,
         "text": "Volunteering among young people has grown from an occasional activity into a common part of student life. This is a welcome change, but its value depends on why students volunteer.\n\nThe clearest benefit is contact with reality. Tutoring children in a rural school or helping at a community clinic shows students how policies, families and resources actually interact. Such experience is difficult to obtain from textbooks.\n\nVolunteering also builds ordinary professional skills: explaining a task, coordinating a team, and remaining calm when plans fail. These are precisely the abilities employers say graduates lack.\n\nYet volunteering can become a box to tick. Some students join programs only to fill a resume, arrive late and leave early. When that happens, both the community and the student lose.\n\nUniversities can help by connecting volunteers with long-term projects instead of one-day events, and by asking students to reflect on what they observed. The point of volunteering is not to collect hours, but to understand people whose lives differ from our own.",
         "notes": [
-          {"paragraph": 1, "note": "首段承认变化是好事，但立刻把标准转到「为什么去」，为后文批评铺垫。"},
-          {"paragraph": 2, "note": "用支教和社区门诊两个场景说明「政策、家庭、资源如何互动」。"},
-          {"paragraph": 3, "note": "职业技能写得可迁移：解释、协调、计划失败时保持冷静。"},
-          {"paragraph": 4, "note": "批评刷简历式志愿，指出双方都受损，避免只骂学生。"},
-          {"paragraph": 5, "note": "给学校两条具体建议，结尾用 not ... but ... 收束。"}
+          {
+            "paragraph": 1,
+            "note": "首段承认变化是好事，但立刻把标准转到「为什么去」，为后文批评铺垫。"
+          },
+          {
+            "paragraph": 2,
+            "note": "用支教和社区门诊两个场景说明「政策、家庭、资源如何互动」。"
+          },
+          {
+            "paragraph": 3,
+            "note": "职业技能写得可迁移：解释、协调、计划失败时保持冷静。"
+          },
+          {
+            "paragraph": 4,
+            "note": "批评刷简历式志愿，指出双方都受损，避免只骂学生。"
+          },
+          {
+            "paragraph": 5,
+            "note": "给学校两条具体建议，结尾用 not ... but ... 收束。"
+          }
         ]
       },
       "upgrades": [
-        {"low": "Volunteering is very meaningful.", "high": "Tutoring children in a rural school shows students how policies, families and resources actually interact.", "why": "meaningful 是评价；具体场景说明「怎么有意义」。"},
-        {"low": "Students can learn skills from volunteering.", "high": "Volunteering builds explaining a task, coordinating a team, and remaining calm when plans fail.", "why": "skills 太泛；三项可迁移能力更可信。"},
-        {"low": "Some students are not serious.", "high": "Some students join programs only to fill a resume, arrive late and leave early.", "why": "not serious 是标签；行为细节让批评成立。"},
-        {"low": "Schools should organize better activities.", "high": "Universities can connect volunteers with long-term projects instead of one-day events.", "why": "better 不可执行；长期项目 vs 一日活动是明确对比。"},
-        {"low": "In short, volunteering is good for everyone.", "high": "The point of volunteering is not to collect hours, but to understand people whose lives differ from our own.", "why": "everyone 空洞；not ... but ... 给出真正的目的。"}
+        {
+          "low": "Volunteering is very meaningful.",
+          "high": "Tutoring children in a rural school shows students how policies, families and resources actually interact.",
+          "why": "meaningful 是评价；具体场景说明「怎么有意义」。"
+        },
+        {
+          "low": "Students can learn skills from volunteering.",
+          "high": "Volunteering builds explaining a task, coordinating a team, and remaining calm when plans fail.",
+          "why": "skills 太泛；三项可迁移能力更可信。"
+        },
+        {
+          "low": "Some students are not serious.",
+          "high": "Some students join programs only to fill a resume, arrive late and leave early.",
+          "why": "not serious 是标签；行为细节让批评成立。"
+        },
+        {
+          "low": "Schools should organize better activities.",
+          "high": "Universities can connect volunteers with long-term projects instead of one-day events.",
+          "why": "better 不可执行；长期项目 vs 一日活动是明确对比。"
+        },
+        {
+          "low": "In short, volunteering is good for everyone.",
+          "high": "The point of volunteering is not to collect hours, but to understand people whose lives differ from our own.",
+          "why": "everyone 空洞；not ... but ... 给出真正的目的。"
+        }
       ],
       "pitfalls": [
         "通篇赞美志愿，不批评刷简历式参与。",
@@ -489,7 +752,10 @@
       "title": "代际数字鸿沟",
       "type": "问题建议",
       "minutes": 30,
-      "target_words": [150, 200],
+      "target_words": [
+        150,
+        200
+      ],
       "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on the digital gap between older and younger generations. You should describe the problem and propose practical solutions. You should write at least 150 words but no more than 200 words.",
       "prompt_zh": "写一篇短文，描述老年人与年轻人之间的数字鸿沟，并提出可行的解决办法。",
       "angle_points": [
@@ -531,19 +797,54 @@
         "band": 14,
         "text": "Older people often struggle with services that have moved online, from booking a hospital appointment to paying a bill. The digital gap is sometimes described as a personal problem, but it is largely a design problem.\n\nMany apps assume users can read small text, remember passwords and recover accounts through email. For an elderly person with poor eyesight or no email habit, each step is a wall. When a queue disappears and is replaced by a QR code, the cost falls on those least able to adapt.\n\nThe gap has real consequences. It limits access to healthcare, increases dependence on relatives and deepens the feeling of being left behind.\n\nSolutions should be practical rather than sentimental. Companies can keep a human counter for essential services and design a simplified mode with larger text and fewer choices. Families can teach one task at a time instead of handing over a manual. Communities can offer short, repeated classes taught by patient volunteers.\n\nTechnology should widen access, not narrow it. A society is judged by how it treats those who cannot keep up.",
         "notes": [
-          {"paragraph": 1, "note": "用挂号、缴费两个高频场景开场，并把问题重新定义为设计问题，立意鲜明。"},
-          {"paragraph": 2, "note": "列举三个默认能力（看小字、记密码、用邮箱），再写二维码取代排队，说明成本转移。"},
-          {"paragraph": 3, "note": "后果分三层：医疗、依赖、心理感受，避免只写「不方便」。"},
-          {"paragraph": 4, "note": "方案按企业、家庭、社区分工，每条都可执行。"},
-          {"paragraph": 5, "note": "结尾把技术价值与社会评价合并，收束有力。"}
+          {
+            "paragraph": 1,
+            "note": "用挂号、缴费两个高频场景开场，并把问题重新定义为设计问题，立意鲜明。"
+          },
+          {
+            "paragraph": 2,
+            "note": "列举三个默认能力（看小字、记密码、用邮箱），再写二维码取代排队，说明成本转移。"
+          },
+          {
+            "paragraph": 3,
+            "note": "后果分三层：医疗、依赖、心理感受，避免只写「不方便」。"
+          },
+          {
+            "paragraph": 4,
+            "note": "方案按企业、家庭、社区分工，每条都可执行。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾把技术价值与社会评价合并，收束有力。"
+          }
         ]
       },
       "upgrades": [
-        {"low": "Old people cannot use smartphones.", "high": "Many apps assume users can read small text, remember passwords and recover accounts through email.", "why": "cannot use 是标签；列出默认能力才说明卡在哪。"},
-        {"low": "This is very inconvenient for them.", "high": "When a queue disappears and is replaced by a QR code, the cost falls on those least able to adapt.", "why": "inconvenient 太轻；成本转移点出公平问题。"},
-        {"low": "We should help old people.", "high": "Families can teach one task at a time instead of handing over a manual.", "why": "help 空泛；一次教一个任务是具体做法。"},
-        {"low": "Companies should make apps easier.", "high": "Companies can design a simplified mode with larger text and fewer choices.", "why": "easier 不可测；大字、少选项是明确要求。"},
-        {"low": "In conclusion, we must care about the elderly.", "high": "Technology should widen access, not narrow it.", "why": "care about 是态度；widen/narrow 给出技术伦理判断。"}
+        {
+          "low": "Old people cannot use smartphones.",
+          "high": "Many apps assume users can read small text, remember passwords and recover accounts through email.",
+          "why": "cannot use 是标签；列出默认能力才说明卡在哪。"
+        },
+        {
+          "low": "This is very inconvenient for them.",
+          "high": "When a queue disappears and is replaced by a QR code, the cost falls on those least able to adapt.",
+          "why": "inconvenient 太轻；成本转移点出公平问题。"
+        },
+        {
+          "low": "We should help old people.",
+          "high": "Families can teach one task at a time instead of handing over a manual.",
+          "why": "help 空泛；一次教一个任务是具体做法。"
+        },
+        {
+          "low": "Companies should make apps easier.",
+          "high": "Companies can design a simplified mode with larger text and fewer choices.",
+          "why": "easier 不可测；大字、少选项是明确要求。"
+        },
+        {
+          "low": "In conclusion, we must care about the elderly.",
+          "high": "Technology should widen access, not narrow it.",
+          "why": "care about 是态度；widen/narrow 给出技术伦理判断。"
+        }
       ],
       "pitfalls": [
         "把责任推给老人「不愿学」，不讨论设计问题。",
@@ -558,7 +859,10 @@
       "title": "行动胜于言语",
       "type": "引言阐释",
       "minutes": 30,
-      "target_words": [150, 200],
+      "target_words": [
+        150,
+        200
+      ],
       "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay commenting on the saying Action speaks louder than words. You should explain what the saying means and illustrate it with examples. You should write at least 150 words but no more than 200 words.",
       "prompt_zh": "写一篇短文，评论谚语「行动胜于言语」，解释其含义并举例说明。",
       "angle_points": [
@@ -600,19 +904,54 @@
         "band": 14,
         "text": "Action speaks louder than words is an old saying, but it is often misunderstood as a rejection of planning. In my view, its real point is that commitment is measured by behavior, not by promises.\n\nWords are cheap because they carry no cost. Anyone can say that health matters, that friendship should be maintained, or that a project will be finished. Such statements cost nothing and can be made indefinitely. Action, by contrast, requires time, money or risk, and therefore reveals what a person actually values.\n\nThis principle also applies to learning. A student who claims to be preparing for an exam but never opens the book is not preparing. The evidence of learning is the solved problem, the revised draft and the repeated practice.\n\nAt the same time, action without words can be inefficient. Teams need plans, and plans need language. The saying does not ask us to abandon speech; it asks us to treat speech as a promise that action must confirm.\n\nJudge yourself by your calendar, not your intentions.",
         "notes": [
-          {"paragraph": 1, "note": "先澄清常见误解，把谚语从「反计划」拉回「看行为」。"},
-          {"paragraph": 2, "note": "用成本解释言语为何廉价、行动为何暴露价值，是全文的机制。"},
-          {"paragraph": 3, "note": "把原则迁移到学习，用「做题、改稿、重复练习」作为证据。"},
-          {"paragraph": 4, "note": "主动补平衡：团队需要计划，避免把谚语推向反智。"},
-          {"paragraph": 5, "note": "calendar / intentions 对照收尾，简短可记。"}
+          {
+            "paragraph": 1,
+            "note": "先澄清常见误解，把谚语从「反计划」拉回「看行为」。"
+          },
+          {
+            "paragraph": 2,
+            "note": "用成本解释言语为何廉价、行动为何暴露价值，是全文的机制。"
+          },
+          {
+            "paragraph": 3,
+            "note": "把原则迁移到学习，用「做题、改稿、重复练习」作为证据。"
+          },
+          {
+            "paragraph": 4,
+            "note": "主动补平衡：团队需要计划，避免把谚语推向反智。"
+          },
+          {
+            "paragraph": 5,
+            "note": "calendar / intentions 对照收尾，简短可记。"
+          }
         ]
       },
       "upgrades": [
-        {"low": "This saying means we should not talk.", "high": "It is often misunderstood as a rejection of planning; its real point is that commitment is measured by behavior.", "why": "先排除误读，再给出真正的含义。"},
-        {"low": "Words are easy but actions are hard.", "high": "Words carry no cost, while action requires time, money or risk.", "why": "easy/hard 太抽象；成本结构说明差异。"},
-        {"low": "For example, students should study hard.", "high": "A student who claims to be preparing for an exam but never opens the book is not preparing.", "why": "should study hard 是口号；行为矛盾才有说服力。"},
-        {"low": "But we also need plans.", "high": "Teams need plans, and plans need language; the saying asks us to treat speech as a promise.", "why": "补出语言的功能，避免走向反智。"},
-        {"low": "In conclusion, actions are important.", "high": "Judge yourself by your calendar, not your intentions.", "why": "用可检查的标准收尾，比 important 有力。"}
+        {
+          "low": "This saying means we should not talk.",
+          "high": "It is often misunderstood as a rejection of planning; its real point is that commitment is measured by behavior.",
+          "why": "先排除误读，再给出真正的含义。"
+        },
+        {
+          "low": "Words are easy but actions are hard.",
+          "high": "Words carry no cost, while action requires time, money or risk.",
+          "why": "easy/hard 太抽象；成本结构说明差异。"
+        },
+        {
+          "low": "For example, students should study hard.",
+          "high": "A student who claims to be preparing for an exam but never opens the book is not preparing.",
+          "why": "should study hard 是口号；行为矛盾才有说服力。"
+        },
+        {
+          "low": "But we also need plans.",
+          "high": "Teams need plans, and plans need language; the saying asks us to treat speech as a promise.",
+          "why": "补出语言的功能，避免走向反智。"
+        },
+        {
+          "low": "In conclusion, actions are important.",
+          "high": "Judge yourself by your calendar, not your intentions.",
+          "why": "用可检查的标准收尾，比 important 有力。"
+        }
       ],
       "pitfalls": [
         "把谚语解释成「不要说话」，走向反智。",
@@ -627,7 +966,10 @@
       "title": "预测未来的最好方式是创造未来",
       "type": "引言阐释",
       "minutes": 30,
-      "target_words": [150, 200],
+      "target_words": [
+        150,
+        200
+      ],
       "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay commenting on the saying The best way to predict the future is to create it. You should explain your understanding and support it with examples. You should write at least 150 words but no more than 200 words.",
       "prompt_zh": "写一篇短文，评论「预测未来的最好方式是创造未来」，说明你的理解并举例。",
       "angle_points": [
@@ -669,19 +1011,54 @@
         "band": 14,
         "text": "The best way to predict the future is to create it. I find this saying useful not because it promises control, but because it changes where we look for certainty.\n\nMost predictions are attempts to guess which external trend will win. Students wonder which major will be safe in ten years; workers wonder which industry will disappear. Such guesses are unreliable, and they encourage passivity: if the future is already decided, our only job is to prepare for it.\n\nCreating the future means the opposite. It means choosing a direction and building the skills, relationships and small experiments that make that direction more likely. A student who wants to work in clean energy can join a research group, learn the relevant software and talk to people in the field. None of these actions guarantees success, but together they shift the odds.\n\nThe idea also protects us from paralysis. When the future is uncertain, waiting for perfect information is itself a decision, usually the worst one.\n\nWe cannot control every outcome, but we can control what we practice. In that sense, the future is partly written by our daily choices.",
         "notes": [
-          {"paragraph": 1, "note": "先限定这句话的价值：不是承诺控制，而是改变寻找确定性的方向。"},
-          {"paragraph": 2, "note": "用专业与行业两个猜测场景说明被动性，逻辑链清楚。"},
-          {"paragraph": 3, "note": "把「创造」拆成方向 + 技能 + 关系 + 小实验，并用清洁能源举例。"},
-          {"paragraph": 4, "note": "补一个反脆弱点：等待完美信息本身就是最差决策。"},
-          {"paragraph": 5, "note": "结尾区分可控与不可控，落到日常选择。"}
+          {
+            "paragraph": 1,
+            "note": "先限定这句话的价值：不是承诺控制，而是改变寻找确定性的方向。"
+          },
+          {
+            "paragraph": 2,
+            "note": "用专业与行业两个猜测场景说明被动性，逻辑链清楚。"
+          },
+          {
+            "paragraph": 3,
+            "note": "把「创造」拆成方向 + 技能 + 关系 + 小实验，并用清洁能源举例。"
+          },
+          {
+            "paragraph": 4,
+            "note": "补一个反脆弱点：等待完美信息本身就是最差决策。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾区分可控与不可控，落到日常选择。"
+          }
         ]
       },
       "upgrades": [
-        {"low": "This sentence means we should work hard.", "high": "It changes where we look for certainty: from guessing trends to building skills and experiments.", "why": "work hard 与句子无关；写出「确定性来源」的转移。"},
-        {"low": "We cannot know the future.", "high": "Students wonder which major will be safe in ten years; workers wonder which industry will disappear.", "why": "用具体猜测场景替代抽象判断。"},
-        {"low": "We should try new things.", "high": "A student who wants to work in clean energy can join a research group and talk to people in the field.", "why": "try new things 空泛；具体路径才有说服力。"},
-        {"low": "Waiting is bad.", "high": "Waiting for perfect information is itself a decision, usually the worst one.", "why": "bad 太轻；点出「等待也是决策」的反转。"},
-        {"low": "In conclusion, the future is in our hands.", "high": "We cannot control every outcome, but we can control what we practice.", "why": "in our hands 是口号；区分可控与不可控更诚实。"}
+        {
+          "low": "This sentence means we should work hard.",
+          "high": "It changes where we look for certainty: from guessing trends to building skills and experiments.",
+          "why": "work hard 与句子无关；写出「确定性来源」的转移。"
+        },
+        {
+          "low": "We cannot know the future.",
+          "high": "Students wonder which major will be safe in ten years; workers wonder which industry will disappear.",
+          "why": "用具体猜测场景替代抽象判断。"
+        },
+        {
+          "low": "We should try new things.",
+          "high": "A student who wants to work in clean energy can join a research group and talk to people in the field.",
+          "why": "try new things 空泛；具体路径才有说服力。"
+        },
+        {
+          "low": "Waiting is bad.",
+          "high": "Waiting for perfect information is itself a decision, usually the worst one.",
+          "why": "bad 太轻；点出「等待也是决策」的反转。"
+        },
+        {
+          "low": "In conclusion, the future is in our hands.",
+          "high": "We cannot control every outcome, but we can control what we practice.",
+          "why": "in our hands 是口号；区分可控与不可控更诚实。"
+        }
       ],
       "pitfalls": [
         "写成成功学，承诺「努力就能成功」。",
@@ -696,7 +1073,10 @@
       "title": "图表：屏幕时间与睡眠",
       "type": "图表描述",
       "minutes": 30,
-      "target_words": [150, 200],
+      "target_words": [
+        150,
+        200
+      ],
       "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay based on a chart showing average daily screen time and sleep among students in three age groups. You should describe the trend, comment on it, and give practical advice. You should write at least 150 words but no more than 200 words.",
       "prompt_zh": "根据图表（三个年龄段学生的日均屏幕时间与睡眠）写一篇短文：描述趋势、评论、给出建议。",
       "angle_points": [
@@ -738,19 +1118,54 @@
         "band": 14,
         "text": "The chart compares average daily screen time and sleep among students in three age groups. Screen time rises steadily with age, from about three hours in the youngest group to nearly six hours among university students. Sleep shows the opposite pattern, falling from roughly nine hours to under seven.\n\nTwo features deserve attention. First, the two curves cross: once screen time exceeds five hours, sleep drops below seven. Second, the change is gradual rather than sudden, which makes it easy to ignore day by day.\n\nCorrelation is not proof of cause. Students who sleep less may simply have more evening obligations. Still, the pattern is consistent with what sleep research suggests: bright screens and stimulating content delay the moment we fall asleep.\n\nThe practical response need not be dramatic. A fixed cut-off time for screens, charging the phone outside the bedroom, and replacing the last thirty minutes of scrolling with reading are small measures with visible effects.\n\nThe chart does not tell us how to live. It does suggest that time is not free: every extra hour online is borrowed from somewhere.",
         "notes": [
-          {"paragraph": 1, "note": "描述数据时给出起点、终点与方向，不罗列每个数字。"},
-          {"paragraph": 2, "note": "点出交叉点与渐变特征，这是比「升/降」更高一层的观察。"},
-          {"paragraph": 3, "note": "主动声明相关不等于因果，再补充研究机制，避免过度推断。"},
-          {"paragraph": 4, "note": "三条建议都很小，符合「不必剧烈」的立场。"},
-          {"paragraph": 5, "note": "结尾把时间成本说清楚，回扣图表。"}
+          {
+            "paragraph": 1,
+            "note": "描述数据时给出起点、终点与方向，不罗列每个数字。"
+          },
+          {
+            "paragraph": 2,
+            "note": "点出交叉点与渐变特征，这是比「升/降」更高一层的观察。"
+          },
+          {
+            "paragraph": 3,
+            "note": "主动声明相关不等于因果，再补充研究机制，避免过度推断。"
+          },
+          {
+            "paragraph": 4,
+            "note": "三条建议都很小，符合「不必剧烈」的立场。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾把时间成本说清楚，回扣图表。"
+          }
         ]
       },
       "upgrades": [
-        {"low": "The chart shows screen time goes up and sleep goes down.", "high": "Screen time rises from about three hours to nearly six, while sleep falls from roughly nine to under seven.", "why": "补上起点与终点，描述才具体。"},
-        {"low": "There is a big problem.", "high": "Once screen time exceeds five hours, sleep drops below seven; the two curves cross.", "why": "big problem 空泛；交叉点给出可核对的特征。"},
-        {"low": "So phones cause poor sleep.", "high": "Correlation is not proof of cause, though the pattern is consistent with sleep research.", "why": "避免把相关写成因果，同时保留合理推断。"},
-        {"low": "Students should sleep more.", "high": "A fixed cut-off time for screens and charging the phone outside the bedroom are small measures.", "why": "sleep more 不可执行；两个小动作可当晚做到。"},
-        {"low": "In conclusion, the chart is worrying.", "high": "Every extra hour online is borrowed from somewhere.", "why": "worrying 是评价；借时间这个说法给出代价。"}
+        {
+          "low": "The chart shows screen time goes up and sleep goes down.",
+          "high": "Screen time rises from about three hours to nearly six, while sleep falls from roughly nine to under seven.",
+          "why": "补上起点与终点，描述才具体。"
+        },
+        {
+          "low": "There is a big problem.",
+          "high": "Once screen time exceeds five hours, sleep drops below seven; the two curves cross.",
+          "why": "big problem 空泛；交叉点给出可核对的特征。"
+        },
+        {
+          "low": "So phones cause poor sleep.",
+          "high": "Correlation is not proof of cause, though the pattern is consistent with sleep research.",
+          "why": "避免把相关写成因果，同时保留合理推断。"
+        },
+        {
+          "low": "Students should sleep more.",
+          "high": "A fixed cut-off time for screens and charging the phone outside the bedroom are small measures.",
+          "why": "sleep more 不可执行；两个小动作可当晚做到。"
+        },
+        {
+          "low": "In conclusion, the chart is worrying.",
+          "high": "Every extra hour online is borrowed from somewhere.",
+          "why": "worrying 是评价；借时间这个说法给出代价。"
+        }
       ],
       "pitfalls": [
         "把图表里没有的数据写进去（编造具体百分比）。",
@@ -765,7 +1180,10 @@
       "title": "出国留学还是国内就读",
       "type": "对比选择",
       "minutes": 30,
-      "target_words": [150, 200],
+      "target_words": [
+        150,
+        200
+      ],
       "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on whether students should study abroad or study at home. You should compare the two options and explain how students should decide. You should write at least 150 words but no more than 200 words.",
       "prompt_zh": "写一篇短文，比较出国留学与国内就读，并说明学生应该如何做选择。",
       "angle_points": [
@@ -807,19 +1225,54 @@
         "band": 14,
         "text": "Choosing between studying abroad and studying at home is often presented as a choice between adventure and safety. In practice, the better question is which environment fits a student's goals and resources.\n\nStudying abroad offers immersion. Daily life in another language forces students to listen, negotiate and recover from mistakes, and this pressure accelerates practical fluency. It also exposes them to different academic habits, such as open discussion and independent research.\n\nStudying at home has its own advantages. Tuition and living costs are lower, family support is closer, and students can build professional networks in the market where they intend to work. For some fields, local knowledge matters more than international experience.\n\nThe decision should therefore be specific. A student aiming at international research may benefit most from going abroad, while one planning to work in local public service may gain more from internships at home.\n\nNeither choice is inherently superior. What matters is whether the student can name the skills each path provides and the price it demands.",
         "notes": [
-          {"paragraph": 1, "note": "先否定「冒险 vs 安全」的框架，换成目标与资源匹配，立意更高。"},
-          {"paragraph": 2, "note": "出国的价值写成沉浸压力与学术习惯，而不是「见世面」。"},
-          {"paragraph": 3, "note": "国内价值包括成本、家庭支持、本地网络，并承认某些领域本地知识更重要。"},
-          {"paragraph": 4, "note": "用两个具体职业目标演示如何选择，避免抽象结论。"},
-          {"paragraph": 5, "note": "结尾给出判断标准：能否说出技能与代价。"}
+          {
+            "paragraph": 1,
+            "note": "先否定「冒险 vs 安全」的框架，换成目标与资源匹配，立意更高。"
+          },
+          {
+            "paragraph": 2,
+            "note": "出国的价值写成沉浸压力与学术习惯，而不是「见世面」。"
+          },
+          {
+            "paragraph": 3,
+            "note": "国内价值包括成本、家庭支持、本地网络，并承认某些领域本地知识更重要。"
+          },
+          {
+            "paragraph": 4,
+            "note": "用两个具体职业目标演示如何选择，避免抽象结论。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾给出判断标准：能否说出技能与代价。"
+          }
         ]
       },
       "upgrades": [
-        {"low": "Studying abroad is a good experience.", "high": "Daily life in another language forces students to listen, negotiate and recover from mistakes.", "why": "good experience 空泛；写出沉浸的具体压力。"},
-        {"low": "It is cheaper to study at home.", "high": "Tuition and living costs are lower, and family support is closer.", "why": "cheaper 单一；补上家庭支持这一非金钱优势。"},
-        {"low": "Students should choose what they like.", "high": "A student aiming at international research may benefit most from going abroad.", "why": "choose what they like 不可操作；用目标匹配路径。"},
-        {"low": "Both choices have advantages.", "high": "Neither choice is inherently superior.", "why": "both have advantages 是套话；否定先天优劣更有判断。"},
-        {"low": "In conclusion, students should think about their future.", "high": "What matters is whether the student can name the skills each path provides and the price it demands.", "why": "think about future 空洞；给出可检验的标准。"}
+        {
+          "low": "Studying abroad is a good experience.",
+          "high": "Daily life in another language forces students to listen, negotiate and recover from mistakes.",
+          "why": "good experience 空泛；写出沉浸的具体压力。"
+        },
+        {
+          "low": "It is cheaper to study at home.",
+          "high": "Tuition and living costs are lower, and family support is closer.",
+          "why": "cheaper 单一；补上家庭支持这一非金钱优势。"
+        },
+        {
+          "low": "Students should choose what they like.",
+          "high": "A student aiming at international research may benefit most from going abroad.",
+          "why": "choose what they like 不可操作；用目标匹配路径。"
+        },
+        {
+          "low": "Both choices have advantages.",
+          "high": "Neither choice is inherently superior.",
+          "why": "both have advantages 是套话；否定先天优劣更有判断。"
+        },
+        {
+          "low": "In conclusion, students should think about their future.",
+          "high": "What matters is whether the student can name the skills each path provides and the price it demands.",
+          "why": "think about future 空洞；给出可检验的标准。"
+        }
       ],
       "pitfalls": [
         "把出国写成「见世面」，没有具体能力变化。",
@@ -828,6 +1281,1314 @@
         "编造学费或签证政策数据。"
       ],
       "rewrite_task": "只改三处：① 首段换掉「冒险 vs 安全」框架；② 国内段补「家庭支持」与「本地职业网络」；③ 结尾给出可检验的选择标准。"
+    },
+    {
+      "id": "w13",
+      "title": "城市化与城市居民热爱自然",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "Although cities offer convenience and opportunity, it is increasingly important for urban residents to keep a close connection with nature.",
+      "prompt_zh": "以「Although cities offer convenience and opportunity...」为开头续写一篇短文：谈谈城市居民为什么需要与自然保持联系，以及城市和个人可以怎么做。",
+      "angle_points": [
+        "「爱自然」不是周末去一次公园，而是把接触自然变成日常可执行的动作。",
+        "价值要落到注意力、情绪与休息，不要只写「风景很美」。",
+        "城市设计能降低门槛：口袋公园、绿道、屋顶花园；个人也能从一条有树的通勤路线开始。"
+      ],
+      "stances": [
+        "从身心健康切入：日常绿意比偶尔远行更可持续。",
+        "从城市治理切入：小块绿地的使用频率比大公园的面积更重要。"
+      ],
+      "arguments": [
+        "日常接触自然能帮助人从工作压力中恢复注意力。",
+        "步行穿过有树的街道，把运动和休息连在一起，门槛低。",
+        "社区花园同时带来自然接触和邻里关系。",
+        "城市密度高，小块绿地也能被高频使用。",
+        "把自然当成「景点」会抬高门槛，日常化才坚持得下去。"
+      ],
+      "collocations": [
+        "keep a close connection with nature",
+        "daily exposure to green space",
+        "restore attention",
+        "lower stress",
+        "pocket parks",
+        "green corridors",
+        "rooftop gardens",
+        "community gardens",
+        "make nature part of daily routine",
+        "at little cost",
+        "a weekend trip",
+        "within reach"
+      ],
+      "patterns": [
+        "Although ..., it is increasingly important to ...",
+        "The value of nature lies not only in ... but in ...",
+        "Cities can lower the barrier by ...",
+        "For individuals, the first step is modest: ...",
+        "A connection that survives the working week is more valuable than ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Although cities offer convenience and opportunity, it is increasingly important for urban residents to keep a close connection with nature. The reason is not romantic. Attention, mood and even sleep are shaped by what we see and hear every day, and a life of concrete and screens leaves little room for recovery.\n\nDaily exposure to green space matters more than occasional trips. A short walk through a tree-lined street can separate work from rest, while a weekend visit to a distant park is easy to postpone. The habit, not the destination, is what lasts.\n\nCities can lower the barrier. Pocket parks, green corridors and rooftop gardens turn unused space into places people pass every day. Community gardens do more: they give residents a reason to meet and to care for something together.\n\nFor individuals, the first step is modest. Choose one route with trees, grow herbs on a balcony, or eat lunch outside when the weather allows. None of these replaces a forest, but together they keep nature within reach.\n\nA connection that survives the working week is more valuable than a perfect plan for the holiday.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "照抄首句后立刻给非浪漫化理由：注意力与休息，避免写成抒情散文。"
+          },
+          {
+            "paragraph": 2,
+            "note": "用「日常 vs 偶尔」立住全篇比较框架，habit 是关键词。"
+          },
+          {
+            "paragraph": 3,
+            "note": "城市侧给三个具体设计，社区花园多一层社会价值。"
+          },
+          {
+            "paragraph": 4,
+            "note": "个人侧给可执行的小动作，承认「替代不了森林」，不夸大。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾用可检验的比较收束：撑过工作周的连接比假期计划更值钱。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "Nature is very beautiful and good for us.",
+          "high": "Attention, mood and even sleep are shaped by what we see and hear every day.",
+          "why": "beautiful and good 太空；写出自然影响的具体机制。"
+        },
+        {
+          "low": "People should go to parks more often.",
+          "high": "A short walk through a tree-lined street can separate work from rest.",
+          "why": "go to parks 门槛高；换成通勤路上就能完成的动作。"
+        },
+        {
+          "low": "The government should build more parks.",
+          "high": "Pocket parks, green corridors and rooftop gardens turn unused space into places people pass every day.",
+          "why": "more parks 笼统；给出空间类型与「高频经过」的判断标准。"
+        },
+        {
+          "low": "We can do small things to protect nature.",
+          "high": "Choose one route with trees, grow herbs on a balcony, or eat lunch outside.",
+          "why": "small things 不可执行；列出三个具体选择。"
+        },
+        {
+          "low": "In conclusion, nature is important for city people.",
+          "high": "A connection that survives the working week is more valuable than a perfect plan for the holiday.",
+          "why": "重复观点；用比较句给出可检验的标准。"
+        }
+      ],
+      "pitfalls": [
+        "把首句当成背景一笔带过，后面改写成「保护环境」大作文。",
+        "通篇抒情，没有注意力、情绪、休息等可观察的作用。",
+        "只写政府建公园，不写个人当天就能做的动作。",
+        "编造绿化覆盖率或健康数据。"
+      ],
+      "rewrite_task": "只改三处：① 第一段补一个非浪漫化的理由；② 城市段把「多建公园」改成两种具体空间；③ 结尾换成可检验的比较句。"
+    },
+    {
+      "id": "w14",
+      "title": "年轻人的社会责任感",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "Social responsibility is not a burden imposed on young people from outside; it is a capacity they develop by taking part.",
+      "prompt_zh": "以「Social responsibility is not a burden imposed on young people from outside...」为开头续写一篇短文：说明年轻人如何通过具体参与形成责任感，并指出其中的边界。",
+      "angle_points": [
+        "把责任从「道德口号」改成「可承担的角色」，用具体任务说话。",
+        "专业能力是最可持续的贡献方式，比一次性活动更有价值。",
+        "责任感也有边界：过度承诺会倦怠，道德压力会把服务变成表演。"
+      ],
+      "stances": [
+        "从小事切入：稳定履行一个小角色，比宣布宏大计划更可信。",
+        "从能力切入：用自己的专业为社区解决一个具体问题。"
+      ],
+      "arguments": [
+        "参与社区服务能让学生看到规则如何制定、计划为何失败。",
+        "每周稳定做一件小事，比一次性大型活动更能建立信任。",
+        "专业能力可以直接转化为社区需要的服务。",
+        "承担责任需要练习，而不是靠说教。",
+        "承诺过多会导致倦怠，诚实地说「不」也是责任的一部分。"
+      ],
+      "collocations": [
+        "a sense of responsibility",
+        "take part in",
+        "community service",
+        "civic engagement",
+        "contribute one's skills",
+        "take on a small role",
+        "follow through on a promise",
+        "earn trust",
+        "burn out",
+        "moral grandstanding",
+        "a long-term commitment",
+        "say no honestly"
+      ],
+      "patterns": [
+        "Social responsibility is not ... but ...",
+        "The first step should be small: ...",
+        "Professional skills are the most sustainable contribution because ...",
+        "Responsibility also has limits: ...",
+        "Over time, these small roles change how young people see themselves."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Social responsibility is not a burden imposed on young people from outside; it is a capacity they develop by taking part. Students who spend a term helping in a community center learn how rules are made, why some plans fail and what it takes to keep a promise.\n\nThe first step should be small. A student who tutors one child every week is more useful than one who announces a grand project and disappears. Reliability, not scale, is what earns trust.\n\nProfessional skills are the most sustainable contribution. A computer science student can maintain a website for a local charity; a medical student can help translate health information for elderly residents. In both cases, the community gains something concrete and the student tests what the classroom taught.\n\nResponsibility also has limits. Taking on too much leads to burnout, and moral pressure can turn service into performance. Young people need to choose commitments they can keep and to say no honestly.\n\nOver time, these small roles change how students see themselves: not as people waiting to be served, but as people who can already contribute.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "照抄首句后立刻把「责任」拆成可观察的学习：规则、失败、守约。"
+          },
+          {
+            "paragraph": 2,
+            "note": "用「每周教一个孩子」对比「宣布大项目」，落点是 reliability。"
+          },
+          {
+            "paragraph": 3,
+            "note": "专业能力给两个具体例子，说明社区与学生双赢。"
+          },
+          {
+            "paragraph": 4,
+            "note": "补边界：倦怠与道德表演，避免把责任写成无限索取。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾落在身份转变：从被照顾者到贡献者。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "Young people should be responsible for society.",
+          "high": "Students who spend a term helping in a community center learn how rules are made and why some plans fail.",
+          "why": "should be responsible 是口号；写出参与后具体学到什么。"
+        },
+        {
+          "low": "Doing volunteer work is good.",
+          "high": "A student who tutors one child every week is more useful than one who announces a grand project and disappears.",
+          "why": "good 空泛；用可比较的两个行为说明可靠性。"
+        },
+        {
+          "low": "Students can use what they learn to help others.",
+          "high": "A computer science student can maintain a website for a local charity.",
+          "why": "help others 太泛；给出专业与需求的直接对应。"
+        },
+        {
+          "low": "But students should not do too much.",
+          "high": "Taking on too much leads to burnout, and moral pressure can turn service into performance.",
+          "why": "do too much 口语；点出倦怠与表演两种后果。"
+        },
+        {
+          "low": "In short, responsibility is important for the young.",
+          "high": "These small roles change how students see themselves: not as people waiting to be served, but as people who can already contribute.",
+          "why": "重复题目；用身份转变收束，回应首句的 capacity。"
+        }
+      ],
+      "pitfalls": [
+        "只写「要有责任感」，没有出现任何一个具体角色或任务。",
+        "把责任写成无限付出，忽略倦怠与边界。",
+        "专业能力只用一句「用所学帮助他人」，没有对应到真实需求。",
+        "通篇道德说教，没有学生视角的变化。"
+      ],
+      "rewrite_task": "只改三处：① 第二段换成「每周一件小事」的对比；② 第三段给一个专业能力对应社区需求的具体例子；③ 第四段补一句边界。"
+    },
+    {
+      "id": "w15",
+      "title": "全球化下的传统文化与文化自信",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "Globalization does not necessarily weaken traditional culture; it can give people a new reason to understand it.",
+      "prompt_zh": "以「Globalization does not necessarily weaken traditional culture...」为开头续写一篇短文：谈谈全球化如何影响传统文化，以及年轻人应如何建立真正的文化自信。",
+      "angle_points": [
+        "自信来自理解与解释能力，不来自排斥外来文化。",
+        "跨文化比较会暴露差异，也会逼人把传统讲清楚。",
+        "警惕把传统做成符号消费：只剩拍照背景，没有使用与争论。"
+      ],
+      "stances": [
+        "从「向外解释」切入：能给外国人讲清楚，才算真的懂。",
+        "从「向内使用」切入：传统要在当代生活里被使用和改编。"
+      ],
+      "arguments": [
+        "向外部解释传统时，必须弄清它的来源与含义。",
+        "与其他文化比较，能看见自己传统的独特节奏与逻辑。",
+        "把遗产变成拍照背景，会丢掉它原本的意义。",
+        "传统只有在被使用、被讨论、被改编时才有生命力。",
+        "年轻人适合做「翻译者」，但前提是先花时间学习。"
+      ],
+      "collocations": [
+        "traditional culture",
+        "cultural confidence",
+        "global exchange",
+        "be exposed to other cultures",
+        "explain a tradition to outsiders",
+        "distinctive features",
+        "heritage site",
+        "a background for photographs",
+        "keep a tradition alive",
+        "adapt to contemporary life",
+        "freeze a culture",
+        "confidence that can explain itself"
+      ],
+      "patterns": [
+        "Globalization does not necessarily ...; it can ...",
+        "When a young person explains ... to outsiders, he or she has to ...",
+        "Comparison is useful in the same way: ...",
+        "The danger is treating tradition as ...",
+        "Confidence that can explain itself is stronger than ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Globalization does not necessarily weaken traditional culture; it can give people a new reason to understand it. When a young Chinese designer explains a pattern to foreign customers, she has to know where the pattern came from and what it means. The outside question creates an inside clarity.\n\nComparison is useful in the same way. Seeing how other cultures preserve their past can reveal what is distinctive here: the rhythm of a festival, the logic of a family meal, the patience behind a craft. Confidence grows from understanding, not from repeating slogans.\n\nThe danger is treating tradition as decoration. If a heritage site becomes only a background for photographs, its meaning is lost. Culture stays alive when it is used, argued about and adapted, not when it is frozen.\n\nGlobal exchange therefore asks for translation rather than surrender. Young people are well placed to do this work, provided they first take the time to learn the tradition they claim to defend.\n\nConfidence that can explain itself is stronger than confidence that can only look back.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "照抄首句后给一个具体场景：设计师向客户解释纹样，逼出理解。"
+          },
+          {
+            "paragraph": 2,
+            "note": "把「比较」写成认识自己的工具，并给三个可感细节。"
+          },
+          {
+            "paragraph": 3,
+            "note": "用「拍照背景」点出符号消费的风险，同时给出「使用/争论/改编」的正面标准。"
+          },
+          {
+            "paragraph": 4,
+            "note": "回应「翻译者」角色，补一个前提：先学会自己声称要守护的东西。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾用两种自信的对比收束，不喊口号。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "Traditional culture is very important.",
+          "high": "Seeing how other cultures preserve their past can reveal what is distinctive here.",
+          "why": "important 没有信息；写出比较带来的具体认识。"
+        },
+        {
+          "low": "We should protect our culture from foreign influence.",
+          "high": "Global exchange asks for translation rather than surrender.",
+          "why": "protect from 是对抗式表达；translation 给出更准确的关系。"
+        },
+        {
+          "low": "Many young people like traditional clothes now.",
+          "high": "If a heritage site becomes only a background for photographs, its meaning is lost.",
+          "why": "like clothes 停在消费层；点出符号化的代价。"
+        },
+        {
+          "low": "We must be confident about our culture.",
+          "high": "Confidence grows from understanding, not from repeating slogans.",
+          "why": "must be confident 是口号；给出自信的来源。"
+        },
+        {
+          "low": "In conclusion, globalization has two sides.",
+          "high": "Confidence that can explain itself is stronger than confidence that can only look back.",
+          "why": "two sides 套话；用对比句给出判断。"
+        }
+      ],
+      "pitfalls": [
+        "把文化自信写成「排斥外来文化」，与首句逻辑相反。",
+        "只举汉服、茶艺等消费现象，没有解释传统的内涵。",
+        "通篇口号，没有出现一个具体的传统元素或场景。",
+        "把全球化简单写成「文化入侵」，忽略交流带来的理解。"
+      ],
+      "rewrite_task": "只改三处：① 第二段补一个具体的传统元素；② 第三段把「保护」换成「解释/使用」；③ 结尾删掉口号，改成两种自信的对比。"
+    },
+    {
+      "id": "w16",
+      "title": "中国梦与青年自我价值",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "A young person's sense of purpose grows when personal goals are connected to something larger than the self.",
+      "prompt_zh": "以「A young person's sense of purpose grows when personal goals are connected to something larger than the self...」为开头续写一篇短文：谈谈个人目标与更大意义如何连接，以及年轻人怎样避免空谈。",
+      "angle_points": [
+        "「更大的意义」不必是宏大事业，可以落在具体职业服务了谁。",
+        "意义不是事后附加的口号，而是在认真工作中已经存在。",
+        "个人价值也需要空间：健康、友谊与休息不能被「奉献」吞掉。"
+      ],
+      "stances": [
+        "从普通职业切入：教师、工程师的日常工作已经在影响他人。",
+        "从可持续性切入：毁掉自己的「使命」不可持续。"
+      ],
+      "arguments": [
+        "当人能说清工作服务了谁，工作会变得更有方向。",
+        "教师帮助一个害羞的学生开口，就在影响一代人的自信。",
+        "工程师改进公共交通的一个小部件，就在塑造成千上万人的日常。",
+        "意义已经存在于认真工作里，不需要事后包装。",
+        "忽视健康与关系的奉献无法持久。"
+      ],
+      "collocations": [
+        "a sense of purpose",
+        "personal goals",
+        "something larger than the self",
+        "devote one's life to",
+        "in ordinary jobs",
+        "contribute to",
+        "shape daily life",
+        "room for health and friendship",
+        "appear dedicated",
+        "a purpose that destroys the person",
+        "put it in one sentence",
+        "point the same way"
+      ],
+      "patterns": [
+        "A young person's sense of purpose grows when ...",
+        "This does not mean that everyone must ...; it means that ...",
+        "The connection is often found in ordinary jobs: ...",
+        "Personal value also needs room: ...",
+        "The useful question is therefore concrete: ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "A young person's sense of purpose grows when personal goals are connected to something larger than the self. This does not mean that everyone must devote their life to a great cause. It means that work becomes more meaningful when a person can see who it serves.\n\nThe connection is often found in ordinary jobs. A teacher who helps a shy student speak in class is contributing to a more confident generation. An engineer who improves a small part of public transport is shaping the daily life of thousands. The larger meaning is not added later; it is already present in careful work.\n\nPersonal value also needs room. A young person who ignores health, friendship and rest in order to appear dedicated will not last long. A purpose that destroys the person pursuing it is not sustainable.\n\nThe useful question is therefore concrete: what skill am I building, and who benefits from it? When an answer can be given in one sentence, ambition stops being vague.\n\nA life with direction is not necessarily a loud one. It is a life in which small efforts point the same way.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "照抄首句后立刻缩小「更大意义」的门槛，避免写成宏大叙事。"
+          },
+          {
+            "paragraph": 2,
+            "note": "教师与工程师两例都在普通岗位，证明意义不需要额外包装。"
+          },
+          {
+            "paragraph": 3,
+            "note": "补可持续性：健康、友谊、休息也是自我价值的一部分。"
+          },
+          {
+            "paragraph": 4,
+            "note": "给出可操作的自问句：技能 + 受益者，一句话能答清。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾用「小声但有方向」收束，回应 ambition 的模糊。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "Everyone should have a big dream.",
+          "high": "Work becomes more meaningful when a person can see who it serves.",
+          "why": "big dream 空；把意义落到「服务了谁」。"
+        },
+        {
+          "low": "Teachers and engineers are important.",
+          "high": "A teacher who helps a shy student speak in class is contributing to a more confident generation.",
+          "why": "重要是标签；写出具体动作与长期影响。"
+        },
+        {
+          "low": "We should work hard for our future.",
+          "high": "A purpose that destroys the person pursuing it is not sustainable.",
+          "why": "work hard 是口号；补上可持续性的边界。"
+        },
+        {
+          "low": "Ask yourself what you really want.",
+          "high": "What skill am I building, and who benefits from it?",
+          "why": "what you want 太抽象；换成两个可回答的问题。"
+        },
+        {
+          "low": "In conclusion, young people should serve society.",
+          "high": "A life with direction is not necessarily a loud one.",
+          "why": "serve society 空洞；用「不喧哗但有方向」给出判断。"
+        }
+      ],
+      "pitfalls": [
+        "把「中国梦」写成大段口号，与个人目标没有连接。",
+        "只举名人或宏大工程，缺少普通人可复制的路径。",
+        "把奉献写成无限付出，完全不提健康与关系。",
+        "结尾重复「要努力奋斗」，没有可检验的判断。"
+      ],
+      "rewrite_task": "只改三处：① 第二段两个例子都换成普通岗位；② 第三段补可持续性边界；③ 结尾给一个可回答的自问句或判断句。"
+    },
+    {
+      "id": "w17",
+      "title": "教师对学生的影响",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "The influence of a good teacher is often visible long after the lesson has been forgotten.",
+      "prompt_zh": "以「The influence of a good teacher is often visible long after the lesson has been forgotten...」为开头续写一篇短文：谈谈好教师的影响体现在哪里，以及这种影响为何重要。",
+      "angle_points": [
+        "影响不在知识点，而在习惯与自我认知：如何听不同意见、如何看待错误。",
+        "教师的评价会被学生内化成对自己的描述，须具体而非贴标签。",
+        "好教学不是表演知识，而是创造条件让别人变得更有能力。"
+      ],
+      "stances": [
+        "从习惯切入：讨论课与任务设计塑造注意力方式。",
+        "从自我认知切入：一句「你的问题值得追问」可能改变一生。"
+      ],
+      "arguments": [
+        "学生可能忘掉公式，却记得错误被当成证据还是失败。",
+        "有序的讨论课教学生如何听完不同意的观点。",
+        "需要长期投入的任务教学生如何在没有即时回报时坚持。",
+        "教师的评价会被学生当成对自己的定义。",
+        "表扬要具体、批评要对事不对人，期望要真实可及。"
+      ],
+      "collocations": [
+        "the influence of a good teacher",
+        "long after the lesson has been forgotten",
+        "habits of attention",
+        "a well-run discussion",
+        "listen to a view one disagrees with",
+        "without immediate reward",
+        "shape self-description",
+        "praise should be specific",
+        "criticism should be about the work",
+        "expectations should be meaningful",
+        "a performance of knowledge",
+        "become more capable than before"
+      ],
+      "patterns": [
+        "Students may not remember ..., but they remember ...",
+        "A teacher shapes habits of attention by ...",
+        "Teachers also shape self-description: ...",
+        "This influence brings responsibility: ...",
+        "Good teaching is therefore not ...; it is ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "The influence of a good teacher is often visible long after the lesson has been forgotten. Students may not remember a formula, but they remember whether they were expected to try, whether a mistake was treated as evidence or as failure, and whether someone noticed when they were struggling.\n\nA teacher shapes habits of attention. A well-run discussion shows students how to listen to a view they disagree with; a carefully designed task shows them how to work without immediate reward. These habits travel far beyond the subject.\n\nTeachers also shape self-description. A student who is told that his question is worth pursuing may keep asking questions; one who is told that he is simply bad at the subject may stop. The judgment does not need to be dramatic to be remembered.\n\nThis influence brings responsibility. Praise should be specific, criticism should be about the work rather than the person, and expectations should be high enough to be meaningful.\n\nGood teaching is therefore not a performance of knowledge. It is the patient construction of conditions in which another person can become more capable than before.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "照抄首句后用「公式 vs 被对待的方式」对比，把影响具体化。"
+          },
+          {
+            "paragraph": 2,
+            "note": "两个课堂场景分别对应倾听与延迟满足，避免只写「启发」。"
+          },
+          {
+            "paragraph": 3,
+            "note": "用「值得追问 / 就是不行」两种评价展示自我认知的形成。"
+          },
+          {
+            "paragraph": 4,
+            "note": "把影响转成教师的责任：具体表扬、对事批评、真实期望。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾定义好教学：不是表演，而是创造条件。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "A good teacher can change a student's life.",
+          "high": "Students remember whether a mistake was treated as evidence or as failure.",
+          "why": "change one's life 太大；用一个可观察的课堂细节支撑。"
+        },
+        {
+          "low": "Teachers should encourage students.",
+          "high": "A well-run discussion shows students how to listen to a view they disagree with.",
+          "why": "encourage 空泛；写出鼓励发生在哪种具体训练里。"
+        },
+        {
+          "low": "Teachers should not hurt students.",
+          "high": "One who is told that he is simply bad at the subject may stop asking questions.",
+          "why": "hurt 模糊；点出评价如何变成自我描述。"
+        },
+        {
+          "low": "Praise is important in teaching.",
+          "high": "Praise should be specific, and criticism should be about the work rather than the person.",
+          "why": "important 无操作；给出表扬与批评的具体标准。"
+        },
+        {
+          "low": "In conclusion, teaching is a great job.",
+          "high": "Good teaching is the patient construction of conditions in which another person can become more capable.",
+          "why": "great job 是评价；用定义句说明教学的本质。"
+        }
+      ],
+      "pitfalls": [
+        "通篇赞美教师，没有出现任何具体课堂行为。",
+        "把影响写成「传授知识」，与首句「忘掉课程之后」矛盾。",
+        "只写正面例子，忽略负面评价同样会被记住。",
+        "结尾空喊「教师伟大」，没有判断标准。"
+      ],
+      "rewrite_task": "只改三处：① 第一段补一个课堂细节；② 第三段写一组正反评价；③ 结尾删掉赞美，改成对好教学的定义。"
+    },
+    {
+      "id": "w18",
+      "title": "大学生应对挑战的准备",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "Preparing for challenges is not about predicting them; it is about building habits that work when plans fail.",
+      "prompt_zh": "以「Preparing for challenges is not about predicting them; it is about building habits that work when plans fail...」为开头续写一篇短文：谈谈大学生可以培养哪些应对挑战的习惯。",
+      "angle_points": [
+        "准备不是预测困难，而是培养在计划失效时仍然管用的习惯。",
+        "把大任务拆成可测试的小步骤，减少对灵感的依赖。",
+        "提前建立支持网络，并把失败当作信息而不是自我否定。"
+      ],
+      "stances": [
+        "从方法切入：拆步骤、要反馈、做小实验。",
+        "从心态切入：失败说明匹配度或准备度，不说明一个人的总价值。"
+      ],
+      "arguments": [
+        "大任务拆成小步骤后，进展可以被检验，不必等灵感。",
+        "支持网络需要在需要之前建立，否则来不及。",
+        "同学、老师和前实习生能提供网站上没有的信息。",
+        "被拒绝的申请说明匹配或准备问题，不说明人的总价值。",
+        "能从失败中提问而不自我辩护的人学得更快。"
+      ],
+      "collocations": [
+        "prepare for challenges",
+        "predict them",
+        "habits that work when plans fail",
+        "break a large task into small steps",
+        "wait for inspiration",
+        "ask for feedback",
+        "build a support network",
+        "before it is needed",
+        "offer information",
+        "treat failure as data",
+        "a rejected application",
+        "recoverable mistakes"
+      ],
+      "patterns": [
+        "Preparing for challenges is not about ..., but about ...",
+        "The first habit is to ...",
+        "The second is to ... before it is needed.",
+        "The third is to treat failure as data: ...",
+        "Preparation is therefore ordinary: ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Preparing for challenges is not about predicting them; it is about building habits that work when plans fail. Universities can teach knowledge, but they cannot supply the confidence that comes from having solved a problem on one's own.\n\nThe first habit is to break a large task into small, testable steps. A student who wants to write a good research paper does not wait for inspiration. She reads one section, writes one paragraph, and asks for one piece of feedback.\n\nThe second is to build a support network before it is needed. Classmates, teachers and former interns can offer information that no website provides, but only if the relationship already exists.\n\nThe third is to treat failure as data. A rejected application says something about fit or preparation, not about a person's total worth. Students who can ask what went wrong without defending themselves learn faster.\n\nPreparation is therefore ordinary. It is the accumulation of small experiments, honest feedback and recoverable mistakes before the stakes become high.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "照抄首句后把「准备」与「自信的来源」连起来，回应大学能教什么。"
+          },
+          {
+            "paragraph": 2,
+            "note": "第一习惯给完整动作链：读一节、写一段、要一次反馈。"
+          },
+          {
+            "paragraph": 3,
+            "note": "第二习惯强调「提前」，并说明网络提供网站没有的信息。"
+          },
+          {
+            "paragraph": 4,
+            "note": "第三习惯把失败重新定义为数据，给出可操作的提问方式。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾用三个名词收束，不新增观点。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "Students should prepare for future difficulties.",
+          "high": "Build habits that work when plans fail.",
+          "why": "prepare for difficulties 重复题目；指出准备的对象是习惯。"
+        },
+        {
+          "low": "We should not wait until the last minute.",
+          "high": "She reads one section, writes one paragraph, and asks for one piece of feedback.",
+          "why": "last minute 是提醒；给出可执行的动作链。"
+        },
+        {
+          "low": "It is good to have friends and teachers.",
+          "high": "Classmates and teachers can offer information that no website provides, but only if the relationship already exists.",
+          "why": "good to have 空泛；点出信息的独特性和前置条件。"
+        },
+        {
+          "low": "Failure is not a bad thing.",
+          "high": "A rejected application says something about fit or preparation, not about a person's total worth.",
+          "why": "not a bad thing 太轻；明确失败说明什么、不说明什么。"
+        },
+        {
+          "low": "In conclusion, preparation is very important.",
+          "high": "Preparation is the accumulation of small experiments, honest feedback and recoverable mistakes.",
+          "why": "very important 重复；用三个具体成分定义准备。"
+        }
+      ],
+      "pitfalls": [
+        "把「准备」写成心理鸡汤，没有可执行的习惯。",
+        "三个习惯之间没有层次，全部停留在「多读书、多练习」。",
+        "把失败美化成「成功之母」，没有说明失败提供了什么信息。",
+        "忽略支持网络需要提前建立。"
+      ],
+      "rewrite_task": "只改三处：① 第二段补完整动作链；② 第三段补「提前」与信息独特性；③ 结尾用三个具体成分替换「很重要」。"
+    },
+    {
+      "id": "w19",
+      "title": "AI 与人类创造力",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "Rather than replacing human creativity, artificial intelligence may force people to ask what creativity actually is.",
+      "prompt_zh": "以「Rather than replacing human creativity, artificial intelligence may force people to ask what creativity actually is...」为开头续写一篇短文：谈谈 AI 如何改变创造，以及人应该保留什么能力。",
+      "angle_points": [
+        "AI 擅长快速生成变体，但不知道为什么要选某一个。",
+        "生成变便宜后，判断与品味变得更值钱。",
+        "警惕把「生成」当成「创造」：形式漂亮不代表有意图。"
+      ],
+      "stances": [
+        "从分工切入：机器负责变体，人负责问题与选择。",
+        "从教育切入：应训练提问、观察与修改，而不是只练产出。"
+      ],
+      "arguments": [
+        "AI 可以快速产出同一风格的多个版本，帮助人越过空白页。",
+        "选哪个版本、为什么选，需要人的判断与经验。",
+        "把生成当创作，会让人停止检查自己的意图。",
+        "看起来精致的文字或图像，可能没有说出任何新东西。",
+        "能解释自己为何做选择的人，更能用好 AI。"
+      ],
+      "collocations": [
+        "artificial intelligence",
+        "produce variations of a style",
+        "at great speed",
+        "the expensive part moves to judgment",
+        "lower the cost of execution",
+        "raise the value of taste",
+        "treat generation as creation",
+        "examine one's intentions",
+        "a polished paragraph",
+        "careful observation",
+        "the habit of revising",
+        "a human activity"
+      ],
+      "patterns": [
+        "Rather than replacing ..., AI may force people to ...",
+        "A system can ..., but it does not know ...",
+        "When generating options becomes cheap, ...",
+        "There is a risk, however: ...",
+        "Creativity remains a human activity, but it becomes ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Rather than replacing human creativity, artificial intelligence may force people to ask what creativity actually is. A system can produce variations of a style at great speed, but it does not know why the style matters or which variation should be chosen.\n\nThat distinction is useful. When generating options becomes cheap, the expensive part moves to judgment: deciding which question is worth asking, which draft is honest, and which solution fits the people involved. Tools lower the cost of execution and raise the value of taste.\n\nThere is a risk, however. If people treat generation as creation, they may stop examining their own intentions. A paragraph that sounds polished can still say nothing, and an image that looks striking can still repeat what everyone has seen.\n\nEducation should respond by training the parts that tools cannot supply: careful observation, clear questions and the habit of revising. Students who can explain why they made a choice will use AI well; those who cannot will be used by it.\n\nCreativity remains a human activity, but it becomes more demanding, not less.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "照抄首句后立刻划清边界：机器给变体，不知道为何选。"
+          },
+          {
+            "paragraph": 2,
+            "note": "用「生成变便宜、判断变贵」立住核心判断。"
+          },
+          {
+            "paragraph": 3,
+            "note": "风险段用「精致但空」和「醒目但重复」两个反例。"
+          },
+          {
+            "paragraph": 4,
+            "note": "教育回应落到观察、提问、修改三项。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾只说要求更高，不喊「AI 无法取代人类」。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "AI is changing the world very fast.",
+          "high": "A system can produce variations of a style at great speed, but it does not know why the style matters.",
+          "why": "changing the world 空泛；给出能力边界。"
+        },
+        {
+          "low": "People still need to think.",
+          "high": "When generating options becomes cheap, the expensive part moves to judgment.",
+          "why": "need to think 太轻；用成本转移解释判断为何重要。"
+        },
+        {
+          "low": "AI art is not real art.",
+          "high": "A paragraph that sounds polished can still say nothing.",
+          "why": "real art 是立场；用可观察的「精致但空」说明问题。"
+        },
+        {
+          "low": "Students should learn to use AI.",
+          "high": "Students who can explain why they made a choice will use AI well.",
+          "why": "learn to use 不可检验；给出会用与不会用的分界。"
+        },
+        {
+          "low": "In conclusion, humans are more creative than AI.",
+          "high": "Creativity remains a human activity, but it becomes more demanding, not less.",
+          "why": "比较结论空；指出人的任务反而更难。"
+        }
+      ],
+      "pitfalls": [
+        "通篇讨论 AI 会不会取代人，没有回答「创造是什么」。",
+        "只写工具好处，忽略判断与意图。",
+        "把「生成得多」当成「创造得新」。",
+        "结尾喊口号，没有落到人的具体能力。"
+      ],
+      "rewrite_task": "只改三处：① 第二段写出成本转移；② 第三段补一个「精致但空」的具体表现；③ 结尾改成对人的要求，而不是人机比较。"
+    },
+    {
+      "id": "w20",
+      "title": "社交媒体的正确使用",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "Social media is neither a trap nor a cure; what matters is whether people use it with a clear purpose.",
+      "prompt_zh": "以「Social media is neither a trap nor a cure; what matters is whether people use it with a clear purpose...」为开头续写一篇短文：谈谈如何判断和改善自己的社交媒体使用。",
+      "angle_points": [
+        "问题不在屏幕时长本身，而在「有没有目的」。",
+        "主动联系与被动滑动是两种完全不同的使用。",
+        "平台设计在利用注意力，个人规则之外还需要公共约束。"
+      ],
+      "stances": [
+        "从个人切入：固定时间、先想目的、工作时不放在手边。",
+        "从平台切入：设计应服务注意力，而不是只追求停留时长。"
+      ],
+      "arguments": [
+        "十分钟联系朋友与一小时无目的滑动，体验完全不同。",
+        "带着目的打开应用时，平台服务于关系。",
+        "为了逃避困难任务而打开应用时，平台利用的是不舒服。",
+        "无限信息流与比较会推着人进入被动消费。",
+        "简单的个人规则能降低被动使用。"
+      ],
+      "collocations": [
+        "social media",
+        "a clear purpose",
+        "screen time",
+        "message a friend",
+        "scrolling without a reason",
+        "serve the relationship",
+        "feed on discomfort",
+        "an infinite feed",
+        "comparison with edited lives",
+        "passive consumption",
+        "put the phone out of reach",
+        "design for attention"
+      ],
+      "patterns": [
+        "Social media is neither ... nor ...; what matters is ...",
+        "Ten minutes spent ... is not the same as ...",
+        "Purpose changes the experience: ...",
+        "Platform design makes the second pattern easy: ...",
+        "Used with intention, ...; used without it, ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Social media is neither a trap nor a cure; what matters is whether people use it with a clear purpose. Ten minutes spent messaging a friend is not the same as an hour of scrolling without a reason, even if the screen time is similar.\n\nPurpose changes the experience. When a student opens an app to ask a classmate a question, the platform serves the relationship. When the same student opens it to avoid a difficult task, the platform feeds on discomfort. The tool does not decide which happens.\n\nPlatform design makes the second pattern easy. Infinite feeds, notifications and comparison with edited lives all push toward passive consumption. Individuals therefore need simple rules: a fixed time, a reason before opening, and a habit of putting the phone out of reach during work.\n\nPublic responsibility matters too. Schools and platforms should teach and design for attention rather than exploit it.\n\nUsed with intention, social media connects people and widens access to ideas. Used without it, it quietly takes the time it promised to save.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "照抄首句后用「十分钟 vs 一小时」把抽象判断变成可感对比。"
+          },
+          {
+            "paragraph": 2,
+            "note": "同一应用、两种目的，说明工具本身不决定结果。"
+          },
+          {
+            "paragraph": 3,
+            "note": "平台侧三个设计特征 + 个人三条规则，责任不单压给个人。"
+          },
+          {
+            "paragraph": 4,
+            "note": "补公共责任，防止全篇变成自我管理鸡汤。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾用同一工具两种结果收束，呼应 purpose。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "Social media has advantages and disadvantages.",
+          "high": "Ten minutes spent messaging a friend is not the same as an hour of scrolling without a reason.",
+          "why": "two sides 套话；用等量屏幕时间的不同体验区分。"
+        },
+        {
+          "low": "We should use our phones less.",
+          "high": "A reason before opening the app changes what the app is used for.",
+          "why": "use less 只改数量；指出目的决定性质。"
+        },
+        {
+          "low": "Social media makes people unhappy.",
+          "high": "Comparison with edited lives pushes users toward passive consumption.",
+          "why": "makes unhappy 笼统；点出比较与被动消费的机制。"
+        },
+        {
+          "low": "Parents should control children's phone use.",
+          "high": "Platforms should design for attention rather than exploit it.",
+          "why": "只谈家长是窄化；补平台责任。"
+        },
+        {
+          "low": "In conclusion, we should use social media properly.",
+          "high": "Used without intention, it quietly takes the time it promised to save.",
+          "why": "properly 不可操作；用反讽式结果说明代价。"
+        }
+      ],
+      "pitfalls": [
+        "把题目写成「社交媒体利弊」两面论，忽略 purpose 这个核心。",
+        "只谈少用手机，没有区分主动与被动使用。",
+        "把所有责任推给个人，完全不提平台设计。",
+        "编造青少年抑郁比例等数据。"
+      ],
+      "rewrite_task": "只改三处：① 第一段用等量时长的两种体验对比；② 第二段补「为了逃避困难」这一动机；③ 最后一段补平台责任。"
+    },
+    {
+      "id": "w21",
+      "title": "大学生的职业准备",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "Career preparation should begin long before graduation, but it should not begin with a job title.",
+      "prompt_zh": "以「Career preparation should begin long before graduation, but it should not begin with a job title...」为开头续写一篇短文：谈谈大学生应该如何准备职业。",
+      "angle_points": [
+        "先弄清自己喜欢用什么能力解决什么问题，再看岗位名称。",
+        "实习的价值是检验想象，而不是收集简历条目。",
+        "可迁移技能比证书更持久：写作、协作、数据、学习新工具。"
+      ],
+      "stances": [
+        "从探索切入：把实习当实验，逐步缩小方向。",
+        "从能力切入：先建可迁移技能，再谈具体岗位。"
+      ],
+      "arguments": [
+        "岗位名称是终点，能力与兴趣才是起点。",
+        "实习能验证日常工作是否与描述一致。",
+        "实习还能让人看到决策如何发生、哪些任务耗人。",
+        "写作、协作、数据分析等能力跨行业有效。",
+        "老师和校友能提供网站上没有的真实信息。"
+      ],
+      "collocations": [
+        "career preparation",
+        "long before graduation",
+        "begin with a job title",
+        "the abilities one enjoys using",
+        "internships as experiments",
+        "match the description",
+        "a line on a resume",
+        "portable skills",
+        "clear writing and teamwork",
+        "travel across industries",
+        "open a door",
+        "the parts rarely advertised"
+      ],
+      "patterns": [
+        "A title is a destination; students first need to ...",
+        "Internships are most useful as ...",
+        "Portable skills deserve equal attention: ...",
+        "Information from people is also essential because ...",
+        "Preparation, then, is not early locking but ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Career preparation should begin long before graduation, but it should not begin with a job title. A title is a destination; students first need to understand the abilities they enjoy using and the problems they want to solve.\n\nInternships are most useful as experiments. A student who spends a summer in a company learns whether the daily work matches the description, how decisions are actually made, and which tasks give energy rather than drain it. That knowledge is more valuable than a line on a resume.\n\nPortable skills deserve equal attention. Clear writing, teamwork, basic data analysis and the ability to learn a new tool travel across industries. Certificates may open a door, but these skills keep it open.\n\nInformation from people is also essential. Teachers, alumni and former interns can describe paths that no website lists, especially the parts that are rarely advertised.\n\nPreparation, then, is not early locking. It is a series of small tests that make the final choice better informed.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "照抄首句后把「岗位」与「能力/问题」分开，立住全篇顺序。"
+          },
+          {
+            "paragraph": 2,
+            "note": "实习写成三个可验证的问题，而不是简历装饰。"
+          },
+          {
+            "paragraph": 3,
+            "note": "可迁移技能给四项，并用门与门后的比喻区分证书。"
+          },
+          {
+            "paragraph": 4,
+            "note": "补人际信息渠道，强调「不对外宣传」的部分。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾把准备定义为一系列小测试，反对过早锁定。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "Students should find a good job after graduation.",
+          "high": "Students first need to understand the abilities they enjoy using and the problems they want to solve.",
+          "why": "find a good job 是结果；给出更早的起点。"
+        },
+        {
+          "low": "Internships are very important.",
+          "high": "An internship shows whether the daily work matches the description and which tasks drain energy.",
+          "why": "important 空；写出实习能回答的具体问题。"
+        },
+        {
+          "low": "Certificates help students find jobs.",
+          "high": "Certificates may open a door, but portable skills keep it open.",
+          "why": "help 笼统；用门与门后的比喻区分短期与长期。"
+        },
+        {
+          "low": "Students can ask teachers for advice.",
+          "high": "Teachers and alumni can describe the parts rarely advertised.",
+          "why": "ask for advice 太泛；点出信息的独特价值。"
+        },
+        {
+          "low": "In conclusion, students should prepare early.",
+          "high": "Preparation is a series of small tests that make the final choice better informed.",
+          "why": "prepare early 重复题目；用「小测试」定义准备。"
+        }
+      ],
+      "pitfalls": [
+        "把题目写成「要不要考研/考公」，偏离职业准备的方法。",
+        "只罗列证书与实习数量，没有说明学到了什么。",
+        "把「早准备」理解成越早锁定方向越好。",
+        "忽略可迁移技能，全部押在具体岗位上。"
+      ],
+      "rewrite_task": "只改三处：① 第二段把实习写成三个可验证问题；② 第三段用「开门/保持门开」区分证书与可迁移技能；③ 结尾把准备定义成小测试。"
+    },
+    {
+      "id": "w22",
+      "title": "设定目标与坚持不懈",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "Setting a goal is easy; what separates people is the ability to keep working when the first excitement disappears.",
+      "prompt_zh": "以「Setting a goal is easy; what separates people is the ability to keep working when the first excitement disappears...」为开头续写一篇短文：谈谈如何让坚持变得可持续。",
+      "angle_points": [
+        "坚持不是性格问题，而是目标设计与反馈机制的问题。",
+        "目标要具体到「周二做什么」，才能被检查。",
+        "坚持也需要边界：硬扛不等于自律，调整方法不等于放弃。"
+      ],
+      "stances": [
+        "从方法切入：拆小、记录、每周复盘。",
+        "从心理切入：让进展可见，减少对情绪的依赖。"
+      ],
+      "arguments": [
+        "模糊目标无法告诉人今天该做什么。",
+        "每周可执行的小动作能把远大目标变成可见进展。",
+        "有记录时，努力与结果之间的联系更容易被看见。",
+        "没有反馈时，坚持只能靠心情。",
+        "过度硬扛会损伤身心，及时调整方法更可持续。"
+      ],
+      "collocations": [
+        "keep working",
+        "the first excitement disappears",
+        "specific enough to be checked",
+        "a distant ambition",
+        "visible progress",
+        "protect persistence",
+        "depend on mood",
+        "a simple record",
+        "work through exhaustion",
+        "change the plan",
+        "abandon a goal",
+        "keep moving when doubt arrives"
+      ],
+      "patterns": [
+        "Setting a goal is easy; what separates people is ...",
+        "A useful goal is specific enough to ...",
+        "Feedback protects persistence because ...",
+        "Persistence also needs limits: ...",
+        "The people who persist are not those who never doubt, but those who ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Setting a goal is easy; what separates people is the ability to keep working when the first excitement disappears. The difference is rarely a matter of character. It usually comes from how the goal was designed.\n\nA useful goal is specific enough to be checked. \"Improve my English\" cannot tell a student what to do on Tuesday, while \"write one paragraph every morning and review it on Sunday\" can. Small weekly actions turn a distant ambition into visible progress.\n\nFeedback protects persistence. When progress can be seen, effort feels connected to results; when it cannot, motivation depends on mood. A simple record of days and tasks is often enough.\n\nPersistence also needs limits. Working through exhaustion is not discipline but damage, and sometimes the honest choice is to change the plan. Adjusting a method is not the same as abandoning a goal.\n\nThe people who persist are not those who never doubt. They are those who have built a system that keeps them moving when doubt arrives.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "照抄首句后立刻否定「性格论」，把问题转向目标设计。"
+          },
+          {
+            "paragraph": 2,
+            "note": "用「提高英语」与「每周一段」对比，说明可检查的标准。"
+          },
+          {
+            "paragraph": 3,
+            "note": "把反馈写成坚持的支撑，而不是额外负担。"
+          },
+          {
+            "paragraph": 4,
+            "note": "补边界：硬扛是损伤，调整方法不是放弃。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾用「系统」替代「意志」，回应开头。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "People should never give up.",
+          "high": "Adjusting a method is not the same as abandoning a goal.",
+          "why": "never give up 不可操作；区分方法与目标。"
+        },
+        {
+          "low": "We should set clear goals.",
+          "high": "\"Write one paragraph every morning\" can tell a student what to do on Tuesday.",
+          "why": "clear 抽象；用周二能执行的动作说明清晰。"
+        },
+        {
+          "low": "Motivation is important.",
+          "high": "When progress can be seen, effort feels connected to results.",
+          "why": "motivation important 是常识；点出进展可见的作用。"
+        },
+        {
+          "low": "Hard work always pays off.",
+          "high": "Working through exhaustion is not discipline but damage.",
+          "why": "always pays off 绝对化；补硬扛的代价。"
+        },
+        {
+          "low": "In conclusion, we must be persistent.",
+          "high": "The people who persist have built a system that keeps them moving when doubt arrives.",
+          "why": "must be persistent 口号；说出坚持者真正做了什么。"
+        }
+      ],
+      "pitfalls": [
+        "通篇鼓励「不要放弃」，没有回答如何坚持。",
+        "把坚持写成意志力比拼，忽略目标设计与反馈。",
+        "把「调整方法」误写成「放弃目标」。",
+        "举名人故事但不解释可复制的方法。"
+      ],
+      "rewrite_task": "只改三处：① 第二段把目标改成「周二能做什么」的具体动作；② 第三段补记录/反馈；③ 第四段区分调整方法与放弃目标。"
+    },
+    {
+      "id": "w23",
+      "title": "自律与个人成长",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "Self-discipline is not a matter of willpower alone; it is the result of designing an environment that makes good habits easier.",
+      "prompt_zh": "以「Self-discipline is not a matter of willpower alone; it is the result of designing an environment that makes good habits easier...」为开头续写一篇短文：谈谈如何通过环境设计培养自律。",
+      "angle_points": [
+        "减少诱惑比反复对抗诱惑更有效。",
+        "固定时间与地点能降低「开始」的成本。",
+        "自律需要休息，不可持续的计划最终会被放弃。"
+      ],
+      "stances": [
+        "从环境切入：把手机放远、桌面准备好、时间固定。",
+        "从习惯切入：每天二十分钟胜过偶尔一次通宵。"
+      ],
+      "arguments": [
+        "把手机放到另一个房间，比每隔几分钟克制一次更省力。",
+        "固定时间与地点减少开始前的决策。",
+        "准备好的桌面消除了小借口。",
+        "每天二十分钟的阅读能超过一次性的周末突击。",
+        "没有休息的安排会崩溃，然后被彻底放弃。"
+      ],
+      "collocations": [
+        "self-discipline",
+        "a matter of willpower",
+        "design an environment",
+        "make good habits easier",
+        "resist temptation",
+        "reduce the number of decisions",
+        "lower the cost of starting",
+        "remove small excuses",
+        "a well-arranged space",
+        "consistency rather than intensity",
+        "room for sleep and friends",
+        "sustainable rules"
+      ],
+      "patterns": [
+        "Self-discipline is not ...; it is ...",
+        "A student who ... studies longer than one who ...",
+        "The principle is simple: ...",
+        "Small habits matter more than ...",
+        "Personal growth therefore depends less on ... and more on ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Self-discipline is not a matter of willpower alone; it is the result of designing an environment that makes good habits easier. A student who hides the phone in another room studies longer than one who keeps it on the desk and resists temptation every few minutes.\n\nThe principle is simple: reduce the number of decisions. A fixed time and place for study lowers the cost of starting, and a prepared desk removes small excuses. What looks like discipline is often a well-arranged space.\n\nSmall habits matter more than dramatic plans. Twenty minutes of reading every day will outperform a heroic weekend that is never repeated. The aim is consistency, not intensity.\n\nDiscipline also needs rest. A schedule with no room for sleep, friends or exercise will collapse and then be abandoned. Sustainable rules are better than perfect ones.\n\nPersonal growth therefore depends less on scolding oneself and more on arranging life so that the right action is the easy one.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "照抄首句后用「手机放远 vs 放桌上」的对比把观点落地。"
+          },
+          {
+            "paragraph": 2,
+            "note": "把环境设计归纳成「减少决策次数」，并给时间、地点、桌面三项。"
+          },
+          {
+            "paragraph": 3,
+            "note": "用「每天二十分钟 vs 一次性周末」立住一致性优先。"
+          },
+          {
+            "paragraph": 4,
+            "note": "补休息边界，避免自律变成自我惩罚。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾从「责备自己」转向「安排生活」，回应首句。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "Self-discipline is very important.",
+          "high": "A student who hides the phone in another room studies longer than one who resists temptation every few minutes.",
+          "why": "important 空；用两个环境对比说明自律来源。"
+        },
+        {
+          "low": "We should have good habits.",
+          "high": "A fixed time and place for study lowers the cost of starting.",
+          "why": "good habits 是标签；写出降低启动成本的具体做法。"
+        },
+        {
+          "low": "Studying every day is better.",
+          "high": "Twenty minutes of reading every day will outperform a heroic weekend that is never repeated.",
+          "why": "every day better 无解释；用可比较的两个方案说明一致性。"
+        },
+        {
+          "low": "We also need to rest.",
+          "high": "A schedule with no room for sleep will collapse and then be abandoned.",
+          "why": "need rest 是提醒；说明不可持续安排的后果。"
+        },
+        {
+          "low": "In conclusion, we should control ourselves.",
+          "high": "Personal growth depends on arranging life so that the right action is the easy one.",
+          "why": "control ourselves 回到意志力；改成环境设计。"
+        }
+      ],
+      "pitfalls": [
+        "把自律写成「咬牙坚持」，与首句的环境设计相反。",
+        "只讲道理，没有出现任何具体环境调整。",
+        "把计划排满，完全不提休息。",
+        "用「自律的人都很优秀」代替方法。"
+      ],
+      "rewrite_task": "只改三处：① 第二段补时间/地点/桌面三项；② 第三段用两个方案对比；③ 结尾把「控制自己」改成「安排环境」。"
+    },
+    {
+      "id": "w24",
+      "title": "大学：探索可能性的机会",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "University is valuable not only because it trains a profession, but because it gives young people room to test who they might become.",
+      "prompt_zh": "以「University is valuable not only because it trains a profession, but because it gives young people room to test who they might become...」为开头续写一篇短文：谈谈大学阶段应该如何探索，以及探索需要注意什么。",
+      "angle_points": [
+        "大学最稀缺的资源是低成本试错：选课、社团、跨专业项目。",
+        "探索不等于忙碌：没有记录的尝试只会重复。",
+        "教师和导师的价值是提更好的问题，而不是过早给答案。"
+      ],
+      "stances": [
+        "从成本切入：毕业后的错误更贵，大学应保护试错空间。",
+        "从方法切入：记录尝试、复盘收获，才能把探索变成认识。"
+      ],
+      "arguments": [
+        "一门出于好奇选的课可能改变原本固定的计划。",
+        "毕业后换工作的代价远高于换一门选修课。",
+        "参加所有活动而不复盘，只会得到满满的日历。",
+        "记录「试过什么、学到什么、想避开什么」能让探索累积。",
+        "只教一条路径的大学，无法应对变化的世界。"
+      ],
+      "collocations": [
+        "train a profession",
+        "room to test who they might become",
+        "a course taken out of curiosity",
+        "a club project",
+        "the low cost of experimentation",
+        "a wrong elective",
+        "a full calendar",
+        "record what one tried",
+        "ask better questions",
+        "give early answers",
+        "delay a decision forever",
+        "prepare students for several paths"
+      ],
+      "patterns": [
+        "University is valuable not only because ..., but because ...",
+        "This room is rare: ...",
+        "Exploration, however, is not the same as busyness.",
+        "Teachers can help by ... rather than ...",
+        "A university that teaches only one path prepares students for ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "University is valuable not only because it trains a profession, but because it gives young people room to test who they might become. A course taken out of curiosity, a club project, or a conversation with a teacher can change a plan that once seemed fixed.\n\nThis room is rare. After graduation, mistakes cost more: a wrong job affects income and stability, while a wrong elective costs only a semester. Universities should protect that low cost of experimentation.\n\nExploration, however, is not the same as busyness. Joining every activity without reflection produces a full calendar and little understanding. Students need to record what they tried, what they learned and what they want to avoid.\n\nTeachers and advisers can help by asking better questions rather than giving early answers. The goal is not to delay a decision forever, but to make it with evidence.\n\nA university that teaches only one path prepares students for a world that may not exist. One that teaches them how to test paths prepares them for several.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "照抄首句后用三个具体场景说明「试错」长什么样。"
+          },
+          {
+            "paragraph": 2,
+            "note": "用毕业后的代价对比选修课，论证大学试错空间的稀缺。"
+          },
+          {
+            "paragraph": 3,
+            "note": "区分探索与忙碌，给出「记录三项」的方法。"
+          },
+          {
+            "paragraph": 4,
+            "note": "把教师角色写成提问者，避免「给标准答案」。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾用「一条路 vs 多条路」对比收束。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "University is a good place to learn.",
+          "high": "A course taken out of curiosity can change a plan that once seemed fixed.",
+          "why": "good place 空；给出一个具体改变路径的场景。"
+        },
+        {
+          "low": "Students should try many things.",
+          "high": "Joining every activity without reflection produces a full calendar and little understanding.",
+          "why": "try many things 不分好坏；点出无复盘尝试的代价。"
+        },
+        {
+          "low": "Making mistakes is normal.",
+          "high": "A wrong elective costs only a semester, while a wrong job affects income and stability.",
+          "why": "normal 太轻；用成本对比说明大学试错的价值。"
+        },
+        {
+          "low": "Teachers should give students advice.",
+          "high": "Teachers can help by asking better questions rather than giving early answers.",
+          "why": "give advice 可能变成替学生决定；改成提问。"
+        },
+        {
+          "low": "In conclusion, university is important.",
+          "high": "A university that teaches only one path prepares students for a world that may not exist.",
+          "why": "important 重复；指出单一路径教育的风险。"
+        }
+      ],
+      "pitfalls": [
+        "把「探索」写成参加活动越多越好，没有复盘。",
+        "只谈专业学习，忽略选课、社团、跨专业项目。",
+        "把教师写成「给标准答案的人」，与探索相反。",
+        "结尾空喊「大学很宝贵」，没有判断标准。"
+      ],
+      "rewrite_task": "只改三处：① 第二段用毕业后代价对比选修课；② 第三段补「记录三项」；③ 结尾用单一路径与多条路径对比。"
     }
   ]
 }

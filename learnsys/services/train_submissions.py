@@ -168,8 +168,17 @@ def _merge_flags(row: dict, flags: dict | None) -> dict:
 
 def _start_review(conn, row: dict, flags: dict, *, force: bool) -> dict:
     sub_id = int(row["id"])
-    if len(str(row.get("text") or "").strip()) < 10:
+    text = str(row.get("text") or "").strip()
+    if len(text) < 10:
         raise ValueError("作文太短，至少写 10 个字符再提交")
+    if row.get("kind") == "writing":
+        pack = content.pack("writing", row.get("prompt_id")) or {}
+        lead = " ".join(str(pack.get("lead_sentence") or "").split())
+        body = " ".join(text.split())
+        if lead and body.startswith(lead):
+            body = body[len(lead):].strip()
+        if lead and len(body.split()) < 20:
+            raise ValueError("正文太短：给定首句之后至少再写 20 个词")
     merged = _merge_flags(row, flags)
     store.update_submission(conn, sub_id, status="reviewing",
                             flags_json=json.dumps(merged, ensure_ascii=False))

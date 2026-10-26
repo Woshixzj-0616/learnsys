@@ -71,6 +71,15 @@ class HardRulesTest(unittest.TestCase):
         self.assertIn("left", codes)
         self.assertEqual(hard["word_count"], 2)
 
+    def test_lead_sentence_flag(self):
+        pack = content.pack("writing", "w13")
+        lead = pack["lead_sentence"]
+        ok = rubric.inspect("writing", f"{lead}\n\nMore text follows.", pack)
+        self.assertNotIn("lead_sentence", {row["code"] for row in ok["flags"]})
+        bad = rubric.inspect("writing", "I forgot the lead sentence.",
+                             pack)
+        self.assertIn("lead_sentence", {row["code"] for row in bad["flags"]})
+
     def test_template_ratio(self):
         text = ("With the development of society, every coin has two sides. "
                 "In my opinion, we should work hard.")

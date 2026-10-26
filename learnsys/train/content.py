@@ -1,9 +1,9 @@
 """训练内容包：加载、版本、单句派生。
 
 内容即代码：JSON 进仓库，改动可 diff、可校验。
-- `writing.json`：12 篇写作内容包
-- `translation.json`：12 篇翻译内容包（含逐句切分）
-- `sentences.json`：技能专项单句（60 句）
+- `writing.json`：24 篇写作内容包（含 12 篇「给定首句续写」）
+- `translation.json`：24 篇翻译内容包（含逐句切分）
+- `sentences.json`：技能专项单句（120 句）
 
 一句一译的“从篇目拆出的单句”**不另存一份**：直接由 translation 的
 `segments` 派生，避免同一句中文出现两个版本。
@@ -21,6 +21,19 @@ SKILLS = (
     "断句意群", "主干识别", "语序调整", "长句拆分", "词性转换",
     "增补省译", "文化术语", "数字比较", "无主句", "指代一致",
 )
+
+# 「首句续写」题干模板：给定首句只存 `lead_sentence` 一份，题干在加载时生成。
+LEAD_PROMPT = (
+    'Directions: For this part, you are allowed 30 minutes to write an essay '
+    'that begins with the sentence "{lead}". You can make comments, cite '
+    'examples or use your personal experiences to develop your essay. You '
+    'should write at least 150 words but no more than 200 words. You should '
+    'copy the sentence given in quotes at the beginning of your essay.'
+)
+
+
+def lead_prompt(lead: str) -> str:
+    return LEAD_PROMPT.format(lead=str(lead).strip())
 
 
 def _read(path: pathlib.Path) -> dict:
@@ -44,6 +57,9 @@ def _load_dir(raw_dir: str) -> dict:
     translation = _read(base / "translation.json")["items"]
     extra = _read(base / "sentences.json")["items"]
     for item in writing:
+        lead = str(item.get("lead_sentence") or "").strip()
+        if lead and not str(item.get("prompt_en") or "").strip():
+            item["prompt_en"] = lead_prompt(lead)
         item["kind"] = "writing"
         item["content_version"] = version_of(item)
     for item in translation:
