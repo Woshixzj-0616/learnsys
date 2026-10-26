@@ -3,6 +3,31 @@
 (function(WB){
   "use strict";
 
+  // 原文文本指纹：句号 + 英文全文 + 题型名。任何断句/删改都会变。
+  // 译文缓存是按句号索引存的，文本一变就必须整卷清掉，否则中文对不上英文。
+  function textSignature(paper){
+    var h = 2166136261;
+    function feed(str){
+      str = String(str == null ? "" : str);
+      for(var k = 0; k < str.length; k++){
+        h ^= str.charCodeAt(k);
+        h = Math.imul(h, 16777619);
+      }
+      h ^= 10;
+      h = Math.imul(h, 16777619);
+    }
+    (paper.sections || []).forEach(function(sec){
+      feed(sec.letter); feed(sec.name);
+      (sec.items || []).forEach(function(it){
+        feed(it.title);
+        (it.sentences || []).forEach(function(s){
+          feed(s.i); feed(s.en);
+        });
+      });
+    });
+    return (h >>> 0).toString(16);
+  }
+
   function boot(ctx){
     if(WB.session.booted) return;
     if(!ctx || !ctx.paper){
@@ -34,6 +59,13 @@
     if(fixSig && WB.state.transcriptFixSig !== fixSig){
       WB.state.translation = {};
       WB.state.transcriptFixSig = fixSig;
+      WB.store.saveState();
+    }
+    // 原文文本变了（重排断句、删假句、改词）：旧译文按句号缓存，必须整卷清掉。
+    var textSig = textSignature(paper);
+    if(WB.state.textSig !== textSig){
+      WB.state.translation = {};
+      WB.state.textSig = textSig;
       WB.store.saveState();
     }
 

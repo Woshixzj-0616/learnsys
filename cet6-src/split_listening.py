@@ -41,6 +41,7 @@ from faster_whisper import WhisperModel  # noqa: E402
 import imageio_ffmpeg  # noqa: E402
 
 from transcript_fixes import apply_to_paper as apply_transcript_fixes  # noqa: E402
+from audio_snap import detect_silences, snap_ends  # noqa: E402
 
 try:
     from anthropic import Anthropic
@@ -567,13 +568,32 @@ def cut_audio(ffmpeg: str, src: Path, start: float, end: float, out: Path) -> fl
     cmd = [
         ffmpeg, "-hide_banner", "-loglevel", "error", "-y",
         "-ss", f"{max(0.0, start):.3f}", "-t", f"{duration:.3f}",
-        "-i", str(src), "-vn", "-c:a", "libmp3lame", "-q:a", "2", str(out),
+        "-i", str(src), "-vn", "-c:a", "libmp3lame", "-q:a", "2",
+        "-write_xing", "1", str(out),
     ]
     subprocess.run(cmd, check=True, capture_output=True)
     container = av.open(str(out))
     actual = float(container.duration) / av.time_base
     container.close()
     return actual
+
+
+def copy_audio_indexed(src: Path, dst: Path, ffmpeg: str) -> None:
+    """复制整段音频时补上 Xing/Info 头。
+
+    源 MP3 多半没有 Xing 头，浏览器只能按码率估时长（实测 1546.24 秒被估成
+    1543.93 秒），按时间 seek 会整体偏移 1–2 秒，表现为句首被吞、句尾多出下一句。
+    这里无损重封装（-c:a copy）并写入 Xing 头；不是 MP3 时退回普通复制。
+    """
+    try:
+        subprocess.run(
+            [ffmpeg, "-hide_banner", "-loglevel", "error", "-y",
+             "-i", str(src), "-map", "0:a:0", "-c:a", "copy",
+             "-map_metadata", "-1", "-write_xing", "1",
+             "-id3v2_version", "0", "-write_id3v1", "0", str(dst)],
+            check=True, capture_output=True)
+    except Exception:
+        shutil.copy2(src, dst)
 
 
 def safe_stem(name: str) -> str:
@@ -932,7 +952,13 @@ def refresh_paper_index(out_base: Path) -> Path:
                 created_at = meta.get("created_at") or ""
                 paper_id = meta.get("paper_id") or ""
                 duration = meta.get("duration") or 0.0
-                stats = meta.get("stats") or {}
+                # 句数/单元数从 sections 现算，别信可能过期的 stats 字段
+                sections = meta.get("sections") or []
+                stats = {
+                    "items": sum(len(s.get("items") or []) for s in sections),
+                    "sentences": sum(len(it.get("sentences") or [])
+                                     for s in sections for it in (s.get("items") or [])),
+                }
         except Exception:
             pass
         mtime = data_js.stat().st_mtime
@@ -992,11 +1018,27 @@ def install_workbench(dest: Path) -> Path | None:
 
 def write_outputs(audio_path: Path, out_root: Path, paper: dict,
                   flat: list[Word], questions: list[Event],
-                  ffmpeg: str) -> None:
+                  ffmpeg: str, snap: bool = True) -> None:
     out_root.mkdir(parents=True, exist_ok=True)
     audio_dst = out_root / "audio.mp3"
     if audio_path.resolve() != audio_dst.resolve():
-        shutil.copy2(audio_path, audio_dst)
+        copy_audio_indexed(audio_path, audio_dst, ffmpeg)
+
+    # 句尾吸附：whisper 的 word.end 偏早 0.19s（中位），不修会切掉尾音。
+    # 只动句尾、不动句首，与批量修旧卷用同一实现（audio_snap.snap_ends）。
+    if snap:
+        try:
+            pauses = detect_silences(audio_path, ffmpeg)
+        except Exception as exc:
+            print(f"  句尾吸附：静音检测失败，跳过（{exc}）", flush=True)
+        else:
+            if pauses:
+                changed = snap_ends(paper, pauses)
+                print(f"  句尾吸附：改 {changed} 句（静音段 {len(pauses)} 个）", flush=True)
+            else:
+                print("  句尾吸附：未检测到静音段，跳过", flush=True)
+    else:
+        print("  句尾吸附：已按 --no-snap 关闭", flush=True)
 
     total_sentences = 0
     total_items = 0
@@ -1177,6 +1219,8 @@ def main() -> int:
                         help="按需构建并部署工作台到指定路径（目录或 html）")
     parser.add_argument("--refresh-index", action="store_true",
                         help="只刷新 试卷索引.js，不处理音频")
+    parser.add_argument("--no-snap", action="store_true",
+                        help="关闭句尾静音吸附（默认开启）")
     args = parser.parse_args()
 
     out_base = Path(args.out).expanduser().resolve() if args.out else TOOL_DIR.parent / "输出"
@@ -1331,7 +1375,8 @@ def main() -> int:
 
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     print("开始切音频……", flush=True)
-    write_outputs(audio, out_root, paper, flat, questions, ffmpeg)
+    write_outputs(audio, out_root, paper, flat, questions, ffmpeg,
+                  snap=not args.no_snap)
 
     idx = refresh_paper_index(out_base)
     print("")

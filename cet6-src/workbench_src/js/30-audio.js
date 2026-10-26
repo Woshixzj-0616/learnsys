@@ -29,7 +29,13 @@
 
   function url(path){
     if(/^(https?:|file:|data:|\/)/i.test(path)) return path;
-    return S().audioBase + path;
+    var u = S().audioBase + path;
+    // HTTP 下给整段音频加一次版本号：2026-10-26 给 MP3 补 Xing 头后，浏览器可能
+    // 继续用缓存里没有 Xing 头的旧文件（时长被估短 2.31s，seek 会整体偏移）。
+    if(location.protocol.indexOf("http") === 0){
+      u += (u.indexOf("?") >= 0 ? "&" : "?") + "v=20261026xing";
+    }
+    return u;
   }
 
   // 把某句解析成实际播放窗口：A-B 优先，其次只有 A，最后整句。

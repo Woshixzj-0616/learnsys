@@ -29,7 +29,7 @@
     return {
       done:{}, errors:{}, starts:{}, notes:{}, analysis:{}, daily:{},
       pos:null, loopCfg:{}, loopStats:{}, ab:{}, translation:{},
-      cet6ConversationId:0, transcriptFixSig:""
+      cet6ConversationId:0, transcriptFixSig:"", textSig:""
     };
   }
 
@@ -48,6 +48,7 @@
     out.translation = obj(s.translation);
     out.cet6ConversationId = Number(s.cet6ConversationId) || 0;
     out.transcriptFixSig = String(s.transcriptFixSig || "");
+    out.textSig = String(s.textSig || "");
     Object.keys(out.ab).forEach(function(id){
       const m = out.ab[id];
       if(!m || typeof m !== "object" || Array.isArray(m)){ delete out.ab[id]; return; }

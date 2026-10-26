@@ -26,6 +26,13 @@ python tools/sync_cet6_src.py --check    # 检查仓库是否落后（落后返�
 `--check` 已接入 `tests/test_cet6_src.py`：D 盘源码存在时，测试会报漂移。
 改完六级源码、提交本仓库之前，先跑一次同步。
 
+## 句尾吸附（切新音频必须过这一关）
+
+`audio_snap.py` 是唯一实现：用 ffmpeg `silencedetect` 找到真实停顿，
+把每句 `end` 从 whisper 的 `word.end`（实测偏早 0.19s 中位）吸附到停顿边缘。
+`split_listening.py` 切新音频时默认调用它（`--no-snap` 可关），
+`_snap_sentences.py` 批量修旧卷也用同一份——**不要在两处各写一套**。
+
 ## 不进来的东西
 
 `试卷/`、`*.mp3`、`*.wav`、`_tmp*`、`_src_*`、`_dump*`、`models/`、`__pycache__`。

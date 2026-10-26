@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- WB-BUILD hash=7a62ccd4e86584be built=2026-10-25 10:18:09 -->
+<!-- WB-BUILD hash=fea6440809e3b233 built=2026-10-26 10:27:12 -->
 
 <html lang="zh-CN">
 <head>
@@ -1239,7 +1239,7 @@ function showLaunchError(message){
     return {
       done:{}, errors:{}, starts:{}, notes:{}, analysis:{}, daily:{},
       pos:null, loopCfg:{}, loopStats:{}, ab:{}, translation:{},
-      cet6ConversationId:0, transcriptFixSig:""
+      cet6ConversationId:0, transcriptFixSig:"", textSig:""
     };
   }
 
@@ -1258,6 +1258,7 @@ function showLaunchError(message){
     out.translation = obj(s.translation);
     out.cet6ConversationId = Number(s.cet6ConversationId) || 0;
     out.transcriptFixSig = String(s.transcriptFixSig || "");
+    out.textSig = String(s.textSig || "");
     Object.keys(out.ab).forEach(function(id){
       const m = out.ab[id];
       if(!m || typeof m !== "object" || Array.isArray(m)){ delete out.ab[id]; return; }
@@ -1943,7 +1944,13 @@ function showLaunchError(message){
 
   function url(path){
     if(/^(https?:|file:|data:|\/)/i.test(path)) return path;
-    return S().audioBase + path;
+    var u = S().audioBase + path;
+    // HTTP 下给整段音频加一次版本号：2026-10-26 给 MP3 补 Xing 头后，浏览器可能
+    // 继续用缓存里没有 Xing 头的旧文件（时长被估短 2.31s，seek 会整体偏移）。
+    if(location.protocol.indexOf("http") === 0){
+      u += (u.indexOf("?") >= 0 ? "&" : "?") + "v=20261026xing";
+    }
+    return u;
   }
 
   // 把某句解析成实际播放窗口：A-B 优先，其次只有 A，最后整句。
@@ -5749,6 +5756,31 @@ function showLaunchError(message){
 (function(WB){
   "use strict";
 
+  // 原文文本指纹：句号 + 英文全文 + 题型名。任何断句/删改都会变。
+  // 译文缓存是按句号索引存的，文本一变就必须整卷清掉，否则中文对不上英文。
+  function textSignature(paper){
+    var h = 2166136261;
+    function feed(str){
+      str = String(str == null ? "" : str);
+      for(var k = 0; k < str.length; k++){
+        h ^= str.charCodeAt(k);
+        h = Math.imul(h, 16777619);
+      }
+      h ^= 10;
+      h = Math.imul(h, 16777619);
+    }
+    (paper.sections || []).forEach(function(sec){
+      feed(sec.letter); feed(sec.name);
+      (sec.items || []).forEach(function(it){
+        feed(it.title);
+        (it.sentences || []).forEach(function(s){
+          feed(s.i); feed(s.en);
+        });
+      });
+    });
+    return (h >>> 0).toString(16);
+  }
+
   function boot(ctx){
     if(WB.session.booted) return;
     if(!ctx || !ctx.paper){
@@ -5780,6 +5812,13 @@ function showLaunchError(message){
     if(fixSig && WB.state.transcriptFixSig !== fixSig){
       WB.state.translation = {};
       WB.state.transcriptFixSig = fixSig;
+      WB.store.saveState();
+    }
+    // 原文文本变了（重排断句、删假句、改词）：旧译文按句号缓存，必须整卷清掉。
+    var textSig = textSignature(paper);
+    if(WB.state.textSig !== textSig){
+      WB.state.translation = {};
+      WB.state.textSig = textSig;
       WB.store.saveState();
     }
 

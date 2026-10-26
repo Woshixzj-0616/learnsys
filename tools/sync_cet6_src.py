@@ -23,8 +23,9 @@ TARGET = ROOT / "cet6-src"
 SOURCE = pathlib.Path(os.environ.get("CET6_TOOL") or r"D:\cet6_tool")
 
 ROOT_FILES = [
-    "build_workbench.py", "split_listening.py", "apply_corrections.py",
-    "apply_structural_fixes.py", "workbench_template.html", "文本体检报告.md",
+    "build_workbench.py", "split_listening.py", "audio_snap.py",
+    "apply_corrections.py", "apply_structural_fixes.py",
+    "workbench_template.html", "文本体检报告.md",
 ]
 TOOL_SUFFIX = ".py"
 SKIP_DIRS = {"__pycache__", "_tmp", "_dump", "_web", "_src", "models", "tmpwork"}

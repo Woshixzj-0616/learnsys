@@ -22,6 +22,7 @@ class Cet6SourceSnapshotTest(unittest.TestCase):
             "workbench_src/tests/test_dualwrite.mjs",
             "build_workbench.py",
             "split_listening.py",
+            "audio_snap.py",
             "校对/结构修复.json",
         ):
             self.assertTrue((SRC / rel).is_file(), f"缺少六级源码：{rel}")
