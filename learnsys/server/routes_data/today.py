@@ -11,6 +11,7 @@ from learnsys.llm.config import load_config
 from learnsys.knowledge import CATEGORY_NAMES
 from learnsys.server.security import require_token
 from learnsys.services import knowledge as knowledge_service
+from learnsys.services import train_plan
 from .common import _ask_dict, _conn
 
 router = APIRouter()
@@ -27,13 +28,35 @@ def _today_actions(conn, day: str, due: list) -> list[dict]:
     口径只在这里拼；前端只负责显示，不再各自判断「今天最该做什么」。
     """
     actions: list[dict] = []
-    if due:
+    plan = train_plan.plan(conn, day, due=due)
+    train_due = plan["due"]["total"]
+    # 到期卡全是写作/翻译错误卡时，直接说人话；混着生词/其他错题才分开列。
+    if due and train_due and train_due == len(due):
+        actions.append({
+            "kind": "train",
+            "title": f"六级训练 · {train_due} 张到期错误卡",
+            "detail": f"写作 {plan['due']['writing']} 张 · "
+                      f"翻译 {plan['due']['translation']} 张",
+            "href": "#/wrongbook",
+            "label": "去复习",
+        })
+    elif due:
         actions.append({
             "kind": "due",
             "title": f"{len(due)} 条到期",
             "detail": "错题和生词按记忆曲线排到了今天",
             "href": "#/wrongbook",
             "label": "去复习",
+        })
+    if (not train_due or train_due != len(due)) and plan["today"]["total"] == 0 \
+            and plan["task"] and plan["task"]["kind"] != "review":
+        task = plan["task"]
+        actions.append({
+            "kind": "train",
+            "title": f"六级训练 · {task['title']}",
+            "detail": task["detail"],
+            "href": task["href"],
+            "label": task["label"],
         })
 
     yesterday = (datetime.date.fromisoformat(day)
@@ -180,6 +203,15 @@ def study_today(focus: str = "", _=Depends(require_token)):
                     "ORDER BY MAX(ts) DESC LIMIT 10", (f"{day}%",)).fetchall():
                 summary_lines.append(
                     f"六级精听：{paper} / {section} / {item}，{count} 个断点")
+            train_labels = {"writing": "写作", "translation": "翻译",
+                            "sentence": "一句一译"}
+            for kind, title, count in conn.execute(
+                    "SELECT kind, title, COUNT(*) FROM events WHERE module='train' "
+                    "AND ts LIKE ? GROUP BY kind, title ORDER BY MAX(id) DESC LIMIT 10",
+                    (f"{day}%",)).fetchall():
+                summary_lines.append(
+                    f"六级训练：{title or train_labels.get(kind, kind)}"
+                    f"（{int(count or 0)} 次）")
             labels = {"open": "打开原文", "ask": "问资料", "quiz": "资料出题"}
             for kind, title, count in conn.execute(
                     "SELECT kind, title, COUNT(*) FROM events WHERE module='materials' "
@@ -202,6 +234,9 @@ def study_today(focus: str = "", _=Depends(require_token)):
         breakpoints = int(conn.execute(
             "SELECT COUNT(*) FROM cet6_events WHERE ts LIKE ?",
             (f"{day}%",)).fetchone()[0] or 0)
+        train_count = int(conn.execute(
+            "SELECT COUNT(*) FROM events WHERE module='train' AND ts LIKE ?",
+            (f"{day}%",)).fetchone()[0] or 0)
         weak = knowledge_service.weak_points(
             knowledge_service.attempt_stats(conn)["points"])
         quiz_focus = (focus if focus in CATEGORY_NAMES and focus != "其他" else "")
@@ -218,6 +253,7 @@ def study_today(focus: str = "", _=Depends(require_token)):
                 "asks": len(asks),
                 "trainings": trainings,
                 "cet6": breakpoints,
+                "train": train_count,
                 "materials": materials_count,
             },
             "weak_points": weak,

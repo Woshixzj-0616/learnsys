@@ -3,7 +3,7 @@ import { api, download } from "../api.js";
 import { renderInto } from "../markdown.js";
 import { escapeHtml, toast } from "../ui.js";
 
-const SOURCE_LABEL = { ask: "问答收藏", quiz: "测验错题", manual: "手动收录", cet6: "六级断点" };
+const SOURCE_LABEL = { ask: "问答收藏", quiz: "测验错题", writing: "写作错误", translation: "翻译错误", manual: "手动收录", cet6: "六级断点" };
 const RATING_LABELS = { 1: "忘了", 2: "模糊", 3: "记得", 4: "简单" };
 
 let status = "due";

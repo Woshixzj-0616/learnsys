@@ -1,0 +1,833 @@
+{
+  "version": 1,
+  "kind": "writing",
+  "items": [
+    {
+      "id": "w01",
+      "title": "大学生该不该做兼职",
+      "type": "观点论证",
+      "minutes": 30,
+      "target_words": [150, 200],
+      "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on whether college students should take part-time jobs. You should state your opinion clearly and support it with reasons. You should write at least 150 words but no more than 200 words.",
+      "prompt_zh": "写一篇短文，谈谈大学生是否应该做兼职，明确立场并给出理由。",
+      "angle_points": [
+        "先把「该不该」拆成「在什么条件下该」：学业优先的前提下，兼职才有价值。",
+        "分论点要落在可观察的能力上：守时、沟通、排班、第一次经济独立。",
+        "必须处理反方最强理由：过度打工挤占学习时间，再给出制度性办法。"
+      ],
+      "stances": [
+        "有条件支持：选与专业或能力相关的兼职，每周限时。",
+        "谨慎反对：本科阶段时间有限，实习比零工更值得投入。"
+      ],
+      "arguments": [
+        "兼职训练课堂不给的软技能：守时、沟通、按他人要求交付。",
+        "排班逼学生做时间管理，比被动上课更能建立节奏感。",
+        "适度收入减轻家庭压力，也让学生第一次理解劳动与报酬。",
+        "与专业相关的兼职能把抽象知识放到真实场景里检验。",
+        "若没有时长上限，夜班和通勤会直接侵蚀睡眠与课堂注意力。"
+      ],
+      "collocations": [
+        "take a part-time job",
+        "strike a balance between study and work",
+        "meet other people's expectations",
+        "develop time-management skills",
+        "ease the financial burden on one's family",
+        "gain first-hand experience",
+        "set a weekly hour limit",
+        "related to one's major",
+        "at the expense of academic performance",
+        "a shortcut to success"
+      ],
+      "patterns": [
+        "It is widely argued that ..., yet whether ... remains an open question.",
+        "The benefits are practical rather than theoretical.",
+        "However, the risk of ... is real and should not be ignored.",
+        "To prevent this, universities could ...",
+        "In short, ... is neither ... nor ...; it is a tool whose value depends on ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Part-time jobs are now common among college students, yet whether they are worth the time remains debated. In my view, a well-chosen part-time job can be valuable, provided that academic work stays the priority.\n\nThe benefits are practical rather than theoretical. A campus cafe or a tutoring position teaches punctuality, communication and the habit of meeting other people's expectations. Students also learn how to manage a schedule, a skill no lecture can fully deliver. Moreover, a modest income eases the financial burden on parents and gives young people their first taste of independence.\n\nHowever, the risk of overwork is real. Some students take night shifts simply to earn more, then sleep through morning classes. To prevent this, universities could set a weekly hour limit and offer advice on choosing jobs related to one's major.\n\nIn short, part-time work is neither a shortcut to success nor a waste of time. It is a tool, and its value depends on how deliberately we use it.",
+        "notes": [
+          {"paragraph": 1, "note": "首段两句话完成背景 + 立场，用 provided that 把绝对判断改成有条件的判断，避免一边倒。"},
+          {"paragraph": 2, "note": "三个好处分别落在软技能、时间管理、经济独立，例子具体（咖啡馆、家教），没有空喊 important。"},
+          {"paragraph": 3, "note": "主动让步并给制度性方案，体现思辨；overwork 与 night shifts 让风险可感。"},
+          {"paragraph": 4, "note": "结尾用 neither ... nor ... 收束，并把判断标准交回「怎么用」，呼应首段条件。"}
+        ]
+      },
+      "upgrades": [
+        {"low": "Part-time jobs are very very good for students.", "high": "A well-chosen part-time job can be valuable, provided that academic work stays the priority.", "why": "去掉空洞的程度副词，换成有条件判断，信息量立刻增加。"},
+        {"low": "Students can learn many things from part-time jobs.", "high": "A campus cafe or a tutoring position teaches punctuality and the habit of meeting other people's expectations.", "why": "many things 太抽象；用具体岗位和具体能力替换。"},
+        {"low": "But some students work too much and it is bad.", "high": "Some students take night shifts simply to earn more, then sleep through morning classes.", "why": "用动作和后果代替形容词，bad 变成可验证的画面。"},
+        {"low": "So universities should do something.", "high": "Universities could set a weekly hour limit and offer advice on choosing jobs related to one's major.", "why": "something 是空话；给出可执行的两个动作。"},
+        {"low": "In conclusion, part-time jobs have advantages and disadvantages.", "high": "Part-time work is neither a shortcut to success nor a waste of time; it is a tool.", "why": "advantages and disadvantages 是套话；用 neither ... nor ... 给出自己的判断。"}
+      ],
+      "pitfalls": [
+        "把「该不该」写成「兼职有哪些好处」，漏掉反方与条件。",
+        "通篇 very important / good / bad，没有具体岗位与场景。",
+        "只写学生视角，不处理学校或家庭的约束。",
+        "结尾重复首段原句，没有推进。"
+      ],
+      "rewrite_task": "只改三处：① 首段加一个 provided that 条件；② 第二段把一处 many things 换成具体岗位 + 具体能力；③ 结尾删掉 advantages and disadvantages，改成 neither ... nor ... 的判断句。"
+    },
+    {
+      "id": "w02",
+      "title": "通才还是专才",
+      "type": "对比选择",
+      "minutes": 30,
+      "target_words": [150, 200],
+      "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on whether students should become generalists or specialists. You should compare the two choices and explain your own position. You should write at least 150 words but no more than 200 words.",
+      "prompt_zh": "写一篇短文，比较「通才」与「专才」两条路径，并说明你的选择。",
+      "angle_points": [
+        "不要二选一硬站队：先说明两者不是对立关系，再给出可操作的组合。",
+        "专才的价值要落在「判断力」和「被雇佣的理由」上，而不是口号。",
+        "通才的价值要落在「跨领域连接」上，用具体职业场景举例。"
+      ],
+      "stances": [
+        "T 型：先有一门硬专长，再用相邻领域拓宽。",
+        "早期专才、后期通才：先建立深度，再按需要扩展。"
+      ],
+      "arguments": [
+        "深度带来判断力：长期聚焦形成的直觉无法靠泛读替代。",
+        "招聘市场上，能被雇用的是可交付的专长。",
+        "真实问题很少停在单一学科内，广度提供连接点。",
+        "工程师懂财务、设计师懂心理，都是广度让深度变得有用的例子。",
+        "T 型策略可执行：主修 + 第一份工作要求真本事，选修与项目负责横向。"
+      ],
+      "collocations": [
+        "go deep into one field",
+        "develop professional judgment",
+        "be hired for a specific skill",
+        "stay inside one discipline",
+        "make connections across fields",
+        "a T-shaped skill profile",
+        "build a broad horizontal base",
+        "explore neighboring fields",
+        "depth without breadth",
+        "breadth without depth"
+      ],
+      "patterns": [
+        "The two are not opposites; the sensible path is to ...",
+        "A specialist goes deep.",
+        "Yet today's problems rarely stay inside one field.",
+        "The practical strategy is therefore ...",
+        "Depth without breadth is narrow; breadth without depth is shallow."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Students often ask whether they should become a generalist or a specialist. My answer is that the two are not opposites; the sensible path is to build one firm specialty and then extend it with related knowledge.\n\nA specialist goes deep. When a company needs someone to fix a database or design a bridge, depth is what gets hired. Years of focused practice create a kind of judgment that scattered reading cannot replace. This is why medical training insists on long specialization.\n\nYet today's problems rarely stay inside one field. An engineer who understands finance can spot cost risks; a designer who knows psychology can make a product easier to use. Breadth supplies the connections that make deep knowledge useful.\n\nThe practical strategy is therefore T-shaped: one strong vertical skill, supported by a broad horizontal base. Students can choose a major and a first job that demand real expertise, while using electives, projects and reading to explore neighboring fields.\n\nDepth without breadth is narrow; breadth without depth is shallow. The T shape keeps both.",
+        "notes": [
+          {"paragraph": 1, "note": "开头不直接站队，先拆掉假二选一，给出 T 型路径，立意高于题目。"},
+          {"paragraph": 2, "note": "专才段落用「数据库 / 桥梁」这种可被雇佣的具体任务说明深度价值。"},
+          {"paragraph": 3, "note": "通才段落用两个职业场景说明「连接」如何让深度有用，避免抽象赞美。"},
+          {"paragraph": 4, "note": "把观点落成学生可执行的动作：主修 + 第一份工作 + 选修/项目。"},
+          {"paragraph": 5, "note": "对偶句收尾，短而有力，回扣 T 型。"}
+        ]
+      },
+      "upgrades": [
+        {"low": "Specialists are better because they know more.", "high": "When a company needs someone to fix a database or design a bridge, depth is what gets hired.", "why": "用招聘场景代替 know more，说明「深度为什么值钱」。"},
+        {"low": "Generalists can do many different things.", "high": "An engineer who understands finance can spot cost risks.", "why": "many different things 没有信息；具体组合才说明广度的用途。"},
+        {"low": "I think students should be both.", "high": "The practical strategy is T-shaped: one strong vertical skill, supported by a broad horizontal base.", "why": "both 太含糊；T 型给出可操作的形状。"},
+        {"low": "It is important to read widely.", "high": "Students can use electives, projects and reading to explore neighboring fields.", "why": "把 important 换成三个具体动作。"},
+        {"low": "In a word, both are important.", "high": "Depth without breadth is narrow; breadth without depth is shallow.", "why": "对偶句总结两边风险，比 both are important 有判断。"}
+      ],
+      "pitfalls": [
+        "只写专才好，完全不理通才，变成单边论证。",
+        "用 famous people 举例但不说明他们具体会什么。",
+        "把 T 型只当名词堆上去，不解释竖和横分别是什么。",
+        "结尾重复首段，没有新的收束方式。"
+      ],
+      "rewrite_task": "只改三处：① 第一段把二选一改成「不是对立」；② 通才段补一个具体职业组合（谁 + 懂什么 + 能发现什么）；③ 结尾用一对 without 对偶句替换 In a word。"
+    },
+    {
+      "id": "w03",
+      "title": "失败在学习中的价值",
+      "type": "观点论证",
+      "minutes": 30,
+      "target_words": [150, 200],
+      "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on the value of failure in learning. You should explain why failure can be useful and what conditions make it useful. You should write at least 150 words but no more than 200 words.",
+      "prompt_zh": "写一篇短文，论述失败在学习中的价值，并说明在什么条件下失败才真正有用。",
+      "angle_points": [
+        "不要泛泛赞美失败：先限定「被复盘的失败」才有价值。",
+        "价值要具体：暴露认知与能力的差距、训练从挫折中恢复的能力。",
+        "必须给出条件：不反思的失败只产生恐惧，要写复盘动作。"
+      ],
+      "stances": [
+        "有条件肯定：失败只有在被检查和复盘时才产生学习。",
+        "谨慎肯定：失败有价值，但不值得主动追求。"
+      ],
+      "arguments": [
+        "失败暴露「以为自己会」和「实际能做」之间的差距。",
+        "竞赛失手能揭示背过的句子在压力下会失效。",
+        "失败训练恢复能力：把坏结果和自我评价分开。",
+        "没有反思的失败只留下恐惧，不会自动变成经验。",
+        "复盘要具体：写下错在哪、要到具体反馈、只改一个小动作。"
+      ],
+      "collocations": [
+        "treat failure as a verdict",
+        "expose the gap between belief and ability",
+        "collapse under pressure",
+        "separate a bad result from a bad self-image",
+        "produce fear rather than insight",
+        "ask for specific feedback",
+        "design one small change",
+        "learn from a setback",
+        "hide from failure",
+        "collect wins"
+      ],
+      "patterns": [
+        "Failure is usually treated as ..., but in my view ...",
+        "First, failure exposes ...",
+        "However, this value is not automatic.",
+        "Without reflection, failure merely produces ...",
+        "Success tells us what worked; failure tells us what to fix."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Failure is usually treated as something to hide, especially on a campus where grades are public and success stories spread fast. In my view, failure is valuable only when it is examined rather than avoided.\n\nFirst, failure exposes the gap between what we believe and what we can actually do. A student who fails a speaking contest may discover that memorized sentences collapse under pressure. That discovery is more useful than another encouraging comment.\n\nSecond, failure teaches the process of recovery. People who have never failed often treat a setback as a verdict on their ability; those who have failed learn to separate a bad result from a bad self-image.\n\nHowever, this value is not automatic. Without reflection, failure merely produces fear. Students should write down what went wrong, ask for specific feedback, and design one small change for the next attempt.\n\nSuccess tells us what worked; failure tells us what to fix. A learner who can use both grows faster than one who only collects wins.",
+        "notes": [
+          {"paragraph": 1, "note": "先写校园语境（成绩公开、成功故事传播快），让「藏失败」有画面，再给出限定立场。"},
+          {"paragraph": 2, "note": "第一个价值用演讲比赛的具体失手说明「背过的句子会崩」，可验证。"},
+          {"paragraph": 3, "note": "第二个价值转向心理层面：把结果与自我评价分开，这是比「涨经验」更深的点。"},
+          {"paragraph": 4, "note": "主动限定价值不是自动发生的，并给出三步复盘动作。"},
+          {"paragraph": 5, "note": "对偶收尾，最后一句把「只用成功」和「两者都用」作对比。"}
+        ]
+      },
+      "upgrades": [
+        {"low": "Failure is good for us.", "high": "Failure is valuable only when it is examined rather than avoided.", "why": "给 good 加上条件和机制，避免廉价正能量。"},
+        {"low": "We can learn a lot from failure.", "high": "A student who fails a speaking contest may discover that memorized sentences collapse under pressure.", "why": "用具体场景替代 a lot，让读者看到差距如何被暴露。"},
+        {"low": "Some people are afraid of failure.", "high": "People who have never failed often treat a setback as a verdict on their ability.", "why": "afraid 是情绪标签；verdict 说明怕的到底是什么。"},
+        {"low": "We should think about our mistakes.", "high": "Students should write down what went wrong, ask for specific feedback, and design one small change.", "why": "think about 太空；三个动作才可执行。"},
+        {"low": "In conclusion, failure is important.", "high": "Success tells us what worked; failure tells us what to fix.", "why": "用对偶句给出功能区分，代替空洞结论。"}
+      ],
+      "pitfalls": [
+        "把失败写成励志口号，缺少「为什么有用」的机制。",
+        "只说失败让人成长，不处理「不反思的失败」。",
+        "例子虚构且笼统（my friend once failed），没有具体场景。",
+        "结尾与开头重复，没有新增判断。"
+      ],
+      "rewrite_task": "只改三处：① 首段把「失败是好事」改成带条件的判断；② 第二段补一个具体失手场景（什么比赛/什么表现）；③ 结尾加一对 success/failure 的对偶句。"
+    },
+    {
+      "id": "w04",
+      "title": "学术写作该不该允许 AI 工具",
+      "type": "现象分析",
+      "minutes": 30,
+      "target_words": [150, 200],
+      "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on whether AI tools should be allowed in academic writing. You should make a clear argument and address the risks involved. You should write at least 150 words but no more than 200 words.",
+      "prompt_zh": "写一篇短文，论述学术写作是否应该允许使用 AI 工具，并回应其中的风险。",
+      "angle_points": [
+        "不要停留在「禁或不禁」，给出「允许 + 限制 + 披露」的第三种方案。",
+        "理由要落在职场现实：AI 已经是专业写作的一部分。",
+        "风险要具体：外包思考、编造事实，而不是笼统说「不诚信」。"
+      ],
+      "stances": [
+        "有条件允许：可作助手，必须披露使用过程。",
+        "仅限辅助：允许语法与检索，不允许生成论点与结论。"
+      ],
+      "arguments": [
+        "AI 已进入记者、研究者、程序员的日常写作，校园禁令会脱离职场。",
+        "真正的风险是外包思考：论点、证据、结论都由 AI 决定。",
+        "模型会编造事实，学生若不核对会把错误写进作业。",
+        "可执行规则是过程披露：提交草稿、提示词与修改记录。",
+        "评估重点应放在「如何判断和修正 AI 输出」。"
+      ],
+      "collocations": [
+        "generative AI",
+        "produce a passable essay",
+        "be part of professional writing",
+        "prepare students for the workplace",
+        "outsource thought",
+        "fabricated facts",
+        "require disclosure",
+        "submit drafts and revision notes",
+        "a writing partner",
+        "a substitute for thinking"
+      ],
+      "patterns": [
+        "Generative AI can now ..., and universities are struggling to decide ...",
+        "I believe ... should be allowed as ..., but only under clear limits.",
+        "The danger lies in ...",
+        "A workable rule is to require ...",
+        "Used this way, AI is ..., not ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Generative AI can now produce a passable essay in seconds, and universities are struggling to decide whether to ban it or accept it. I believe AI should be allowed as an assistant, but only under clear limits.\n\nThe reason is simple: AI is already part of professional writing. Journalists use it to draft summaries, researchers use it to check grammar, and programmers use it to explain unfamiliar code. Banning it on campus would prepare students for a workplace that no longer exists.\n\nThe danger lies in outsourcing thought. If a student asks AI to choose the argument, select the evidence and polish the conclusion, the essay no longer reflects the student's learning. Worse, the student may not notice the fabricated facts that AI sometimes produces.\n\nA workable rule is to require disclosure and process. Students could submit drafts, prompts and revision notes alongside the final essay, and be assessed on how they judged and corrected AI output.\n\nUsed this way, AI is a writing partner, not a substitute for thinking.",
+        "notes": [
+          {"paragraph": 1, "note": "用「几秒钟写出及格作文」制造现实压力，再提出「允许 + 限制」的立场。"},
+          {"paragraph": 2, "note": "三个职业例子证明 AI 已是专业写作的一部分，禁令反而不合职场。"},
+          {"paragraph": 3, "note": "把风险落到「外包思考」和「编造事实」，比空谈学术诚信更具体。"},
+          {"paragraph": 4, "note": "给出可执行的披露方案，并改变评估对象：看学生如何判断和修正。"},
+          {"paragraph": 5, "note": "用 partner / substitute 的对比收尾，短句有力。"}
+        ]
+      },
+      "upgrades": [
+        {"low": "AI is very useful for students.", "high": "AI should be allowed as an assistant, but only under clear limits.", "why": "useful 没有边界；assistant + limits 同时给出用途和约束。"},
+        {"low": "Many people use AI now.", "high": "Journalists use it to draft summaries, researchers use it to check grammar.", "why": "用职业和动作替代 many people，证明 AI 已进入专业写作。"},
+        {"low": "Students may cheat with AI.", "high": "If a student asks AI to choose the argument and select the evidence, the essay no longer reflects the student's learning.", "why": "cheat 是结论；写出具体外包动作才说明问题。"},
+        {"low": "Schools should make rules.", "high": "Students could submit drafts, prompts and revision notes alongside the final essay.", "why": "make rules 太泛；列出提交物才可执行。"},
+        {"low": "In short, AI has two sides.", "high": "AI is a writing partner, not a substitute for thinking.", "why": "two sides 是套话；partner/substitute 给出明确边界。"}
+      ],
+      "pitfalls": [
+        "只写「AI 是双刃剑」，没有自己的方案。",
+        "把风险全部归为「作弊」，忽略编造事实与外包思考。",
+        "建议停留在「加强管理」，没有可执行动作。",
+        "全篇没有提到职场或真实写作场景。"
+      ],
+      "rewrite_task": "只改三处：① 首段给出「允许 + 限制」而非双刃剑；② 风险段补一个具体的编造事实场景；③ 结尾改成 partner/substitute 对比句。"
+    },
+    {
+      "id": "w05",
+      "title": "短视频与注意力",
+      "type": "现象分析",
+      "minutes": 30,
+      "target_words": [150, 200],
+      "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on how short videos affect young people's attention. You should analyze the effects and suggest practical responses. You should write at least 150 words but no more than 200 words.",
+      "prompt_zh": "写一篇短文，分析短视频如何影响年轻人的注意力，并提出可行的应对办法。",
+      "angle_points": [
+        "先讲机制再讲好坏：自动播放、短刺激、期待下一个刺激。",
+        "第二个问题要区分「感觉学到了」与「真正记住」。",
+        "应对不要极端：保留短视频的合理用途，只把消费和学习分开。"
+      ],
+      "stances": [
+        "工具中性：问题在使用方式，不在短视频本身。",
+        "风险优先：默认推荐机制对深度学习不利，需要有意识隔离。"
+      ],
+      "arguments": [
+        "15–60 秒的片段加自动连播，训练大脑在无聊出现前就换刺激。",
+        "持续阅读因此显得格外吃力，注意力被切成碎片。",
+        "三分钟视频能介绍概念，但无法培养掌握概念所需的耐心。",
+        "看完感觉懂了很多，第二天几乎记不住。",
+        "可行做法：手机离开桌面、固定观看时段、每天保留一段长阅读。"
+      ],
+      "collocations": [
+        "become the default way to relax",
+        "start automatically",
+        "expect a new stimulus",
+        "sustained reading",
+        "the illusion of learning",
+        "build the patience required to master",
+        "feel informed",
+        "used deliberately",
+        "protect a long reading session",
+        "strengthen attention"
+      ],
+      "patterns": [
+        "Short videos have become ..., but their cost to ... is often underestimated.",
+        "The first problem is ...",
+        "The second problem is ...",
+        "This does not mean ... is evil.",
+        "Attention is not a fixed gift; it is a muscle."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Short videos have become the default way many young people relax. While they are entertaining, their cost to attention is often underestimated.\n\nThe first problem is interruption. A typical clip lasts fifteen to sixty seconds, and the next one starts automatically. The brain is trained to expect a new stimulus before boredom appears, so sustained reading feels unusually heavy.\n\nThe second problem is the illusion of learning. A three-minute video can introduce a concept, but it cannot build the patience required to master it. Viewers may feel informed while remembering almost nothing the next day.\n\nThis does not mean short videos are evil. Used deliberately, they are efficient for news, demonstrations and quick revision. The key is to separate consumption from study: keep the phone outside the desk, set a fixed viewing window, and protect at least one long reading session each day.\n\nAttention is not a fixed gift; it is a muscle. What we practice, we strengthen.",
+        "notes": [
+          {"paragraph": 1, "note": "首段先承认娱乐价值，再指出代价被低估，避免一上来批判。"},
+          {"paragraph": 2, "note": "用 15–60 秒和自动播放解释机制，让「注意力变差」有因果链。"},
+          {"paragraph": 3, "note": "区分「感觉学到」与「真正记住」，这是常见误区。"},
+          {"paragraph": 4, "note": "主动为短视频保留合理用途，再给三条具体做法。"},
+          {"paragraph": 5, "note": "用肌肉比喻收尾，短句对仗。"}
+        ]
+      },
+      "upgrades": [
+        {"low": "Short videos are bad for our attention.", "high": "A typical clip lasts fifteen to sixty seconds, and the next one starts automatically.", "why": "bad 是判断；写出时长与自动播放才是机制。"},
+        {"low": "We cannot focus on books anymore.", "high": "The brain is trained to expect a new stimulus before boredom appears, so sustained reading feels unusually heavy.", "why": "cannot focus 太绝对；用刺激预期和阅读体感解释。"},
+        {"low": "Videos do not teach us much.", "high": "A three-minute video can introduce a concept, but it cannot build the patience required to master it.", "why": "not much 含糊；区分 introduce 与 master。"},
+        {"low": "We should use phones less.", "high": "Keep the phone outside the desk, set a fixed viewing window, and protect one long reading session.", "why": "use less 不可执行；三条动作可当天做到。"},
+        {"low": "In conclusion, we should control ourselves.", "high": "Attention is not a fixed gift; it is a muscle. What we practice, we strengthen.", "why": "control ourselves 是口号；肌肉比喻给出可训练的方向。"}
+      ],
+      "pitfalls": [
+        "通篇批判短视频，不承认它在新闻、演示上的效率。",
+        "只说注意力下降，不解释自动播放与刺激预期的机制。",
+        "建议是「少玩手机」，没有具体场景。",
+        "把「看过」当成「学会」，缺少错觉学习的分析。"
+      ],
+      "rewrite_task": "只改三处：① 第二段补「时长 + 自动播放」的机制；② 第四段为短视频保留一个合理用途；③ 结尾用肌肉比喻替换 control ourselves。"
+    },
+    {
+      "id": "w06",
+      "title": "为什么越来越多学生考研",
+      "type": "原因分析",
+      "minutes": 30,
+      "target_words": [150, 200],
+      "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on why an increasing number of students choose to pursue postgraduate study. You should analyze the reasons and comment on the trend. You should write at least 150 words but no more than 200 words.",
+      "prompt_zh": "写一篇短文，分析越来越多学生选择读研的原因，并评价这一趋势。",
+      "angle_points": [
+        "分层归因：就业门槛、二次选择机会、同辈压力，三层递进。",
+        "不要把动机都写成正面：要指出「推迟决定」这类不健康动机。",
+        "结论落在判断工具：学位是工具不是避风港。"
+      ],
+      "stances": [
+        "理解但审慎：动机可以理解，但入学前要问学位服务于什么目标。",
+        "理性选择：若目标是明确职业路径，读研是合理投资。"
+      ],
+      "arguments": [
+        "就业门槛抬升：原本本科可投的岗位开始写硕士优先。",
+        "考研提供第二次选择：转方向不必从头再来。",
+        "同辈压力：同学都在备考时，找工作像放弃。",
+        "部分人只是推迟决定，并没有想清楚目标。",
+        "学位应与具体职业目标挂钩，而不是作为缓冲带。"
+      ],
+      "collocations": [
+        "prepare for the entrance exam",
+        "raise entry requirements",
+        "list a master's degree as preferred",
+        "be filtered out at the first stage",
+        "offer a second chance",
+        "change direction",
+        "social pressure",
+        "follow the group",
+        "postpone a decision",
+        "a tool rather than a shelter"
+      ],
+      "patterns": [
+        "More students than ever are ..., but the reality is more practical.",
+        "First, ...",
+        "Second, ...",
+        "Third, ...",
+        "Before enrolling, students should ask whether ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "More students than ever are preparing for postgraduate entrance exams. The trend is often explained as a love of learning, but the reality is more practical.\n\nFirst, the job market has raised its entry requirements. Many positions that once accepted a bachelor's degree now list a master's as preferred, especially in finance, education and technology. Students rationally extend their education to avoid being filtered out at the first stage.\n\nSecond, the exam offers a second chance. Some students discover their real interest late, or perform poorly in their first degree. Postgraduate study allows them to change direction without starting over.\n\nThird, there is social pressure. When most classmates are preparing for the exam, finding a job can feel like giving up. Some students follow the group simply because the alternative is unclear.\n\nThese motives are understandable, but they are not equally healthy. Before enrolling, students should ask whether the degree serves a specific goal or merely postpones a decision. A master's degree is a tool, not a shelter.",
+        "notes": [
+          {"paragraph": 1, "note": "先驳「热爱学习」这一常见解释，确立更现实的基调。"},
+          {"paragraph": 2, "note": "第一层原因给出具体行业与招聘措辞，说明门槛如何抬高。"},
+          {"paragraph": 3, "note": "第二层把考研写成「二次选择」，照顾兴趣转向和首学历不理想的人。"},
+          {"paragraph": 4, "note": "第三层承认同辈压力，并点出「替代方案不清晰」这一心理机制。"},
+          {"paragraph": 5, "note": "评价动机不等价，最后用 tool / shelter 对比收束。"}
+        ]
+      },
+      "upgrades": [
+        {"low": "Many students take the exam because they like studying.", "high": "The trend is often explained as a love of learning, but the reality is more practical.", "why": "先立一个常见解释再反转，比直接陈述更有分析感。"},
+        {"low": "Jobs are harder to find now.", "high": "Many positions that once accepted a bachelor's degree now list a master's as preferred.", "why": "harder 含糊；写出招聘要求的具体变化。"},
+        {"low": "Some students want to change their major.", "high": "Postgraduate study allows them to change direction without starting over.", "why": "change major 只是动作；without starting over 说明价值。"},
+        {"low": "Students follow others.", "high": "Some students follow the group simply because the alternative is unclear.", "why": "补出原因：不是盲从，而是替代方案看不清。"},
+        {"low": "In conclusion, students should think carefully.", "high": "A master's degree is a tool, not a shelter.", "why": "think carefully 是空话；tool/shelter 给出判断。"}
+      ],
+      "pitfalls": [
+        "只写就业压力，漏掉二次选择与同辈压力。",
+        "把考研全部写成正面动机，没有批评逃避决定。",
+        "用「竞争激烈」代替具体招聘要求变化。",
+        "结尾只喊「理性选择」，没有可判断的标准。"
+      ],
+      "rewrite_task": "只改三处：① 第一段先立「热爱学习」再反转；② 就业段写出一个具体行业与招聘措辞；③ 结尾改成 tool/shelter 对比句。"
+    },
+    {
+      "id": "w07",
+      "title": "年轻人参与志愿服务",
+      "type": "现象分析",
+      "minutes": 30,
+      "target_words": [150, 200],
+      "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on volunteering among young people. You should discuss its benefits and explain what makes volunteering meaningful. You should write at least 150 words but no more than 200 words.",
+      "prompt_zh": "写一篇短文，讨论年轻人参与志愿服务的意义，并说明怎样的志愿服务才真正有价值。",
+      "angle_points": [
+        "先讲「接触真实世界」，再讲职业技能，价值从认知到能力递进。",
+        "必须批评「刷简历式志愿」：到场晚、离场早、只为一栏经历。",
+        "给学校可执行建议：长期项目 + 反思报告，而不是一日活动。"
+      ],
+      "stances": [
+        "长期优先：宁可少而深，不要多而浅。",
+        "服务与学习并重：志愿活动应带反思环节。"
+      ],
+      "arguments": [
+        "乡村支教、社区门诊让政策、家庭与资源如何互动变得可见。",
+        "志愿工作训练解释任务、协调团队、计划失败时保持冷静。",
+        "刷简历式参与让社区和学生都受损。",
+        "长期项目比一日活动更能建立信任。",
+        "反思报告或讨论能把活动变成学习。"
+      ],
+      "collocations": [
+        "grow into a common part of student life",
+        "contact with reality",
+        "tutor children in a rural school",
+        "coordinate a team",
+        "remain calm when plans fail",
+        "fill a resume",
+        "arrive late and leave early",
+        "connect volunteers with long-term projects",
+        "reflect on what they observed",
+        "collect hours"
+      ],
+      "patterns": [
+        "Volunteering has grown from ... into ...",
+        "The clearest benefit is ...",
+        "Volunteering also builds ...",
+        "Yet volunteering can become a box to tick.",
+        "The point of volunteering is not ... but ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Volunteering among young people has grown from an occasional activity into a common part of student life. This is a welcome change, but its value depends on why students volunteer.\n\nThe clearest benefit is contact with reality. Tutoring children in a rural school or helping at a community clinic shows students how policies, families and resources actually interact. Such experience is difficult to obtain from textbooks.\n\nVolunteering also builds ordinary professional skills: explaining a task, coordinating a team, and remaining calm when plans fail. These are precisely the abilities employers say graduates lack.\n\nYet volunteering can become a box to tick. Some students join programs only to fill a resume, arrive late and leave early. When that happens, both the community and the student lose.\n\nUniversities can help by connecting volunteers with long-term projects instead of one-day events, and by asking students to reflect on what they observed. The point of volunteering is not to collect hours, but to understand people whose lives differ from our own.",
+        "notes": [
+          {"paragraph": 1, "note": "首段承认变化是好事，但立刻把标准转到「为什么去」，为后文批评铺垫。"},
+          {"paragraph": 2, "note": "用支教和社区门诊两个场景说明「政策、家庭、资源如何互动」。"},
+          {"paragraph": 3, "note": "职业技能写得可迁移：解释、协调、计划失败时保持冷静。"},
+          {"paragraph": 4, "note": "批评刷简历式志愿，指出双方都受损，避免只骂学生。"},
+          {"paragraph": 5, "note": "给学校两条具体建议，结尾用 not ... but ... 收束。"}
+        ]
+      },
+      "upgrades": [
+        {"low": "Volunteering is very meaningful.", "high": "Tutoring children in a rural school shows students how policies, families and resources actually interact.", "why": "meaningful 是评价；具体场景说明「怎么有意义」。"},
+        {"low": "Students can learn skills from volunteering.", "high": "Volunteering builds explaining a task, coordinating a team, and remaining calm when plans fail.", "why": "skills 太泛；三项可迁移能力更可信。"},
+        {"low": "Some students are not serious.", "high": "Some students join programs only to fill a resume, arrive late and leave early.", "why": "not serious 是标签；行为细节让批评成立。"},
+        {"low": "Schools should organize better activities.", "high": "Universities can connect volunteers with long-term projects instead of one-day events.", "why": "better 不可执行；长期项目 vs 一日活动是明确对比。"},
+        {"low": "In short, volunteering is good for everyone.", "high": "The point of volunteering is not to collect hours, but to understand people whose lives differ from our own.", "why": "everyone 空洞；not ... but ... 给出真正的目的。"}
+      ],
+      "pitfalls": [
+        "通篇赞美志愿，不批评刷简历式参与。",
+        "只写「帮助别人」，不写学生自己获得什么认知。",
+        "建议停留在「学校应加强组织」。",
+        "把志愿活动写成旅游或社交，偏离服务。"
+      ],
+      "rewrite_task": "只改三处：① 首段把标准转到「为什么去」；② 批评段补两个具体行为（到场晚、离场早）；③ 结尾改成 not ... but ... 目的句。"
+    },
+    {
+      "id": "w08",
+      "title": "代际数字鸿沟",
+      "type": "问题建议",
+      "minutes": 30,
+      "target_words": [150, 200],
+      "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on the digital gap between older and younger generations. You should describe the problem and propose practical solutions. You should write at least 150 words but no more than 200 words.",
+      "prompt_zh": "写一篇短文，描述老年人与年轻人之间的数字鸿沟，并提出可行的解决办法。",
+      "angle_points": [
+        "把「个人不会用」重新定义为「设计没有考虑他们」，这是立意核心。",
+        "后果要具体：就医、依赖家人、被落下的感受。",
+        "方案分三层：企业保留人工、家庭一次教一个任务、社区开短课。"
+      ],
+      "stances": [
+        "设计责任优先：主要责任在产品与公共服务，不在老人。",
+        "家庭与社区并重：技术简化 + 人的耐心。"
+      ],
+      "arguments": [
+        "很多应用假设用户能看小字、记密码、用邮箱找回账号。",
+        "排队被二维码取代后，成本落在最不适应的人身上。",
+        "后果包括就医受限、依赖亲属、被时代抛下的感受。",
+        "企业应保留人工窗口并提供大字少选项的简化模式。",
+        "家庭一次只教一个任务，社区用耐心的志愿者开短课。"
+      ],
+      "collocations": [
+        "struggle with services that have moved online",
+        "book a hospital appointment",
+        "recover an account through email",
+        "a QR code replaces a queue",
+        "fall on those least able to adapt",
+        "limit access to healthcare",
+        "increase dependence on relatives",
+        "keep a human counter",
+        "a simplified mode with larger text",
+        "widen access"
+      ],
+      "patterns": [
+        "Older people often struggle with ..., from ... to ...",
+        "The digital gap is sometimes described as ..., but it is largely ...",
+        "Many apps assume ...",
+        "Solutions should be practical rather than sentimental.",
+        "Technology should widen access, not narrow it."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Older people often struggle with services that have moved online, from booking a hospital appointment to paying a bill. The digital gap is sometimes described as a personal problem, but it is largely a design problem.\n\nMany apps assume users can read small text, remember passwords and recover accounts through email. For an elderly person with poor eyesight or no email habit, each step is a wall. When a queue disappears and is replaced by a QR code, the cost falls on those least able to adapt.\n\nThe gap has real consequences. It limits access to healthcare, increases dependence on relatives and deepens the feeling of being left behind.\n\nSolutions should be practical rather than sentimental. Companies can keep a human counter for essential services and design a simplified mode with larger text and fewer choices. Families can teach one task at a time instead of handing over a manual. Communities can offer short, repeated classes taught by patient volunteers.\n\nTechnology should widen access, not narrow it. A society is judged by how it treats those who cannot keep up.",
+        "notes": [
+          {"paragraph": 1, "note": "用挂号、缴费两个高频场景开场，并把问题重新定义为设计问题，立意鲜明。"},
+          {"paragraph": 2, "note": "列举三个默认能力（看小字、记密码、用邮箱），再写二维码取代排队，说明成本转移。"},
+          {"paragraph": 3, "note": "后果分三层：医疗、依赖、心理感受，避免只写「不方便」。"},
+          {"paragraph": 4, "note": "方案按企业、家庭、社区分工，每条都可执行。"},
+          {"paragraph": 5, "note": "结尾把技术价值与社会评价合并，收束有力。"}
+        ]
+      },
+      "upgrades": [
+        {"low": "Old people cannot use smartphones.", "high": "Many apps assume users can read small text, remember passwords and recover accounts through email.", "why": "cannot use 是标签；列出默认能力才说明卡在哪。"},
+        {"low": "This is very inconvenient for them.", "high": "When a queue disappears and is replaced by a QR code, the cost falls on those least able to adapt.", "why": "inconvenient 太轻；成本转移点出公平问题。"},
+        {"low": "We should help old people.", "high": "Families can teach one task at a time instead of handing over a manual.", "why": "help 空泛；一次教一个任务是具体做法。"},
+        {"low": "Companies should make apps easier.", "high": "Companies can design a simplified mode with larger text and fewer choices.", "why": "easier 不可测；大字、少选项是明确要求。"},
+        {"low": "In conclusion, we must care about the elderly.", "high": "Technology should widen access, not narrow it.", "why": "care about 是态度；widen/narrow 给出技术伦理判断。"}
+      ],
+      "pitfalls": [
+        "把责任推给老人「不愿学」，不讨论设计问题。",
+        "只写「不方便」，不写就医与依赖亲属的后果。",
+        "建议只有「多关心老人」，没有具体分工。",
+        "全篇情绪化，缺少可执行方案。"
+      ],
+      "rewrite_task": "只改三处：① 首段把「个人问题」改成「设计问题」；② 后果段补「就医受限」；③ 方案段写出企业、家庭、社区各一条。"
+    },
+    {
+      "id": "w09",
+      "title": "行动胜于言语",
+      "type": "引言阐释",
+      "minutes": 30,
+      "target_words": [150, 200],
+      "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay commenting on the saying Action speaks louder than words. You should explain what the saying means and illustrate it with examples. You should write at least 150 words but no more than 200 words.",
+      "prompt_zh": "写一篇短文，评论谚语「行动胜于言语」，解释其含义并举例说明。",
+      "angle_points": [
+        "先排除误解：这句话不是否定计划，而是否定空头承诺。",
+        "用「成本」解释为什么言语便宜、行动能暴露真实价值。",
+        "必须补一句平衡：团队仍需要语言与计划，不能走向反智。"
+      ],
+      "stances": [
+        "承诺检验：看日历与交付，不看表态。",
+        "言行互补：语言负责计划，行动负责兑现。"
+      ],
+      "arguments": [
+        "言语没有成本，可以无限重复；行动需要时间、金钱或风险。",
+        "声称重视健康、友谊或项目，却没有任何时间投入，说明并不真重视。",
+        "学习也一样：说在备考却从不翻书，不算备考。",
+        "证据是可交付的成果：做对的题、改过的稿、重复的练习。",
+        "但团队需要计划，计划需要语言，这句话不是反智。"
+      ],
+      "collocations": [
+        "be misunderstood as a rejection of planning",
+        "measure commitment by behavior",
+        "carry no cost",
+        "make promises indefinitely",
+        "require time, money or risk",
+        "reveal what a person values",
+        "the evidence of learning",
+        "treat speech as a promise",
+        "judge yourself by your calendar",
+        "intentions"
+      ],
+      "patterns": [
+        "The saying is often misunderstood as ...",
+        "Words are cheap because ...",
+        "Action, by contrast, requires ...",
+        "This principle also applies to ...",
+        "Judge yourself by ..., not ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Action speaks louder than words is an old saying, but it is often misunderstood as a rejection of planning. In my view, its real point is that commitment is measured by behavior, not by promises.\n\nWords are cheap because they carry no cost. Anyone can say that health matters, that friendship should be maintained, or that a project will be finished. Such statements cost nothing and can be made indefinitely. Action, by contrast, requires time, money or risk, and therefore reveals what a person actually values.\n\nThis principle also applies to learning. A student who claims to be preparing for an exam but never opens the book is not preparing. The evidence of learning is the solved problem, the revised draft and the repeated practice.\n\nAt the same time, action without words can be inefficient. Teams need plans, and plans need language. The saying does not ask us to abandon speech; it asks us to treat speech as a promise that action must confirm.\n\nJudge yourself by your calendar, not your intentions.",
+        "notes": [
+          {"paragraph": 1, "note": "先澄清常见误解，把谚语从「反计划」拉回「看行为」。"},
+          {"paragraph": 2, "note": "用成本解释言语为何廉价、行动为何暴露价值，是全文的机制。"},
+          {"paragraph": 3, "note": "把原则迁移到学习，用「做题、改稿、重复练习」作为证据。"},
+          {"paragraph": 4, "note": "主动补平衡：团队需要计划，避免把谚语推向反智。"},
+          {"paragraph": 5, "note": "calendar / intentions 对照收尾，简短可记。"}
+        ]
+      },
+      "upgrades": [
+        {"low": "This saying means we should not talk.", "high": "It is often misunderstood as a rejection of planning; its real point is that commitment is measured by behavior.", "why": "先排除误读，再给出真正的含义。"},
+        {"low": "Words are easy but actions are hard.", "high": "Words carry no cost, while action requires time, money or risk.", "why": "easy/hard 太抽象；成本结构说明差异。"},
+        {"low": "For example, students should study hard.", "high": "A student who claims to be preparing for an exam but never opens the book is not preparing.", "why": "should study hard 是口号；行为矛盾才有说服力。"},
+        {"low": "But we also need plans.", "high": "Teams need plans, and plans need language; the saying asks us to treat speech as a promise.", "why": "补出语言的功能，避免走向反智。"},
+        {"low": "In conclusion, actions are important.", "high": "Judge yourself by your calendar, not your intentions.", "why": "用可检查的标准收尾，比 important 有力。"}
+      ],
+      "pitfalls": [
+        "把谚语解释成「不要说话」，走向反智。",
+        "例子只写「某人很努力」，没有可观察的行动。",
+        "全篇重复谚语，没有解释「为什么言语便宜」。",
+        "不处理计划与沟通的作用。"
+      ],
+      "rewrite_task": "只改三处：① 首段排除「反计划」的误读；② 第二段用成本解释言语与行动的差别；③ 结尾改用 calendar / intentions 对照。"
+    },
+    {
+      "id": "w10",
+      "title": "预测未来的最好方式是创造未来",
+      "type": "引言阐释",
+      "minutes": 30,
+      "target_words": [150, 200],
+      "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay commenting on the saying The best way to predict the future is to create it. You should explain your understanding and support it with examples. You should write at least 150 words but no more than 200 words.",
+      "prompt_zh": "写一篇短文，评论「预测未来的最好方式是创造未来」，说明你的理解并举例。",
+      "angle_points": [
+        "不要把「创造未来」写成成功学，要落到「改变概率」而非「保证结果」。",
+        "先写「猜测外部趋势」的被动性，再转向「选择方向 + 小实验」。",
+        "补一个反脆弱点：等待完美信息本身就是最差决策。"
+      ],
+      "stances": [
+        "概率视角：行动不能保证成功，但能改变赔率。",
+        "方向优先：先选方向，再用技能、关系和小实验把它变得可能。"
+      ],
+      "arguments": [
+        "猜测哪个专业十年后安全、哪个行业会消失，准确率很低。",
+        "把未来当成已定，人只会被动准备。",
+        "创造未来是选方向并用技能、关系、小实验提高其概率。",
+        "想进入清洁能源的学生可以进课题组、学软件、访谈从业者。",
+        "等待完美信息本身就是一种决策，而且通常最差。"
+      ],
+      "collocations": [
+        "promise control",
+        "look for certainty",
+        "guess which external trend will win",
+        "encourage passivity",
+        "choose a direction",
+        "shift the odds",
+        "run small experiments",
+        "join a research group",
+        "wait for perfect information",
+        "daily choices"
+      ],
+      "patterns": [
+        "I find this saying useful not because ..., but because ...",
+        "Most predictions are attempts to guess ...",
+        "Creating the future means the opposite.",
+        "The idea also protects us from ...",
+        "We cannot control every outcome, but we can control ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "The best way to predict the future is to create it. I find this saying useful not because it promises control, but because it changes where we look for certainty.\n\nMost predictions are attempts to guess which external trend will win. Students wonder which major will be safe in ten years; workers wonder which industry will disappear. Such guesses are unreliable, and they encourage passivity: if the future is already decided, our only job is to prepare for it.\n\nCreating the future means the opposite. It means choosing a direction and building the skills, relationships and small experiments that make that direction more likely. A student who wants to work in clean energy can join a research group, learn the relevant software and talk to people in the field. None of these actions guarantees success, but together they shift the odds.\n\nThe idea also protects us from paralysis. When the future is uncertain, waiting for perfect information is itself a decision, usually the worst one.\n\nWe cannot control every outcome, but we can control what we practice. In that sense, the future is partly written by our daily choices.",
+        "notes": [
+          {"paragraph": 1, "note": "先限定这句话的价值：不是承诺控制，而是改变寻找确定性的方向。"},
+          {"paragraph": 2, "note": "用专业与行业两个猜测场景说明被动性，逻辑链清楚。"},
+          {"paragraph": 3, "note": "把「创造」拆成方向 + 技能 + 关系 + 小实验，并用清洁能源举例。"},
+          {"paragraph": 4, "note": "补一个反脆弱点：等待完美信息本身就是最差决策。"},
+          {"paragraph": 5, "note": "结尾区分可控与不可控，落到日常选择。"}
+        ]
+      },
+      "upgrades": [
+        {"low": "This sentence means we should work hard.", "high": "It changes where we look for certainty: from guessing trends to building skills and experiments.", "why": "work hard 与句子无关；写出「确定性来源」的转移。"},
+        {"low": "We cannot know the future.", "high": "Students wonder which major will be safe in ten years; workers wonder which industry will disappear.", "why": "用具体猜测场景替代抽象判断。"},
+        {"low": "We should try new things.", "high": "A student who wants to work in clean energy can join a research group and talk to people in the field.", "why": "try new things 空泛；具体路径才有说服力。"},
+        {"low": "Waiting is bad.", "high": "Waiting for perfect information is itself a decision, usually the worst one.", "why": "bad 太轻；点出「等待也是决策」的反转。"},
+        {"low": "In conclusion, the future is in our hands.", "high": "We cannot control every outcome, but we can control what we practice.", "why": "in our hands 是口号；区分可控与不可控更诚实。"}
+      ],
+      "pitfalls": [
+        "写成成功学，承诺「努力就能成功」。",
+        "只解释句子字面意思，没有机制与例子。",
+        "例子是名人故事，但不说他具体做了什么。",
+        "不承认不确定性，显得不诚实。"
+      ],
+      "rewrite_task": "只改三处：① 首段把「承诺控制」改成「改变寻找确定性的方向」；② 第三段补一个具体学生的三条行动；③ 结尾区分可控与不可控。"
+    },
+    {
+      "id": "w11",
+      "title": "图表：屏幕时间与睡眠",
+      "type": "图表描述",
+      "minutes": 30,
+      "target_words": [150, 200],
+      "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay based on a chart showing average daily screen time and sleep among students in three age groups. You should describe the trend, comment on it, and give practical advice. You should write at least 150 words but no more than 200 words.",
+      "prompt_zh": "根据图表（三个年龄段学生的日均屏幕时间与睡眠）写一篇短文：描述趋势、评论、给出建议。",
+      "angle_points": [
+        "先描述两组数据的相反趋势，再指出「交叉点」这个可观察特征。",
+        "必须提醒相关不等于因果：睡眠少可能有别的晚间任务。",
+        "建议要小而具体：固定断网时间、手机不在卧室、用阅读替换最后 30 分钟。"
+      ],
+      "stances": [
+        "谨慎解读：趋势与睡眠研究一致，但不能直接断言因果。",
+        "行为优先：先改晚间习惯，再谈设备限制。"
+      ],
+      "arguments": [
+        "屏幕时间随年龄从约 3 小时升到接近 6 小时。",
+        "睡眠从约 9 小时降到不足 7 小时。",
+        "两条曲线交叉：屏幕超过 5 小时后睡眠低于 7 小时。",
+        "变化是渐进的，所以每天容易被忽略。",
+        "相关不等于因果，但亮屏与刺激内容会延迟入睡。"
+      ],
+      "collocations": [
+        "compare average daily screen time and sleep",
+        "rise steadily with age",
+        "show the opposite pattern",
+        "the two curves cross",
+        "a gradual rather than sudden change",
+        "correlation is not proof of cause",
+        "delay the moment we fall asleep",
+        "a fixed cut-off time",
+        "charge the phone outside the bedroom",
+        "borrowed from somewhere"
+      ],
+      "patterns": [
+        "The chart compares ... among ...",
+        "Two features deserve attention.",
+        "Correlation is not proof of cause.",
+        "The practical response need not be dramatic.",
+        "The chart does not tell us how to live, but it does suggest ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "The chart compares average daily screen time and sleep among students in three age groups. Screen time rises steadily with age, from about three hours in the youngest group to nearly six hours among university students. Sleep shows the opposite pattern, falling from roughly nine hours to under seven.\n\nTwo features deserve attention. First, the two curves cross: once screen time exceeds five hours, sleep drops below seven. Second, the change is gradual rather than sudden, which makes it easy to ignore day by day.\n\nCorrelation is not proof of cause. Students who sleep less may simply have more evening obligations. Still, the pattern is consistent with what sleep research suggests: bright screens and stimulating content delay the moment we fall asleep.\n\nThe practical response need not be dramatic. A fixed cut-off time for screens, charging the phone outside the bedroom, and replacing the last thirty minutes of scrolling with reading are small measures with visible effects.\n\nThe chart does not tell us how to live. It does suggest that time is not free: every extra hour online is borrowed from somewhere.",
+        "notes": [
+          {"paragraph": 1, "note": "描述数据时给出起点、终点与方向，不罗列每个数字。"},
+          {"paragraph": 2, "note": "点出交叉点与渐变特征，这是比「升/降」更高一层的观察。"},
+          {"paragraph": 3, "note": "主动声明相关不等于因果，再补充研究机制，避免过度推断。"},
+          {"paragraph": 4, "note": "三条建议都很小，符合「不必剧烈」的立场。"},
+          {"paragraph": 5, "note": "结尾把时间成本说清楚，回扣图表。"}
+        ]
+      },
+      "upgrades": [
+        {"low": "The chart shows screen time goes up and sleep goes down.", "high": "Screen time rises from about three hours to nearly six, while sleep falls from roughly nine to under seven.", "why": "补上起点与终点，描述才具体。"},
+        {"low": "There is a big problem.", "high": "Once screen time exceeds five hours, sleep drops below seven; the two curves cross.", "why": "big problem 空泛；交叉点给出可核对的特征。"},
+        {"low": "So phones cause poor sleep.", "high": "Correlation is not proof of cause, though the pattern is consistent with sleep research.", "why": "避免把相关写成因果，同时保留合理推断。"},
+        {"low": "Students should sleep more.", "high": "A fixed cut-off time for screens and charging the phone outside the bedroom are small measures.", "why": "sleep more 不可执行；两个小动作可当晚做到。"},
+        {"low": "In conclusion, the chart is worrying.", "high": "Every extra hour online is borrowed from somewhere.", "why": "worrying 是评价；借时间这个说法给出代价。"}
+      ],
+      "pitfalls": [
+        "把图表里没有的数据写进去（编造具体百分比）。",
+        "只描述上升下降，不写交叉点或渐变。",
+        "直接断言手机导致失眠。",
+        "建议过大（「禁止使用手机」），不现实。"
+      ],
+      "rewrite_task": "只改三处：① 第一段补起点与终点数字；② 第二段写出交叉点；③ 第三段加一句相关不等于因果。"
+    },
+    {
+      "id": "w12",
+      "title": "出国留学还是国内就读",
+      "type": "对比选择",
+      "minutes": 30,
+      "target_words": [150, 200],
+      "prompt_en": "Directions: For this part, you are allowed 30 minutes to write an essay on whether students should study abroad or study at home. You should compare the two options and explain how students should decide. You should write at least 150 words but no more than 200 words.",
+      "prompt_zh": "写一篇短文，比较出国留学与国内就读，并说明学生应该如何做选择。",
+      "angle_points": [
+        "把「冒险 vs 安全」的框架换成「目标与资源是否匹配」。",
+        "出国价值落在沉浸压力：日常必须听、说、纠错，实用流利度提升快。",
+        "国内价值落在成本、家庭支持与本地职业网络，不能只说「省钱」。"
+      ],
+      "stances": [
+        "按目标选择：国际研究 vs 本地公共服务，路径不同。",
+        "按资源选择：预算、语言、家庭支持决定可行性。"
+      ],
+      "arguments": [
+        "国外日常生活中的语言压力会加速实用流利度。",
+        "不同学术习惯（开放讨论、独立研究）会带来认知冲击。",
+        "国内学费与生活成本更低，家庭支持更近。",
+        "本地职业网络对未来在本地工作的学生更直接。",
+        "选择标准应具体：能否说出每条路径提供的技能与代价。"
+      ],
+      "collocations": [
+        "be presented as a choice between adventure and safety",
+        "fit a student's goals and resources",
+        "daily life in another language",
+        "recover from mistakes",
+        "accelerate practical fluency",
+        "different academic habits",
+        "open discussion and independent research",
+        "build professional networks",
+        "local knowledge matters",
+        "the price it demands"
+      ],
+      "patterns": [
+        "The choice is often presented as ..., but the better question is ...",
+        "Studying abroad offers ...",
+        "Studying at home has its own advantages.",
+        "The decision should therefore be specific.",
+        "Neither choice is inherently superior; what matters is ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Choosing between studying abroad and studying at home is often presented as a choice between adventure and safety. In practice, the better question is which environment fits a student's goals and resources.\n\nStudying abroad offers immersion. Daily life in another language forces students to listen, negotiate and recover from mistakes, and this pressure accelerates practical fluency. It also exposes them to different academic habits, such as open discussion and independent research.\n\nStudying at home has its own advantages. Tuition and living costs are lower, family support is closer, and students can build professional networks in the market where they intend to work. For some fields, local knowledge matters more than international experience.\n\nThe decision should therefore be specific. A student aiming at international research may benefit most from going abroad, while one planning to work in local public service may gain more from internships at home.\n\nNeither choice is inherently superior. What matters is whether the student can name the skills each path provides and the price it demands.",
+        "notes": [
+          {"paragraph": 1, "note": "先否定「冒险 vs 安全」的框架，换成目标与资源匹配，立意更高。"},
+          {"paragraph": 2, "note": "出国的价值写成沉浸压力与学术习惯，而不是「见世面」。"},
+          {"paragraph": 3, "note": "国内价值包括成本、家庭支持、本地网络，并承认某些领域本地知识更重要。"},
+          {"paragraph": 4, "note": "用两个具体职业目标演示如何选择，避免抽象结论。"},
+          {"paragraph": 5, "note": "结尾给出判断标准：能否说出技能与代价。"}
+        ]
+      },
+      "upgrades": [
+        {"low": "Studying abroad is a good experience.", "high": "Daily life in another language forces students to listen, negotiate and recover from mistakes.", "why": "good experience 空泛；写出沉浸的具体压力。"},
+        {"low": "It is cheaper to study at home.", "high": "Tuition and living costs are lower, and family support is closer.", "why": "cheaper 单一；补上家庭支持这一非金钱优势。"},
+        {"low": "Students should choose what they like.", "high": "A student aiming at international research may benefit most from going abroad.", "why": "choose what they like 不可操作；用目标匹配路径。"},
+        {"low": "Both choices have advantages.", "high": "Neither choice is inherently superior.", "why": "both have advantages 是套话；否定先天优劣更有判断。"},
+        {"low": "In conclusion, students should think about their future.", "high": "What matters is whether the student can name the skills each path provides and the price it demands.", "why": "think about future 空洞；给出可检验的标准。"}
+      ],
+      "pitfalls": [
+        "把出国写成「见世面」，没有具体能力变化。",
+        "国内选项只写「便宜」，忽略家庭与本地网络。",
+        "结论是「因人而异」，没有判断标准。",
+        "编造学费或签证政策数据。"
+      ],
+      "rewrite_task": "只改三处：① 首段换掉「冒险 vs 安全」框架；② 国内段补「家庭支持」与「本地职业网络」；③ 结尾给出可检验的选择标准。"
+    }
+  ]
+}

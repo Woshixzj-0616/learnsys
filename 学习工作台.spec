@@ -67,6 +67,9 @@ a = Analysis(
         # 插件清单（壳层按它渲染侧栏与学习台；每个插件一个 plugin.json）
         (os.path.join(SPECPATH, 'learnsys', 'plugins'),
          os.path.join('learnsys', 'plugins')),
+        # 六级训练内容包（JSON 不是模块，PyInstaller 不会自动收）
+        (os.path.join(SPECPATH, 'learnsys', 'train', 'content'),
+         os.path.join('learnsys', 'train', 'content')),
     ],
     hiddenimports=[
         # 本地服务是函数内懒加载，手点一次更稳

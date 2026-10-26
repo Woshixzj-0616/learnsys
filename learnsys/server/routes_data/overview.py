@@ -23,6 +23,9 @@ XP_RULES = {
     "quiz": 20,         # 开始一场测验（内部对话不落成问答）
     "focus": 1,         # 专注 1 分钟
     "star": 3,          # 收藏一条
+    "train_writing": 40,      # 完成一篇写作（限时/练习，不含重批）
+    "train_translation": 40,  # 完成一篇整段翻译
+    "train_sentence": 5,      # 一句一译提交一次
 }
 LEVEL_TITLES = ["网络小白", "布线学徒", "寻址新手", "路由行者", "抓包侦探",
                 "协议解剖师", "拓扑架构师", "网络工程专家", "系统架构师"]
@@ -60,8 +63,12 @@ def _counts(conn, day: str = "") -> dict:
     quiz = int(conn.execute(
         "SELECT COUNT(*) FROM events WHERE module = 'quiz' AND kind = 'quiz' "
         "AND ts LIKE ?", (like,)).fetchone()[0] or 0)
+    train = store.event_kind_counts(conn, "train", day=day)
     return {"asks": asks, "starred": starred, "transcripts": transcripts,
-            "cet6": cet6, "netlab": netlab, "review": review, "quiz": quiz}
+            "cet6": cet6, "netlab": netlab, "review": review, "quiz": quiz,
+            "train_writing": int(train.get("writing") or 0),
+            "train_translation": int(train.get("translation") or 0),
+            "train_sentence": int(train.get("sentence") or 0)}
 
 
 def _xp(counts: dict, focus_minutes: float) -> int:
@@ -71,6 +78,9 @@ def _xp(counts: dict, focus_minutes: float) -> int:
                + counts["netlab"] * XP_RULES["netlab"]
                + counts["review"] * XP_RULES["review"]
                + counts["quiz"] * XP_RULES["quiz"]
+               + counts["train_writing"] * XP_RULES["train_writing"]
+               + counts["train_translation"] * XP_RULES["train_translation"]
+               + counts["train_sentence"] * XP_RULES["train_sentence"]
                + int(focus_minutes) * XP_RULES["focus"]
                + counts["starred"] * XP_RULES["star"])
 
@@ -94,7 +104,7 @@ def _active_days(conn) -> set[str]:
         "SELECT DISTINCT substr(ts_start, 1, 10) FROM transcripts",
         "SELECT DISTINCT substr(ts, 1, 10) FROM cet6_events",
         "SELECT DISTINCT substr(ts, 1, 10) FROM events "
-        "WHERE module IN ('netlab', 'review', 'quiz', 'materials')",
+        "WHERE module IN ('netlab', 'review', 'quiz', 'materials', 'train')",
         "SELECT DISTINCT substr(started_at, 1, 10) FROM sessions",
         "SELECT DISTINCT substr(last_review, 1, 10) FROM wrong_items "
         "WHERE last_review <> ''",
@@ -186,6 +196,12 @@ def overview(_=Depends(require_token)):
                 "asks": today_counts["asks"], "minutes": today_focus,
                 "cet6": today_counts["cet6"], "netlab": today_counts["netlab"],
                 "review": today_counts["review"], "quiz": today_counts["quiz"],
+                "train": (today_counts["train_writing"]
+                          + today_counts["train_translation"]
+                          + today_counts["train_sentence"]),
+                "train_writing": today_counts["train_writing"],
+                "train_translation": today_counts["train_translation"],
+                "train_sentence": today_counts["train_sentence"],
             },
             "total": {"xp": total_xp, **level},
             "streak": streak,

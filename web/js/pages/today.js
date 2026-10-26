@@ -99,7 +99,9 @@ function renderPlugins(ctx, overview, settings) {
   const counts = {
     ask: `${today.asks || 0} 问`,
     netlab: `${today.netlab || 0} 个训练`,
-    cet6: `${today.cet6 || 0} 个断点`,
+    cet6: today.train
+      ? `${today.cet6 || 0} 断点 · ${today.train} 训练`
+      : `${today.cet6 || 0} 个断点`,
     review: `${today.review || 0} 次复盘`,
     quiz: `${today.quiz || 0} 场测验`,
   };
@@ -156,7 +158,9 @@ function renderStats(today, reviewStats = {}) {
       unit: "条到期",
       note: reviewStats.reviewed_today
         ? `今天已复习 ${reviewStats.reviewed_today} 条`
-        : (reviewStats.next_due ? `下张 ${reviewStats.next_due} 到期` : "今天没有到期的"),
+        : (today.due_reviews
+          ? `${today.due_reviews} 条按记忆曲线排到今天`
+          : (reviewStats.next_due ? `下张 ${reviewStats.next_due} 到期` : "今天没有到期的")),
     },
   ];
   document.getElementById("today-stats").innerHTML = stats.map((stat) => `<div class="stat">

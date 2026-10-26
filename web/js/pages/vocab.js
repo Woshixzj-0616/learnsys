@@ -28,7 +28,7 @@ function dueBadge(item) {
 
 export async function mount(ctx) {
   ctx.setSub("划词收藏与手动添加的词统一进库；按记忆曲线安排复习");
-  ctx.setActions('<a class="btn" href="#/cet6">去六级精听</a>');
+  ctx.setActions('<a class="btn" href="#/cet6">去六级训练</a>');
   items = [];
   query = "";
   queue = [];
@@ -101,7 +101,7 @@ function renderStats(stats) {
 function renderList() {
   if (!items.length) {
     nodes.list.innerHTML = `<div class="empty"><strong>${query ? "没有匹配的词" : "生词本还是空的"}</strong>
-      ${query ? "换个关键词试试。" : "在六级精听里划词翻译后点「＋生词」，或在上面的输入框手动添加。"}</div>`;
+      ${query ? "换个关键词试试。" : "在六级训练里划词翻译后点「＋生词」，或在上面的输入框手动添加。"}</div>`;
     return;
   }
   nodes.list.innerHTML = items.map((item) => {

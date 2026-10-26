@@ -306,8 +306,11 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         image_asks = sum(1 for ask in asks if ask.get("kind") == "image")
         reviewed = review.get("reviewed_today")
         next_due = review.get("next_due")
+        due_today = int(today.get("due_reviews") or 0)
         if reviewed:
             review_note = f"今天已复习 {reviewed} 条"
+        elif due_today:
+            review_note = f"{due_today} 条按记忆曲线排到今天"
         elif next_due:
             review_note = f"下张 {next_due} 到期"
         else:
@@ -347,7 +350,10 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         counts = {
             "ask": f"{int(today.get('asks') or 0)} 问",
             "netlab": f"{int(today.get('netlab') or 0)} 个训练",
-            "cet6": f"{int(today.get('cet6') or 0)} 个断点",
+            "cet6": (f"{int(today.get('cet6') or 0)} 断点 · "
+                     f"{int(today.get('train') or 0)} 训练"
+                     if int(today.get("train") or 0)
+                     else f"{int(today.get('cet6') or 0)} 个断点"),
             "review": f"{int(today.get('review') or 0)} 次复盘",
             "quiz": f"{int(today.get('quiz') or 0)} 场测验",
         }

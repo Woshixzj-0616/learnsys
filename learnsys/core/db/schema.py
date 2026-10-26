@@ -6,7 +6,7 @@ from __future__ import annotations
 
 # 统一库结构版本。改了 `SCHEMA` 或 `_migrate_columns` 就 +1：
 # `connect()` 只在版本不一致时跑建表/补列/种子，一致时只建连接。
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 SCHEMA = """
@@ -433,6 +433,33 @@ CREATE TABLE IF NOT EXISTS review_log (
 );
 CREATE INDEX IF NOT EXISTS idx_review_log_item
 ON review_log (item_type, item_id, id DESC);
+CREATE TABLE IF NOT EXISTS train_submissions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind            TEXT NOT NULL DEFAULT 'writing',
+    prompt_id       TEXT NOT NULL,
+    content_version TEXT NOT NULL DEFAULT '',
+    mode            TEXT NOT NULL DEFAULT 'practice',
+    parent_id       INTEGER NOT NULL DEFAULT 0,
+    text            TEXT NOT NULL DEFAULT '',
+    word_count      INTEGER NOT NULL DEFAULT 0,
+    duration_s      INTEGER NOT NULL DEFAULT 0,
+    status          TEXT NOT NULL DEFAULT 'draft',
+    band            INTEGER,
+    band_json       TEXT NOT NULL DEFAULT '',
+    error_count     INTEGER NOT NULL DEFAULT 0,
+    serious_count   INTEGER NOT NULL DEFAULT 0,
+    result_id       INTEGER NOT NULL DEFAULT 0,
+    external_score  REAL,
+    flags_json      TEXT NOT NULL DEFAULT '',
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_train_kind_updated
+    ON train_submissions (kind, updated_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_train_prompt
+    ON train_submissions (prompt_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_train_parent
+    ON train_submissions (parent_id);
 """
 
 FTS_SCHEMA = """

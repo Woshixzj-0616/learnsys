@@ -16,7 +16,7 @@ router = APIRouter()
 
 
 class WrongAddIn(BaseModel):
-    source: str = "manual"          # quiz / manual
+    source: str = "manual"          # quiz / writing / translation / manual
     conversation_id: int | None = None
     material_id: int = 0
     question: str = Field(min_length=1, max_length=4000)
@@ -54,13 +54,14 @@ def add_wrongbook(req: WrongAddIn, _=Depends(require_token)):
     """手动补收 / 测验前端补收；同题按来源+指纹去重。"""
     conn = _conn()
     try:
-        source = req.source if req.source in ("quiz", "manual") else "manual"
+        source = req.source if req.source in (
+            "quiz", "writing", "translation", "manual") else "manual"
         question = req.question.strip()
         if source == "quiz":
             ref = int(req.conversation_id or 0)
             source_id = f"quiz:{ref}:{store.wrong_fingerprint(question)}"
         else:
-            source_id = f"manual:{store.wrong_fingerprint(question)}"
+            source_id = f"{source}:{store.wrong_fingerprint(question)}"
         item_id, created = store.add_wrong_item(
             conn, question=question, answer=req.answer, my_answer=req.my_answer,
             tags=req.tags, note=req.note, source=source, source_id=source_id,

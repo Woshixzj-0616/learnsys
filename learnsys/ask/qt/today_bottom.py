@@ -42,7 +42,7 @@ class TodayBottomMixin:
         side_box.setSpacing(12)
 
         self.week_panel = InfoPanel("本周")
-        self.cet6_panel = InfoPanel("六级精听断点")
+        self.cet6_panel = InfoPanel("六级训练断点")
         self.cet6_panel.hide()
         self.cet6_panel.row_clicked.connect(self._navigate)
         self.focus_panel = InfoPanel("专注")

@@ -16,7 +16,7 @@ from .cet6 import (add_cet6_dualwrite_diffs, add_cet6_dualwrite_run,
                    upsert_cet6_progress)
 from .conversations import (add_message, conversation_messages, create_conversation,
                             get_conversation, list_conversations, touch_conversation)
-from .events import add_event
+from .events import add_event, event_days, event_kind_counts
 from .knowledge import (BKT_READY_SQL, add_attempt as add_knowledge_attempt,
                         all_points as knowledge_points, attempt_exists,
                         backfill_candidates, has_live_attempt, meta_value as knowledge_meta,
@@ -40,6 +40,11 @@ from .recordings import (default_title as recording_title,
 from .review import (REVIEW_ITEM_TYPES, add_review_log, due_review_items,
                      get_review_state, recent_review_log, review_stats,
                      save_review_state, seed_review_states)
+from .train import (STATUSES as TRAIN_STATUSES, activity_counts,
+                    create_submission, delete_submission, get_submission,
+                    latest_train_by_prompt, list_submissions, reviewed_rows,
+                    sentence_attempted, set_submission_review,
+                    update_submission)
 from .study import (add_frame_text, add_transcript, add_window_event,
                     add_window_event_at, end_session, focus_stats, frame_text_between,
                     last_transcript, minutes, search_transcripts, session_stats,
@@ -64,7 +69,7 @@ __all__ = [
     "add_model_usage", "day_by_model", "day_totals", "recent_model_usage",
     "add_message", "conversation_messages", "create_conversation",
     "get_conversation", "list_conversations", "touch_conversation",
-    "add_event",
+    "add_event", "event_days", "event_kind_counts",
     "BKT_READY_SQL", "add_knowledge_attempt", "knowledge_points",
     "attempt_exists", "backfill_candidates", "has_live_attempt",
     "knowledge_meta", "knowledge_point_attempts", "knowledge_point",
@@ -80,6 +85,10 @@ __all__ = [
     "recording_transcript", "update_video",
     "REVIEW_ITEM_TYPES", "add_review_log", "due_review_items", "get_review_state",
     "recent_review_log", "review_stats", "save_review_state", "seed_review_states",
+    "TRAIN_STATUSES", "activity_counts", "create_submission", "delete_submission",
+    "get_submission", "latest_train_by_prompt", "list_submissions",
+    "reviewed_rows", "sentence_attempted", "set_submission_review",
+    "update_submission",
     "add_frame_text", "add_transcript", "add_window_event", "add_window_event_at",
     "end_session", "focus_stats", "frame_text_between", "last_transcript",
     "minutes", "search_transcripts", "session_stats", "session_summary",

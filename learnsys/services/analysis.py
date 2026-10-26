@@ -13,6 +13,7 @@ import threading
 import time
 
 from learnsys import agent, diagnostics, store
+from learnsys.core.jsontext import parse_object as parse_json_text
 from learnsys.llm.config import load_config
 from learnsys.services import observability, results
 
@@ -132,63 +133,6 @@ def build_prompt(record: dict) -> str:
             f"我的原因：{note} | 英文：{row.get('en', '')}")
     return (head + f"\n材料：{record.get('paper', '')} / {record.get('section', '')} / "
             f"{record.get('item', '')}\n" + "\n".join(lines) + "\n\n只输出 JSON。")
-
-
-def _repair_json_text(text: str) -> str:
-    """修复 flash 常见的两类坏 JSON：字符串里未转义的引号、未转义的换行。"""
-    out: list[str] = []
-    in_string = False
-    escaped = False
-    for index, char in enumerate(text):
-        if escaped:
-            out.append(char)
-            escaped = False
-            continue
-        if char == "\\":
-            out.append(char)
-            escaped = True
-            continue
-        if char == '"':
-            if not in_string:
-                in_string = True
-                out.append(char)
-                continue
-            # 字符串里的引号只有在后面跟着 , : } ] 或结束时才是收尾
-            cursor = index + 1
-            while cursor < len(text) and text[cursor] in " \t\r\n":
-                cursor += 1
-            following = text[cursor] if cursor < len(text) else ""
-            if following in (",", ":", "}", "]", ""):
-                in_string = False
-                out.append(char)
-            else:
-                out.append('\\"')
-            continue
-        if in_string and char in "\r\n":
-            out.append("\\n")
-            continue
-        out.append(char)
-    return "".join(out)
-
-
-def parse_json_text(text: str) -> dict:
-    text = (text or "").strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```[a-zA-Z]*\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    i, j = text.find("{"), text.rfind("}")
-    candidates = [text]
-    if i >= 0 and j > i:
-        candidates.append(text[i:j + 1])
-    candidates.append(_repair_json_text(candidates[-1]))
-    candidates.append(re.sub(r",\s*([}\]])", r"\1", candidates[-1]))
-    last_error: Exception | None = None
-    for candidate in candidates:
-        try:
-            return json.loads(candidate, strict=False)
-        except Exception as exc:
-            last_error = exc
-    raise ValueError(f"模型输出里没有可解析的 JSON：{last_error}")
 
 
 def validate_analysis(obj: dict) -> dict:
