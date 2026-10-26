@@ -6,10 +6,10 @@
   "entry": "pages/cet6.html",
   "order": 30,
   "status": "ready",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "category": "语言",
   "home": true,
-  "tagline": "精听 · 写作 · 翻译 · 统计",
-  "description": "精听沿用原工作台 iframe；写作/翻译/统计为原生页，共用一套题库、批改与错误卡。",
+  "tagline": "精听 · 写作 · 翻译 · 复习 · 统计",
+  "description": "精听沿用原工作台 iframe；写作/翻译/复习/统计为原生页，共用一套题库、批改与错误卡。",
   "script": "js/pages/cet6/index.js"
 }

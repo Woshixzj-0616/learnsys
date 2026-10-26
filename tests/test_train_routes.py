@@ -2,6 +2,7 @@
 """训练接口：鉴权、题库、草稿/自动保存/提交/轮询、重批、外部分数。"""
 from __future__ import annotations
 
+import datetime
 import json
 import pathlib
 import tempfile
@@ -232,6 +233,43 @@ class TrainRoutesTest(unittest.TestCase):
         again = self.client.get("/api/overview", headers=AUTH).json()
         self.assertEqual(again["today"]["train"], 1)
         self.assertEqual(again["today"]["xp"], 40)
+
+    def test_due_cards_can_be_reviewed_from_training(self):
+        sub = self.client.post(
+            "/api/cet6/train/submissions",
+            json={"prompt_id": "w01"}, headers=AUTH).json()
+        self.client.patch(f"/api/cet6/train/submissions/{sub['id']}",
+                          json={"text": WRITING}, headers=AUTH)
+        self.client.post(f"/api/cet6/train/submissions/{sub['id']}/submit",
+                         json={}, headers=AUTH)
+        self._poll(sub["id"])
+
+        # 新卡默认明天到期；挪到昨天，模拟今天到期。
+        conn = store.connect()
+        try:
+            yesterday = (datetime.date.today()
+                         - datetime.timedelta(days=1)).isoformat()
+            conn.execute("UPDATE wrong_items SET ts = ?",
+                         (f"{yesterday} 09:00:00",))
+            conn.commit()
+        finally:
+            conn.close()
+
+        due = self.client.get("/api/cet6/train/errors",
+                              params={"status": "due"}, headers=AUTH).json()
+        self.assertEqual(due["count"], 1)
+        card = due["items"][0]
+        self.assertEqual(card["source"], "writing")
+        plan = self.client.get("/api/cet6/train/plan", headers=AUTH).json()
+        self.assertEqual(plan["due"]["total"], 1)
+        self.assertEqual(plan["task"]["href"], "#/cet6?tab=review")
+
+        rated = self.client.post(f"/api/review/wrong/{card['id']}",
+                                 json={"rating": 3}, headers=AUTH)
+        self.assertEqual(rated.status_code, 200)
+        left = self.client.get("/api/cet6/train/errors",
+                               params={"status": "due"}, headers=AUTH).json()
+        self.assertEqual(left["count"], 0)
 
 
 if __name__ == "__main__":

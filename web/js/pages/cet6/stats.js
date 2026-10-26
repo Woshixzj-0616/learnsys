@@ -89,7 +89,7 @@ async function render() {
           <div class="cet6-actions">
             <a class="btn btn-primary" href="#/cet6?tab=writing">去写作</a>
             <a class="btn" href="#/cet6?tab=translation">去翻译</a>
-            ${due.total ? `<a class="btn btn-small" href="#/wrongbook">${due.total} 张到期错卡</a>`
+            ${due.total ? `<a class="btn btn-small" href="#/cet6?tab=review">${due.total} 张到期错卡</a>`
               : '<a class="btn btn-small" href="#/wrongbook">错题本</a>'}
           </div>
         </div>

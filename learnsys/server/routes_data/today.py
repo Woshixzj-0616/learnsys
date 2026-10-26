@@ -37,7 +37,7 @@ def _today_actions(conn, day: str, due: list) -> list[dict]:
             "title": f"六级训练 · {train_due} 张到期错误卡",
             "detail": f"写作 {plan['due']['writing']} 张 · "
                       f"翻译 {plan['due']['translation']} 张",
-            "href": "#/wrongbook",
+            "href": "#/cet6?tab=review",
             "label": "去复习",
         })
     elif due:

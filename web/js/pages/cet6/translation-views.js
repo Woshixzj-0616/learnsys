@@ -41,6 +41,7 @@ export function homeHtml({ prompts, todayPrompt, todaySentence, recent, last,
         <div class="cet6-stat"><span>整篇已练</span><strong>${done}/${prompts.length}</strong></div>
         <div class="cet6-stat"><span>单句已练</span><strong>${attemptedCount || 0}</strong></div>
         <div class="cet6-stat"><span>最近档位</span><strong>${last?.band == null ? "—" : last.band}</strong></div>
+        <div class="cet6-stat"><span>到期错误卡</span><a href="#/cet6?tab=review">去复习</a></div>
       </div>
     </div>
     <div class="cet6-section-head"><h3>最近的整篇练习</h3>

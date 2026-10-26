@@ -5,12 +5,14 @@ const TABS = {
   listening: "精听",
   writing: "写作",
   translation: "翻译",
+  review: "复习",
   stats: "统计",
 };
 const SUBTITLES = {
   listening: "原精听工作台：试卷、断点、回听与分析",
   writing: "题库、限时写作、批改与二稿",
   translation: "一句一译、整段限时、术语卡与逐句对照",
+  review: "写作/翻译的到期错误卡，按记忆曲线复习",
   stats: "档位趋势、错误画像与训练量",
 };
 
@@ -66,6 +68,12 @@ async function switchTab(tab, ctx) {
   if (tab === "translation") {
     const page = await import("./translation.js");
     if (active !== "translation") return;
+    cleanup = await page.mount({ panel, ctx });
+    return;
+  }
+  if (tab === "review") {
+    const page = await import("./review.js");
+    if (active !== "review") return;
     cleanup = await page.mount({ panel, ctx });
     return;
   }

@@ -104,7 +104,7 @@ async function renderHome() {
         <div class="cet6-hero-side">
           <div class="cet6-stat"><span>已练题目</span><strong>${done}/${prompts.length}</strong></div>
           <div class="cet6-stat"><span>最近档位</span><strong>${last?.band == null ? "—" : last.band}</strong></div>
-          <div class="cet6-stat"><span>可复习错题</span><a href="#/wrongbook" data-act="go-wrongbook">去错题本</a></div>
+          <div class="cet6-stat"><span>可复习错题</span><a href="#/cet6?tab=review">去复习</a></div>
         </div>
       </div>
       <div class="cet6-section-head"><h3>最近的练习</h3>
@@ -398,7 +398,6 @@ function onClick(event) {
   const target = event.target.closest("[data-act]");
   if (!target || !panel?.contains(target)) return;
   const act = target.dataset.act;
-  if (act === "go-wrongbook") return;   // 交给浏览器跳 hash
   event.preventDefault();
   if (act === "back") {
     renderHistory();
