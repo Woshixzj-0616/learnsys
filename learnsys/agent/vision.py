@@ -31,6 +31,12 @@ VISION_PROMPT = """请把这张图完整转述成文字，供另一个看不到�
 不要回答用户可能提出的问题，只描述图本身。看不清的地方写「此处不清晰」。"""
 
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
+# 模型不支持图片时有的返回 200 + 一句道歉；必须当失败处理，不能让 OCR 兜底被跳过。
+UNSUPPORTED_MARKERS = (
+    "无法查看这张图片", "无法处理这条消息中的图片", "图片格式不受支持",
+    "unsupported image", "cannot view the image", "can't see the image",
+    "can not see the image", "unable to view the image",
+)
 _CACHE: dict[tuple[str, int, str], str] = {}
 _CACHE_MAX = 8
 
@@ -75,27 +81,65 @@ def _data_url(path: pathlib.Path) -> str:
     return f"data:{_mime(path)};base64," + base64.b64encode(raw).decode("ascii")
 
 
+def _split_data_url(value: str) -> tuple[str, str]:
+    """`data:image/png;base64,xxxx` → (mime, base64)；也接受裸 base64。"""
+    text = str(value or "")
+    match = re.match(r"data:([^;]+);base64,(.*)$", text, re.S)
+    if match:
+        return match.group(1), match.group(2)
+    return "image/png", text
+
+
+def _anthropic_url(base: str) -> str:
+    value = str(base or "").rstrip("/")
+    if value.endswith("/v1"):
+        return value + "/messages"
+    return value + "/v1/messages"
+
+
+def _thinking_off(body: dict, cfg: AgentConfig) -> dict:
+    """DeepSeek 默认先思考；看图只要转述，关掉省 token、也避免正文被截断。"""
+    if cfg.vision_uses_agent and "deepseek" in str(cfg.vision_base_url).lower():
+        body["thinking"] = {"type": "disabled"}
+    return body
+
+
 def _call_vision(cfg: AgentConfig, data_url: str, timeout: float = 60.0) -> str:
-    body = {
-        "model": cfg.vision_model,
-        "messages": [
-            {"role": "system", "content": VISION_SYSTEM},
-            {"role": "user", "content": [
+    mime, b64 = _split_data_url(data_url)
+    anthropic = cfg.vision_auth_style == "anthropic"
+    if anthropic:
+        body = _thinking_off({
+            "model": cfg.vision_model,
+            "max_tokens": 1600,
+            "system": VISION_SYSTEM,
+            "messages": [{"role": "user", "content": [
                 {"type": "text", "text": VISION_PROMPT},
-                {"type": "image_url", "image_url": {"url": data_url}},
-            ]},
-        ],
-        "max_tokens": 1200,
-        "temperature": 0,
-    }
+                {"type": "image", "source": {
+                    "type": "base64", "media_type": mime, "data": b64}},
+            ]}],
+        }, cfg)
+        url = _anthropic_url(cfg.vision_base_url)
+        headers = {"Content-Type": "application/json",
+                   "x-api-key": cfg.vision_api_key,
+                   "anthropic-version": "2023-06-01"}
+    else:
+        body = _thinking_off({
+            "model": cfg.vision_model,
+            "messages": [
+                {"role": "system", "content": VISION_SYSTEM},
+                {"role": "user", "content": [
+                    {"type": "text", "text": VISION_PROMPT},
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                ]},
+            ],
+            "max_tokens": 1600,
+            "temperature": 0,
+        }, cfg)
+        url = chat_url(cfg.vision_base_url)
+        headers = {"Content-Type": "application/json",
+                   "Authorization": f"Bearer {cfg.vision_api_key}"}
     request = urllib.request.Request(
-        chat_url(cfg.vision_base_url),
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {cfg.vision_api_key}",
-        },
-    )
+        url, data=json.dumps(body).encode("utf-8"), headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             raw = response.read().decode("utf-8", "replace")
@@ -114,16 +158,25 @@ def _call_vision(cfg: AgentConfig, data_url: str, timeout: float = 60.0) -> str:
 
     try:
         data = json.loads(raw)
-        content = data["choices"][0]["message"]["content"]
+        if anthropic:
+            blocks = data.get("content")
+            text = "".join(
+                str(block.get("text") or "") for block in (blocks or [])
+                if isinstance(block, dict) and block.get("type") == "text")
+        else:
+            content = data["choices"][0]["message"]["content"]
+            text = ("".join(str(p.get("text") or "") for p in content
+                            if isinstance(p, dict))
+                    if isinstance(content, list) else str(content or ""))
     except (json.JSONDecodeError, KeyError, IndexError, TypeError) as exc:
         raise VisionError(f"视觉服务返回的形状不认识：{raw[:200]}") from exc
-    if isinstance(content, list):
-        text = "".join(str(p.get("text") or "") for p in content if isinstance(p, dict))
-    else:
-        text = str(content or "")
     text = text.strip()
     if not text:
         raise VisionError("视觉服务返回了空描述")
+    lowered = text.lower()
+    if any(marker.lower() in lowered for marker in UNSUPPORTED_MARKERS):
+        raise VisionError(
+            f"视觉模型 {cfg.vision_model} 没有接受这张图：{text[:120]}")
     usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
     if usage:
         # 看图也是真实花费：记进同一本账，设置页和每日上限才看得见。

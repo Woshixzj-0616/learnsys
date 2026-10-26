@@ -83,12 +83,15 @@ def get_settings(_=Depends(require_token)):
     return {
         "agent": agent,
         "vision": {
-            "base_url": cfg.vision_base_url,
-            "model": cfg.vision_model,
+            # 复用主模型时不要回填地址/模型：否则用户一保存就把 fallback 写死，
+            # 再清空主 key 时视觉会跟着断。
+            "base_url": "" if cfg.vision_uses_agent else cfg.vision_base_url,
+            "model": "" if cfg.vision_uses_agent else cfg.vision_model,
             "ready": cfg.vision_ready,
             "api_key_set": bool(cfg.vision_api_key),
             "api_key_mask": _mask(cfg.vision_api_key),
-            "api_key_source": key_source,
+            "api_key_source": "agent" if cfg.vision_uses_agent else key_source,
+            "uses_agent": cfg.vision_uses_agent,
         },
         "hotkey": app_config.ASK_HOTKEY,
         "data_root": str(app_config.DATA_ROOT),
@@ -278,38 +281,18 @@ def _test_text(cfg) -> dict:
 def _test_vision(cfg) -> dict:
     if not cfg.vision_ready:
         return {"ok": False, "message": "还没配置视觉模型：地址、密钥、模型名至少缺一项"}
-    body = {
-        "model": cfg.vision_model,
-        "messages": [{"role": "user", "content": [
-            {"type": "text", "text": "只回复一个「好」字。"},
-            {"type": "image_url", "image_url": {"url": _TINY_PNG}},
-        ]}],
-        "max_tokens": 8,
-    }
-    request = urllib.request.Request(
-        vision.chat_url(cfg.vision_base_url),
-        data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json",
-                 "Authorization": f"Bearer {cfg.vision_api_key}"})
     started = time.monotonic()
     try:
-        with urllib.request.urlopen(request, timeout=20) as response:
-            raw = response.read().decode("utf-8", "replace")
-    except urllib.error.HTTPError as exc:
-        detail = ""
-        try:
-            detail = exc.read().decode("utf-8", "replace")[:200].replace("\n", " ")
-        except Exception:
-            pass
-        return {"ok": False, "message": f"视觉服务回了 {exc.code}" + (f"：{detail}" if detail else "")}
+        # 与正式看图走同一个实现：DeepSeek 用 Anthropic 协议，GLM/Qwen 用 OpenAI 协议。
+        text = vision._call_vision(cfg, _TINY_PNG, timeout=20.0)
+    except vision.VisionError as exc:
+        return {"ok": False, "message": str(exc)}
     except Exception as exc:
         return {"ok": False, "message": f"连不上视觉服务：{exc}"}
     ms = int((time.monotonic() - started) * 1000)
-    try:
-        json.loads(raw)
-    except json.JSONDecodeError:
-        return {"ok": False, "message": f"视觉服务返回的不是 JSON：{raw[:120]}"}
-    return {"ok": True, "message": f"视觉模型可用（{cfg.vision_model}，{ms} 毫秒）"}
+    return {"ok": True,
+            "message": f"视觉模型可用（{cfg.vision_model}，{ms} 毫秒）",
+            "sample": str(text or "")[:40]}
 
 
 @router.post("/api/settings/test")

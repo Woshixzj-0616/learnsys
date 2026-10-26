@@ -189,19 +189,19 @@ class SettingsPageMixin:
     def _build_vision_section(self, column: QtWidgets.QVBoxLayout) -> None:
         section = self._section(
             "视觉模型",
-            "DeepSeek 直连不支持图片。这里填一个 OpenAI 兼容的视觉模型，"
-            "截图会先转述成文字；不填就退回 OCR。")
+            "可选。留空 = 复用上面的主模型（同一把 key；DeepSeek 的 deepseek-flash "
+            "已支持图片）。想用 GLM / Qwen 再单独填；不可用时自动退回 OCR。")
         section.add_widget(FieldRow(
             "服务地址",
             self._line("vision-base", placeholder="https://open.bigmodel.cn/api/paas/v4"),
-            small="OpenAI 兼容 /v1"))
+            small="可选，OpenAI 兼容 /v1"))
         self.vision_key_hint = QtWidgets.QLabel("未配置")
         self.vision_key_hint.setObjectName("Hint")
         key_row = FieldRow("密钥", self._line("vision-key", password=True), small="留空 = 不修改")
         key_row.add_extra(self.vision_key_hint)
         section.add_widget(key_row)
         model_row = FieldRow(
-            "模型", self._line("vision-model", placeholder="例如 glm-4v-flash"),
+            "模型", self._line("vision-model", placeholder="留空跟随主模型；也可填 glm-4v-flash"),
             small="例如 glm-4v-flash")
         self.test_vision_button = QtWidgets.QPushButton("测试视觉连接")
         self.test_vision_result = StatusLabel()

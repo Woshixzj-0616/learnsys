@@ -45,6 +45,8 @@ def key_hint(has: bool, mask: str, source: str) -> str:
     """和 `web/js/pages/settings.js::keyHint` 同一口径。"""
     if not has:
         return "未配置"
+    if source == "agent":
+        return f"跟随主模型 key：{mask or '••••'}（留空不改）"
     where = "来自环境变量" if source == "env" else "已保存在设置文件"
     return f"{where}：{mask or '••••'}（留空不改）"
 

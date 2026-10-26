@@ -73,6 +73,7 @@ function fill(data) {
 
 function keyHint(has, mask, source) {
   if (!has) return "未配置";
+  if (source === "agent") return `跟随主模型 key：${mask || "••••"}（留空不改）`;
   const where = source === "env" ? "来自环境变量" : "已保存在设置文件";
   return `${where}：${mask || "••••"}（留空不改）`;
 }

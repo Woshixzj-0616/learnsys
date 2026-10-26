@@ -132,10 +132,10 @@
 
   <section class="settings-section">
     <h2>视觉模型</h2>
-    <p class="hint">DeepSeek 直连不支持图片。这里填一个 OpenAI 兼容的视觉模型，截图会先转述成文字；不填就退回 OCR。</p>
+    <p class="hint">可选。留空 = 直接复用上面的主模型（同一把 key；DeepSeek 的 deepseek-flash 已支持图片）。想用 GLM / Qwen 等其它视觉服务再单独填；视觉不可用时自动退回 OCR。</p>
 
     <div class="setting-row">
-      <label class="setting-label" for="vision-base">服务地址<small>OpenAI 兼容 /v1</small></label>
+      <label class="setting-label" for="vision-base">服务地址<small>可选，OpenAI 兼容 /v1</small></label>
       <div class="setting-control">
         <input class="input" id="vision-base" spellcheck="false" autocomplete="off"
                placeholder="https://open.bigmodel.cn/api/paas/v4">
@@ -152,7 +152,7 @@
     </div>
 
     <div class="setting-row">
-      <label class="setting-label" for="vision-model">模型<small>例如 glm-4v-flash</small></label>
+      <label class="setting-label" for="vision-model">模型<small>留空 = 跟随主模型；也可填 glm-4v-flash</small></label>
       <div class="setting-control">
         <input class="input" id="vision-model" spellcheck="false" autocomplete="off">
         <div class="inline">

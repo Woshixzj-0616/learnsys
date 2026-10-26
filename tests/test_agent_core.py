@@ -59,7 +59,11 @@ class TestConfig(unittest.TestCase):
         self.assertTrue(cfg.ready)
         self.assertEqual(cfg.model, "deepseek-v4-pro")
         self.assertEqual(cfg.fast_model, "deepseek-flash")
-        self.assertFalse(cfg.vision_ready)
+        # 只配了主模型 key：视觉复用同一把 key，优先快模型（flash 支持图片）。
+        self.assertTrue(cfg.vision_ready)
+        self.assertTrue(cfg.vision_uses_agent)
+        self.assertEqual(cfg.vision_auth_style, "anthropic")
+        self.assertEqual(cfg.vision_model, "deepseek-flash")
 
     def test_not_ready_without_token(self):
         cfg = make_cfg(auth_token="")

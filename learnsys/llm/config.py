@@ -51,6 +51,34 @@ def _section(raw: dict, key: str) -> dict:
     return value if isinstance(value, dict) else {}
 
 
+def _vision_auth_style(base: str) -> str:
+    """视觉端点用哪种鉴权：Anthropic Messages 还是 OpenAI 兼容。"""
+    value = str(base or "").rstrip("/").lower()
+    if value.endswith("/anthropic") or "api.anthropic.com" in value:
+        return "anthropic"
+    return "openai"
+
+
+def _vision_settings(vision: dict, *, base: str, token: str,
+                     model: str, fast: str = "") -> tuple[str, str, str, str, bool]:
+    """视觉配置；没单独填 key/base 时复用主模型那套。
+
+    2026-10-26 实测：DeepSeek 的 key 与文本接口已支持图片输入
+    （`deepseek-flash` 能读出形状/颜色/箭头；`deepseek-v4-pro` 不行），
+    所以同一把 key 不再需要填两处；复用主配置时优先用快模型。
+    显式填了 vision 段就完全按 vision 段走，不猜。
+    """
+    key = str(vision.get("api_key") or "").strip()
+    vbase = str(vision.get("base_url") or "").strip().rstrip("/")
+    vmodel = str(vision.get("model") or DEFAULT_VISION_MODEL).strip()
+    uses_agent = False
+    if not key and not vbase and token:
+        key, vbase, vmodel = token, base, (fast or model)
+        uses_agent = True
+    style = _vision_auth_style(vbase) if vbase else "openai"
+    return vbase, key, vmodel, style, uses_agent
+
+
 def _as_int(value, default: int) -> int:
     try:
         number = int(value)
@@ -144,6 +172,11 @@ class AgentConfig:
     # 键：explain / guide / quiz / quick / translate / analyze / review
     routes: dict[str, str] = field(default_factory=dict)
 
+    # 视觉端点鉴权：openai（GLM/Qwen 等）或 anthropic（DeepSeek / Claude）。
+    vision_auth_style: str = "openai"
+    # True = 视觉复用主模型的 key/base/model（用户只填了一处）。
+    vision_uses_agent: bool = False
+
     def model_for(self, task: str, default: str = "") -> str:
         """按任务取模型；没配置就返回 default（调用方再退 fast_model / model）。"""
         value = (self.routes or {}).get(str(task or ""))
@@ -225,6 +258,8 @@ def load_config() -> AgentConfig:
         if str(value or "").strip()
     }
 
+    vision_base, vision_key, vision_model, vision_style, vision_uses_agent = (
+        _vision_settings(vision, base=base, token=token, model=model, fast=fast))
     return AgentConfig(
         base_url=base,
         auth_token=token,
@@ -232,9 +267,11 @@ def load_config() -> AgentConfig:
         fast_model=fast,
         max_tokens=_as_int(agent.get("max_tokens"), DEFAULT_MAX_TOKENS),
         thinking=thinking or speed == "deep",
-        vision_base_url=str(vision.get("base_url") or "").strip().rstrip("/"),
-        vision_api_key=str(vision.get("api_key") or "").strip(),
-        vision_model=str(vision.get("model") or DEFAULT_VISION_MODEL).strip(),
+        vision_base_url=vision_base,
+        vision_api_key=vision_key,
+        vision_model=vision_model,
+        vision_auth_style=vision_style,
+        vision_uses_agent=vision_uses_agent,
         data_root=data_root,
         profile_path=data_root / "学习档案.md",
         speed=speed,
