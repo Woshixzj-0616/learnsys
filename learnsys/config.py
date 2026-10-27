@@ -456,7 +456,7 @@ ASK_BAR_ANSWER_MAX_RATIO = 0.62   # 答案区最高占屏幕高度的比例（�
 ASK_BAR_ANSWER_DEFAULT_H = 420    # 答案面板默认高度（固定，拖底边才改）
 ASK_BAR_ANSWER_MIN_H = 160        # 答案面板最矮拖到多少
 ASK_BAR_PILL_WIDTH = 250          # 收起成一条小条后有多宽
-ASK_BAR_ALWAYS_ON_TOP = False     # 不再强制置顶（负责人：挡别的界面）；横栏上「置顶」开关随时改
+ASK_BAR_ALWAYS_ON_TOP = True      # 默认置顶：浏览器最大化时不再盖住横栏；横栏上「置顶」开关随时改
 
 # 热词：当 initial_prompt 喂给模型，能显著压掉成体系的同音错
 HOTWORDS = (
