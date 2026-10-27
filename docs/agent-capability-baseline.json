@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T08:47:01",
+  "generated_at": "2026-10-27T18:38:49",
   "db": "D:\\学习系统\\learning.db",
   "days": 7,
   "perception": {
@@ -9,22 +9,26 @@
       "fetch_url",
       "web_search"
     ],
-    "materials": 0,
+    "materials": 5,
     "recordings": 3
   },
   "tools": {
-    "total": 25,
-    "surface_quickbar": 17,
-    "surface_cet6": 16,
+    "total": 29,
+    "surface_quickbar": 18,
+    "surface_cet6": 19,
     "surface_quick": 2,
     "writes": [
+      "add_vocab",
+      "delete_vocab",
       "forget_memory",
       "launch_app",
       "open_file",
       "open_url",
+      "rate_review",
       "run_code",
       "save_material_note",
       "save_memory",
+      "save_training_error",
       "write_study_file"
     ],
     "domains": {
@@ -40,10 +44,10 @@
     "mcp_read_only": 4
   },
   "memory": {
-    "memories_active": 2,
-    "memories_total": 5,
+    "memories_active": 3,
+    "memories_total": 6,
     "conversations": 32,
-    "conversation_summaries": 0,
+    "conversation_summaries": 16,
     "asks": 150,
     "history_turns": 4
   },
@@ -55,15 +59,16 @@
     "errors": 2,
     "check_ok": 2,
     "check_failed": 0,
-    "prompt_tokens": 158928,
-    "completion_tokens": 12744,
-    "cache_read_tokens": 128640,
+    "prompt_tokens": 181043,
+    "completion_tokens": 15551,
+    "cache_read_tokens": 129792,
     "calls_by_model": {
-      "deepseek-flash": 38
+      "deepseek-flash": 58
     },
     "calls_by_source": {
       "explain": 24,
-      "quick": 13,
+      "post_turn": 16,
+      "quick": 17,
       "vision": 1
     },
     "tool_calls": {
@@ -81,7 +86,7 @@
     }
   },
   "proactivity": {
-    "write_tools": 8,
+    "write_tools": 12,
     "deep_available": false,
     "deep_calls": 0,
     "vision_calls": 1
