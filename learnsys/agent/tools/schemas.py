@@ -374,6 +374,33 @@ WRITE_LABELS = {
     "open_url": "打开网址",
 }
 
+# 状态行给人看的短名（工具名本身不进界面）：网页与快捷栏共用这一份。
+TOOL_LABELS = {
+    **WRITE_LABELS,
+    "make_plan": "列计划",
+    "search_records": "查学习记录",
+    "today_summary": "看今日概况",
+    "recent_wrong_items": "读最近错题",
+    "due_reviews": "查到期复习",
+    "get_mastery": "查掌握度",
+    "get_train_summary": "看训练概况",
+    "list_recordings": "查录像",
+    "get_cet6_context": "看六级进度",
+    "search_materials": "查资料",
+    "read_material": "读资料正文",
+    "read_attachment": "读挂载文档",
+    "ocr_image": "识别图片文字",
+    "browser_status": "看浏览器状态",
+    "browser_history": "查浏览记录",
+    "web_search": "联网搜索",
+    "fetch_url": "读取网页",
+}
+
+
+def label_for(name: str) -> str:
+    """工具名 → 状态行中文短名；未知工具原样返回。"""
+    return TOOL_LABELS.get(str(name or ""), str(name or ""))
+
 
 def schemas_for(mode: str = "explain", *, use_tools: bool = True,
                 surface: str = "ask"):

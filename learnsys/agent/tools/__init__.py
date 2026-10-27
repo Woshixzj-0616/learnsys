@@ -16,8 +16,9 @@ from .schemas import (BROWSER_HISTORY_SCHEMA, BROWSER_STATUS_SCHEMA, CONFIRM_TOO
                       LIST_RECORDINGS_SCHEMA, MAKE_PLAN_SCHEMA, OPEN_FILE_SCHEMA,
                       OPEN_URL_SCHEMA, RECENT_WRONG_ITEMS_SCHEMA, RUN_CODE_SCHEMA,
                       SAVE_MATERIAL_NOTE_SCHEMA, SAVE_MEMORY_SCHEMA,
-                      SAVE_WRONGBOOK_SCHEMA, TOOL_SCHEMAS, WRITE_LABELS, WRITE_TOOLS,
-                      WRITE_STUDY_FILE_SCHEMA, schemas_for, write_summary)
+                      SAVE_WRONGBOOK_SCHEMA, TOOL_LABELS, TOOL_SCHEMAS, WRITE_LABELS,
+                      WRITE_TOOLS, WRITE_STUDY_FILE_SCHEMA, label_for, schemas_for,
+                      write_summary)
 from .study_tools import (due_reviews, forget_memory, get_cet6_context,
                           get_mastery, get_train_summary, list_recordings,
                           recent_wrong_items, save_memory, save_wrongbook)
@@ -27,6 +28,7 @@ from .system_tools import (browser_history, browser_status, launch_app, open_fil
 __all__ = [
     "ToolContext", "execute", "schemas_for", "write_summary",
     "TOOL_SCHEMAS", "CONFIRM_TOOLS", "WRITE_TOOLS", "WRITE_LABELS",
+    "TOOL_LABELS", "label_for",
     "MAKE_PLAN_SCHEMA", "RECENT_WRONG_ITEMS_SCHEMA", "GET_CET6_CONTEXT_SCHEMA",
     "DUE_REVIEWS_SCHEMA", "GET_MASTERY_SCHEMA", "GET_TRAIN_SUMMARY_SCHEMA",
     "LIST_RECORDINGS_SCHEMA",

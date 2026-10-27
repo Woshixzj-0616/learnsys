@@ -59,6 +59,8 @@ def write_study_file(relative_path: str, content: str, *,
 def run_code(language: str, code: str, stdin: str = "",
              *, ctx: ToolContext) -> str:
     """在临时目录跑一段代码；结果（含失败原因）给模型和审计。"""
+    # 代码调试轮：坏 stdin 很常见，5 秒足够跑完学习级程序；不给它 10 秒死等。
+    timeout = 5.0 if getattr(ctx, "code_debug", False) else sandbox.DEFAULT_TIMEOUT
     result = sandbox.run(str(language or ""), str(code or ""),
-                         stdin_text=str(stdin or ""))
+                         stdin_text=str(stdin or ""), timeout=timeout)
     return result.render()

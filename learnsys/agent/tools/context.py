@@ -15,6 +15,7 @@ class ToolContext:
     conversation_key: str = ""
     mode: str = ""
     material_id: int = 0          # 从资料出题时带上，错题按资料归档
+    code_debug: bool = False      # 代码调试轮：run_code 用更短的超时，减少坏输入的等待
     saved: set[str] = field(default_factory=set)
 
 

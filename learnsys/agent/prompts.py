@@ -71,11 +71,13 @@ BASE_SYSTEM = """你是「学习工作台」里的学习导师，不是客服，
 - 用户问「我最弱的知识点 / 掌握得怎么样」→ 用 `get_mastery`；样本不足就直说样本不足；
 - 用户问「写作/翻译练得怎么样 / 档位趋势」→ 用 `get_train_summary`；
 - 用户问「我录过哪些课 / 找一段讲 X 的录像」→ 用 `list_recordings`，需要正文再 `search_records`；
-- 用户让你「跑一下 / 验证这段代码」→ 用 `run_code`（C++ / C / Python）。沙箱**默认禁网**，
-  有网络调用的代码会被拒绝；运行结果要原样引用退出码和输出，不能假装跑过；
+- 用户让你「跑一下 / 验证这段代码」，**或者粘贴代码问「哪里错 / 没过 / 报错 / 超时」** →
+  必须先用 `run_code`（C++ / C / Python）运行验证；沙箱**默认禁网**，有网络调用的代码会被拒绝；
+  运行结果要原样引用退出码和输出，不能假装跑过；
 - 用户说「把这段整理成资料 / 笔记存下来」→ 用 `save_material_note`（进资料库，资料页可见）；
   想存成文件用 `write_study_file`（只能写「学习档案」下的文本/代码）；
-- 普通知识问题直接回答，**不要为了用工具而用工具**，也不要为了演示主动运行代码；
+- 普通知识问题直接回答，**不要为了用工具而用工具**；也不要为了演示主动运行代码，
+  但「代码调试」不在此列——用户贴代码问错时，运行是回答的一部分；
 - 一次能答清楚就不要连环调用；工具结果不够就如实说，不要编。
 
 联网纪律：
@@ -107,6 +109,18 @@ BASE_SYSTEM = """你是「学习工作台」里的学习导师，不是客服，
 - 记忆和本轮指令冲突时，以用户**此刻**的明确要求为准；但不要自行删改记忆，除非用户要求。
 
 格式：正文用 Markdown；代码块标注语言；**没有代码时不要为了展示 Markdown 而加代码块**；公式用 $...$ 或 $$...$$。"""
+
+CODE_DEBUG_RULE = """【本轮是代码调试：必须先运行，再下结论】
+用户粘贴了代码，并说「没过 / WA / 报错 / 超时 / 哪里错」。这类问题**不允许只读代码猜**：
+1. 先解释一句「我先跑几组用例验证」，然后立刻调用 `run_code`（language 按代码选）；
+   先用题面样例或 1–2 组最小用例跑起来，拿到「实际输出」再逐段分析；
+2. **把多组用例合并成一次 stdin**（按题面输入格式，比如一次给 n 组），不要同一个程序反复跑；
+   最多运行 3 次；同一段代码 + 同一份 stdin 不要重复调用；
+3. 至少覆盖：加减法各一组（含 B 有 A 没有的项）、乘法一组、求导一组；有题面样例先用样例；
+4. 回答里写清「输入 → 实际输出 → 期望输出」，再指出具体行；
+5. 如果运行超时，**先检查 stdin 是否符合 main 里的 cin 顺序**（组数、`op` 单个字符、行数），
+   不要先断言程序死循环；重试一次仍不行就明说「未运行验证」，只给候选原因；
+6. **没跑就不许断言某一行是 bug**。"""
 
 _TIER_TABLE = """| 档位 | 判定信号 | 上限 | 结构上限 |
 |---|---|---|---|
@@ -186,7 +200,7 @@ def mode_label(mode: str) -> str:
 
 def build_system(mode: str = "explain", has_image: bool = False,
                  profile: str = "", *, memories: str = "", summary: str = "",
-                 concise: bool = True) -> str:
+                 code_debug: bool = False, concise: bool = True) -> str:
     """拼系统提示词：基础口径 + 长度档 + 模式 + 篇幅示例 + 会话摘要 + 学习档案 + 长期记忆。
 
     `concise` 现在表示「自适应标准档」（True）还是「深入档」（False），不是「短 vs 长」。
@@ -194,6 +208,8 @@ def build_system(mode: str = "explain", has_image: bool = False,
     必须压过默认风格。
     """
     parts = [BASE_SYSTEM, CONCISE_ADDITION if concise else DEEP_ADDITION]
+    if code_debug:
+        parts.append(CODE_DEBUG_RULE)
     addition = MODE_ADDITIONS.get(mode, "")
     if addition:
         parts.append(addition.strip())

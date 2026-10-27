@@ -5,11 +5,12 @@
 """
 from __future__ import annotations
 
+import dataclasses
 import pathlib
 import threading
 from collections.abc import Iterator
 
-from learnsys.agent import budget, memory, prompts, router, tools, vision
+from learnsys.agent import budget, debug_intent, memory, prompts, router, tools, vision
 from learnsys.llm.config import AgentConfig, load_config
 from learnsys.agent.events import AgentEvent
 from learnsys.llm.provider_anthropic import ProviderError
@@ -60,7 +61,8 @@ def _history_messages(history: list[tuple[str, str]] | None,
     return messages
 
 
-def _tool_context(request: AgentRequest, cfg: AgentConfig) -> tools.ToolContext:
+def _tool_context(request: AgentRequest, cfg: AgentConfig,
+                  code_debug: bool = False) -> tools.ToolContext:
     return tools.ToolContext(
         data_root=pathlib.Path(cfg.data_root),
         db_path=pathlib.Path(cfg.data_root) / "learning.db",
@@ -70,6 +72,7 @@ def _tool_context(request: AgentRequest, cfg: AgentConfig) -> tools.ToolContext:
         conversation_key=request.conversation_key,
         mode=request.mode,
         material_id=request.material_id,
+        code_debug=code_debug,
     )
 
 
@@ -116,12 +119,35 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
         yield AgentEvent("error", text=blocked)
         return None
 
+    # 代码调试只在「能跑代码」的入口生效（工作台问答页、非测验、非 system_override）。
+    intent = debug_intent.detect(request.message)
+    code_debug = bool(
+        intent["code_debug"] and request.use_tools and not request.system_override
+        and request.surface == "ask" and request.mode != "quiz")
+    if code_debug:
+        # 立刻给界面一句具体状态：用户不用盯着「思考中」猜在干什么。
+        yield AgentEvent("activity",
+                         text="代码调试：先编译运行验证，再回答（通常 10–30 秒）")
+
     provider = provider or _default_provider()
     cfg, concise, decision = _plan_config(cfg, request)
+    forced_debug = False
+    if code_debug and (cfg.speed or "").lower() == "balanced" and decision.tier != "manual":
+        # 实测：不思考 + 强制运行会反复构造错输入、8 次超时；代码调试必须开思考。
+        # 只覆盖默认 balanced；用户手动选 fast / deep 或配了 routes，就尊重用户。
+        if not cfg.thinking:
+            cfg = dataclasses.replace(cfg, thinking=True)
+            forced_debug = True
+            concise = False
+            decision = dataclasses.replace(
+                decision, thinking=True, concise=False,
+                reason=(decision.reason or "") + "；代码调试强制思考")
     cfg_holder = [cfg]
     if (cfg.auto_route or "off").lower() in ("shadow", "on"):
         route_data = decision.trace()
         route_data["auto"] = cfg.auto_route
+        if forced_debug:
+            route_data["forced"] = "code_debug"
         yield AgentEvent("route", data=route_data)
 
     profile = _read_profile(cfg)
@@ -147,6 +173,7 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
               or prompts.build_system(request.mode, has_image=bool(image_paths),
                                       profile=profile, memories=memory_text,
                                       summary=request.history_summary,
+                                      code_debug=code_debug,
                                       concise=concise))
     tool_schemas = tools.schemas_for(request.mode, use_tools=request.use_tools,
                                      surface=request.surface)
@@ -170,9 +197,10 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
         tool_schemas=tool_schemas,
         messages=messages,
         state=_RunState(),
-        ctx=_tool_context(request, cfg),
+        ctx=_tool_context(request, cfg, code_debug),
         image_paths=image_paths,
         used_vision=used_vision,
+        code_debug=code_debug,
     )
 
 

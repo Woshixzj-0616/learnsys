@@ -88,13 +88,13 @@ export async function startStreaming(payload) {
       } else if (event.kind === "tool_start") {
         addToolRow(block, event.data?.name || "tool", event.data?.input || {},
           event.data?.goal || "", event.data?.step);
-        setAssistantStatus(block, event.data?.goal || "在查本地记录", true);
+        const label = event.data?.label || event.data?.goal || "查资料";
+        setAssistantStatus(block, `正在${label}…`, true);
       } else if (event.kind === "tool_end") {
         updateToolPreview(block, event.data?.name || "", event.data?.preview || "",
           event.data?.ok !== false, event.data?.step);
-        if (event.data?.ok === false) {
-          setAssistantStatus(block, "这步没成功，正在换路", true);
-        }
+        setAssistantStatus(block, event.data?.ok === false
+          ? "这步没成功，正在换路" : "结果回来了，继续分析…", true);
       } else if (event.kind === "vision") {
         if (typeof event.data?.used_vision === "boolean") {
           state.usedVision = event.data.used_vision;
@@ -112,7 +112,8 @@ export async function startStreaming(payload) {
         if (event.data?.truncated) {
           setAssistantStatus(block, "回答达到上限，末尾可能被截断");
         }
-        finishStreaming(block, true);
+        finishStreaming(block, true, event.data?.code_unverified
+          ? "未运行验证 · 静态分析" : "");
       } else if (event.kind === "error") {
         showStreamError(block, event.text || "模型没有回答");
       }
@@ -145,7 +146,7 @@ export function finishStreaming(block, ok, note = "") {
 
   if (ok) {
     if (state.text) paintAssistant(true);
-    setAssistantStatus(block, `用了 ${seconds} 秒`);
+    setAssistantStatus(block, note || `用了 ${seconds} 秒`);
     for (const name of state.usedTools) addSource(block, TOOL_NAMES[name] || name);
     if (state.usedVision) addSource(block, "视觉模型");
     if (state.text) {

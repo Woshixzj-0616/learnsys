@@ -142,8 +142,9 @@ class _AskWorker(QtCore.QThread):
                         self._say("看图完成（视觉模型）" if used
                                   else "看图完成（只读了文字，没看到图）")
                 elif event.kind == "tool_start":
-                    name = event.data.get("name") or "记录"
-                    self._say(f"查找：{name}…")
+                    label = (event.data.get("label") or event.data.get("name")
+                             or "查资料")
+                    self._say(f"正在{label}…")
                 elif event.kind == "tool_end":
                     self._say(str(event.data.get("preview") or "整理答案…"))
                 elif event.kind == "error":

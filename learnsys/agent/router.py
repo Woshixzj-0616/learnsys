@@ -13,6 +13,7 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass
 
+from learnsys.agent import debug_intent
 from learnsys.llm.config import AgentConfig
 
 # 难度信号：命中两个以上才算“需要深入”。这些词不是绝对标准，只是可解释的粗筛。
@@ -61,6 +62,14 @@ def _auto_tier(cfg: AgentConfig, *, mode: str, message: str, context: str,
     if mode not in COMPLEX_MODES:
         return {"tier": "standard", "model": cfg.model, "thinking": False,
                 "concise": True, "reason": "固定档位"}
+
+    # 代码调试优先于长度/关键词：实测不思考会瞎试、反复超时（2026-10-27 会话 45/46）。
+    intent = debug_intent.detect(message)
+    if intent["code_debug"]:
+        return {"tier": "deep", "model": cfg.model, "thinking": True,
+                "concise": False,
+                "reason": "代码调试（{}）：先运行验证".format(
+                    "、".join(intent["signals"]) or "粘贴代码")}
 
     hits = sum(1 for word in HARD_WORDS if word in (message or ""))
     score = 3 if hits >= 3 else (2 if hits == 2 else (1 if hits == 1 else 0))

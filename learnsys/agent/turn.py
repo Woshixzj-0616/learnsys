@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import time
 import uuid
 from collections.abc import Generator
@@ -60,6 +61,10 @@ class _RunState:
     denied_writes: list[str] = field(default_factory=list)
     model_calls: int = 0
     tool_calls: int = 0
+    tools_used: set[str] = field(default_factory=set)       # 本轮调用过的工具名
+    tools_ok: set[str] = field(default_factory=set)         # 至少成功过一次的工具名
+    tool_seen: set[tuple] = field(default_factory=set)      # (工具名, 参数) 去重
+    tool_attempts: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -75,6 +80,7 @@ class _Turn:
     ctx: tools.ToolContext
     image_paths: list[str]
     used_vision: bool
+    code_debug: bool = False          # 本轮是代码调试：收尾要检查有没有真的运行
 
 
 def _merge_usage(target: dict, update) -> None:
@@ -198,6 +204,34 @@ def _handle_tool_call(turn: _Turn, call, tool_results: list[dict], *,
         })
         return True
 
+    # run_code 防抖（2026-10-27 实测：不思考时会拿错 stdin 连跑 8 次，每次超时 10 秒）。
+    # 同一段代码 + 同一份 stdin 不重复跑；一轮最多 3 次。
+    if call.name == "run_code":
+        signature = ("run_code", json.dumps(call.input or {}, sort_keys=True,
+                                            ensure_ascii=False, default=str))
+        attempts = state.tool_attempts.get("run_code", 0)
+        reason = ""
+        if signature in state.tool_seen:
+            reason = ("这次运行和上一轮完全相同，结果不会变；不要重复调用。"
+                      "换一组输入，或根据已有输出下结论。")
+        elif attempts >= 3:
+            reason = ("本轮已经运行了 3 次代码；先根据已有输出下结论，不要继续运行。"
+                      "如果还没定位，明说需要哪一组失败样例。")
+        if reason:
+            state.tool_calls += 1
+            yield AgentEvent("tool_start", data={
+                "name": call.name, "input": call.input,
+                "label": tools.label_for(call.name)})
+            yield AgentEvent("tool_end", data={
+                "name": call.name, "preview": "重复/超限，已跳过", "ok": False})
+            tool_results.append({
+                "type": "tool_result", "tool_use_id": call.id,
+                "content": f'<record source="run_code">\n{reason}\n</record>',
+            })
+            return True
+        state.tool_seen.add(signature)
+        state.tool_attempts["run_code"] = attempts + 1
+
     step_index = planning.match_step(state.plan, call.name)
     goal = (state.plan[step_index]["title"] if step_index is not None else "")
     if planning.mark_step(state.plan, step_index, "doing"):
@@ -206,6 +240,7 @@ def _handle_tool_call(turn: _Turn, call, tool_results: list[dict], *,
     state.tool_calls += 1
     yield AgentEvent("tool_start", data={
         "name": call.name, "input": call.input,
+        "label": tools.label_for(call.name),
         "goal": goal, "step": step_index})
 
     if call.name in tools.CONFIRM_TOOLS:
@@ -244,7 +279,10 @@ def _handle_tool_call(turn: _Turn, call, tool_results: list[dict], *,
             return True
 
     tool_started = time.monotonic()
+    state.tools_used.add(call.name)
     content, preview, ok, raw = _execute_tool(call, turn.ctx)
+    if ok:
+        state.tools_ok.add(call.name)
     tool_ms = int((time.monotonic() - tool_started) * 1000)
     # 代码运行的输出即使失败（编译错误 / 超时）也是可引用的证据；
     # 写入失败则不是，不能拿来当来源。
@@ -414,6 +452,19 @@ def _finish(turn: _Turn, *, abort) -> Generator[AgentEvent, None, None]:
                        + "\n".join(f"> - {item}" for item in state.denied_writes))
         state.text = final_text
 
+    # 代码调试题：没跑通就在最前面钉一句，不让用户把「读代码猜的」当成已验证结论。
+    code_unverified = False
+    if turn.code_debug and final_text and "run_code" not in state.tools_ok:
+        if "run_code" in state.tools_used:
+            note = ("（运行未成功：本轮代码没有跑通，以下结论没有运行输出支撑，"
+                    "请以实际测试结果为准。）")
+        else:
+            note = ("（未运行验证：本轮没有实际编译 / 运行代码，以下只是静态分析，"
+                    "结论可能有误。）")
+        final_text = note + "\n\n" + final_text
+        state.text = final_text
+        code_unverified = True
+
     yield AgentEvent("done", data={
         "text": final_text,
         "thinking": state.thinking,
@@ -427,4 +478,5 @@ def _finish(turn: _Turn, *, abort) -> Generator[AgentEvent, None, None]:
         "tool_calls": state.tool_calls,
         "stop_reason": state.stop_reason or "end_turn",
         "truncated": state.stop_reason == "max_tokens",
+        "code_unverified": code_unverified,
     })
