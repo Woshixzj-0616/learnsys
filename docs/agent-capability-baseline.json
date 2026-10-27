@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T18:38:49",
+  "generated_at": "2026-10-27T18:46:09",
   "db": "D:\\学习系统\\learning.db",
   "days": 7,
   "perception": {
@@ -59,13 +59,15 @@
     "errors": 2,
     "check_ok": 2,
     "check_failed": 0,
-    "prompt_tokens": 181043,
-    "completion_tokens": 15551,
+    "prompt_tokens": 181161,
+    "completion_tokens": 16585,
     "cache_read_tokens": 129792,
     "calls_by_model": {
-      "deepseek-flash": 58
+      "deepseek-flash": 58,
+      "deepseek-v4-pro": 1
     },
     "calls_by_source": {
+      "deep": 1,
       "explain": 24,
       "post_turn": 16,
       "quick": 17,
@@ -87,8 +89,8 @@
   },
   "proactivity": {
     "write_tools": 12,
-    "deep_available": false,
-    "deep_calls": 0,
+    "deep_available": true,
+    "deep_calls": 1,
     "vision_calls": 1
   }
 }

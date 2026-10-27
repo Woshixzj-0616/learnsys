@@ -35,7 +35,7 @@ python tools/agent_capability_report.py --save   # 更新基线（只在确认�
 | 可靠性 | 强模型调用 | 0（shadow） | 开 `on` 后复杂问题有可解释的升级率 |
 | 可靠性 | 旁路调用入账 | deep 0 / vision 0 | 启用后来源里能看到 `deep` / `vision` |
 | 主动性 | 写工具 | 12 个（全部确认） | 增到 10–12 个，覆盖生词/复习/训练 |
-| 主动性 | 深度分析 | 未启用 | 启用后每周至少 1 次、成本可见 |
+| 主动性 | 深度分析 | 已启用（`deepseek-v4-pro`，API 复用主模型 key） | 启用后每周至少 1 次、成本可见 |
 
 ## 3. 2026-10-26 P0 已完成（随 2.33.0 部署）
 
@@ -59,6 +59,15 @@ python tools/agent_capability_report.py --save   # 更新基线（只在确认�
 - [x] 资料库 0 → 5 份（2024-06 写作解析 3 份 + 2024-12 写作解析 2 份），
       检索、挂资料、从资料出题均已实测。
 - [x] MCP 写工具评估结论：继续只读，原因与「提议箱」方案写进 `docs/MCP接入.md`。
+
+## 3.2 2026-10-27 P25.3 已完成（2.36.0）
+
+- [x] 深度分析 API 模式支持**复用主模型**的 base/key，`model` 留空用 `strong_model`；
+      密钥仍只有一份，不复制进深度分析配置。
+- [x] 生产启用：`agent.deep.enabled=true`、`model=deepseek-v4-pro`，其余留空。
+- [x] 真机一次 21.7 秒、中文回答正确；`agent_runs` 有 `mode=deep`，
+      `model_usage` 有 `source=deep`（118 prompt + 1034 completion，0.02898 CNY）。
+- [x] `test_deep_analysis.py` 隔离真实 `设置.json`，不再因本机启用而红。
 
 ## 4. 判定规则
 
