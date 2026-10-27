@@ -73,6 +73,10 @@ SETTINGS_TEMPLATE = {
         "daily_cost_limit": 0,
         "_daily_call_limit": "每日模型调用上限（0 = 不限）。按成功调用的次数算。",
         "daily_call_limit": 0,
+        "_deep": "深度分析：问一问页「深度分析」按钮，显式触发。enabled=true 后可用 command "
+                 "或 API；api_base / api_key 留空 = 复用主模型，model 留空 = 用 strong_model。",
+        "deep": {"enabled": False, "command": "", "args": [], "timeout": 180,
+                 "api_base": "", "api_key": "", "model": ""},
     },
     "_vision": "可选：看图用的 OpenAI 兼容视觉模型（如智谱 GLM-4V-Flash）。留空 = 退回 OCR，只读图中文字。",
     "vision": {

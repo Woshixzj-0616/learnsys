@@ -21,6 +21,10 @@ AUTH = {"X-Learnsys-Token": TOKEN}
 
 class DeepAnalysisTest(unittest.TestCase):
     def setUp(self):
+        # 不读真实的 D:\学习系统\设置.json：否则本机一启用深度分析，这条就红。
+        user = mock.patch.object(app_config, "USER", {"agent": {}})
+        user.start()
+        self.addCleanup(user.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.db_path = pathlib.Path(self.tmp.name) / "learning.db"

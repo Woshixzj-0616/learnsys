@@ -37,22 +37,45 @@ def _settings() -> dict:
     return deep if isinstance(deep, dict) else {}
 
 
+def _api_settings(settings: dict) -> tuple[str, str, str]:
+    """API 模式的 (base, key, model)：设置优先，留空复用主模型（密钥只有一份）。"""
+    cfg = load_config()
+    base = str(settings.get("api_base") or cfg.base_url or "").strip().rstrip("/")
+    key = str(settings.get("api_key") or cfg.auth_token or "").strip()
+    model = str(settings.get("model") or cfg.strong_model or cfg.model or "").strip()
+    return base, key, model
+
+
+def _enabled(settings: dict) -> bool:
+    return str(settings.get("enabled") or "").strip().lower() in TRUTHY
+
+
 def available() -> bool:
     settings = _settings()
-    if str(settings.get("enabled") or "").strip().lower() not in TRUTHY:
+    if not _enabled(settings):
         return False
-    return bool(str(settings.get("command") or "").strip()
-                or str(settings.get("api_key") or "").strip())
+    if str(settings.get("command") or "").strip():
+        return True
+    base, key, model = _api_settings(settings)
+    return bool(base and key and model)
 
 
 def describe() -> dict:
     """给界面看的配置（永远不返回密钥）。"""
     settings = _settings()
+    command = str(settings.get("command") or "").strip()
+    if not _enabled(settings):
+        provider, model = "", ""
+    elif command:
+        provider = "command"
+        model = str(settings.get("model") or command)
+    else:
+        base, key, model = _api_settings(settings)
+        provider = "api" if (base and key and model) else ""
     return {
         "available": available(),
-        "provider": ("command" if str(settings.get("command") or "").strip()
-                     else ("api" if str(settings.get("api_key") or "").strip() else "")),
-        "model": str(settings.get("model") or ""),
+        "provider": provider,
+        "model": model,
         "timeout": _timeout(settings),
     }
 
@@ -102,11 +125,16 @@ def _run_command(text: str, settings: dict) -> str:
 
 
 def _run_api(text: str, settings: dict) -> str:
-    base = str(settings.get("api_base") or "https://api.anthropic.com").strip().rstrip("/")
-    key = str(settings.get("api_key") or "").strip()
-    model = str(settings.get("model") or "").strip()
+    base, key, model = _api_settings(settings)
     if not model:
-        raise RuntimeError("深度分析的 API 模式还没填 model。")
+        raise RuntimeError("深度分析的 API 模式没有可用模型：填 agent.deep.model，"
+                           "或先配主模型的 strong_model。")
+    if not key:
+        raise RuntimeError("深度分析的 API key 为空：填 agent.deep.api_key，"
+                           "或先配好主模型的 auth_token。")
+    if not base:
+        raise RuntimeError("深度分析的 API 地址为空：填 agent.deep.api_base，"
+                           "或先配好主模型的 base_url。")
     cfg = dataclasses.replace(
         load_config(), base_url=base, auth_token=key, model=model,
         thinking=True, max_tokens=8000)
@@ -146,7 +174,10 @@ def run(prompt: str, context: str = "") -> dict:
     started = time.monotonic()
     run_id = uuid.uuid4().hex[:12]
     provider = "command" if str(settings.get("command") or "").strip() else "api"
-    model = str(settings.get("model") or settings.get("command") or "")
+    if provider == "command":
+        model = str(settings.get("model") or settings.get("command") or "")
+    else:
+        _, _, model = _api_settings(settings)
     error = ""
     answer = ""
     elapsed = 0
