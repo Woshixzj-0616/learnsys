@@ -108,6 +108,9 @@ a = Analysis(
         'rapidocr_onnxruntime',
         # Qt 设置试点是函数内懒加载，PyInstaller 扫不到 —— 整包点名
         *collect_submodules('learnsys.ask.qt'),
+        # 联网子包与会话收尾：执行器/聊天路由里有懒加载，整包点名
+        *collect_submodules('learnsys.services.web'),
+        'learnsys.agent.post_turn',
     ],
     hookspath=[],
     hooksconfig={},

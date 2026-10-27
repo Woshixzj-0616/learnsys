@@ -1,17 +1,20 @@
 {
-  "generated_at": "2026-10-26T19:49:40",
+  "generated_at": "2026-10-27T08:47:01",
   "db": "D:\\学习系统\\learning.db",
   "days": 7,
   "perception": {
-    "vision_ready": false,
-    "vision_model": "",
-    "web_tools": [],
+    "vision_ready": true,
+    "vision_model": "deepseek-flash",
+    "web_tools": [
+      "fetch_url",
+      "web_search"
+    ],
     "materials": 0,
     "recordings": 3
   },
   "tools": {
-    "total": 23,
-    "surface_quickbar": 15,
+    "total": 25,
+    "surface_quickbar": 17,
     "surface_cet6": 16,
     "surface_quick": 2,
     "writes": [
@@ -39,28 +42,29 @@
   "memory": {
     "memories_active": 2,
     "memories_total": 5,
-    "conversations": 28,
+    "conversations": 32,
     "conversation_summaries": 0,
-    "asks": 138,
+    "asks": 150,
     "history_turns": 4
   },
   "reliability": {
     "auto_route": "shadow",
     "strong_model": "deepseek-v4-pro",
-    "runs": 60,
+    "runs": 73,
     "runs_with_tools": 6,
-    "errors": 1,
+    "errors": 2,
     "check_ok": 2,
     "check_failed": 0,
-    "prompt_tokens": 65002,
-    "completion_tokens": 4671,
-    "cache_read_tokens": 55936,
+    "prompt_tokens": 158928,
+    "completion_tokens": 12744,
+    "cache_read_tokens": 128640,
     "calls_by_model": {
-      "deepseek-flash": 25
+      "deepseek-flash": 38
     },
     "calls_by_source": {
-      "explain": 12,
-      "quick": 13
+      "explain": 24,
+      "quick": 13,
+      "vision": 1
     },
     "tool_calls": {
       "launch_app": 2,
@@ -80,6 +84,6 @@
     "write_tools": 8,
     "deep_available": false,
     "deep_calls": 0,
-    "vision_calls": 0
+    "vision_calls": 1
   }
 }

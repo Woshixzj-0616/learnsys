@@ -38,12 +38,16 @@ def _read_profile(cfg: AgentConfig) -> str:
 
 def _history_messages(history: list[tuple[str, str]] | None,
                       image_text: str) -> list[dict]:
-    """把「问/答」对变成 Anthropic 消息；图和它的转述只挂第一轮。"""
+    """把「问/答」对变成 Anthropic 消息；图和它的转述只挂第一轮。
+
+    上限 8 轮（有会话摘要时才会喂到这么多；没有摘要调用方仍只给 4 轮）：
+    保留第一轮（图挂在那儿）+ 最近七轮。
+    """
     turns = [(str(q), str(a)) for q, a in (history or []) if q]
     if not turns:
         return []
-    if len(turns) > 4:                 # 保留第一轮（图挂在那儿）+ 最近三轮
-        turns = [turns[0]] + turns[-3:]
+    if len(turns) > 8:
+        turns = [turns[0]] + turns[-7:]
     messages: list[dict] = []
     for index, (question, answer) in enumerate(turns):
         if index == 0 and image_text.strip():
@@ -142,6 +146,7 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
     system = (request.system_override.strip()
               or prompts.build_system(request.mode, has_image=bool(image_paths),
                                       profile=profile, memories=memory_text,
+                                      summary=request.history_summary,
                                       concise=concise))
     tool_schemas = tools.schemas_for(request.mode, use_tools=request.use_tools,
                                      surface=request.surface)

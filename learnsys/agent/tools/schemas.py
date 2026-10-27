@@ -115,6 +115,7 @@ TOOL_SCHEMAS.append(GET_CET6_CONTEXT_SCHEMA)
 
 from .schemas_learning import (DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
                                GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA)
+from .schemas_web import WEB_SCHEMAS
 
 TOOL_SCHEMAS.extend([DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
                      GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA])
@@ -395,13 +396,14 @@ def schemas_for(mode: str = "explain", *, use_tools: bool = True,
     if surface in ("cet6", "video"):
         return core + memory + [SAVE_MATERIAL_NOTE_SCHEMA]
     if surface == "quickbar":
-        return core + memory
+        return core + memory + list(WEB_SCHEMAS)
 
     schemas = list(core) + list(memory)
     if mode != "quiz":
         # 测验页不该顺手打开本机文件 / 程序 / 网页；只在工作台问答页暴露。
-        schemas += [OPEN_FILE_SCHEMA, LAUNCH_APP_SCHEMA,
-                    OPEN_URL_SCHEMA, BROWSER_STATUS_SCHEMA, BROWSER_HISTORY_SCHEMA]
+        schemas += (WEB_SCHEMAS
+                    + [OPEN_FILE_SCHEMA, LAUNCH_APP_SCHEMA,
+                       OPEN_URL_SCHEMA, BROWSER_STATUS_SCHEMA, BROWSER_HISTORY_SCHEMA])
     schemas += [SAVE_MATERIAL_NOTE_SCHEMA, WRITE_STUDY_FILE_SCHEMA, RUN_CODE_SCHEMA]
     if mode == "quiz":
         schemas.append(SAVE_WRONGBOOK_SCHEMA)

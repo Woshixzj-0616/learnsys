@@ -58,6 +58,16 @@ def add_message(conn: sqlite3.Connection, conversation_id: int, role: str,
         return int(cur.lastrowid or 0)
 
 
+def set_conversation_summary(conn: sqlite3.Connection, conversation_id: int,
+                             summary: str) -> None:
+    """写会话摘要（更早对话的压缩）；空串等于清空。"""
+    with _LOCK:
+        conn.execute(
+            "UPDATE conversations SET summary = ?, updated_at = ? WHERE id = ?",
+            (" ".join(str(summary or "").split())[:400], now(), int(conversation_id)))
+        conn.commit()
+
+
 def get_conversation(conn: sqlite3.Connection, conversation_id: int):
     with _LOCK:
         return conn.execute(

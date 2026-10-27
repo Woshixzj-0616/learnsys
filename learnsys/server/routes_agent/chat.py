@@ -82,7 +82,12 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 conn, title=req.message.strip()[:30] or "新对话",
                 module=module, mode=req.mode,
                 origin=origin, recording_id=recording_id)
-        history = _load_history(conn, conv_id)       # 先取旧账，再记这一问
+        # 先取旧账（含已有摘要），再记这一问。有摘要才放宽到 8 轮。
+        conversation_row = store.get_conversation(conn, conv_id)
+        history_summary = (str(conversation_row[4] or "").strip()
+                           if conversation_row is not None else "")
+        history = _load_history(conn, conv_id,
+                                turns=8 if history_summary else 4)
         material_id = req.material_id
         material_title = ""
         attachment_name = req.attachment_name
@@ -185,6 +190,7 @@ def chat(req: ChatRequest, _=Depends(require_token)):
             request = agent.AgentRequest(
                 message=req.message,
                 history=history,
+                history_summary=history_summary,
                 image_path=req.image_path,
                 extra_images=list(req.extra_images or []),
                 context=context_text,
@@ -267,9 +273,18 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                             conversation_id=conv_id, first_ms=first_ms)
                 elif error:
                     store.add_message(conn, conv_id, "assistant", {"error": error})
+                schedule_post = not req.internal
             except Exception as exc:
                 diagnostics.log_swallow("对话落库（消息/问答）", exc)
+                schedule_post = False
             conn.close()
+            if schedule_post:
+                # 每 4 条消息在后台生成摘要 + 抽长期记忆；主连接已关，不抢写锁。
+                try:
+                    from learnsys.agent import post_turn
+                    post_turn.schedule(conv_id, cfg.data_root)
+                except Exception as exc:
+                    diagnostics.log_swallow("会话摘要/记忆排程", exc)
 
     headers = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
     return StreamingResponse(stream(), media_type="text/event-stream", headers=headers)

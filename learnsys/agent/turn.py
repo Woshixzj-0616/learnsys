@@ -32,6 +32,7 @@ class AgentRequest:
     extra_images: list[str] | None = None
     context: str = ""
     context_title: str = ""          # 上下文标题（六级传「当前学习上下文」）
+    history_summary: str = ""        # 更早对话的压缩摘要（会话摘要功能写入）
     attachment_name: str = ""
     attachment_text: str = ""
     mode: str = "explain"

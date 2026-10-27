@@ -4,13 +4,13 @@
 
 ## 当前状态
 
-- 版本：**2.16.0**
+- 版本：**2.34.0**
 - 分支：`v2`
-- 最近阶段：**P19 BKT 接回学习闭环**
-- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 600 OK；
-  前端 `node --test web/tests/context.test.mjs` → 6；`quiz-parse` → 10；六级 dualwrite → 11
-- 发布说明：[2.16.0-发布说明](2.16.0-发布说明.md)
-- 上一版：[2.15.0-发布说明](2.15.0-发布说明.md)
+- 最近阶段：**P25 Agent P1（联网工具 / 会话摘要 / 自动记忆）**
+- 测试：`.venv/Scripts/python.exe -X utf8 -m unittest discover -s tests -p "test_*.py"` → 1045 OK；
+  前端 `node --test web/tests/*.mjs` → 42；六级 `node --test cet6-src/workbench_src/tests/*.mjs` → 30
+- 发布说明：[2.34.0-发布说明](2.34.0-发布说明.md)
+- 上一版：[2.33.0-发布说明](2.33.0-发布说明.md)
 
 ## 架构
 
@@ -39,6 +39,7 @@
 - [P19 BKT 接回学习闭环](施工单/P19-BKT闭环.md)
 - [P20.1 打开文件与应用](施工单/P20-打开文件与应用.md) · 设计完成，未开工
 - [P20.2 工作台浏览器](施工单/P20.2-工作台浏览器.md) · 设计完成，未开工
+- [P25 Agent P1：联网与记忆](施工单/P25-Agent-P1-联网与记忆.md)
 - [闸门：六级实验（已取消）](施工单/闸门-六级实验.md) · 报告 `tools/gate_report.py` 留作观测
 
 ## 验收

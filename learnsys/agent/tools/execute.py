@@ -11,6 +11,7 @@ from .study_tools import (due_reviews, forget_memory, get_cet6_context,
                           recent_wrong_items, save_memory, save_wrongbook)
 from .system_tools import (browser_history, browser_status, launch_app, open_file,
                            open_url)
+from .web_tools import fetch_url, web_search
 
 
 def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
@@ -21,6 +22,15 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
     """
     args = args if isinstance(args, dict) else {}
     try:
+        if name == "web_search":
+            text = web_search(str(args.get("query") or ""),
+                              int(args.get("count") or 6))
+            return text, "联网搜索", not text.startswith("联网搜索失败")
+        if name == "fetch_url":
+            text = fetch_url(str(args.get("url") or ""),
+                             int(args.get("max_chars") or 8000))
+            return (text, "读了网页",
+                    not text.startswith(("抓取失败", "这个地址不能取")))
         if name == "search_records":
             text = search_records(
                 str(args.get("query") or ""),

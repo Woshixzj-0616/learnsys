@@ -15,7 +15,8 @@ from .cet6 import (add_cet6_dualwrite_diffs, add_cet6_dualwrite_run,
                    cet6_progress_summary, cet6_recent_events,
                    upsert_cet6_progress)
 from .conversations import (add_message, conversation_messages, create_conversation,
-                            get_conversation, list_conversations, touch_conversation)
+                            get_conversation, list_conversations,
+                            set_conversation_summary, touch_conversation)
 from .events import add_event, event_days, event_kind_counts
 from .knowledge import (BKT_READY_SQL, add_attempt as add_knowledge_attempt,
                         all_points as knowledge_points, attempt_exists,
@@ -68,7 +69,8 @@ __all__ = [
     "add_cet6_dualwrite_diffs", "upsert_cet6_progress",
     "add_model_usage", "day_by_model", "day_totals", "recent_model_usage",
     "add_message", "conversation_messages", "create_conversation",
-    "get_conversation", "list_conversations", "touch_conversation",
+    "get_conversation", "list_conversations", "set_conversation_summary",
+    "touch_conversation",
     "add_event", "event_days", "event_kind_counts",
     "BKT_READY_SQL", "add_knowledge_attempt", "knowledge_points",
     "attempt_exists", "backfill_candidates", "has_live_attempt",
