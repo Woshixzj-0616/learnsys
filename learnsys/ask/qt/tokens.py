@@ -12,29 +12,30 @@ from learnsys.modules import web_dir
 
 _COMMENT = re.compile(r"/\*.*?\*/", re.S)
 _ROOT_BLOCK = re.compile(r":root\s*\{([^{}]*)\}", re.S)
+_MOOD_BLOCK = re.compile(r'body\[data-mood="([\w-]+)"\]\s*\{([^{}]*)\}', re.S)
 _DECLARATION = re.compile(r"(--[\w-]+)\s*:\s*([^;]+);")
 
-# 仅在读不到 tokens.css 时使用；值抄自 2026-10-24 的 tokens.css，核心颜色尽量齐
+# 仅在读不到 tokens.css 时使用；值抄自同一文件的「墨夜」（快捷栏固定用这套）
 _FALLBACK = {
-    "--bg": "#1b1e23",
-    "--bg-raised": "#21252b",
-    "--bg-sunken": "#15181c",
-    "--bg-input": "#181b20",
-    "--surface": "#ffffff",
-    "--surface-2": "#f6f8fb",
-    "--line": "#2b3139",
-    "--line-strong": "#3a424d",
-    "--text": "#dfe6ee",
-    "--text-dim": "#9aa7b5",
-    "--text-faint": "#6d7a89",
-    "--accent": "#4d8bff",
-    "--accent-strong": "#6ea1ff",
-    "--accent-soft": "rgba(77, 139, 255, 0.13)",
-    "--accent-line": "rgba(77, 139, 255, 0.42)",
+    "--bg": "#12151a",
+    "--bg-raised": "#1b1f26",
+    "--bg-sunken": "#171b21",
+    "--bg-input": "#171b21",
+    "--surface": "#1b1f26",
+    "--surface-2": "#20252d",
+    "--line": "rgba(255, 255, 255, 0.07)",
+    "--line-strong": "rgba(255, 255, 255, 0.13)",
+    "--text": "#e8eef6",
+    "--text-dim": "#a3b0c0",
+    "--text-faint": "#7d8a9a",
+    "--accent": "#6d9bff",
+    "--accent-strong": "#8ab0ff",
+    "--accent-soft": "rgba(109, 155, 255, 0.14)",
+    "--accent-line": "rgba(109, 155, 255, 0.42)",
     "--on-accent": "#ffffff",
     "--mark": "#f0b45e",
     "--mark-soft": "rgba(240, 180, 94, 0.14)",
-    "--ok": "#63c08f",
+    "--ok": "#5cc08b",
     "--warn": "#e0a35c",
     "--err": "#e37b7b",
     "--err-soft": "rgba(227, 123, 123, 0.12)",
@@ -86,13 +87,31 @@ def load_tokens(text: str) -> dict[str, str]:
     return result
 
 
+def load_mood_tokens(text: str, mood: str = "ink") -> dict[str, str]:
+    """解析 `body[data-mood="ink"] { ... }` 这一块。
+
+    网页切气质靠这段覆盖 `:root`；Qt 想跟某一套气质走时也读同一块。
+    """
+    clean = _COMMENT.sub("", text or "")
+    result: dict[str, str] = {}
+    for name, block in _MOOD_BLOCK.findall(clean):
+        if name == mood:
+            for match in _DECLARATION.finditer(block):
+                result[match.group(1)] = match.group(2).strip()
+    return result
+
+
 def default_tokens() -> dict[str, str]:
     """内置兜底值。只在 `tokens.css` 读不到时使用。"""
     return dict(_FALLBACK)
 
 
-def read_web_tokens(path: pathlib.Path | str | None = None) -> dict[str, str]:
-    """读 `web/css/tokens.css`（打包后是 `_MEIPASS/web/...`），失败回退兜底。"""
+def read_web_tokens(path: pathlib.Path | str | None = None,
+                    mood: str | None = None) -> dict[str, str]:
+    """读 `web/css/tokens.css`（打包后是 `_MEIPASS/web/...`），失败回退兜底。
+
+    `mood` 非空时再用同名 `body[data-mood=...]` 块覆盖 `:root`。
+    """
     target = pathlib.Path(path) if path is not None else web_dir() / "css" / "tokens.css"
     tokens = default_tokens()
     try:
@@ -100,6 +119,8 @@ def read_web_tokens(path: pathlib.Path | str | None = None) -> dict[str, str]:
     except (OSError, UnicodeDecodeError):
         return tokens
     tokens.update(load_tokens(text))
+    if mood:
+        tokens.update(load_mood_tokens(text, mood))
     return tokens
 
 

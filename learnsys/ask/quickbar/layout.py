@@ -56,9 +56,16 @@ class LayoutMixin:
         return max(200, int(area.height() * config.ASK_BAR_ANSWER_MAX_RATIO))
 
     def _clamp(self) -> None:
+        """把窗口完整放回可用屏幕内。
+
+        旧版只留 90px 在屏内，展开时右端会伸出屏幕、压到浏览器右上角的
+        最小化/最大化按钮（真踩过）。这里改成整窗完整包含。
+        """
         area = self._usable()
-        x = max(area.left() - self.width() + 90, min(self.x(), area.right() - 90))
-        y = max(area.top(), min(self.y(), area.bottom() - 40))
+        max_x = area.right() - self.width() + 1
+        max_y = area.bottom() - self.height() + 1
+        x = max(area.left(), min(self.x(), max_x))
+        y = max(area.top(), min(self.y(), max_y))
         if (x, y) != (self.x(), self.y()):
             self.move(x, y)
 

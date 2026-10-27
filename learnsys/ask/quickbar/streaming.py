@@ -10,16 +10,17 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from ..qt import style
 from ..qt import tokens as token_source
-from .common import (STATE_DONE, STATE_ERROR, STATE_HISTORY, STATE_STREAMING,
-                     STATE_THINKING, _STREAM_RENDER_SECONDS, _SCROLL_SLACK,
-                     _answer_char, _ask_char, _gap_block, _markdown_bold_for_qt)
+from .common import (BAR_MOOD, STATE_DONE, STATE_ERROR, STATE_HISTORY,
+                     STATE_STREAMING, STATE_THINKING, _STREAM_RENDER_SECONDS,
+                     _SCROLL_SLACK, _answer_char, _ask_char, _gap_block,
+                     _markdown_bold_for_qt)
 from .workers import _AskWorker
 
 
 @functools.lru_cache(maxsize=1)
 def _tokens() -> dict[str, str]:
     """`tokens.css` 不会在进程里变；缓存一份，避免每帧都读文件。"""
-    return token_source.merged(token_source.read_web_tokens())
+    return token_source.merged(token_source.read_web_tokens(mood=BAR_MOOD))
 
 
 def _hex(name: str, fallback: str = "#000000") -> str:

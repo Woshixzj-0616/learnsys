@@ -9,8 +9,12 @@ from ..qt import style
 from ..qt import tokens as token_source
 
 
+# 横栏固定跟「墨夜」气质走：它浮在桌面/浏览器上，深色不刺眼；
+# 网页工作台仍默认晨雾。两套颜色都来自同一份 tokens.css，不另抄。
+BAR_MOOD = "ink"
+
 # 设计规范（改样式先看这里，别一处一处试）：
-#   颜色  全部来自 `web/css/tokens.css`（`:root` = 晨雾浅色），这里只写占位符
+#   颜色  全部来自 `web/css/tokens.css`（`body[data-mood="ink"]`），这里只写占位符
 #   强调  问 / 复盘 / 输入焦点 / 菜单选中 = --accent
 #   语义  清空=危险（悬停泛红）｜ 收藏=金色（已收藏★）｜ 置顶开=蓝字
 #   圆角  卡片 14 ｜ 输入/按钮/答案 10 ｜ 小按钮 8 ｜ 菜单 10
@@ -89,7 +93,8 @@ _PLACEHOLDER = re.compile(r"\{\{([a-z0-9_]+)\}\}")
 def render_qss(tokens: dict[str, str] | None = None) -> str:
     """把令牌填进快捷栏模板；缺键用兜底，不会 KeyError。"""
     values = token_source.merged(
-        tokens if tokens is not None else token_source.read_web_tokens())
+        tokens if tokens is not None
+        else token_source.read_web_tokens(mood=BAR_MOOD))
     flat = {key[2:].replace("-", "_"): value for key, value in values.items()}
     flat["font_family"] = token_source.font_family(values)
     return _PLACEHOLDER.sub(lambda match: flat.get(match.group(1), ""), QSS_TEMPLATE)
@@ -155,7 +160,8 @@ def _ask_char(tokens: dict[str, str] | None = None) -> QtGui.QTextCharFormat:
     颜色来自令牌：控件要醒目，对话要柔和。
     """
     values = token_source.merged(
-        tokens if tokens is not None else token_source.read_web_tokens())
+        tokens if tokens is not None
+        else token_source.read_web_tokens(mood=BAR_MOOD))
     fmt = QtGui.QTextCharFormat()
     fmt.setBackground(style.color(values["--accent-soft"]))
     fmt.setForeground(style.color(values["--text"]))
@@ -177,7 +183,8 @@ def _gap_block() -> QtGui.QTextBlockFormat:
 def _answer_char(tokens: dict[str, str] | None = None) -> QtGui.QTextCharFormat:
     """AI 的回答：正文色（别继承「我」那块的字色）。"""
     values = token_source.merged(
-        tokens if tokens is not None else token_source.read_web_tokens())
+        tokens if tokens is not None
+        else token_source.read_web_tokens(mood=BAR_MOOD))
     fmt = QtGui.QTextCharFormat()
     fmt.setForeground(style.color(values["--text"]))
     return fmt
