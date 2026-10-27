@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PySide6 import QtCore, QtWidgets, QtGui  # noqa: E402
 
+from learnsys import config  # noqa: E402
 from learnsys.ask import VERSION, app as app_mod, backend, bar, usage  # noqa: E402
 
 REPO = pathlib.Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -59,6 +60,15 @@ class TestStreamingFollowScroll(unittest.TestCase):
 
     def setUp(self):
         _app()
+        # 横栏会读真实「界面设置.json」里的收起状态/高度 —— 测试必须隔离，
+        # 否则用户把横栏收起后，本类会因为没有答案区而全部失败（真踩过）。
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        settings = pathlib.Path(self._tmp.name) / "界面设置.json"
+        settings.write_text("{}", encoding="utf-8")
+        patcher = mock.patch.object(config, "SETTINGS_PATH", settings)
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.b = bar.AskBar("Alt+Q")
         self.b.show()
         self.addCleanup(self.b.shutdown)

@@ -77,7 +77,7 @@ class Test8TopmostSinglePath(unittest.TestCase):
                 before = b._on_top
                 b.toggle_always_on_top()
         self.assertEqual(b._on_top, not before)
-        self.assertEqual(b.top_btn.text(), "置顶" if b._on_top else "不置顶")
+        self.assertEqual(b.top_btn.text(), "已置顶" if b._on_top else "置顶")
 
     def test_toggle_demote_corrects_flags_when_ineffective(self):
         """真机踩过的场景：启动带 hint，点「不置顶」降不下去 ⇒ 兜底必须摘 hint。"""

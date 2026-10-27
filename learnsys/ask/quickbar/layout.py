@@ -217,7 +217,12 @@ class LayoutMixin:
     def _sync_top_btn(self) -> None:
         if not hasattr(self, "top_btn"):
             return
-        self.top_btn.setText("置顶" if self._on_top else "不置顶")
+        # 文案写当前状态，不写动作：旧版开着时叫「置顶」，用户以为点了才会置顶，
+        # 结果一点反而关掉（真踩过）。现在「已置顶」= 正开着，点一下关。
+        self.top_btn.setText("已置顶" if self._on_top else "置顶")
+        self.top_btn.setToolTip(
+            "横栏正压在其他窗口上面；点一下取消" if self._on_top
+            else "点一下让横栏一直在其他窗口上面")
         self.top_btn.setChecked(self._on_top)
 
 
