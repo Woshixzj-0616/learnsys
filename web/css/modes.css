@@ -1,11 +1,12 @@
 /* 页面模式：模式面板与专注模式 */
 
 /* ---------- 模式面板 ---------- */
+/* 入口在侧栏底部，所以面板也从左下角弹出 —— 右上角留给浏览器窗口按钮 */
 .mode-pop {
-  position: absolute;
-  top: 52px;
-  right: 32px;
-  z-index: 40;
+  position: fixed;
+  left: calc(var(--sidebar-w) + 12px);
+  bottom: 64px;
+  z-index: 60;
   width: 318px;
   padding: 12px 14px;
   border: 1px solid var(--line);
@@ -16,7 +17,7 @@
 }
 .mode-pop[hidden] { display: none; }
 @keyframes pop-in {
-  from { opacity: 0; transform: translateY(-4px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
 }
 .mode-row {
