@@ -7,6 +7,8 @@ from __future__ import annotations
 from .context import ToolContext, _one_line, _safe_path, _stamp
 from .execute import execute
 from .files import (STUDY_FILE_SUFFIXES, _study_target, run_code, write_study_file)
+from .learning_write import (add_vocab, delete_vocab, rate_review,
+                             save_training_error)
 from .materials import read_material, save_material_note, search_materials
 from .records import ocr_image, read_attachment, search_records, today_summary
 from .schemas import (BROWSER_HISTORY_SCHEMA, BROWSER_STATUS_SCHEMA, CONFIRM_TOOLS,
@@ -41,5 +43,6 @@ __all__ = [
     "save_wrongbook", "get_cet6_context", "save_memory", "forget_memory",
     "recent_wrong_items", "due_reviews", "get_mastery", "get_train_summary",
     "list_recordings", "write_study_file", "run_code",
+    "add_vocab", "delete_vocab", "rate_review", "save_training_error",
     "open_file", "launch_app", "open_url", "browser_status", "browser_history",
 ]

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 PRODUCT_NAME = "学习工作台"
 QNA_NAME = "问一问"
-VERSION = "2.34.1"                      # 版本号只写这一处；界面与打包都从这里取
+VERSION = "2.35.0"                      # 版本号只写这一处；界面与打包都从这里取
 
 DESCRIPTION = f"{PRODUCT_NAME} · 框选屏幕问 AI"
 EXE_NAME = f"{PRODUCT_NAME}.exe"

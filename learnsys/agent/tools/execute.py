@@ -4,6 +4,8 @@ from __future__ import annotations
 from learnsys.agent import sandbox
 from .context import ToolContext
 from .files import run_code, write_study_file
+from .learning_write import (add_vocab, delete_vocab, rate_review,
+                             save_training_error)
 from .materials import read_material, save_material_note, search_materials
 from .records import ocr_image, read_attachment, search_records, today_summary
 from .study_tools import (due_reviews, forget_memory, get_cet6_context,
@@ -135,6 +137,33 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
             text = browser_history(int(args.get("limit") or 20),
                                    int(args.get("days") or 7))
             return text, "读了浏览器记录", not text.startswith("读浏览记录失败")
+        if name == "add_vocab":
+            text = add_vocab(
+                str(args.get("word") or ""), str(args.get("meaning") or ""),
+                str(args.get("phonetic") or ""), str(args.get("context") or ""),
+                str(args.get("source") or "agent"), ctx=ctx)
+            ok = text.startswith(("已加进", "生词本里已有"))
+            return text, ("加进了生词本" if ok else "生词没有加进"), ok
+        if name == "delete_vocab":
+            text = delete_vocab(
+                str(args.get("word") or ""), int(args.get("item_id") or 0),
+                ctx=ctx)
+            ok = text.startswith("已从生词本删除")
+            return text, ("从生词本删了词" if ok else "生词没有删除"), ok
+        if name == "rate_review":
+            text = rate_review(
+                str(args.get("item_type") or ""), int(args.get("item_id") or 0),
+                int(args.get("rating") or 0), ctx=ctx)
+            ok = text.startswith("已给")
+            return text, ("提交了复习评档" if ok else "评档没有记录"), ok
+        if name == "save_training_error":
+            text = save_training_error(
+                str(args.get("question") or ""), str(args.get("my_answer") or ""),
+                str(args.get("correct_answer") or ""),
+                str(args.get("skill") or ""), str(args.get("source") or "writing"),
+                ctx=ctx)
+            ok = text.startswith(("已收进", "这条错误已经"))
+            return text, ("收进了训练错题" if ok else "训练错题没有收进"), ok
         if name == "save_wrongbook":
             text = save_wrongbook(
                 str(args.get("question") or ""), str(args.get("my_answer") or ""),

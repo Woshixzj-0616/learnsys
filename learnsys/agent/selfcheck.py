@@ -84,6 +84,11 @@ class Evidence:
                     pages.update(_pages(match.group(0)))
         for match in WRONG_RE.finditer(text):
             self.wrong_ids.add(int(match.group(1)))
+        if name in ("save_wrongbook", "save_training_error"):
+            # 写入类工具返回「已收进…（#12）」，没有「错题 #12」字样；
+            # 把返回的编号也算成已核对，免得自检把刚写入的卡片判成编造。
+            for match in re.finditer(r"[#＃]\s*(\d+)", text):
+                self.wrong_ids.add(int(match.group(1)))
         for match in STAMP_RE.finditer(text):
             self.stamps.add(match.group(1))
 

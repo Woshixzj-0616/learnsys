@@ -116,6 +116,9 @@ TOOL_SCHEMAS.append(GET_CET6_CONTEXT_SCHEMA)
 from .schemas_learning import (DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
                                GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA)
 from .schemas_web import WEB_SCHEMAS
+from .schemas_write import (ADD_VOCAB_SCHEMA, CET6_WRITE_SCHEMAS,
+                            WRITE_LABELS_EXTRA, WRITING_WRITE_SCHEMAS,
+                            WRITING_WRITE_TOOLS, extra_write_summary)
 
 TOOL_SCHEMAS.extend([DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
                      GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA])
@@ -357,7 +360,7 @@ RUN_CODE_SCHEMA = {
 }
 
 WRITE_TOOLS = {"save_wrongbook", "save_memory", "forget_memory",
-               "save_material_note", "write_study_file"}
+               "save_material_note", "write_study_file"} | WRITING_WRITE_TOOLS
 # 需要用户确认的副作用工具：写数据 + 运行代码 + 动系统（打开文件/启动程序）。
 # 打开文件/启动程序不改数据，但会在电脑上真的发生，所以单独放进确认集合、不进 WRITE_TOOLS。
 CONFIRM_TOOLS = WRITE_TOOLS | {"run_code", "open_file", "launch_app", "open_url"}
@@ -372,6 +375,7 @@ WRITE_LABELS = {
     "open_file": "打开文件",
     "launch_app": "启动程序",
     "open_url": "打开网址",
+    **WRITE_LABELS_EXTRA,
 }
 
 # 状态行给人看的短名（工具名本身不进界面）：网页与快捷栏共用这一份。
@@ -420,10 +424,14 @@ def schemas_for(mode: str = "explain", *, use_tools: bool = True,
 
     learning = [MAKE_PLAN_SCHEMA, RECENT_WRONG_ITEMS_SCHEMA]
     core = learning + list(TOOL_SCHEMAS)
-    if surface in ("cet6", "video"):
-        return core + memory + [SAVE_MATERIAL_NOTE_SCHEMA]
+    if surface == "cet6":
+        return core + memory + [SAVE_MATERIAL_NOTE_SCHEMA] + CET6_WRITE_SCHEMAS
+    if surface == "video":
+        # 录像里只加词：收训练错题、评档都回六级/工作台做。
+        return core + memory + [SAVE_MATERIAL_NOTE_SCHEMA, ADD_VOCAB_SCHEMA]
     if surface == "quickbar":
-        return core + memory + list(WEB_SCHEMAS)
+        # 课上只给「记一下这个词」；删除/评档会打断听讲。
+        return core + memory + list(WEB_SCHEMAS) + [ADD_VOCAB_SCHEMA]
 
     schemas = list(core) + list(memory)
     if mode != "quiz":
@@ -431,6 +439,7 @@ def schemas_for(mode: str = "explain", *, use_tools: bool = True,
         schemas += (WEB_SCHEMAS
                     + [OPEN_FILE_SCHEMA, LAUNCH_APP_SCHEMA,
                        OPEN_URL_SCHEMA, BROWSER_STATUS_SCHEMA, BROWSER_HISTORY_SCHEMA])
+        schemas += WRITING_WRITE_SCHEMAS
     schemas += [SAVE_MATERIAL_NOTE_SCHEMA, WRITE_STUDY_FILE_SCHEMA, RUN_CODE_SCHEMA]
     if mode == "quiz":
         schemas.append(SAVE_WRONGBOOK_SCHEMA)
@@ -440,6 +449,9 @@ def schemas_for(mode: str = "explain", *, use_tools: bool = True,
 def write_summary(name: str, args: dict) -> str:
     """写操作确认框里给人看的一句话。用户要能一眼看出会改什么。"""
     args = args if isinstance(args, dict) else {}
+    extra = extra_write_summary(name, args)
+    if extra:
+        return extra
     label = WRITE_LABELS.get(name, name)
     if name == "save_memory":
         content = " ".join(str(args.get("content") or "").split())[:120]
