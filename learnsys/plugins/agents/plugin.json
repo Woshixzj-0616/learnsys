@@ -1,0 +1,15 @@
+{
+  "id": "agents",
+  "name": "Agent 中枢",
+  "icon": "⌘",
+  "type": "native-page",
+  "entry": "pages/agents.html",
+  "script": "js/pages/agents/index.js",
+  "order": 55,
+  "status": "ready",
+  "version": "2.37.0",
+  "category": "工具",
+  "home": true,
+  "tagline": "把整件事派给 Claude / Codex",
+  "description": "写一个任务，选 Claude Code 或 Codex，在允许的目录里只读执行；流式看过程，结果存学习档案。"
+}

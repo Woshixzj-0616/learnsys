@@ -7,6 +7,12 @@ from __future__ import annotations
 
 from ._base import SCHEMA, _LOCK, _migrate, connect, now, stamp
 from .agent_runs import add_agent_run, get_agent_run, list_agent_runs, route_stats
+from .agent_tasks import (STATUSES as AGENT_TASK_STATUSES, add_event as add_agent_task_event,
+                          add_task as add_agent_task, get_task as get_agent_task,
+                          list_events as list_agent_task_events,
+                          list_tasks as list_agent_tasks,
+                          running_count as agent_tasks_running,
+                          update_task as update_agent_task)
 from .asks import add_ask, recent_asks, starred_asks
 from .browser import (add_browser_event, cleanup_browser_events,
                       clear_browser_events, list_browser_events)
@@ -61,6 +67,9 @@ from .wrongbook import (WRONG_SOURCES, add_wrong_item, delete_wrong_item,
 __all__ = [
     "SCHEMA", "connect", "now", "stamp",
     "add_agent_run", "get_agent_run", "list_agent_runs", "route_stats",
+    "AGENT_TASK_STATUSES", "add_agent_task_event", "add_agent_task",
+    "get_agent_task", "list_agent_task_events", "list_agent_tasks",
+    "agent_tasks_running", "update_agent_task",
     "add_ask", "recent_asks", "starred_asks",
     "add_browser_event", "cleanup_browser_events", "clear_browser_events",
     "list_browser_events",

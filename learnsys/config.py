@@ -84,6 +84,16 @@ SETTINGS_TEMPLATE = {
         "api_key": "",
         "model": "",
     },
+    "_agents": "Agent 中枢：把任务只读派给本机 Claude Code / Codex。"
+               "allowed_roots 是允许读取的目录，留空 = 只允许数据目录；"
+               "timeout 是单任务超时秒数（10–900）。",
+    "agents": {
+        "allowed_roots": [],
+        "timeout": 300,
+        "max_concurrent": 2,
+        "claude": {"enabled": True, "command": "claude", "args": []},
+        "codex": {"enabled": True, "command": "codex", "args": []},
+    },
     "api_base": "",
     "api_key": "",
     "api_model": "",

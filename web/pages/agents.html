@@ -1,0 +1,78 @@
+<div class="agents-page">
+  <section class="stage-hero agents-hero">
+    <div>
+      <p class="stage-eyebrow">Agent 中枢 · 只读派活</p>
+      <h2>把整件事交给本机 agent。</h2>
+      <p class="stage-sub">选 Claude Code 或 Codex，在允许的目录里只读执行；
+        过程实时可见，结果自动存进学习档案。写文件和跑命令留到下一阶段。</p>
+      <div class="review-stats" id="ag-stats">
+        <div class="review-chip"><span>可用 agent</span><strong>—</strong></div>
+        <div class="review-chip"><span>运行中</span><strong>—</strong></div>
+        <div class="review-chip"><span>最近任务</span><strong>—</strong></div>
+      </div>
+    </div>
+    <div class="wrongbook-hero-actions">
+      <button class="btn" type="button" id="ag-refresh">刷新</button>
+    </div>
+  </section>
+
+  <section class="panel agents-compose">
+    <div class="panel-head">
+      <strong>派一个任务</strong>
+      <span class="hint" id="ag-hint">只读：agent 不能改文件、不能跑命令</span>
+    </div>
+    <div class="panel-body agents-form">
+      <div class="agents-row">
+        <label>Agent
+          <select class="input" id="ag-agent"></select>
+        </label>
+        <label class="agents-grow">工作目录
+          <input class="input" id="ag-workspace" list="ag-roots"
+                 placeholder="留空 = 数据目录" autocomplete="off">
+          <datalist id="ag-roots"></datalist>
+        </label>
+        <label>超时（秒）
+          <input class="input" id="ag-timeout" type="number" min="10" max="900" value="300">
+        </label>
+      </div>
+      <div class="agents-row">
+        <label class="agents-grow">挂资料（可选）
+          <select class="input" id="ag-material">
+            <option value="">不挂资料</option>
+          </select>
+        </label>
+      </div>
+      <textarea class="input agents-prompt" id="ag-prompt" rows="5"
+        placeholder="例如：只读 D:\Desktop\learnsys，解释 agent/turn.py 的执行流程，指出最值得先读的 3 个函数。"></textarea>
+      <div class="agents-actions">
+        <span class="hint" id="ag-note"></span>
+        <button class="btn btn-primary" type="button" id="ag-start">开始任务</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel agents-run" id="ag-run" hidden>
+    <div class="panel-head">
+      <strong id="ag-run-title">任务</strong>
+      <span class="agents-status" id="ag-status">—</span>
+      <button class="btn" type="button" id="ag-stop" hidden>停止</button>
+      <button class="btn" type="button" id="ag-clear">收起</button>
+    </div>
+    <div class="panel-body">
+      <pre class="agents-log" id="ag-log"></pre>
+      <div class="agents-result" id="ag-result" hidden></div>
+    </div>
+  </section>
+
+  <section class="panel agents-history">
+    <div class="panel-head">
+      <strong>最近任务</strong>
+      <span class="hint" id="ag-count"></span>
+    </div>
+    <div class="panel-body">
+      <div class="agents-list" id="ag-list">
+        <div class="empty">正在读任务…</div>
+      </div>
+    </div>
+  </section>
+</div>
