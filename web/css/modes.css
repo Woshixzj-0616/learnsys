@@ -28,6 +28,28 @@
 }
 .mode-row + .mode-row { border-top: 1px solid var(--line); }
 .mode-label { color: var(--text-dim); font-size: 12px; }
+
+/* 气质选择收进面板：顶栏只留「模式」按钮，右侧不再被浏览器窗口按钮挤住 */
+.mode-pop .moods {
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.mode-pop .mood {
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+.mode-pop .mood::before { display: none; }
+.mode-pop .mood.is-on {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+}
 .seg {
   display: flex;
   gap: 2px;

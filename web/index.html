@@ -68,14 +68,17 @@
           <button class="search-hint" type="button" id="search-hint">搜索 / 提问 <kbd>/</kbd></button>
           <div id="page-actions"></div>
           <button class="mode-btn" type="button" id="mode-btn" aria-expanded="false" aria-controls="mode-pop">◫ 模式</button>
-          <div class="moods" role="group" aria-label="界面气质">
-            <button class="mood is-on" type="button" data-mood-btn="mist" title="浅色、通透">晨雾</button>
-            <button class="mood" type="button" data-mood-btn="ink" title="深色、安静">墨夜</button>
-            <button class="mood" type="button" data-mood-btn="paper" title="暖白、书卷气">纸感</button>
-          </div>
         </div>
 
         <div class="mode-pop" id="mode-pop" hidden>
+          <div class="mode-row">
+            <span class="mode-label">气质</span>
+            <div class="moods" role="group" aria-label="界面气质">
+              <button class="mood is-on" type="button" data-mood-btn="mist" title="浅色、通透">晨雾</button>
+              <button class="mood" type="button" data-mood-btn="ink" title="深色、安静">墨夜</button>
+              <button class="mood" type="button" data-mood-btn="paper" title="暖白、书卷气">纸感</button>
+            </div>
+          </div>
           <div class="mode-row">
             <span class="mode-label">页面</span>
             <div class="seg" role="group" aria-label="页面模式">
