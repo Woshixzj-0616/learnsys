@@ -3,7 +3,7 @@
  * 目标：PWA 能装、断网时至少能打开壳并提示「后台未连接」；
  * 数据永远走本地 FastAPI，不在这里缓存。
  */
-const CACHE = "learnsys-web-v32";
+const CACHE = "learnsys-web-v33";
 const CORE = [
   "/",
   "/manifest.webmanifest",
@@ -14,6 +14,7 @@ const CORE = [
   "/web/index.html",
   "/web/css/tokens.css",
   "/web/css/shell.css",
+  "/web/css/modes.css",
   "/web/css/today.css",
   "/web/css/ask.css",
   "/web/css/settings.css",
@@ -27,6 +28,7 @@ const CORE = [
   "/web/css/agents.css",
   "/web/css/cet6.css",
   "/web/js/shell.js",
+  "/web/js/modes.js",
   "/web/js/nav_bridge.js",
   "/web/js/api.js",
   "/web/js/ui.js",

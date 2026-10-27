@@ -1,7 +1,7 @@
 /* 学习工作台 · 设置、占位模块、提示条、窄窗口（同一插件族的样式放一个文件） */
 /* ---------- 设置 ---------- */
 
-.settings-page { max-width: 780px; }
+.settings-page { max-width: 980px; margin: 0 auto; }
 
 .memory-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
 
@@ -12,13 +12,24 @@
 .memory-add { display: flex; gap: 8px; }
 .memory-add .input { flex: 1; }
 
-.settings-section { margin-bottom: 36px; }
+.settings-section {
+  margin-bottom: var(--gap);
+  padding: 20px 24px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+}
 
 .settings-section > h2 {
   margin: 0 0 3px;
-  font-size: var(--fs-md);
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: -.01em;
   font-weight: 600;
 }
+
+.setting-row:last-child { border-bottom: 0; }
 
 .settings-section > .hint { margin-bottom: 8px; }
 

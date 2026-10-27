@@ -17,18 +17,19 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 28px;
-  padding: 28px 30px;
+  padding: 26px 28px;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
   background:
-    radial-gradient(1100px 300px at 0% -40%, rgba(77, 139, 255, 0.18), transparent 60%),
-    linear-gradient(135deg, #232a36 0%, var(--bg-raised) 55%, var(--bg-sunken) 100%);
+    radial-gradient(520px circle at 85% 6%, var(--accent-soft), transparent 44%),
+    var(--surface);
 }
 
 .stage-eyebrow {
   margin: 0 0 6px;
-  color: var(--accent-strong);
-  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  font-size: 11.5px;
   letter-spacing: 0.12em;
 }
 
@@ -61,7 +62,7 @@
   height: 9px;
   overflow: hidden;
   border-radius: 999px;
-  background: #141820;
+  background: var(--bg-sunken);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 
@@ -89,7 +90,7 @@
   padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
-  background: rgba(20, 24, 32, 0.55);
+  background: var(--surface-2);
 }
 
 .streak-flame { color: var(--mark); font-size: 16px; }
@@ -102,7 +103,7 @@
   padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
-  background: rgba(20, 24, 32, 0.55);
+  background: var(--surface-2);
 }
 
 .level-line { display: flex; align-items: baseline; gap: 8px; margin-bottom: 9px; }
@@ -122,7 +123,7 @@
   height: 6px;
   overflow: hidden;
   border-radius: 999px;
-  background: #141820;
+  background: var(--bg-sunken);
 }
 
 .level-bar i {
@@ -176,7 +177,7 @@
 
 .plugin-card:hover {
   border-color: var(--accent-line);
-  background: linear-gradient(160deg, var(--bg-raised), #232a36);
+  background: linear-gradient(160deg, var(--bg-raised), var(--surface-2));
   transform: translateY(-1px);
 }
 
@@ -249,7 +250,7 @@
   border-radius: var(--r-lg);
   background:
     radial-gradient(900px 260px at 100% -30%, rgba(240, 180, 94, 0.14), transparent 60%),
-    linear-gradient(135deg, #242a35, var(--bg-raised) 60%, var(--bg-sunken));
+    linear-gradient(135deg, var(--surface-2), var(--bg-raised) 60%, var(--bg-sunken));
 }
 
 .netlab-hero h2 { margin: 0 0 8px; font-size: 27px; font-weight: 650; }
@@ -275,7 +276,7 @@
   padding: 15px 16px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
-  background: rgba(20, 24, 32, 0.55);
+  background: var(--surface-2);
 }
 
 .netlab-meter-top {
@@ -370,7 +371,7 @@
   padding: 26px 28px;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  background: linear-gradient(135deg, #232a36, var(--bg-raised) 60%, var(--bg-sunken));
+  background: linear-gradient(135deg, var(--surface-2), var(--bg-raised) 60%, var(--bg-sunken));
 }
 
 .plugins-hero h2 { margin: 0 0 8px; font-size: 26px; font-weight: 650; }

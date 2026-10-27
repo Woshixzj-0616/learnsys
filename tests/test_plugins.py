@@ -105,6 +105,11 @@ class PluginApiTest(unittest.TestCase):
         self.assertEqual(data["total"]["title"], "网络小白")
         self.assertEqual(data["streak"], 1)
         self.assertEqual(data["today"]["goal"], 100)
+        daily = data["week"]["daily"]
+        self.assertEqual(len(daily), 7)
+        self.assertAlmostEqual(sum(day["minutes"] for day in daily),
+                               data["week"]["minutes"], places=1)
+        self.assertTrue(daily[-1]["active"])
         earned = {a["id"] for a in data["achievements"] if a["earned"]}
         self.assertIn("first_ask", earned)
         self.assertNotIn("streak_3", earned)

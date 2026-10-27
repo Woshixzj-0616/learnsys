@@ -178,6 +178,14 @@ def overview(_=Depends(require_token)):
         week_asks = int(conn.execute(
             "SELECT COUNT(*) FROM asks WHERE substr(ts,1,10) >= ?", (week_start.isoformat(),)
         ).fetchone()[0] or 0)
+        week_daily = []
+        for offset in range(6, -1, -1):
+            day = (datetime.date.today() - datetime.timedelta(days=offset)).isoformat()
+            week_daily.append({
+                "date": day,
+                "minutes": round(_focus_minutes(conn, day), 1),
+                "active": day in days,
+            })
 
         raw = app_config.load_settings()
         try:
@@ -206,7 +214,7 @@ def overview(_=Depends(require_token)):
             "total": {"xp": total_xp, **level},
             "streak": streak,
             "week": {"active_days": len(week_days), "minutes": week_minutes,
-                     "asks": week_asks},
+                     "asks": week_asks, "daily": week_daily},
             "achievements": _achievements(all_counts, streak, all_focus),
         }
     finally:

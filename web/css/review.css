@@ -9,7 +9,7 @@
   border-radius: var(--r-lg);
   background:
     radial-gradient(900px 240px at 100% -30%, rgba(77, 139, 255, 0.14), transparent 60%),
-    linear-gradient(135deg, #232a36, var(--bg-raised) 60%, var(--bg-sunken));
+    linear-gradient(135deg, var(--surface-2), var(--bg-raised) 60%, var(--bg-sunken));
 }
 
 .review-hero h2, .quiz-hero h2 { margin: 0 0 8px; font-size: 26px; font-weight: 650; }
@@ -26,7 +26,7 @@
   padding: 5px 11px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(20, 24, 32, 0.5);
+  background: var(--surface-2);
   color: var(--text-faint);
   font-size: 11.5px;
 }
@@ -136,15 +136,29 @@
   .quiz-hero-actions { align-items: flex-start; }
 }
 
-/* ---- 错题本 ---- */
-.wrongbook-page { max-width: var(--page-max); }
+/* ---- 错题本 / 生词本 ---- */
+.wrongbook-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  max-width: var(--page-max);
+  margin: 0 auto;
+}
 .wrongbook-hero {
   display: flex;
   justify-content: space-between;
   gap: var(--s5);
   align-items: flex-start;
 }
-.wrongbook-hero h2 { margin: 0 0 8px; font-size: 26px; font-weight: 650; }
+.wrongbook-hero h2 {
+  margin: 8px 0 10px;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.22;
+  letter-spacing: -.02em;
+  font-weight: 650;
+}
+.wrongbook-hero .stage-sub { max-width: 58ch; color: var(--text-dim); font-size: 13.5px; }
 .wrongbook-hero-actions {
   display: flex;
   flex-direction: column;
@@ -152,7 +166,7 @@
   gap: var(--s2);
   flex: none;
 }
-.wrongbook-panel { margin-top: 22px; }
+.wrongbook-panel { margin-top: 0; }
 .wrongbook-toolbar {
   display: flex;
   justify-content: space-between;

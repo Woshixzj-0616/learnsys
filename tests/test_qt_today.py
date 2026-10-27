@@ -261,7 +261,7 @@ class TestTodayWindow(unittest.TestCase):
     def test_深色调色板(self):
         palette = self.window.palette()
         self.assertEqual(palette.color(QtGui.QPalette.ColorRole.Window).name(),
-                         "#1b1e23")
+                         "#f3f5f9")
         self.assertTrue(self.window.styleSheet().strip())
 
     def test_自动刷新定时器随显隐启停(self):

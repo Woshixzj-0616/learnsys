@@ -15,8 +15,8 @@ from . import tokens as token_source
 from .qss_common import QSS_COMMON
 from .qss_today import QSS_TODAY
 
-# 主按钮上的字色（Web 的 `.btn-primary` 写的就是这个值，不随主题变）
-ON_ACCENT = "#0f1420"
+# 主按钮上的字色兜底；正常从 tokens.css 的 --on-accent 读
+ON_ACCENT = "#ffffff"
 
 # 版式常量：来自 settings.css / 施工单，不属于颜色令牌
 CONTENT_MAX = 780          # `.settings-page { max-width }`
@@ -101,11 +101,16 @@ _ARROW = ((10, 6), 1.4, [(1.5, 1.5), (5.0, 4.5), (8.5, 1.5)])
 
 
 def render_qss(tokens: dict[str, str] | None = None) -> str:
-    """把令牌填进 QSS 模板；缺键用兜底，不会 KeyError。"""
-    values = token_source.merged(tokens)
+    """把令牌填进 QSS 模板；缺键用兜底，不会 KeyError。
+
+    不传 tokens 时读 `web/css/tokens.css`，和窗口实际使用的一致。
+    """
+    source = tokens if tokens is not None else token_source.read_web_tokens()
+    values = token_source.merged(source)
     flat = _flat(values)
     flat["font_family"] = token_source.font_family(values)
-    flat["check_icon"] = _icon("check", ON_ACCENT, *_CHECK)
+    flat["check_icon"] = _icon(
+        "check", values.get("--on-accent", ON_ACCENT), *_CHECK)
     flat["arrow_icon"] = _icon(
         "arrow", values.get("--text-dim", "#9aa7b5"), *_ARROW)
     return _PLACEHOLDER.sub(lambda match: flat.get(match.group(1), ""), QSS_TEMPLATE)

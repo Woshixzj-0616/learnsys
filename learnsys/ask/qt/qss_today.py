@@ -21,7 +21,7 @@ QLabel#TodayDate {
 }
 QWidget#HeroCard {
     background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-        stop: 0 #232a36, stop: 0.55 {{bg_raised}}, stop: 1 {{bg_sunken}});
+        stop: 0 {{accent_soft}}, stop: 0.55 {{bg_raised}}, stop: 1 {{bg_sunken}});
     border: 1px solid {{line}};
     border-radius: {{r_lg}};
 }
@@ -61,7 +61,7 @@ QProgressBar#GoalBar::chunk {
     border-radius: 4px;
 }
 QWidget#SideCard {
-    background: rgba(20, 24, 32, 0.55);
+    background: {{accent_soft}};
     border: 1px solid {{line}};
     border-radius: {{r_md}};
 }

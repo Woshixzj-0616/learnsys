@@ -69,7 +69,7 @@ QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
     color: {{text}};
     font-size: {{fs_sm}};
     selection-background-color: {{accent}};
-    selection-color: #0f1420;
+    selection-color: {{on_accent}};
 }
 QLineEdit:hover, QComboBox:hover, QSpinBox:hover, QDoubleSpinBox:hover {
     border-color: {{line_strong}};
@@ -151,7 +151,7 @@ QPushButton:disabled {
 QPushButton#Primary {
     background: {{accent}};
     border-color: {{accent}};
-    color: #0f1420;
+    color: {{on_accent}};
     font-weight: 600;
 }
 QPushButton#Primary:hover {

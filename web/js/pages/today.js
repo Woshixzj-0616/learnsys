@@ -1,24 +1,32 @@
-// 今日：学习工作台首页 —— 学习点/连续天数/等级、插件卡片、时间线、专注、成就。
+// 今日：学习工作台首页 —— 今日目标、六级断点、行动卡、本周、全部工具、时间线。
 import { api } from "../api.js";
+import { getModes } from "../modes.js";
 import { plain } from "../markdown.js";
 import {
-  charsParts, escapeHtml, minutesParts, timeOf, toast, todayLabel,
+  charsParts, escapeHtml, minutesParts, timeOf, toast,
 } from "../ui.js";
 
-export async function mount(ctx) {
-  ctx.setSub(todayLabel());
-  ctx.setActions('<a class="btn btn-primary" href="#/ask">新问题</a><a class="btn" href="#/wrongbook">开始复习</a>');
+const WEEK_NAMES = "日一二三四五六";
+let studySub = "";
+const ACTION_ICONS = {
+  due: "↻", train: "✍", cet6: "♪", materials: "▤", weak: "◈",
+};
 
-  const [overview, today, conversations, settings, reviewStats] = await Promise.all([
+export async function mount(ctx) {
+  ctx.setSub("");
+  ctx.setActions("");
+  document.title = "今日 · 学习工作台";
+
+  const [overview, today, settings, reviewStats] = await Promise.all([
     api.get("/api/overview"),
     api.get("/api/today"),
-    api.get("/api/conversations?limit=8").catch(() => ({ items: [] })),
     api.get("/api/settings").catch(() => null),
     api.get("/api/review/stats").catch(() => null),
   ]);
 
   renderOnboarding(settings);
   renderHero(overview);
+  renderContinue(today.cet6 || []);
   renderPlugins(ctx, overview, settings);
   renderStats(today, reviewStats || {});
   renderActions(today.actions || []);
@@ -27,70 +35,123 @@ export async function mount(ctx) {
   renderTimeline(today.asks || []);
   renderFocus(today.focus || {});
   renderCet6(today.cet6 || []);
+  bindAsk();
+  bindWeekTips();
+  bindGo();
+  applyScene();
+  window.addEventListener("learnsys:modes", applyScene);
+}
 
-  const latest = (conversations.items || []).find((item) => item.messages > 0);
-  const continueButton = ctx.root.querySelector("#continue-last");
-  continueButton?.addEventListener("click", () => {
-    if (latest) {
-      location.hash = `#/ask/${latest.id}`;
-    } else {
-      toast("还没有会话，先问一个问题吧");
-      location.hash = "#/ask";
-    }
-  });
+export function unmount() {
+  window.removeEventListener("learnsys:modes", applyScene);
+}
 
-  ctx.root.querySelectorAll("[data-go]").forEach((node) => {
+function bindGo() {
+  document.querySelectorAll("[data-go]").forEach((node) => {
     node.addEventListener("click", () => { location.hash = node.dataset.go; });
   });
+}
+
+function bindAsk() {
+  const form = document.getElementById("hero-ask");
+  const input = document.getElementById("hero-ask-input");
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const text = input?.value.trim();
+    if (!text) { input?.focus(); return; }
+    location.hash = `#/ask?prompt=${encodeURIComponent(text)}`;
+  });
+}
+
+function applyScene() {
+  const work = getModes().scene === "work";
+  const sub = document.getElementById("stage-sub");
+  if (sub) {
+    sub.textContent = work
+      ? "把整件事派出去：Agent 中枢负责执行，浏览器和运行记录都在下面。"
+      : studySub;
+  }
+  document.querySelectorAll("#plugin-grid .tool-card").forEach((node) => {
+    node.dataset.sceneRank = work && ["agents", "browser", "agentruns", "materials"].includes(node.dataset.id)
+      ? "0" : "1";
+  });
+  const grid = document.getElementById("plugin-grid");
+  if (!grid) return;
+  const cards = [...grid.children];
+  cards.sort((a, b) => Number(a.dataset.sceneRank || 1) - Number(b.dataset.sceneRank || 1));
+  cards.forEach((node) => grid.appendChild(node));
 }
 
 function renderOnboarding(settings) {
   const panel = document.getElementById("onboarding");
   if (!panel) return;
-  const ready = settings?.agent?.ready;
-  panel.hidden = ready !== false;      // 只有明确「没配好」才显示首次引导
+  panel.hidden = settings?.agent?.ready !== false;
 }
 
 function greeting(name) {
   const hour = new Date().getHours();
   const part = hour < 6 ? "夜深了" : hour < 11 ? "早上好" : hour < 14 ? "中午好"
     : hour < 18 ? "下午好" : "晚上好";
-  return name ? `${part}，${name}` : `${part}`;
+  return name ? `${part}，${name}` : part;
 }
 
 function renderHero(overview) {
   const today = overview.today || {};
   const total = overview.total || {};
   const streak = Number(overview.streak || 0);
-  document.getElementById("stage-greeting").textContent = greeting(overview.name);
 
-  const title = document.querySelector(".stage-title");
+  document.getElementById("stage-greeting").textContent = greeting(overview.name);
   const sub = document.getElementById("stage-sub");
   if (today.percent >= 100) {
-    title.textContent = "今日目标达成。";
-    sub.textContent = "学习点已经攒够 —— 想再往前走，去训练场开一格。";
+    sub.textContent = "今天的目标已经达成。想再往前走，去训练场开一格。";
   } else if (streak >= 7) {
-    title.textContent = `连续 ${streak} 天，稳住。`;
-    sub.textContent = "把今天的目标收掉，就是给这条连续线续命。";
+    sub.textContent = `连续 ${streak} 天，把今天的目标收掉，就是给这条线续命。`;
   } else {
-    title.textContent = "今天，练一格。";
     sub.textContent = "问出去、听清楚、抓包看明白 —— 每天留下一点能看见的进度。";
   }
-
-  const goal = Number(today.goal || 100);
-  document.getElementById("goal-text").textContent = `${today.xp || 0} / ${goal}`;
-  document.getElementById("goal-fill").style.width = `${Math.min(100, today.percent || 0)}%`;
-  const left = Math.max(0, goal - Number(today.xp || 0));
-  document.getElementById("goal-note").textContent = left
-    ? `再攒 ${left} 学习点到今天的目标`
-    : "今天的目标已经完成，继续保持";
+  studySub = sub.textContent;
 
   document.getElementById("streak-num").textContent = String(streak);
-  document.getElementById("level-badge").textContent = `Lv.${total.level || 1}`;
-  document.getElementById("level-title").textContent = total.title || "网络小白";
-  document.getElementById("level-fill").style.width = `${Math.min(100, total.percent || 0)}%`;
-  document.getElementById("level-note").textContent =
-    `累计 ${total.xp || 0} 点 · 再攒 ${Math.max(0, (total.need || 0) - (total.into || 0))} 点升级`;
+  document.getElementById("level-chip").textContent =
+    `Lv.${total.level || 1} · ${total.title || "网络小白"}`;
+
+  const percent = Math.max(0, Math.min(100, Number(today.percent) || 0));
+  document.getElementById("goal-percent").textContent = String(Math.round(percent));
+  const ring = document.getElementById("goal-fill");
+  if (ring) {
+    const circumference = 2 * Math.PI * 38;
+    ring.style.strokeDasharray = String(circumference);
+    ring.style.strokeDashoffset = String(circumference * (1 - percent / 100));
+  }
+}
+
+function renderContinue(items) {
+  const item = items[0];
+  const title = document.getElementById("continue-title");
+  const sub = document.getElementById("continue-sub");
+  const count = document.getElementById("continue-count");
+  const last = document.getElementById("continue-last");
+  const go = document.getElementById("continue-go");
+  const eq = document.getElementById("continue-eq");
+
+  if (!item) {
+    title.textContent = "今天还没练六级";
+    sub.textContent = "精听 / 写作 / 翻译，挑一项开始";
+    count.textContent = "今天 0 个断点";
+    last.textContent = "从 25 分钟的微训练开始";
+    go.textContent = "去训练 →";
+    go.href = "#/cet6";
+    if (eq) eq.hidden = true;
+    return;
+  }
+
+  title.textContent = item.paper || "六级训练";
+  sub.textContent = [item.section, item.item].filter(Boolean).join(" · ") || "继续上次的训练";
+  count.textContent = `${Number(item.count || 0)} 处断点`;
+  last.textContent = item.last ? `最近 ${timeOf(item.last)}` : "今天刚记下";
+  go.textContent = "回到断点 →";
+  go.href = "#/cet6?paper=" + encodeURIComponent(item.paper_id || item.paper || "");
+  if (eq) eq.hidden = false;
 }
 
 function renderPlugins(ctx, overview, settings) {
@@ -109,24 +170,22 @@ function renderPlugins(ctx, overview, settings) {
     .filter((m) => m.home && m.status === "ready" && prefs[m.id] !== false)
     .sort((a, b) => Number(a.order || 999) - Number(b.order || 999));
   const grid = document.getElementById("plugin-grid");
+  if (!grid) return;
   if (!plugins.length) {
     grid.innerHTML = '<div class="empty">插件都被关掉了 —— 到 <a href="#/plugins">插件中心</a> 打开。</div>';
     return;
   }
   grid.innerHTML = plugins.map((m) => `
-    <button class="plugin-card" type="button" data-go="#/${escapeHtml(m.id)}">
-      <span class="plugin-icon" aria-hidden="true">${escapeHtml(m.icon || "·")}</span>
-      <span class="plugin-name">${escapeHtml(m.name)}</span>
-      <span class="plugin-cat">${escapeHtml(m.category || "插件")}</span>
-      <span class="plugin-tagline">${escapeHtml(m.tagline || m.note || "")}</span>
-      <span class="plugin-foot">
-        <span class="plugin-count">${escapeHtml(counts[m.id] || "打开")}</span>
-        <span class="plugin-open">进入 →</span>
+    <button class="tool-card" type="button" data-id="${escapeHtml(m.id)}"
+      data-go="#/${escapeHtml(m.id)}">
+      <span class="tool-icon" aria-hidden="true">${escapeHtml(m.icon || "·")}</span>
+      <span class="tool-copy">
+        <span class="tool-name">${escapeHtml(m.name)}</span>
+        <span class="tool-desc">${escapeHtml(m.tagline || m.note || "")}</span>
       </span>
+      <span class="tool-count">${escapeHtml(counts[m.id] || "打开")}</span>
     </button>`).join("");
-  grid.querySelectorAll("[data-go]").forEach((node) => {
-    node.addEventListener("click", () => { location.hash = node.dataset.go; });
-  });
+  bindGo();
 }
 
 function renderStats(today, reviewStats = {}) {
@@ -144,7 +203,7 @@ function renderStats(today, reviewStats = {}) {
       label: "问答",
       value: String(today.ask_count ?? 0),
       unit: "条",
-      note: imageAsks ? `最近 10 条里 ${imageAsks} 条带图` : "今天的提问",
+      note: imageAsks ? `今天 ${imageAsks} 条带图` : "今天的提问",
     },
     {
       label: "课堂转写",
@@ -153,37 +212,38 @@ function renderStats(today, reviewStats = {}) {
       note: `${chars.value} ${chars.unit} · 录像 ${today.recordings?.count ?? 0} 段`,
     },
     {
-      label: "今日计划",
+      label: "待复习",
       value: String(today.due_reviews ?? 0),
-      unit: "条到期",
+      unit: "条",
       note: reviewStats.reviewed_today
         ? `今天已复习 ${reviewStats.reviewed_today} 条`
         : (today.due_reviews
-          ? `${today.due_reviews} 条按记忆曲线排到今天`
+          ? "按记忆曲线排到今天"
           : (reviewStats.next_due ? `下张 ${reviewStats.next_due} 到期` : "今天没有到期的")),
     },
   ];
-  document.getElementById("today-stats").innerHTML = stats.map((stat) => `<div class="stat">
-      <div class="stat-label">${escapeHtml(stat.label)}</div>
-      <div class="stat-value">${escapeHtml(stat.value)}<small>${escapeHtml(stat.unit)}</small></div>
-      <div class="stat-note">${escapeHtml(stat.note)}</div>
+  const root = document.getElementById("today-stats");
+  if (!root) return;
+  root.innerHTML = stats.map((stat) => `<div class="stat">
+      <b>${escapeHtml(stat.value)}<i>${escapeHtml(stat.unit)}</i></b>
+      <span>${escapeHtml(stat.label)}</span>
+      <em>${escapeHtml(stat.note)}</em>
     </div>`).join("");
 }
 
 function renderActions(actions) {
   const root = document.getElementById("today-actions");
   if (!root) return;
-  if (!actions.length) {
-    root.hidden = true;
-    return;
-  }
+  if (!actions.length) { root.hidden = true; return; }
   root.hidden = false;
-  root.innerHTML = actions.map((item, index) => `
-    <button class="action-card" type="button" data-action-index="${index}">
-      <span class="action-no">${index + 1}</span>
-      <span class="action-main">
+  root.innerHTML = `<div class="card-head">
+      <h2>今天还可以</h2><span class="muted">${actions.length} 件小事</span>
+    </div>` + actions.map((item, index) => `
+    <button class="action" type="button" data-action-index="${index}">
+      <span class="action-ico" aria-hidden="true">${ACTION_ICONS[item.kind] || "→"}</span>
+      <span class="action-body">
         <span class="action-title">${escapeHtml(item.title || "")}</span>
-        <span class="action-detail">${escapeHtml(item.detail || "")}</span>
+        <span class="action-meta">${escapeHtml(item.detail || "")}</span>
       </span>
       <span class="action-label">${escapeHtml(item.label || "去看看")} →</span>
     </button>`).join("");
@@ -196,18 +256,68 @@ function renderActions(actions) {
 }
 
 function renderWeek(week) {
-  const minutes = minutesParts(week.minutes || 0);
-  document.getElementById("week-body").innerHTML = `
-    <div class="panel-row"><span>活跃天数</span><span>${escapeHtml(String(week.active_days || 0))} / 7</span></div>
-    <div class="panel-row"><span>专注时长</span><span>${escapeHtml(minutes.value)} ${escapeHtml(minutes.unit)}</span></div>
-    <div class="panel-row"><span>问答</span><span>${escapeHtml(String(week.asks || 0))} 条</span></div>`;
+  const root = document.getElementById("week-bars");
+  if (!root) return;
+  const daily = Array.isArray(week.daily) ? week.daily : [];
+  const values = daily.map((day) => Number(day.minutes || 0));
+  const max = Math.max(1, ...values);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const labels = daily.map((day) => {
+    const parsed = new Date(`${day.date}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? "" : WEEK_NAMES[parsed.getDay()];
+  });
+
+  if (!daily.length) {
+    root.innerHTML = '<div class="hint" style="padding:18px 4px">本周还没有专注记录。</div>';
+  } else {
+    root.innerHTML = daily.map((day, index) => {
+      const minutes = Number(day.minutes || 0);
+      const height = minutes ? Math.max(4, Math.round((minutes / max) * 100)) : 2;
+      const isToday = day.date === todayKey;
+      const label = labels[index] || "";
+      const value = index === values.indexOf(max) && minutes ? `<em class="val">${minutes}</em>` : "";
+      return `<button class="bar${isToday ? " today" : ""}" type="button"
+        style="--h:${height}%;--i:${index}" data-tip="${escapeHtml(label)} · ${minutes} 分钟${isToday ? "（今天）" : ""}">
+        <i></i>${value}<span>${escapeHtml(label)}</span>
+      </button>`;
+    }).join("");
+  }
+
+  const total = minutesParts(week.minutes || 0);
+  document.getElementById("week-total").textContent = `共 ${total.value} ${total.unit}`;
+  document.getElementById("week-extra").textContent =
+    `活跃 ${Number(week.active_days || 0)} / 7 天`;
+  root.setAttribute("aria-label",
+    `本周专注：${daily.map((day, index) => `${labels[index]} ${Number(day.minutes || 0)} 分钟`).join("，")}`);
+}
+
+function bindWeekTips() {
+  const tip = document.getElementById("tip");
+  if (!tip) return;
+  document.querySelectorAll("#week-bars .bar").forEach((bar) => {
+    const show = () => {
+      tip.textContent = bar.dataset.tip || "";
+      const rect = bar.getBoundingClientRect();
+      tip.style.left = `${rect.left + rect.width / 2}px`;
+      tip.style.top = `${rect.top - 8}px`;
+      tip.classList.add("is-on");
+    };
+    const hide = () => tip.classList.remove("is-on");
+    bar.addEventListener("mouseenter", show);
+    bar.addEventListener("mouseleave", hide);
+    bar.addEventListener("focus", show);
+    bar.addEventListener("blur", hide);
+  });
 }
 
 function renderAchievements(items) {
   const earned = items.filter((item) => item.earned);
-  document.getElementById("ach-count").textContent = `${earned.length} / ${items.length}`;
+  const count = document.getElementById("ach-count");
+  if (count) count.textContent = `${earned.length} / ${items.length}`;
+  const root = document.getElementById("achievements");
+  if (!root) return;
   const shown = [...earned, ...items.filter((item) => !item.earned)].slice(0, 8);
-  document.getElementById("achievements").innerHTML = shown.map((item) => `
+  root.innerHTML = shown.map((item) => `
     <div class="achievement ${item.earned ? "earned" : "locked"}" title="${escapeHtml(item.desc)}">
       <span class="ach-dot" aria-hidden="true">${item.earned ? "✓" : "·"}</span>
       <span class="ach-name">${escapeHtml(item.name)}</span>
@@ -218,13 +328,14 @@ function renderAchievements(items) {
 function renderTimeline(asks) {
   const root = document.getElementById("today-timeline");
   const count = document.getElementById("timeline-count");
+  if (!root) return;
   if (!asks.length) {
-    count.textContent = "";
+    if (count) count.textContent = "";
     root.innerHTML = `<div class="empty"><strong>今天还没有问答</strong>
       从问一问开始，每个问题都会自动记进这条时间线。</div>`;
     return;
   }
-  count.textContent = `最近 ${asks.length} 条`;
+  if (count) count.textContent = `最近 ${asks.length} 条`;
   root.innerHTML = `<div class="timeline">${asks.map((ask) => {
     const tag = ask.kind === "image" ? '<span class="timeline-tag">图</span>' : "";
     return `<button class="timeline-item${ask.kind === "image" ? " is-image" : ""}"
@@ -249,6 +360,7 @@ function renderTimeline(asks) {
 
 function renderFocus(focus) {
   const body = document.getElementById("focus-body");
+  if (!body) return;
   const apps = Array.isArray(focus.apps) ? focus.apps : [];
   const parts = minutesParts(focus.minutes);
   body.innerHTML = `
@@ -257,13 +369,14 @@ function renderFocus(focus) {
     ${apps.length
       ? apps.map(([name, mins]) => `<div class="panel-row">
           <span>${escapeHtml(name)}</span><span>${Number(mins).toFixed(0)} 分钟</span></div>`).join("")
-      : '<div class="hint" style="padding-top:10px">今天还没有开始录像。按 Alt+Q 打开快捷栏点「录像」，或托盘菜单「开始录像」。</div>'}`;
+      : '<div class="hint" style="padding-top:10px">今天还没有开始录像。按 Alt+Q 打开快捷栏点「录像」，或在托盘菜单开始。</div>'}`;
 }
 
 function renderCet6(items) {
   if (!items.length) return;
   const panel = document.getElementById("cet6-panel");
   const body = document.getElementById("cet6-body");
+  if (!panel || !body) return;
   panel.hidden = false;
   body.innerHTML = items.map((item) => `
     <div class="panel-row">

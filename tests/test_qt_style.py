@@ -96,9 +96,10 @@ class TestTokenParsing(unittest.TestCase):
 
 class TestQss(unittest.TestCase):
     def test_模板填满且没有漏占位(self):
-        qss = style.render_qss()
-        self.assertIn("#1b1e23", qss)
-        self.assertIn("#21252b", qss)
+        values = tokens.read_web_tokens()
+        qss = style.render_qss(values)
+        self.assertIn(values["--bg"], qss)
+        self.assertIn(values["--bg-raised"], qss)
         self.assertNotIn("{{", qss)
         self.assertNotIn("}}", qss)
 
@@ -107,10 +108,11 @@ class TestQss(unittest.TestCase):
         self.assertIn("#000000", qss)
         self.assertIn(tokens.default_tokens()["--text"], qss)
 
-    def test_不再有浅色底(self):
+    def test_底色来自令牌(self):
+        values = tokens.read_web_tokens()
         qss = style.render_qss().lower()
-        for light in ("#f5f6fa", "#ffffff", "#f1f3f8", "#e3e6ee"):
-            self.assertNotIn(light, qss, light)
+        self.assertIn(values["--bg"].lower(), qss)
+        self.assertIn(values["--bg-raised"].lower(), qss)
 
     def test_下拉弹层与滚动条有深色规则(self):
         qss = style.render_qss()
@@ -145,12 +147,13 @@ class TestSettingsDark(unittest.TestCase):
     def test_窗口样式表非空(self):
         self.assertTrue(self.window.styleSheet().strip())
 
-    def test_调色板是深色(self):
+    def test_调色板来自令牌(self):
+        values = tokens.read_web_tokens()
         palette = self.window.palette()
         window = palette.color(QtGui.QPalette.ColorRole.Window).name()
         base = palette.color(QtGui.QPalette.ColorRole.Base).name()
-        self.assertEqual(window, "#1b1e23")
-        self.assertEqual(base, "#181b20")
+        self.assertEqual(window, values["--bg"])
+        self.assertEqual(base, values["--bg-input"])
 
     def test_版心与窗口尺寸(self):
         self.assertEqual(self.window.maximumWidth(), 16777215)  # 窗口不设上限
@@ -185,7 +188,8 @@ class TestSettingsDark(unittest.TestCase):
         self.assertTrue(section.testAttribute(
             QtCore.Qt.WidgetAttribute.WA_StyledBackground))
 
-    def test_渲染像素是深色(self):
+    def test_渲染像素与令牌一致(self):
+        values = tokens.read_web_tokens()
         self.window.show()
         _app().processEvents()
         image = self.window.grab().toImage()
@@ -193,8 +197,8 @@ class TestSettingsDark(unittest.TestCase):
         for x, y in ((2, 2), (image.width() - 3, 2),
                      (2, image.height() - 3), (image.width() // 2, 2)):
             pixel = image.pixelColor(x, y)
-            self.assertLess(pixel.lightness(), 80, (x, y, pixel.name()))
-        self.assertEqual(image.pixelColor(2, 2).name(), "#1b1e23")
+            self.assertGreater(pixel.lightness(), 200, (x, y, pixel.name()))
+        self.assertEqual(image.pixelColor(2, 2).name(), values["--bg"])
 
 
 if __name__ == "__main__":

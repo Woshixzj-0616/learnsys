@@ -1,42 +1,51 @@
 /* 设计令牌：颜色、字号、间距、圆角只在这里定义。
-   其余 CSS 一律引用变量 —— 改主题不用翻遍文件。 */
+   其余 CSS 一律引用变量 —— 改主题不用翻遍文件。
+   三套气质：mist（默认）/ ink / paper；Qt 的 tokens.py 只解析 :root，
+   所以 :root 永远是 mist 的完整值，切气质只覆盖 body[data-mood]。 */
 
 :root {
-  /* 底色：夜里书桌的墨蓝，不是纯黑 */
-  --bg: #1b1e23;
-  --bg-raised: #21252b;
-  --bg-sunken: #15181c;
-  --bg-input: #181b20;
+  /* —— 晨雾（默认）：冷白纸面 + 单一蓝 —— */
+  --bg: #f3f5f9;
+  --bg-raised: #ffffff;
+  --bg-sunken: #eef1f6;
+  --bg-input: #eef1f6;
+  --surface: #ffffff;
+  --surface-2: #f6f8fb;
+  --rail: #fbfcfe;
+  --bar: rgba(243, 245, 249, 0.92);
 
-  /* 分隔线：两档，够用就行 */
-  --line: #2b3139;
-  --line-strong: #3a424d;
+  --line: #e5e9f0;
+  --line-strong: #d5dce6;
 
-  /* 文字：正文 / 次要 / 极弱 */
-  --text: #dfe6ee;
-  --text-dim: #9aa7b5;
-  --text-faint: #6d7a89;
+  --text: #18202b;
+  --text-dim: #4f5b6a;
+  --text-faint: #6f7a88;
 
-  /* 主色：动作与选中 */
-  --accent: #4d8bff;
-  --accent-strong: #6ea1ff;
-  --accent-soft: rgba(77, 139, 255, 0.13);
-  --accent-line: rgba(77, 139, 255, 0.42);
+  --accent: #3b6ef6;
+  --accent-strong: #2a58d8;
+  --accent-soft: rgba(59, 110, 246, 0.10);
+  --accent-line: rgba(59, 110, 246, 0.34);
+  --on-accent: #ffffff;
 
   /* 荧光笔：只标记「今天 / 当前 / 待处理」，不拿来做按钮 */
-  --mark: #f0b45e;
-  --mark-soft: rgba(240, 180, 94, 0.14);
+  --mark: #d98a2b;
+  --mark-soft: rgba(217, 138, 43, 0.12);
 
-  /* 状态 */
-  --ok: #63c08f;
-  --warn: #e0a35c;
-  --err: #e37b7b;
-  --err-soft: rgba(227, 123, 123, 0.12);
+  --ok: #1f9d63;
+  --warn: #c8802f;
+  --err: #c8423f;
+  --err-soft: rgba(200, 66, 63, 0.10);
+
+  --shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 18px 40px -26px rgba(17, 24, 39, 0.22);
+  --aurora-a: rgba(86, 138, 255, 0.20);
+  --aurora-b: rgba(102, 205, 190, 0.16);
+  --aurora-c: rgba(255, 186, 120, 0.13);
+  --font-display: var(--font-ui);
 
   /* 字号 */
   --fs-xs: 12px;
   --fs-sm: 13px;
-  --fs-base: 15px;
+  --fs-base: 14px;
   --fs-md: 16px;
   --fs-lg: 20px;
   --fs-xl: 28px;
@@ -53,17 +62,114 @@
   /* 圆角：卡片 / 控件 / 小标签 */
   --r-sm: 6px;
   --r-md: 10px;
-  --r-lg: 14px;
+  --r-lg: 16px;
 
   /* 版心 */
-  --sidebar-w: 216px;
+  --sidebar-w: 214px;
   --measure: 820px;
-  --page-max: 1120px;
+  --page-max: 1160px;
+  --gap: 16px;
+  --pad: 22px;
 
-  --font-ui: "Microsoft YaHei UI", "微软雅黑", "PingFang SC", system-ui, sans-serif;
+  --font-ui: -apple-system, "Segoe UI", "Microsoft YaHei UI", "微软雅黑", "PingFang SC", system-ui, sans-serif;
   --font-code: "Cascadia Mono", "Consolas", "SFMono-Regular", monospace;
 
   --ease: 120ms ease;
+  --ease-out: cubic-bezier(.22, .68, .24, 1);
+
+  /* 兼容旧页面的别名：knowledge.css / cet6.css 用过这些名字 */
+  --ink: var(--text);
+  --muted: var(--text-dim);
+  --danger: var(--err);
+  --danger-soft: var(--err-soft);
+  --warning: var(--warn);
+  --warn-soft: var(--mark-soft);
+}
+
+/* 墨夜：深色，但不是纯黑 */
+body[data-mood="ink"] {
+  --bg: #12151a;
+  --bg-raised: #1b1f26;
+  --bg-sunken: #171b21;
+  --bg-input: #171b21;
+  --surface: #1b1f26;
+  --surface-2: #20252d;
+  --rail: #101318;
+  --bar: rgba(18, 21, 26, 0.92);
+
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.13);
+
+  --text: #e8eef6;
+  --text-dim: #a3b0c0;
+  --text-faint: #7d8a9a;
+
+  --accent: #6d9bff;
+  --accent-strong: #8ab0ff;
+  --accent-soft: rgba(109, 155, 255, 0.14);
+  --accent-line: rgba(109, 155, 255, 0.42);
+
+  --mark: #f0b45e;
+  --mark-soft: rgba(240, 180, 94, 0.14);
+
+  --ok: #5cc08b;
+  --warn: #e0a35c;
+  --err: #e37b7b;
+  --err-soft: rgba(227, 123, 123, 0.12);
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.30), 0 24px 50px -28px rgba(0, 0, 0, 0.75);
+  --aurora-a: rgba(70, 110, 220, 0.22);
+  --aurora-b: rgba(40, 150, 140, 0.13);
+  --aurora-c: rgba(200, 140, 70, 0.09);
+}
+
+/* 纸感：暖白 + 墨绿，标题用宋体 */
+body[data-mood="paper"] {
+  --bg: #f6f2ea;
+  --bg-raised: #fffdf8;
+  --bg-sunken: #f1ece2;
+  --bg-input: #f1ece2;
+  --surface: #fffdf8;
+  --surface-2: #f7f2e8;
+  --rail: #fbf8f1;
+  --bar: rgba(246, 242, 234, 0.92);
+
+  --line: #e8e0d2;
+  --line-strong: #dbd0bd;
+
+  --text: #2b2620;
+  --text-dim: #5f5648;
+  --text-faint: #7d7261;
+
+  --accent: #2f6f5e;
+  --accent-strong: #245a4b;
+  --accent-soft: rgba(47, 111, 94, 0.10);
+  --accent-line: rgba(47, 111, 94, 0.34);
+
+  --mark: #bf6a3d;
+  --mark-soft: rgba(191, 106, 61, 0.12);
+
+  --ok: #4c8a5a;
+  --warn: #a86a2f;
+  --err: #b4493f;
+  --err-soft: rgba(180, 73, 63, 0.10);
+
+  --shadow: 0 1px 0 rgba(43, 38, 32, 0.04), 0 18px 40px -28px rgba(80, 62, 38, 0.32);
+  --aurora-a: rgba(120, 170, 140, 0.18);
+  --aurora-b: rgba(220, 180, 120, 0.20);
+  --aurora-c: rgba(190, 120, 90, 0.09);
+  --font-display: "Songti SC", "STSong", "SimSun", "宋体", "Noto Serif CJK SC", serif;
+}
+
+/* 密度：紧凑模式只收间距，不缩字号到看不清 */
+body[data-density="compact"] {
+  --gap: 10px;
+  --pad: 16px;
+  --s3: 10px;
+  --s4: 12px;
+  --s5: 16px;
+  --s6: 24px;
+  --s7: 36px;
 }
 
 * { box-sizing: border-box; }
@@ -84,9 +190,11 @@ body {
   line-height: 1.65;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  transition: background-color .35s, color .35s;
 }
 
-::selection { background: var(--accent-soft); color: #fff; }
+::selection { background: var(--accent-soft); color: var(--text); }
 
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -97,6 +205,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

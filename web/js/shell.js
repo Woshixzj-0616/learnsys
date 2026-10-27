@@ -1,5 +1,6 @@
 // 壳层：侧栏、hash 路由、页面生命周期。加模块只改 registry.json。
 import { api, initApi } from "./api.js";
+import { getModes, initModes } from "./modes.js";
 import { installNavBridge } from "./nav_bridge.js";
 import { escapeHtml, setStatus, toast } from "./ui.js";
 
@@ -33,7 +34,16 @@ function moduleById(id) {
   return registry.find((item) => item.id === id) || null;
 }
 
-const SYSTEM_PLUGINS = new Set(["settings", "plugins", "agentruns"]);
+// 侧栏分组：只在这里定义一次。今日单列，不归任何组。
+const GROUP_ORDER = ["学习", "资料", "工具", "系统"];
+const GROUP_OF = {
+  ask: "学习", cet6: "学习", netlab: "学习", review: "学习", quiz: "学习",
+  knowledge: "学习", wrongbook: "学习", vocab: "学习",
+  materials: "资料", recordings: "资料",
+  agents: "工具", browser: "工具", agentruns: "工具",
+  settings: "系统", plugins: "系统",
+};
+const byOrder = (a, b) => Number(a.order || 999) - Number(b.order || 999);
 
 function navItem(module, activeId) {
   const active = module.id === activeId ? " active" : "";
@@ -54,12 +64,21 @@ function navGroup(label, items, activeId) {
 
 function renderNav(activeId) {
   const visible = registry.filter((module) => prefs[module.id] !== false);
-  const ready = visible.filter((m) => m.status !== "planned" && !SYSTEM_PLUGINS.has(m.id));
-  const planned = visible.filter((m) => m.status === "planned");
-  const system = visible.filter((m) => SYSTEM_PLUGINS.has(m.id));
-  nav.innerHTML = navGroup("舞台", ready, activeId)
-    + navGroup("待建", planned, activeId)
-    + navGroup("系统", system, activeId);
+  const today = visible.find((m) => m.id === "today");
+  let html = today ? navItem(today, activeId) : "";
+  const order = getModes().scene === "work"
+    ? ["工具", "资料", "学习", "系统"]
+    : GROUP_ORDER;
+  for (const label of order) {
+    const items = visible
+      .filter((m) => m.id !== "today" && GROUP_OF[m.id] === label)
+      .sort(byOrder);
+    html += navGroup(label, items, activeId);
+  }
+  const known = new Set([...Object.keys(GROUP_OF), "today"]);
+  const rest = visible.filter((m) => !known.has(m.id)).sort(byOrder);
+  html += navGroup("其他", rest, activeId);
+  nav.innerHTML = html;
 }
 
 function setHeader(module) {
@@ -232,6 +251,7 @@ async function boot() {
 }
 
 window.addEventListener("hashchange", navigate);
+window.addEventListener("learnsys:modes", () => renderNav(current.id));
 window.addEventListener("learnsys:prefs", (event) => {
   if (event.detail && typeof event.detail === "object") {
     prefs = { ...prefs, ...event.detail };
@@ -268,6 +288,38 @@ function bindServiceWorker() {
   }
 }
 
+// 顶栏的日期与时钟：和 today.js 的问候语共用一套本地时间。
+const WEEK_NAMES = "日一二三四五六";
+function tickClock() {
+  const now = new Date();
+  const date = document.getElementById("page-date");
+  const clock = document.getElementById("page-clock");
+  if (date) {
+    date.textContent = `${now.getMonth() + 1} 月 ${now.getDate()} 日 星期${WEEK_NAMES[now.getDay()]}`;
+  }
+  if (clock) {
+    clock.textContent = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  }
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+function focusAsk() {
+  const hero = document.getElementById("hero-ask-input");
+  if (hero) { hero.focus(); return; }
+  const ask = document.getElementById("input");
+  if (ask) { ask.focus(); return; }
+  location.hash = "#/ask";
+}
+document.getElementById("search-hint")?.addEventListener("click", focusAsk);
+document.addEventListener("keydown", (event) => {
+  const tag = document.activeElement?.tagName || "";
+  if (event.key !== "/" || /^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+  event.preventDefault();
+  focusAsk();
+});
+
+initModes();
 bindQuickbarTools();
 bindServiceWorker();
 boot();
