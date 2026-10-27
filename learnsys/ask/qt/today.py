@@ -134,12 +134,12 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         body.setContentsMargins(0, 0, 6, int(token_source.px(self.tokens, "--s5", 24)))
         body.setSpacing(int(token_source.px(self.tokens, "--s5", 24)))
 
-        self.hero = HeroCard()
+        self.hero = HeroCard(self.tokens)
         body.addWidget(self.hero)
 
-        # 顺序照 Web 今日页：Hero → 插件舞台 → 统计条 → 行动卡
+        # 顺序照 Web 今日页：Hero → 所有工具 → 统计条 → 行动卡
         self.plugin_section, self.plugin_grid = self._grid_section(
-            "插件舞台", "点卡片进入 · 插件中心可开关")
+            "所有工具", "点卡片进入 · 插件中心可开关")
         self.plugin_empty = QtWidgets.QLabel("插件清单没读到；点「刷新」再试。")
         self.plugin_empty.setObjectName("Empty")
         self.plugin_empty.setWordWrap(True)
@@ -150,7 +150,7 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         self.stats = StatStrip()
         body.addWidget(self.stats)
 
-        self.action_section, self.action_grid = self._grid_section("今天最值得做的三件事")
+        self.action_section, self.action_grid = self._grid_section("今天还可以")
         body.addWidget(self.action_section)
 
         self._build_bottom(body)
@@ -405,7 +405,7 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         if not hasattr(self, "bottom_grid"):
             return
         action_cols = 3 if self.width() >= BREAK else 1
-        plugin_cols = 3 if self.width() >= BREAK else 2
+        plugin_cols = 4 if self.width() >= BREAK else 2
         if self.action_cards and action_cols != self._action_cols:
             self._action_cols = action_cols
             self._place(self.action_grid, self.action_cards, action_cols)
@@ -420,7 +420,7 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
             grid.removeWidget(card)
         for index, card in enumerate(cards):
             grid.addWidget(card, index // cols, index % cols)
-        for column in range(3):
+        for column in range(4):
             grid.setColumnStretch(column, 1 if column < cols else 0)
         for row in range((len(cards) + cols - 1) // cols):
             grid.setRowStretch(row, 1)

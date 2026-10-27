@@ -17,7 +17,8 @@ from PySide6 import QtCore, QtGui, QtWidgets  # noqa: E402
 from learnsys.ask.desktop.qt_pilot import QtPilotMixin, open_workbench_link  # noqa: E402
 from learnsys.ask.qt.today import (AUTO_REFRESH_MS, TodayWindow, chars_parts,  # noqa: E402
                                    date_label, minutes_parts)
-from learnsys.ask.qt.today_panels import AchievementRow, plain  # noqa: E402
+from learnsys.ask.qt.today_panels import (AchievementRow, WeekBars,
+                                          plain)  # noqa: E402
 
 
 def _app():
@@ -35,7 +36,16 @@ OVERVIEW = {
     "total": {"xp": 315, "level": 2, "title": "布线学徒", "into": 15,
               "need": 500, "percent": 3.0},
     "streak": 6,
-    "week": {"active_days": 4, "minutes": 180, "asks": 12},
+    "week": {"active_days": 4, "minutes": 180, "asks": 12,
+             "daily": [
+                 {"date": "2026-10-21", "minutes": 0.0, "active": True},
+                 {"date": "2026-10-22", "minutes": 60.0, "active": True},
+                 {"date": "2026-10-23", "minutes": 0.0, "active": True},
+                 {"date": "2026-10-24", "minutes": 120.0, "active": True},
+                 {"date": "2026-10-25", "minutes": 0.0, "active": False},
+                 {"date": "2026-10-26", "minutes": 0.0, "active": False},
+                 {"date": "2026-10-27", "minutes": 0.0, "active": False},
+             ]},
     "achievements": [],
 }
 
@@ -253,7 +263,7 @@ class TestTodayWindow(unittest.TestCase):
         self.assertEqual((self.window._action_cols, self.window._plugin_cols), (1, 2))
         self.window.resize(1000, 700)
         _app().processEvents()
-        self.assertEqual((self.window._action_cols, self.window._plugin_cols), (3, 3))
+        self.assertEqual((self.window._action_cols, self.window._plugin_cols), (3, 4))
         self.window.resize(800, 600)
         _app().processEvents()
         self.assertEqual((self.window._action_cols, self.window._plugin_cols), (1, 2))
@@ -305,7 +315,16 @@ class TestTodayWindow(unittest.TestCase):
 
 PANEL_OVERVIEW = {
     **copy.deepcopy(OVERVIEW),
-    "week": {"active_days": 4, "minutes": 180, "asks": 12},
+    "week": {"active_days": 4, "minutes": 180, "asks": 12,
+             "daily": [
+                 {"date": "2026-10-21", "minutes": 0.0, "active": True},
+                 {"date": "2026-10-22", "minutes": 60.0, "active": True},
+                 {"date": "2026-10-23", "minutes": 0.0, "active": True},
+                 {"date": "2026-10-24", "minutes": 120.0, "active": True},
+                 {"date": "2026-10-25", "minutes": 0.0, "active": False},
+                 {"date": "2026-10-26", "minutes": 0.0, "active": False},
+                 {"date": "2026-10-27", "minutes": 0.0, "active": False},
+             ]},
     "achievements": [
         {"id": "first_ask", "name": "第一问", "desc": "问出第一个问题",
          "value": 1, "target": 1, "earned": True},
@@ -405,11 +424,13 @@ class TestTodayPanels(unittest.TestCase):
 
     def test_本周面板(self):
         window, _ = self._window()
-        rows = window.week_panel.rows
-        self.assertEqual([row.label.text() for row in rows],
-                         ["活跃天数", "专注时长", "问答"])
-        self.assertEqual([row.value.text() for row in rows],
-                         ["4 / 7", "3 小时", "12 条"])
+        bars = window.week_panel.findChild(WeekBars)
+        self.assertIsNotNone(bars)
+        self.assertEqual(len(bars.days), 7)
+        self.assertEqual(bars.days[3]["minutes"], 120.0)
+        note = [label.text() for label in window.week_panel.findChildren(
+            QtWidgets.QLabel, "PanelNote")]
+        self.assertEqual(note, ["共 3 小时 · 活跃 4 / 7 天"])
 
     def test_专注明细(self):
         window, _ = self._window()
@@ -507,7 +528,9 @@ class TestTodayPanels(unittest.TestCase):
         window, _ = self._window(**{"/api/today": today,
                                     "/api/overview": overview})
         self.assertEqual(len(window.timeline.items), 1)
-        self.assertEqual(window.week_panel.rows[0].value.text(), "0 / 7")
+        bars = window.week_panel.findChild(WeekBars)
+        self.assertIsNotNone(bars)
+        self.assertEqual(bars.days, [])
         self.assertTrue(window.cet6_panel.isHidden())
         self.assertEqual(window.ach_panel.hint.text(), "0 / 0")
 

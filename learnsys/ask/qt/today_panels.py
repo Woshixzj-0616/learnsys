@@ -106,6 +106,87 @@ class InfoPanel(QtWidgets.QWidget):
         self.body.addWidget(note)
 
 
+class WeekBars(QtWidgets.QWidget):
+    """本周七天柱状图：柱高=当天专注分钟，0 用一条细底线。"""
+
+    BAR_AREA = 52
+    TOP = 16
+
+    def __init__(self, tokens: dict | None = None,
+                 parent: QtWidgets.QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("WeekBars")
+        self.setFixedHeight(self.TOP + self.BAR_AREA + 20)
+        self._tokens = token_source.merged(
+            tokens if tokens is not None else token_source.read_web_tokens())
+        self.days: list[dict] = []
+
+    def set_days(self, days) -> None:
+        self.days = [day for day in (days or []) if isinstance(day, dict)][-7:]
+        self.update()
+
+    def paintEvent(self, _event) -> None:
+        values = self._tokens
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
+        if not self.days:
+            painter.end()
+            return
+
+        slot = self.width() / len(self.days)
+        bar_w = min(12.0, slot * 0.42)
+        base = float(self.TOP + self.BAR_AREA)
+        peak = max([float(day.get("minutes") or 0)
+                    for day in self.days] + [1.0])
+
+        font = QtGui.QFont(self.font())
+        font.setPixelSize(10)
+        painter.setFont(font)
+        num_font = QtGui.QFont(font)
+        num_font.setPixelSize(10)
+
+        for index, day in enumerate(self.days):
+            center = slot * (index + 0.5)
+            minutes = float(day.get("minutes") or 0)
+            if minutes > 0:
+                height = max(3.0, self.BAR_AREA * minutes / peak)
+                painter.setPen(QtCore.Qt.PenStyle.NoPen)
+                painter.setBrush(style.color(values["--accent"]))
+                painter.drawRoundedRect(
+                    QtCore.QRectF(center - bar_w / 2, base - height, bar_w, height),
+                    3.0, 3.0)
+                painter.setFont(num_font)
+                painter.setPen(style.color(values["--text-dim"]))
+                painter.drawText(
+                    QtCore.QRectF(center - 20, base - height - 16, 40, 14),
+                    QtCore.Qt.AlignmentFlag.AlignCenter,
+                    f"{minutes:g}")
+            else:
+                pen = QtGui.QPen(style.color(values["--line-strong"]), 2)
+                pen.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
+                painter.setPen(pen)
+                painter.drawLine(QtCore.QPointF(center - bar_w / 2, base),
+                                 QtCore.QPointF(center + bar_w / 2, base))
+
+            painter.setFont(font)
+            painter.setPen(style.color(values["--text-faint"]))
+            painter.drawText(
+                QtCore.QRectF(center - 20, base + 4, 40, 16),
+                QtCore.Qt.AlignmentFlag.AlignCenter,
+                weekday_label(day.get("date")))
+        painter.end()
+
+
+def weekday_label(date_text) -> str:
+    try:
+        day = QtCore.QDate.fromString(str(date_text or ""), "yyyy-MM-dd")
+        if day.isValid():
+            return "一二三四五六日"[day.dayOfWeek() - 1]
+    except (TypeError, ValueError):
+        pass
+    return ""
+
+
 class PanelRow(ClickableCard):
     """一行「左标签 / 右数值」；有 href 时整行可点。"""
 
@@ -193,6 +274,8 @@ class TimelineItem(ClickableCard):
         question = " ".join(str(ask.get("question") or "").split())
         answer = str(ask.get("answer") or "")
         self.setAccessibleName(question[:60] or "问答")
+        if len(question) > 120:
+            question = question[:120] + "…"
 
         row = QtWidgets.QHBoxLayout(self)
         row.setContentsMargins(0, 3, 8, 14)

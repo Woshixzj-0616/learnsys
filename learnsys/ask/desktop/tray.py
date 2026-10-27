@@ -50,7 +50,7 @@ class TrayMixin:
         menu.addSeparator()
         menu.addAction("退出", self.quit)
         tray.setContextMenu(menu)
-        menu.setStyleSheet(bar.QSS)   # 托盘菜单也吃同一套深色样式 —— 不然弹出来是刺眼的白
+        menu.setStyleSheet(bar.render_qss())   # 托盘菜单吃同一套令牌 —— 和快捷栏/网页同色
         tray.setToolTip(f"{product.PRODUCT_NAME} {version_line()}\n按 {self.hotkey.pretty} 框选屏幕；横栏能拖着挪、也能收成小条。")
         tray.activated.connect(self._tray_clicked)
         tray.show()

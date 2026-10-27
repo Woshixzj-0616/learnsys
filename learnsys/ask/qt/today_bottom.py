@@ -9,7 +9,7 @@ from urllib.parse import quote
 from PySide6 import QtWidgets
 
 from .today_panels import (AchievementRow, InfoPanel, ShortcutButton,
-                           TimelineSection)
+                           TimelineSection, WeekBars)
 from .today_widgets import minutes_parts
 
 BREAK = 880              # 行动卡/插件卡/底栏堆叠共用的宽度断点
@@ -80,12 +80,14 @@ class TodayBottomMixin:
     def _render_week(self) -> None:
         week = (self._data.get("overview") or {}).get("week") or {}
         minutes = minutes_parts(week.get("minutes") or 0)
-        self.week_panel.set_rows([
-            {"label": "活跃天数",
-             "value": f"{int(week.get('active_days') or 0)} / 7"},
-            {"label": "专注时长", "value": f"{minutes[0]} {minutes[1]}"},
-            {"label": "问答", "value": f"{int(week.get('asks') or 0)} 条"},
-        ])
+        active = int(week.get("active_days") or 0)
+        bars = WeekBars(self.tokens)
+        bars.set_days(week.get("daily") or [])
+        note = QtWidgets.QLabel(
+            f"共 {minutes[0]} {minutes[1]} · 活跃 {active} / 7 天")
+        note.setObjectName("PanelNote")
+        self.week_panel.set_hint("分钟 / 天")
+        self.week_panel.set_widgets([bars, note])
 
     def _render_focus(self) -> None:
         focus = (self._data.get("today") or {}).get("focus") or {}

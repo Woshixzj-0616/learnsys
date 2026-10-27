@@ -5,80 +5,95 @@ import re
 
 from PySide6 import QtCore, QtGui
 
+from ..qt import style
+from ..qt import tokens as token_source
+
 
 # 设计规范（改样式先看这里，别一处一处试）：
-#   底色  卡片 #1b1e23 ｜ 输入 #23262b ｜ 答案区 #15171a（一层比一层深，视线自然往下走）
-#   强调  蓝 #4d8bff（问 / 复盘 / 输入焦点 / 菜单选中）
+#   颜色  全部来自 `web/css/tokens.css`（`:root` = 晨雾浅色），这里只写占位符
+#   强调  问 / 复盘 / 输入焦点 / 菜单选中 = --accent
 #   语义  清空=危险（悬停泛红）｜ 收藏=金色（已收藏★）｜ 置顶开=蓝字
 #   圆角  卡片 14 ｜ 输入/按钮/答案 10 ｜ 小按钮 8 ｜ 菜单 10
 #   字号  答案 15 ｜ 输入/主按钮 14 ｜ 小按钮 13 ｜ 状态 12 ｜ 占用/记录 11
 #   ⚠️ 按钮宽度 BUTTON_W 恒定、位置不动 —— 美化不许破坏肌肉记忆（见按钮行注释）
-QSS = """
-QFrame#bar { background: #1b1e23; border: 1px solid #33383f; border-radius: 14px;
-             font-family: "Microsoft YaHei UI"; }
-QFrame#pill { background: #1b1e23; border: 1px solid #33383f; border-radius: 16px;
-              font-family: "Microsoft YaHei UI"; }
-QLabel#handle { color: #6f757e; font-size: 15px; }
-QLabel#pillTitle { color: #e6e9ec; font-size: 13px; font-weight: 600; }
-QLabel#pillUsage { color: #868c95; font-size: 12px; }
-QLabel#pillHint { color: #5aaaff; font-size: 12px; }
+QSS_TEMPLATE = """
+QFrame#bar { background: {{surface}}; border: 1px solid {{line_strong}}; border-radius: 14px;
+             font-family: "{{font_family}}"; }
+QFrame#pill { background: {{surface}}; border: 1px solid {{line_strong}}; border-radius: 16px;
+              font-family: "{{font_family}}"; }
+QLabel#handle { color: {{text_faint}}; font-size: 15px; }
+QLabel#pillTitle { color: {{text}}; font-size: 13px; font-weight: 600; }
+QLabel#pillUsage { color: {{text_faint}}; font-size: 12px; }
+QLabel#pillHint { color: {{accent_strong}}; font-size: 12px; }
 
-QPushButton#pick { background: #262b31; color: #d7dbe0; border: 1px solid #3a3f46;
+QPushButton#pick { background: {{bg_sunken}}; color: {{text_dim}}; border: 1px solid {{line_strong}};
                    border-radius: 10px; padding: 9px 16px; font-size: 14px; }
-QPushButton#pick:hover { background: #303743; border-color: #4d8bff; color: #ffffff; }
-QPushButton#pick:pressed { background: #242a31; }
+QPushButton#pick:hover { background: {{surface_2}}; border-color: {{accent}}; color: {{text}}; }
+QPushButton#pick:pressed { background: {{bg_input}}; }
 
-QLineEdit#ask { background: #23262b; border: 1px solid #3a3f46; border-radius: 10px;
-                color: #f1f3f4; padding: 9px 13px; font-size: 14px;
-                selection-background-color: #2f6bed; }
-QLineEdit#ask:focus { border: 1px solid #4d8bff; background: #25282d; }
+QLineEdit#ask { background: {{bg_input}}; border: 1px solid {{line_strong}}; border-radius: 10px;
+                color: {{text}}; padding: 9px 13px; font-size: 14px;
+                selection-background-color: {{accent}}; selection-color: {{on_accent}}; }
+QLineEdit#ask:focus { border: 1px solid {{accent}}; background: {{surface}}; }
 
-QPushButton#go { background: #2f6bed; color: #ffffff; border: none; border-radius: 10px;
+QPushButton#go { background: {{accent}}; color: {{on_accent}}; border: none; border-radius: 10px;
                  padding: 9px 24px; font-size: 14px; font-weight: 600; }
-QPushButton#go:hover { background: #3d78f2; }
-QPushButton#go:pressed { background: #2a5fd0; }
-QPushButton#go:disabled { background: #33383f; color: #7e848c; }
+QPushButton#go:hover { background: {{accent_strong}}; }
+QPushButton#go:pressed { background: {{accent_strong}}; }
+QPushButton#go:disabled { background: {{bg_sunken}}; color: {{text_faint}}; }
 
-QToolButton#tiny { color: #9aa0a6; background: transparent; border: 1px solid transparent;
+QToolButton#tiny { color: {{text_faint}}; background: transparent; border: 1px solid transparent;
                    font-size: 13px; padding: 5px 8px; border-radius: 8px; }
-QToolButton#tiny:hover { color: #ffffff; background: #2c3037; }
-QToolButton#tiny:pressed { background: #262a30; }
-QToolButton#tiny:disabled { color: #474c53; background: transparent; }
-QToolButton#tiny:checked { color: #5aaaff; }          /* 置顶开着时亮蓝 */
-QToolButton[role="accent"] { color: #6ea8ff; }         /* 复盘：主操作，蓝字 */
-QToolButton[role="accent"]:hover { color: #a8ccff; background: #243043; }
-QToolButton[role="danger"]:hover { color: #ff8177; background: #34262a; }  /* 清空：悬停泛红 */
-QToolButton[role="recording"] { color: #ff8177; }      /* 录像中：红字提醒 */
-QToolButton[starred="true"] { color: #f5b74e; }        /* 已收藏：金字 */
+QToolButton#tiny:hover { color: {{text}}; background: {{surface_2}}; }
+QToolButton#tiny:pressed { background: {{bg_input}}; }
+QToolButton#tiny:disabled { color: {{text_faint}}; background: transparent; }
+QToolButton#tiny:checked { color: {{accent_strong}}; }   /* 置顶开着时亮蓝 */
+QToolButton[role="accent"] { color: {{accent_strong}}; }  /* 复盘：主操作，蓝字 */
+QToolButton[role="accent"]:hover { color: {{accent}}; background: {{accent_soft}}; }
+QToolButton[role="danger"]:hover { color: {{err}}; background: {{err_soft}}; }  /* 清空：悬停泛红 */
+QToolButton[role="recording"] { color: {{err}}; }        /* 录像中：红字提醒 */
+QToolButton[starred="true"] { color: {{mark}}; }         /* 已收藏：金字 */
 
-QLabel#status { color: #98a1ab; font-size: 12px; }
-QLabel#rec { color: #ffb454; font-size: 11px; }
-QLabel#usage { color: #6f757e; font-size: 11px; }
-QLabel#thumb { border: 1px solid #3a3f46; border-radius: 8px; }
+QLabel#status { color: {{text_faint}}; font-size: 12px; }
+QLabel#rec { color: {{warn}}; font-size: 11px; }
+QLabel#usage { color: {{text_faint}}; font-size: 11px; }
+QLabel#thumb { border: 1px solid {{line_strong}}; border-radius: 8px; }
 
-QTextBrowser#answer { background: #171c23; border: 1px solid #283039; border-radius: 10px;
-                      color: #dfe6ee; padding: 13px 16px; font-size: 15px;
-                      selection-background-color: #35618f; }
+QTextBrowser#answer { background: {{bg_sunken}}; border: 1px solid {{line}}; border-radius: 10px;
+                      color: {{text}}; padding: 13px 16px; font-size: 15px;
+                      selection-background-color: {{accent_soft}}; }
 
-QFrame#grip { background: #2a2f36; border-radius: 3px; }
-QFrame#grip:hover { background: #4d8bff; }           /* 拖底边改答案区高度 */
+QFrame#grip { background: {{line_strong}}; border-radius: 3px; }
+QFrame#grip:hover { background: {{accent}}; }        /* 拖底边改答案区高度 */
 
 QScrollBar:vertical { background: transparent; width: 8px; margin: 4px 2px 4px 0; }
-QScrollBar::handle:vertical { background: #3a4048; border-radius: 4px; min-height: 30px; }
-QScrollBar::handle:vertical:hover { background: #4a525c; }
+QScrollBar::handle:vertical { background: {{line_strong}}; border-radius: 4px; min-height: 30px; }
+QScrollBar::handle:vertical:hover { background: {{text_faint}}; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
 
-QMenu { background: #202329; border: 1px solid #33383f; border-radius: 10px; padding: 6px; }
-QMenu::item { color: #d7dbe0; background: transparent; padding: 7px 24px 7px 14px;
+QMenu { background: {{surface}}; border: 1px solid {{line_strong}}; border-radius: 10px; padding: 6px; }
+QMenu::item { color: {{text_dim}}; background: transparent; padding: 7px 24px 7px 14px;
               border-radius: 6px; font-size: 13px; }
-QMenu::item:selected { background: #2f6bed; color: #ffffff; }
-QMenu::item:disabled { color: #6b7178; }
-QMenu::separator { height: 1px; background: #33383f; margin: 5px 8px; }
+QMenu::item:selected { background: {{accent}}; color: {{on_accent}}; }
+QMenu::item:disabled { color: {{text_faint}}; }
+QMenu::separator { height: 1px; background: {{line}}; margin: 5px 8px; }
 
-QToolTip { background: #202329; color: #d7dbe0; border: 1px solid #33383f;
+QToolTip { background: {{surface}}; color: {{text}}; border: 1px solid {{line}};
            padding: 4px 6px; font-size: 12px; }
 """
+
+_PLACEHOLDER = re.compile(r"\{\{([a-z0-9_]+)\}\}")
+
+
+def render_qss(tokens: dict[str, str] | None = None) -> str:
+    """把令牌填进快捷栏模板；缺键用兜底，不会 KeyError。"""
+    values = token_source.merged(
+        tokens if tokens is not None else token_source.read_web_tokens())
+    flat = {key[2:].replace("-", "_"): value for key, value in values.items()}
+    flat["font_family"] = token_source.font_family(values)
+    return _PLACEHOLDER.sub(lambda match: flat.get(match.group(1), ""), QSS_TEMPLATE)
+
 
 THUMB_W, THUMB_H = 64, 40
 BUTTON_W = 68                # 底部那排按钮统一宽度 —— 文字在「置顶 / 不置顶」之间变也不挪位
@@ -133,15 +148,17 @@ def _as_bool(value, default: bool) -> bool:
     return str(value).strip().lower() not in ("0", "false", "no", "off", "关", "否")
 
 
-def _ask_char() -> QtGui.QTextCharFormat:
-    """「我」那句话：雾蓝底、近白的字 —— 只包住文字（不是整行一条）。
+def _ask_char(tokens: dict[str, str] | None = None) -> QtGui.QTextCharFormat:
+    """「我」那句话：淡蓝底、正文色 —— 只包住文字（不是整行一条）。
 
     用的是字符级背景，包多大取决于文字有多长；前后各塞一个空格当内边距。
-    颜色特意比按钮的强调蓝灰一档：控件要醒目，对话要柔和（「自然清新」的出处）。
+    颜色来自令牌：控件要醒目，对话要柔和。
     """
+    values = token_source.merged(
+        tokens if tokens is not None else token_source.read_web_tokens())
     fmt = QtGui.QTextCharFormat()
-    fmt.setBackground(QtGui.QColor("#35618f"))
-    fmt.setForeground(QtGui.QColor("#f0f5fc"))
+    fmt.setBackground(style.color(values["--accent-soft"]))
+    fmt.setForeground(style.color(values["--text"]))
     return fmt
 
 
@@ -157,10 +174,12 @@ def _gap_block() -> QtGui.QTextBlockFormat:
     return fmt
 
 
-def _answer_char() -> QtGui.QTextCharFormat:
-    """AI 的回答：柔和的冷白（别继承「我」那块的字色，也别纯白刺眼）。"""
+def _answer_char(tokens: dict[str, str] | None = None) -> QtGui.QTextCharFormat:
+    """AI 的回答：正文色（别继承「我」那块的字色）。"""
+    values = token_source.merged(
+        tokens if tokens is not None else token_source.read_web_tokens())
     fmt = QtGui.QTextCharFormat()
-    fmt.setForeground(QtGui.QColor("#dce4ee"))
+    fmt.setForeground(style.color(values["--text"]))
     return fmt
 
 

@@ -20,6 +20,8 @@ _FALLBACK = {
     "--bg-raised": "#21252b",
     "--bg-sunken": "#15181c",
     "--bg-input": "#181b20",
+    "--surface": "#ffffff",
+    "--surface-2": "#f6f8fb",
     "--line": "#2b3139",
     "--line-strong": "#3a424d",
     "--text": "#dfe6ee",
@@ -59,6 +61,7 @@ _FALLBACK = {
 # QSS / 布局真正读到的键；缺了这些说明未配置好
 REQUIRED = (
     "--bg", "--bg-raised", "--bg-sunken", "--bg-input",
+    "--surface", "--surface-2",
     "--line", "--line-strong",
     "--text", "--text-dim", "--text-faint",
     "--accent", "--accent-strong", "--accent-soft", "--accent-line", "--on-accent",

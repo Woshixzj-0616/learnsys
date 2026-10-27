@@ -6,13 +6,14 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from learnsys import product
 from .common import (BAR_OUTER_TOP, BAR_OUTER_X, BUTTON_H, BUTTON_W, CARD_GAP,
                      CARD_PAD_BOTTOM, CARD_PAD_TOP, CARD_PAD_X, GRIP_H, PILL_H,
-                     QSS, REC_H, ROW_H, STATUS_H, THUMB_H, THUMB_W, USAGE_H)
+                     REC_H, ROW_H, STATUS_H, THUMB_H, THUMB_W, USAGE_H,
+                     render_qss)
 from .workers import _AnswerGrip
 
 
 class BuildMixin:
     def _build(self) -> None:
-        self.setStyleSheet(QSS)
+        self.setStyleSheet(render_qss())
         outer = QtWidgets.QVBoxLayout(self)
         outer.setContentsMargins(BAR_OUTER_X, BAR_OUTER_TOP, BAR_OUTER_X, 0)  # 给阴影留位置
         outer.setSpacing(0)

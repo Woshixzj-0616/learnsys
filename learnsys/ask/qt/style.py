@@ -1,7 +1,8 @@
-"""Qt 设置页的深色样式（R3.10.2）。
+"""Qt 窗口样式（R3.10.2）。
 
 颜色、字号、圆角、间距全部来自 `tokens.py` → `web/css/tokens.css`；
 本文件只描述「哪个控件用哪个令牌」，不写死配色。
+`tokens.css` 的 `:root` 是「晨雾」浅色主题，Qt 跟随它；深色「墨夜」只作用于网页。
 """
 from __future__ import annotations
 
@@ -130,7 +131,8 @@ def build_palette(tokens: dict[str, str] | None = None) -> QtGui.QPalette:
         QtGui.QPalette.ColorRole.ButtonText: values["--text"],
         QtGui.QPalette.ColorRole.BrightText: values["--text"],
         QtGui.QPalette.ColorRole.Highlight: values["--accent"],
-        QtGui.QPalette.ColorRole.HighlightedText: ON_ACCENT,
+        QtGui.QPalette.ColorRole.HighlightedText: values.get(
+            "--on-accent", ON_ACCENT),
         QtGui.QPalette.ColorRole.ToolTipBase: values["--bg-raised"],
         QtGui.QPalette.ColorRole.ToolTipText: values["--text"],
         QtGui.QPalette.ColorRole.Light: values["--bg-raised"],

@@ -6,15 +6,15 @@ import uuid
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from .common import (MODE_LABELS, QSS, STATE_DONE, STATE_HISTORY, _answer_char,
-                     _gap_block)
+from .common import (MODE_LABELS, STATE_DONE, STATE_HISTORY, _answer_char,
+                     _gap_block, render_qss)
 
 
 class ActionsMixin:
     def _rec_menu(self, pos) -> None:
         """录像按钮右键：暂停/继续 + 定时停止（不用再加按钮占位置）。"""
         menu = QtWidgets.QMenu(self)
-        menu.setStyleSheet(QSS)
+        menu.setStyleSheet(render_qss())
         menu.addAction("继续录像" if self.rec_paused else "暂停录像",
                        self.rec_pause_toggled.emit)
         timer_menu = menu.addMenu("定时停止录像")
@@ -27,7 +27,7 @@ class ActionsMixin:
     def _more_menu(self) -> None:
         """「⋯」收纳菜单：低频操作全在这里，横栏上只留高频按钮。"""
         menu = QtWidgets.QMenu(self)
-        menu.setStyleSheet(QSS)
+        menu.setStyleSheet(render_qss())
         mode_menu = menu.addMenu("回答模式")
         for key, label in MODE_LABELS.items():
             action = mode_menu.addAction(label)

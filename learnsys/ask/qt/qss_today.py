@@ -20,8 +20,7 @@ QLabel#TodayDate {
     color: {{text_faint}};
 }
 QWidget#HeroCard {
-    background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 1,
-        stop: 0 {{accent_soft}}, stop: 0.55 {{bg_raised}}, stop: 1 {{bg_sunken}});
+    background: {{surface}};
     border: 1px solid {{line}};
     border-radius: {{r_lg}};
 }
@@ -30,16 +29,41 @@ QLabel#Eyebrow {
     font-size: {{fs_xs}};
 }
 QLabel#HeroTitle {
-    font-size: 30px;
-    font-weight: 600;
+    font-size: 28px;
+    font-weight: 700;
     color: {{text}};
 }
 QLabel#HeroSub {
     color: {{text_dim}};
     font-size: {{fs_sm}};
 }
-QLabel#GoalHead {
+QLabel#HeroBadge {
     color: {{text_dim}};
+    background: {{surface_2}};
+    border: 1px solid {{line}};
+    border-radius: 11px;
+    padding: 1px {{s2}};
+    font-size: {{fs_xs}};
+}
+QWidget#HeroBadge {
+    background: {{surface_2}};
+    border: 1px solid {{line}};
+    border-radius: 11px;
+}
+QWidget#HeroBadge[mark="true"] {
+    background: {{mark_soft}};
+    border-color: transparent;
+}
+QLabel#HeroBadgeText {
+    background: transparent;
+    color: {{text_dim}};
+    font-size: {{fs_xs}};
+}
+QWidget#HeroBadge[mark="true"] QLabel#HeroBadgeText {
+    color: {{mark}};
+}
+QLabel#GoalHead {
+    color: {{text_faint}};
     font-size: {{fs_xs}};
 }
 QLabel#GoalText {
@@ -53,59 +77,25 @@ QLabel#GoalNote {
 }
 QProgressBar#GoalBar {
     background: {{bg_sunken}};
-    border: 1px solid {{line}};
+    border: none;
     border-radius: 4px;
 }
 QProgressBar#GoalBar::chunk {
     background: {{accent}};
     border-radius: 4px;
 }
-QWidget#SideCard {
-    background: {{accent_soft}};
-    border: 1px solid {{line}};
-    border-radius: {{r_md}};
-}
-QLabel#StreakFlame {
-    color: {{mark}};
-    font-size: {{fs_md}};
-}
-QLabel#StreakNum {
-    color: {{mark}};
-    font-size: 34px;
+QLabel#RingValue {
+    color: {{text}};
+    font-size: 22px;
     font-weight: 700;
 }
-QLabel#StreakLabel {
-    color: {{text_dim}};
-    font-size: {{fs_xs}};
-}
-QLabel#LevelBadge {
-    color: {{accent_strong}};
-    border: 1px solid {{accent_line}};
-    border-radius: 9px;
-    padding: 1px {{s2}};
-    font-size: {{fs_xs}};
-}
-QLabel#LevelTitle {
-    color: {{text}};
-    font-size: {{fs_sm}};
-    font-weight: 600;
-}
-QProgressBar#LevelBar {
-    background: {{bg_sunken}};
-    border: 1px solid {{line}};
-    border-radius: 3px;
-}
-QProgressBar#LevelBar::chunk {
-    background: {{accent_strong}};
-    border-radius: 3px;
-}
-QLabel#SideNote {
+QLabel#RingLabel {
     color: {{text_faint}};
     font-size: {{fs_xs}};
 }
 
 QWidget#StatStrip {
-    background: {{bg_raised}};
+    background: {{surface}};
     border: 1px solid {{line}};
     border-radius: {{r_md}};
 }
@@ -131,7 +121,7 @@ QLabel#StatNote {
 }
 
 QWidget#ActionCard, QWidget#PluginCard {
-    background: {{bg_raised}};
+    background: {{surface}};
     border: 1px solid {{line}};
     border-radius: {{r_md}};
 }
@@ -165,8 +155,8 @@ QLabel#CardLabel {
 QLabel#PluginIcon {
     background: {{accent_soft}};
     color: {{accent_strong}};
-    border-radius: 8px;
-    font-size: 18px;
+    border-radius: {{r_sm}};
+    font-size: 16px;
 }
 QLabel#PluginName {
     color: {{text}};
@@ -247,7 +237,7 @@ QLabel#TimelineTag {
     font-size: 10px;
 }
 QWidget#InfoPanel {
-    background: {{bg_raised}};
+    background: {{surface}};
     border: 1px solid {{line}};
     border-radius: {{r_md}};
 }

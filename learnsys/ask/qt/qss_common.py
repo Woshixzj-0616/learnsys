@@ -180,13 +180,14 @@ QPushButton#Quiet:hover {
 }
 QPushButton#Danger {
     background: transparent;
-    border: 1px solid rgba(227, 123, 123, 0.35);
+    border: 1px solid {{line_strong}};
     color: {{err}};
     font-size: {{fs_xs}};
     padding: {{s1}} {{s2}};
 }
 QPushButton#Danger:hover {
     background: {{err_soft}};
+    border-color: {{err}};
 }
 
 QCheckBox {

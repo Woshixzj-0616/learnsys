@@ -1,21 +1,35 @@
 """一轮问答：提问上屏、流式回调、渐进渲染、自检/确认展示、收尾。"""
 from __future__ import annotations
 
+import functools
 import html as html_mod
 import time
 import uuid
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from ..qt import style
+from ..qt import tokens as token_source
 from .common import (STATE_DONE, STATE_ERROR, STATE_HISTORY, STATE_STREAMING,
                      STATE_THINKING, _STREAM_RENDER_SECONDS, _SCROLL_SLACK,
                      _answer_char, _ask_char, _gap_block, _markdown_bold_for_qt)
 from .workers import _AskWorker
 
 
+@functools.lru_cache(maxsize=1)
+def _tokens() -> dict[str, str]:
+    """`tokens.css` 不会在进程里变；缓存一份，避免每帧都读文件。"""
+    return token_source.merged(token_source.read_web_tokens())
+
+
+def _hex(name: str, fallback: str = "#000000") -> str:
+    """令牌 → QTextDocument 能吃的 `#rrggbb`。"""
+    return style.color(_tokens().get(name) or fallback).name()
+
+
 class StreamMixin:
     def _start_turn(self, question: str) -> None:
-        """把问题先上屏 —— **蓝底白字、只包住文字的那一块是你的话**，下面空一行才是 AI 的回答。
+        """把问题先上屏 —— **淡蓝底、只包住文字的那一块是你的话**，下面空一行才是 AI 的回答。
 
         新一轮（还没写过 / 刚清空 / 刚开新会话）就先清掉旧的；
         追问就接在上一轮答案后面写，像聊天记录一样往下长。
@@ -231,13 +245,14 @@ class StreamMixin:
 
     def _header_link(self, target: str, label: str) -> str:
         return ('<p style="margin:0 0 6px 0">'
-                f'<a href="think:{target}" style="color:#6ea8ff;text-decoration:none">'
+                f'<a href="think:{target}" style="color:{_hex("--accent-strong")};'
+                'text-decoration:none">'
                 f'{html_mod.escape(label)}</a></p>')
 
     def _thinking_html(self) -> str:
         body = html_mod.escape(self._thinking_text or "（这一轮没有思考过程）")
         body = body.replace("\n", "<br>")
-        return ('<div style="color:#aeb7c2;font-size:14px;line-height:1.55">'
+        return (f'<div style="color:{_hex("--text-dim")};font-size:14px;line-height:1.55">'
                 + body + "</div>")
 
     def _render_answer_view(self) -> None:
@@ -267,11 +282,12 @@ class StreamMixin:
             document.setDefaultFont(font)
             document.setDocumentMargin(0)
             document.setDefaultStyleSheet(
-                "body { color: #dce4ee; }"
-                "h1,h2,h3,h4 { color: #f1f3f4; }"
-                "code, pre { color: #f5b74e; font-family: 'Cascadia Mono','Consolas',monospace; }"
-                "a { color: #6ea8ff; }"
-                "blockquote { color: #aeb7c2; }"
+                f"body {{ color: {_hex('--text')}; }}"
+                f"h1,h2,h3,h4 {{ color: {_hex('--text')}; }}"
+                f"code, pre {{ color: {_hex('--mark')}; "
+                "font-family: 'Cascadia Mono','Consolas',monospace; }"
+                f"a {{ color: {_hex('--accent-strong')}; }}"
+                f"blockquote {{ color: {_hex('--text-dim')}; }}"
             )
             document.setMarkdown(_markdown_bold_for_qt(self._stream_text))
             cursor.insertHtml(document.toHtml())

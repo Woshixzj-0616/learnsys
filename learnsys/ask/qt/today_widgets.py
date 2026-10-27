@@ -6,6 +6,9 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from . import style
+from . import tokens as token_source
+
 
 def minutes_parts(minutes) -> tuple[str, str]:
     """和 `web/js/ui.js::minutesParts` 同口径。"""
@@ -76,21 +79,65 @@ class GoalBar(QtWidgets.QProgressBar):
         self.setFixedHeight(9)
 
 
-class HeroCard(QtWidgets.QWidget):
-    """今日 Hero：问候/主标题/目标进度 + 连续天数/等级。"""
+class GoalRing(QtWidgets.QWidget):
+    """今日目标圆环：底环 + 进度弧 + 中间百分比（对应 Web Hero 右上角）。"""
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None):
+    def __init__(self, tokens: dict | None = None,
+                 parent: QtWidgets.QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("HeroRing")
+        self.setFixedSize(104, 104)
+        self.percent = 0.0
+        self._tokens = token_source.merged(
+            tokens if tokens is not None else token_source.read_web_tokens())
+
+    def set_percent(self, percent: float) -> None:
+        self.percent = max(0.0, min(100.0, float(percent or 0)))
+        self.update()
+
+    def paintEvent(self, _event) -> None:
+        values = self._tokens
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
+        rect = QtCore.QRectF(self.rect()).adjusted(7, 7, -7, -7)
+
+        track = QtGui.QPen(style.color(values["--line"]), 7)
+        track.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
+        painter.setPen(track)
+        painter.drawArc(rect, 0, 360 * 16)
+
+        if self.percent > 0:
+            arc = QtGui.QPen(style.color(values["--accent"]), 7)
+            arc.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
+            painter.setPen(arc)
+            painter.drawArc(rect, 90 * 16, -int(360 * 16 * self.percent / 100))
+
+        painter.setPen(style.color(values["--text"]))
+        font = QtGui.QFont(self.font())
+        font.setPixelSize(20)
+        font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(self.rect(), QtCore.Qt.AlignmentFlag.AlignCenter,
+                         f"{int(round(self.percent))}%")
+        painter.end()
+
+
+class HeroCard(QtWidgets.QWidget):
+    """今日 Hero：问候/状态标题/徽章/目标进度 + 右侧圆环。"""
+
+    def __init__(self, tokens: dict | None = None,
+                 parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("HeroCard")
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
 
         outer = QtWidgets.QHBoxLayout(self)
-        outer.setContentsMargins(28, 26, 28, 26)
-        outer.setSpacing(28)
+        outer.setContentsMargins(28, 26, 24, 26)
+        outer.setSpacing(24)
 
         main = QtWidgets.QVBoxLayout()
-        main.setSpacing(8)
-        self.eyebrow = _label("今日", "Eyebrow")
+        main.setSpacing(7)
+        self.eyebrow = _label("今日 · 概览", "Eyebrow")
         self.title = _label("今天，练一格。", "HeroTitle")
         self.title.setWordWrap(True)
         self.subtitle = _label(
@@ -99,7 +146,30 @@ class HeroCard(QtWidgets.QWidget):
         main.addWidget(self.eyebrow)
         main.addWidget(self.title)
         main.addWidget(self.subtitle)
-        main.addSpacing(10)
+        main.addSpacing(6)
+
+        badges = QtWidgets.QHBoxLayout()
+        badges.setSpacing(7)
+        self.level_badge = _label("Lv.1", "HeroBadge")
+        self.level_title = _label("网络小白", "HeroBadge")
+        streak_group = QtWidgets.QWidget()
+        streak_group.setObjectName("HeroBadge")
+        streak_group.setProperty("mark", True)
+        streak_group.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+        streak_box = QtWidgets.QHBoxLayout(streak_group)
+        streak_box.setContentsMargins(9, 1, 9, 1)
+        streak_box.setSpacing(4)
+        streak = _label("▲", "HeroBadgeText")
+        self.streak_value = _label("0", "HeroBadgeText")
+        streak_text = _label("天连续", "HeroBadgeText")
+        for node in (streak, self.streak_value, streak_text):
+            streak_box.addWidget(node)
+        for node in (self.level_badge, self.level_title, streak_group):
+            badges.addWidget(node)
+        badges.addStretch(1)
+        main.addLayout(badges)
+        main.addSpacing(6)
 
         goal_head = QtWidgets.QHBoxLayout()
         goal_label = _label("今日学习点", "GoalHead")
@@ -114,53 +184,26 @@ class HeroCard(QtWidgets.QWidget):
         self.goal_note = _label("问答 10 · 转写 5 · 六级断点 8 · 专注 1 分钟 1", "GoalNote")
         self.goal_note.setWordWrap(True)
         main.addWidget(self.goal_note)
+
+        self.level_bar = GoalBar("GoalBar")
+        self.level_bar.setFixedHeight(5)
+        main.addWidget(self.level_bar)
+        self.level_note = _label("再攒 300 学习点升级", "GoalNote")
+        self.level_note.setWordWrap(True)
+        main.addWidget(self.level_note)
         main.addStretch(1)
         outer.addLayout(main, 1)
 
-        side_widget = QtWidgets.QWidget()
-        side_widget.setFixedWidth(300)
-        side = QtWidgets.QVBoxLayout(side_widget)
-        side.setContentsMargins(0, 0, 0, 0)
-        side.setSpacing(12)
-
-        streak = QtWidgets.QWidget()
-        streak.setObjectName("SideCard")
-        streak.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
-        streak_row = QtWidgets.QHBoxLayout(streak)
-        streak_row.setContentsMargins(16, 14, 16, 14)
-        streak_row.setSpacing(8)
-        flame = _label("▲", "StreakFlame")
-        self.streak_value = _label("0", "StreakNum")
-        streak_text = _label("天连续学习", "StreakLabel")
-        streak_row.addWidget(flame)
-        streak_row.addWidget(self.streak_value)
-        streak_row.addWidget(streak_text)
-        streak_row.addStretch(1)
-        side.addWidget(streak)
-
-        level = QtWidgets.QWidget()
-        level.setObjectName("SideCard")
-        level.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
-        level_box = QtWidgets.QVBoxLayout(level)
-        level_box.setContentsMargins(16, 14, 16, 14)
-        level_box.setSpacing(8)
-        level_line = QtWidgets.QHBoxLayout()
-        level_line.setSpacing(8)
-        self.level_badge = _label("Lv.1", "LevelBadge")
-        self.level_title = _label("网络小白", "LevelTitle")
-        level_line.addWidget(self.level_badge)
-        level_line.addWidget(self.level_title)
-        level_line.addStretch(1)
-        level_box.addLayout(level_line)
-        self.level_bar = GoalBar("LevelBar")
-        self.level_bar.setFixedHeight(6)
-        level_box.addWidget(self.level_bar)
-        self.level_note = _label("再攒 300 学习点升级", "SideNote")
-        self.level_note.setWordWrap(True)
-        level_box.addWidget(self.level_note)
-        side.addWidget(level)
-        side.addStretch(1)
-        outer.addWidget(side_widget, 0)
+        ring_box = QtWidgets.QVBoxLayout()
+        ring_box.setContentsMargins(0, 0, 0, 0)
+        ring_box.setSpacing(4)
+        ring_box.addStretch(1)
+        self.goal_ring = GoalRing(tokens)
+        ring_box.addWidget(self.goal_ring, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
+        ring_box.addWidget(_label("今日目标", "RingLabel"), 0,
+                           QtCore.Qt.AlignmentFlag.AlignHCenter)
+        ring_box.addStretch(1)
+        outer.addLayout(ring_box, 0)
 
     def update_overview(self, overview: dict) -> None:
         today = overview.get("today") or {}
@@ -170,7 +213,8 @@ class HeroCard(QtWidgets.QWidget):
         hour = QtCore.QTime.currentTime().hour()
         part = ("夜深了" if hour < 6 else "早上好" if hour < 11
                 else "中午好" if hour < 14 else "下午好" if hour < 18 else "晚上好")
-        self.eyebrow.setText(f"{part}，{name}" if name else part)
+        self.eyebrow.setText(
+            f"今日 · 概览 · {part}，{name}" if name else f"今日 · 概览 · {part}")
 
         percent = float(today.get("percent") or 0)
         if percent >= 100:
@@ -187,6 +231,7 @@ class HeroCard(QtWidgets.QWidget):
         goal = int(today.get("goal") or 100)
         self.goal_text.setText(f"{xp} / {goal}")
         self.goal_bar.setValue(int(round(min(percent, 100) * 10)))
+        self.goal_ring.set_percent(percent)
         left = max(0, goal - xp)
         self.goal_note.setText(
             f"再攒 {left} 学习点到今天的目标" if left else "今天的目标已经完成，继续保持")
@@ -295,17 +340,17 @@ class PluginCard(ClickableCard):
         super().__init__(parent)
         self.setObjectName("PluginCard")
         self.href = f"#/{module.get('id') or ''}"
-        self.setMinimumWidth(230)
-        self.setMinimumHeight(108)
+        self.setMinimumWidth(210)
+        self.setMinimumHeight(94)
         self.setAccessibleName(str(module.get("name") or "插件"))
         box = QtWidgets.QVBoxLayout(self)
-        box.setContentsMargins(16, 16, 17, 16)
-        box.setSpacing(7)
+        box.setContentsMargins(14, 13, 15, 12)
+        box.setSpacing(5)
 
         top = QtWidgets.QHBoxLayout()
-        top.setSpacing(10)
+        top.setSpacing(9)
         icon = _label(str(module.get("icon") or "·"), "PluginIcon")
-        icon.setFixedSize(34, 34)
+        icon.setFixedSize(30, 30)
         icon.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         name = _label(str(module.get("name") or ""), "PluginName")
         category = _label(str(module.get("category") or "插件"), "PluginCat")
@@ -326,7 +371,7 @@ class PluginCard(ClickableCard):
         foot_widget.setObjectName("PluginFoot")
         foot_widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
         foot = QtWidgets.QHBoxLayout(foot_widget)
-        foot.setContentsMargins(0, 9, 0, 0)
+        foot.setContentsMargins(0, 7, 0, 0)
         foot.setSpacing(0)
         foot.addWidget(_label(count or "打开", "PluginCount"))
         foot.addStretch(1)
