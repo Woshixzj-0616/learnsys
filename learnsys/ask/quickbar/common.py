@@ -153,6 +153,20 @@ def _as_bool(value, default: bool) -> bool:
     return str(value).strip().lower() not in ("0", "false", "no", "off", "关", "否")
 
 
+def resolve_on_top(state: dict, default: bool) -> bool:
+    """置顶状态：只有用户显式点过开关才认文件里的值。
+
+    旧版把 `always_on_top` 直接写进 `界面设置.json`，于是某次误点留下的 false
+    会永久压住 config 里的默认值（真踩过：默认置顶改完又被旧值盖回去）。
+    现在用 `always_on_top_set` 区分「用户选择」和「历史残留」：
+    - 有标记 ⇒ 读 `always_on_top`（字符串 "false" 也按 False 处理）；
+    - 没标记 ⇒ 用 `default`，旧值一律忽略。
+    """
+    if not _as_bool(state.get("always_on_top_set"), False):
+        return default
+    return _as_bool(state.get("always_on_top"), default)
+
+
 def _ask_char(tokens: dict[str, str] | None = None) -> QtGui.QTextCharFormat:
     """「我」那句话：淡蓝底、正文色 —— 只包住文字（不是整行一条）。
 

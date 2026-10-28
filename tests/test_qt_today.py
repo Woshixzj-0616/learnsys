@@ -15,8 +15,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PySide6 import QtCore, QtGui, QtWidgets  # noqa: E402
 
 from learnsys.ask.desktop.qt_pilot import QtPilotMixin, open_workbench_link  # noqa: E402
-from learnsys.ask.qt.today import (AUTO_REFRESH_MS, TodayWindow, chars_parts,  # noqa: E402
-                                   date_label, minutes_parts)
+from learnsys.ask.qt.today import (AUTO_REFRESH_MS, STUDY_SUB, WORK_SUB,  # noqa: E402
+                                   TodayWindow, chars_parts, date_label,
+                                   minutes_parts)
 from learnsys.ask.qt.today_panels import (AchievementRow, WeekBars,
                                           plain)  # noqa: E402
 
@@ -372,6 +373,75 @@ def _panel_api(**overrides):
     }
     responses.update(overrides)
     return FakeApi(responses=responses)
+
+
+class TestTodayScene(unittest.TestCase):
+    """学习 / 工作场景切换（2026-10-28）：入口、行动卡、插件排序、六级面板。"""
+
+    ACTIONS = [
+        {"title": "5 条到期", "detail": "错题和生词排到了今天",
+         "href": "#/wrongbook", "label": "去复习"},
+        {"title": "薄弱点练一道 · 阅读", "detail": "掌握度 17%",
+         "href": "#/quiz?focus=阅读", "label": "练这类"},
+    ]
+
+    def _window(self, **overrides):
+        _app()
+        api = _panel_api(**overrides)
+        opened: list[str] = []
+        window = TodayWindow(api, navigate=opened.append)
+        self.addCleanup(window.deleteLater)
+        window.load()
+        api.ready.emit()
+        return window, opened
+
+    def _today(self, **changes):
+        return {**PANEL_TODAY, "actions": self.ACTIONS, **changes}
+
+    def test_学习与工作来回切换(self):
+        window, opened = self._window(**{"/api/today": self._today()})
+        self.assertEqual(window._scene, "study")
+        self.assertEqual(len(window.action_cards), 2)
+        self.assertEqual(window.action_cards[0].href, "#/wrongbook")
+
+        window.scene_work.click()
+        self.assertEqual(window._scene, "work")
+        self.assertEqual(window.hero.subtitle.text(), WORK_SUB)
+        self.assertEqual(len(window.action_cards), 3)
+        self.assertEqual(window.action_cards[0].href, "#/agentruns")
+        self.assertEqual(len(window.work_shortcuts), 3)
+        window.work_shortcuts[0].clicked.emit()
+        self.assertEqual(opened, ["#/agents"])
+
+        window.scene_study.click()
+        self.assertEqual(window._scene, "study")
+        self.assertEqual(window.hero.subtitle.text(), STUDY_SUB)
+        self.assertEqual(len(window.action_cards), 2)
+        self.assertEqual(window.action_cards[0].href, "#/wrongbook")
+
+    def test_工作场景把Agent入口排前(self):
+        modules = {"schema": 2, "modules": [
+            {"id": "ask", "name": "问一问", "icon": "✎", "category": "对话",
+             "tagline": "", "order": 10, "status": "ready", "home": True},
+            {"id": "agents", "name": "Agent 中枢", "icon": "◎", "category": "工作",
+             "tagline": "", "order": 80, "status": "ready", "home": True},
+            {"id": "materials", "name": "资料", "icon": "▤", "category": "工作",
+             "tagline": "", "order": 90, "status": "ready", "home": True},
+        ]}
+        window, _ = self._window(**{"/api/modules": modules})
+        self.assertEqual([card.accessibleName() for card in window.plugin_cards],
+                         ["问一问", "Agent 中枢", "资料"])
+        window.scene_work.click()
+        self.assertEqual([card.accessibleName() for card in window.plugin_cards],
+                         ["Agent 中枢", "资料", "问一问"])
+
+    def test_工作场景隐藏六级断点(self):
+        window, _ = self._window()
+        self.assertFalse(window.cet6_panel.isHidden())
+        window.scene_work.click()
+        self.assertTrue(window.cet6_panel.isHidden())
+        window.scene_study.click()
+        self.assertFalse(window.cet6_panel.isHidden())
 
 
 class TestTodayPanels(unittest.TestCase):

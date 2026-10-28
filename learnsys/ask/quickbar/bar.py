@@ -13,7 +13,7 @@ from learnsys import config, product
 from learnsys.ask import icon as icon_mod
 from .actions import ActionsMixin
 from .build import BuildMixin
-from .common import STATE_IDLE, _as_bool
+from .common import STATE_IDLE, resolve_on_top
 from .layout import LayoutMixin
 from .state import StateMixin
 from .streaming import StreamMixin
@@ -97,8 +97,8 @@ class AskBar(BuildMixin, LayoutMixin, StateMixin, StreamMixin, ActionsMixin,
         self._state_name = STATE_IDLE
         # 界面设置里的 always_on_top 可能被手改成字符串 "false" —— `bool("false")` 是 True！
         # 走和 `config._user_bool` 同一套判法，别自己 bool()。
-        self._on_top = _as_bool(self._state.get("always_on_top", config.ASK_BAR_ALWAYS_ON_TOP),
-                                config.ASK_BAR_ALWAYS_ON_TOP)
+        # 旧文件没有 always_on_top_set 标记 ⇒ 视作历史残留，用 config 默认（见 resolve_on_top）。
+        self._on_top = resolve_on_top(self._state, config.ASK_BAR_ALWAYS_ON_TOP)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
         self.setWindowTitle(f"{product.PRODUCT_NAME} · {product.QNA_NAME}快捷栏")
         self.setWindowIcon(icon_mod.icon())

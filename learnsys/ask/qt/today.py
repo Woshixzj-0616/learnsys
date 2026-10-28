@@ -24,6 +24,19 @@ CONTENT_MAX = 1040
 AUTO_REFRESH_MS = 60_000   # 今日页可见时每分钟静默拉一次，窗口隐藏就停
 # BREAK 由 today_bottom 统一提供：行动卡/插件卡/底栏堆叠共用一个断点。
 
+# 工作场景：与 Web 今日页的 only-work 区块同口径（2026-10-28）。
+WORK_FIRST = {"agents", "browser", "agentruns", "materials"}
+STUDY_SUB = "问出去、听清楚、抓包看明白 —— 每天留下一点能看见的进度。"
+WORK_SUB = "把整件事派出去：Agent 中枢负责执行，浏览器和运行记录都在下面。"
+WORK_ACTIONS = (
+    {"title": "看今天的运行记录", "detail": "模型、耗时、工具调用与成本",
+     "href": "#/agentruns", "label": "打开"},
+    {"title": "打开工作台浏览器", "detail": "独立窗口 + 本机浏览记录",
+     "href": "#/browser", "label": "打开"},
+    {"title": "打开资料库", "detail": "导入的资料与笔记",
+     "href": "#/materials", "label": "打开"},
+)
+
 
 def date_label(now: datetime.date | None = None) -> str:
     now = now or datetime.date.today()
@@ -57,6 +70,8 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         self._action_cols = 0
         self._plugin_cols = 0
         self._bottom_stacked = False
+        self._scene = "study"          # 学习 / 工作：只换今日页入口与文案
+        self._actions: list[dict] = []  # 后端给的行动卡（切回学习时要用）
         self._continue_conv = ""
         self._silent = False
         self.action_cards: list[ActionCard] = []
@@ -101,6 +116,15 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         head.addWidget(title)
         head.addWidget(date)
         head.addStretch(1)
+        self.scene_study = QtWidgets.QPushButton("学习")
+        self.scene_work = QtWidgets.QPushButton("工作")
+        for button in (self.scene_study, self.scene_work):
+            button.setToolTip("切换今日页的内容与入口")
+        self.scene_study.clicked.connect(lambda: self._set_scene("study"))
+        self.scene_work.clicked.connect(lambda: self._set_scene("work"))
+        head.addWidget(self.scene_study)
+        head.addWidget(self.scene_work)
+        head.addSpacing(6)
         self.refresh_button = QtWidgets.QPushButton("刷新")
         self.refresh_button.clicked.connect(self.load)
         self.open_button = QtWidgets.QPushButton("打开工作台")
@@ -109,6 +133,7 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         head.addWidget(self.refresh_button)
         head.addWidget(self.open_button)
         column.addLayout(head)
+        self._paint_scene_buttons()
 
         status_row = QtWidgets.QHBoxLayout()
         self.status_label = StatusLabel("正在连接后台…")
@@ -158,6 +183,34 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         body.addStretch(1)
         scroll.setWidget(content)
         column.addWidget(scroll, 1)
+
+    def _paint_scene_buttons(self) -> None:
+        """选中的场景用主按钮样式；另一个回到普通按钮。"""
+        for button, key in ((self.scene_study, "study"),
+                            (self.scene_work, "work")):
+            name = "Primary" if self._scene == key else ""
+            if button.objectName() == name:
+                continue
+            button.setObjectName(name)
+            button.style().unpolish(button)
+            button.style().polish(button)
+
+    def _set_scene(self, scene: str) -> None:
+        """学习 / 工作两套今日页：只换入口与文案，数据和布局不动。
+
+        对齐 Web 今日页的 only-study / only-work 区块；Qt 不做四模式，
+        场景也不持久化 —— 每次打开都从「学习」开始。
+        """
+        scene = "work" if scene == "work" else "study"
+        if scene == self._scene:
+            return
+        self._scene = scene
+        self._paint_scene_buttons()
+        self.hero.subtitle.setText(WORK_SUB if scene == "work" else STUDY_SUB)
+        self._render_plugins()
+        self._render_actions(self._actions)
+        self._render_shortcuts()
+        self._render_cet6()
 
     def _grid_section(self, title: str, hint: str = ""):
         holder = QtWidgets.QWidget()
@@ -328,13 +381,15 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         ])
 
     def _render_actions(self, actions: list) -> None:
+        self._actions = list(actions or [])
+        items = list(WORK_ACTIONS) if self._scene == "work" else self._actions
         self._clear_grid(self.action_grid)
         self.action_cards = []
-        if not actions:
+        if not items:
             self.action_section.hide()
             return
         self.action_section.show()
-        for index, item in enumerate(actions[:3]):
+        for index, item in enumerate(items[:3]):
             card = ActionCard(item or {})
             card.set_number(index + 1)
             card.clicked.connect(lambda c=card: self._navigate(c.href))
@@ -362,8 +417,15 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
             if module.get("home") and module.get("status") == "ready"
             and prefs.get(module.get("id"), True) is not False
         ]
-        selected.sort(key=lambda item: (int(item.get("order") or 999),
-                                        str(item.get("id") or "")))
+        if self._scene == "work":
+            # 工作场景把 Agent 相关入口排到最前，其余保持原顺序。
+            selected.sort(key=lambda item: (
+                0 if str(item.get("id") or "") in WORK_FIRST else 1,
+                int(item.get("order") or 999),
+                str(item.get("id") or "")))
+        else:
+            selected.sort(key=lambda item: (int(item.get("order") or 999),
+                                            str(item.get("id") or "")))
 
         self._clear_grid(self.plugin_grid)
         self.plugin_cards = []

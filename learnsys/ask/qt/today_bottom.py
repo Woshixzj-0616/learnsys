@@ -15,6 +15,19 @@ from .today_widgets import minutes_parts
 BREAK = 880              # 行动卡/插件卡/底栏堆叠共用的宽度断点
 SIDE_WIDTH = 320         # 右侧栏固定宽度（Web 是 292，Qt 给长标题多留一点）
 
+# 快捷入口按场景切换：与 Web 今日页的 only-study / only-work 区块同口径。
+# 第三项 href 为空 = 不是跳页面，而是「接着上次」的会话恢复。
+STUDY_SHORTCUTS = (
+    ("问一个问题", "进入问一问", "#/ask"),
+    ("去训练场练一格", "子网 / 路由 / 抓包", "#/netlab"),
+    ("继续最近的会话", "接着上次", ""),
+)
+WORK_SHORTCUTS = (
+    ("打开 Agent 中枢", "派活 / 只读执行", "#/agents"),
+    ("看今天的运行记录", "模型、耗时与成本", "#/agentruns"),
+    ("打开资料库", "导入的资料与笔记", "#/materials"),
+)
+
 
 class TodayBottomMixin:
     """宿主约定：提供 `_navigate(href)`、`status_label`、`_data`、`tokens`、
@@ -53,19 +66,11 @@ class TodayBottomMixin:
         side_box.addWidget(self.ach_panel)
         side_box.addSpacing(4)
 
-        self.ask_shortcut = ShortcutButton("问一个问题", "进入问一问")
-        self.ask_shortcut.clicked.connect(lambda: self._navigate("#/ask"))
-        self.netlab_shortcut = ShortcutButton("去训练场练一格", "子网 / 路由 / 抓包")
-        self.netlab_shortcut.clicked.connect(lambda: self._navigate("#/netlab"))
-        self.continue_shortcut = ShortcutButton("继续最近的会话", "接着上次")
-        self.continue_shortcut.clicked.connect(self._continue_last)
-        shortcut_box = QtWidgets.QVBoxLayout()
-        shortcut_box.setContentsMargins(0, 0, 0, 0)
-        shortcut_box.setSpacing(7)
-        for button in (self.ask_shortcut, self.netlab_shortcut,
-                       self.continue_shortcut):
-            shortcut_box.addWidget(button)
-        side_box.addLayout(shortcut_box)
+        self.shortcut_box = QtWidgets.QVBoxLayout()
+        self.shortcut_box.setContentsMargins(0, 0, 0, 0)
+        self.shortcut_box.setSpacing(7)
+        side_box.addLayout(self.shortcut_box)
+        self._render_shortcuts()
         side_box.addStretch(1)
         self.bottom_grid.addWidget(self.side, 0, 1)
         self.bottom_grid.setColumnStretch(0, 1)
@@ -110,6 +115,10 @@ class TodayBottomMixin:
                 "今天还没有开始录像。托盘里点「开始录像」才有专注数据。")
 
     def _render_cet6(self) -> None:
+        # 工作场景不显示六级断点；切回学习时再按数据恢复。
+        if getattr(self, "_scene", "study") == "work":
+            self.cet6_panel.hide()
+            return
         items = (self._data.get("today") or {}).get("cet6") or []
         if not items:
             self.cet6_panel.hide()
@@ -146,6 +155,32 @@ class TodayBottomMixin:
             if int(item.get("messages") or 0) > 0:
                 self._continue_conv = str(item.get("id") or "")
                 break
+
+    def _render_shortcuts(self) -> None:
+        """按当前场景重建快捷入口；学习 ↔ 工作切换时整组换掉。"""
+        while self.shortcut_box.count():
+            item = self.shortcut_box.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
+        work = getattr(self, "_scene", "study") == "work"
+        buttons = []
+        for text, hint, href in (WORK_SHORTCUTS if work else STUDY_SHORTCUTS):
+            button = ShortcutButton(text, hint)
+            if href:
+                button.clicked.connect(
+                    lambda _checked=False, target=href: self._navigate(target))
+            else:
+                button.clicked.connect(self._continue_last)
+            self.shortcut_box.addWidget(button)
+            buttons.append(button)
+        # 保留具名引用：测试和外部代码不用按位置找按钮。
+        if work:
+            self.work_shortcuts = buttons
+        elif len(buttons) == 3:
+            (self.ask_shortcut, self.netlab_shortcut,
+             self.continue_shortcut) = buttons
 
     # ---- 跳转 ----
 

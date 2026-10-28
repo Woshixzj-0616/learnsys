@@ -140,6 +140,9 @@ class LayoutMixin:
         """「置顶」开关：开着才挡别的界面；默认关。"""
         self._on_top = not self._on_top
         self._state["always_on_top"] = self._on_top
+        # 打上「用户显式选过」的标记：之后重启才认这个值，
+        # 而不是被旧版本留下的 always_on_top 永久压住（见 common.resolve_on_top）。
+        self._state["always_on_top_set"] = True
         self._topmost(self._on_top)     # 层级只走这一条 —— 别再 setWindowFlags（会闪）
         self._save_state()
         self.show_message("已开置顶 —— 横栏会一直在别的窗口上面。" if self._on_top
