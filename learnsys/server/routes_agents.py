@@ -27,6 +27,7 @@ class TaskIn(BaseModel):
     material_id: int = 0
     mode: str = Field(default="read", pattern="^(read|write)$")
     timeout: int = Field(default=0, ge=0, le=900)
+    depends_on: int = Field(default=0, ge=0)
 
 
 class DecisionIn(BaseModel):
@@ -44,6 +45,18 @@ def _task_or_404(conn, task_id: int) -> dict:
     if task is None:
         raise HTTPException(status_code=404, detail="任务不存在")
     return task
+
+
+def _check_parent(parent: dict | None) -> None:
+    if parent is None:
+        raise HTTPException(status_code=404, detail="上一步任务不存在")
+    if parent["status"] in ("failed", "cancelled"):
+        raise HTTPException(status_code=409,
+                            detail="上一步任务已失败或已取消，不能接续。")
+    if parent["status"] == "done" and not parent.get("has_result"):
+        raise HTTPException(
+            status_code=409,
+            detail="上一步任务没有文本结果，不能接续；换一个任务试试。")
 
 
 def _route_json(conn, spec, *, mode: str, chosen: str,
@@ -115,16 +128,31 @@ def create_task(req: TaskIn, _=Depends(require_token)):
             prompt = (f"{prompt}\n\n【资料 #{material.get('id')}："
                       f"{material.get('title') or '未命名'}】\n{body}")
             prompt = prompt[:MAX_PROMPT]
+        parent = None
+        if req.depends_on:
+            parent = store.get_agent_task(conn, int(req.depends_on))
+            _check_parent(parent)
+            if len(prompt) > MAX_PROMPT - 1800:
+                raise HTTPException(
+                    status_code=400,
+                    detail="任务内容太长：接续任务要给上一步结果留出空间"
+                           f"（不超过 {MAX_PROMPT - 1800} 字）。")
         timeout_s = max(10, min(int(req.timeout or 0), 900)) if req.timeout else 0
         task_id = store.add_agent_queued_task(
             conn, agent=spec.id, prompt=prompt, workspace=str(workspace),
-            mode=req.mode, timeout_s=timeout_s,
+            mode=req.mode, timeout_s=timeout_s, depends_on=req.depends_on,
             route_json=_route_json(conn, spec, mode=req.mode, chosen=spec.id,
                                    settings=settings),
             queue_max=agents.queue_max(settings))
         if task_id is None:
-            raise HTTPException(status_code=429,
-                                detail="排队任务太多，等几个跑完再派。")
+            # 插入内已同时判断父状态与队列上限，这里复查一次区分原因
+            latest = store.get_agent_task(conn, int(req.depends_on)) \
+                if req.depends_on else None
+            if req.depends_on:
+                _check_parent(latest)
+            raise HTTPException(
+                status_code=429,
+                detail="排队任务太多（含等待上一步的任务），等几个跑完再派。")
     finally:
         conn.close()
     agents.queue.schedule_drain()

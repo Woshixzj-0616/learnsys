@@ -1,12 +1,14 @@
 // 派活表单：agent / 工作目录 / 挂资料 / 提示词。
 import { api } from "../../api.js";
 import { escapeHtml, toast } from "../../ui.js";
+import { agentName, promptPreview, statusText } from "./format.js";
 
 export function createCompose({ root, onStart }) {
   const agent = root.querySelector("#ag-agent");
   const workspace = root.querySelector("#ag-workspace");
   const roots = root.querySelector("#ag-roots");
   const material = root.querySelector("#ag-material");
+  const parent = root.querySelector("#ag-parent");
   const prompt = root.querySelector("#ag-prompt");
   const mode = root.querySelector("#ag-mode");
   const timeout = root.querySelector("#ag-timeout");
@@ -14,7 +16,27 @@ export function createCompose({ root, onStart }) {
   const note = root.querySelector("#ag-note");
   const hint = root.querySelector("#ag-hint");
   let meta = { agents: [], allowed_roots: [], default_workspace: "", timeout: 300 };
+  let tasks = [];
   let busy = false;
+
+  function canContinue(task) {
+    if (!task) return false;
+    if (task.status === "failed" || task.status === "cancelled") return false;
+    if (task.status === "done" && !task.has_result) return false;
+    return true;
+  }
+
+  function renderParents() {
+    const current = parent.value;
+    const options = tasks.filter(canContinue);
+    parent.innerHTML = '<option value="0">不接续（独立任务）</option>'
+      + options.map((task) => {
+        const label = `#${task.id} · ${agentName(task.agent, meta.agents)}`
+          + ` · ${statusText(task.status)} · ${promptPreview(task.prompt, 36)}`;
+        return `<option value="${task.id}">${escapeHtml(label)}</option>`;
+      }).join("");
+    parent.value = options.some((task) => String(task.id) === current) ? current : "0";
+  }
 
   function renderNote() {
     const write = mode.value === "write";
@@ -25,6 +47,11 @@ export function createCompose({ root, onStart }) {
       text = "可写：Codex 只在所选目录内写，整任务授权，不逐条确认";
     } else if (write) {
       text = "可写：每次改文件 / 跑命令都会停下来等你确认";
+    }
+    if (Number(parent.value)) {
+      text += write
+        ? "；上一步输出会作为资料注入，请确认来源可信"
+        : "；上一步输出会作为资料注入";
     }
     note.textContent = text;
     hint.textContent = text;
@@ -71,11 +98,27 @@ export function createCompose({ root, onStart }) {
     }
   }
 
-  async function load(nextMeta) {
+  async function load(nextMeta, nextTasks) {
     meta = nextMeta || meta;
+    if (nextTasks) tasks = nextTasks;
     renderAgents();
     renderRoots();
+    renderParents();
     await renderMaterials();
+  }
+
+  function setTasks(items) {
+    tasks = Array.isArray(items) ? items : [];
+    renderParents();
+    renderNote();
+  }
+
+  function setParent(taskId) {
+    const value = String(Number(taskId) || 0);
+    if (![...parent.options].some((item) => item.value === value)) return false;
+    parent.value = value;
+    renderNote();
+    return true;
   }
 
   function payload() {
@@ -85,6 +128,7 @@ export function createCompose({ root, onStart }) {
       material_id: Number(material.value) || 0,
       mode: mode.value === "write" ? "write" : "read",
       timeout: Number(timeout.value) || 0,
+      depends_on: Number(parent.value) || 0,
       prompt: prompt.value.trim(),
     };
   }
@@ -103,6 +147,7 @@ export function createCompose({ root, onStart }) {
     try {
       await onStart(body);
       prompt.value = "";
+      parent.value = "0";
     } finally {
       busy = false;
       start.textContent = "开始任务";
@@ -113,6 +158,7 @@ export function createCompose({ root, onStart }) {
   start.addEventListener("click", submit);
   agent.addEventListener("change", renderNote);
   mode.addEventListener("change", renderNote);
+  parent.addEventListener("change", renderNote);
   prompt.addEventListener("keydown", (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
       event.preventDefault();
@@ -120,5 +166,5 @@ export function createCompose({ root, onStart }) {
     }
   });
 
-  return { load, submit };
+  return { load, setTasks, setParent, submit };
 }

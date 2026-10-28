@@ -16,6 +16,25 @@ export function queueText(task) {
   return position > 0 ? `排队中 · 第 ${position} 位` : "排队中";
 }
 
+export function chainText(task) {
+  const parent = Number(task?.depends_on) || 0;
+  return parent ? `接在 #${parent} 之后` : "";
+}
+
+export function statusLabel(task) {
+  const state = task?.status || "queued";
+  const parent = Number(task?.depends_on) || 0;
+  if (state === "queued" && parent && task.parent_status
+      && task.parent_status !== "done") {
+    return `等待任务 #${parent}`;
+  }
+  if (state === "cancelled"
+      && String(task?.error || "").startsWith("上一步任务")) {
+    return "未执行（链已停止）";
+  }
+  return state === "queued" ? queueText(task) : statusText(state);
+}
+
 export function routeText(route, agents = []) {
   const recommended = route?.recommended;
   if (!recommended) return "";

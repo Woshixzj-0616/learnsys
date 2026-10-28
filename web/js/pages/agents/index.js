@@ -26,12 +26,20 @@ function renderList() {
     tasks,
     agents: meta.agents,
     onOpen: (task) => log.open(task),
+    onContinue: (task) => {
+      if (compose?.setParent(task.id)) {
+        nodes.root.querySelector(".agents-compose")?.scrollIntoView(
+          { behavior: "smooth", block: "start" });
+        nodes.root.querySelector("#ag-prompt")?.focus();
+      }
+    },
   });
 }
 
 async function loadTasks() {
   const data = await api.get("/api/agents/tasks?limit=20");
   tasks = data?.tasks || [];
+  compose?.setTasks(tasks);
   renderList();
   updateStats();
 }

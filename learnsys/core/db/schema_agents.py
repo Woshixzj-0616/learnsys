@@ -19,7 +19,9 @@ CREATE TABLE IF NOT EXISTS agent_tasks (
     cost_usd    REAL NOT NULL DEFAULT 0,
     usage_json  TEXT NOT NULL DEFAULT '',
     route_json  TEXT NOT NULL DEFAULT '',
-    timeout_s   INTEGER NOT NULL DEFAULT 0
+    timeout_s   INTEGER NOT NULL DEFAULT 0,
+    depends_on  INTEGER NOT NULL DEFAULT 0,
+    result_text TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_created
     ON agent_tasks (created_at DESC, id DESC);

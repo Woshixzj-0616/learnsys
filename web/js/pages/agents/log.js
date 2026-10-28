@@ -1,7 +1,7 @@
 // 任务日志：800ms 轮询增量事件与写操作审批，结束自动停。
 import { api } from "../../api.js";
 import { escapeHtml, toast } from "../../ui.js";
-import { msText, queueText, routeText, statusText, taskTitle } from "./format.js";
+import { msText, routeText, statusLabel, taskTitle } from "./format.js";
 
 const TERMINAL = new Set(["done", "failed", "cancelled"]);
 const MAX_LINES = 2000;
@@ -114,7 +114,7 @@ export function createLog({ root, agents, onStop, onTerminal, onDecide }) {
     if (!task) return;
     title.textContent = taskTitle(task, agents);
     const state = task.status || "queued";
-    status.textContent = state === "queued" ? queueText(task) : statusText(state);
+    status.textContent = statusLabel(task);
     status.className = `agents-status ${state}`;
     terminal = TERMINAL.has(state);
     stopBtn.hidden = terminal;

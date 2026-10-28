@@ -396,6 +396,67 @@ class AgentApiTest(unittest.TestCase):
                 break
             time.sleep(0.05)
 
+    def _wait_status(self, task_id: int, timeout: float = 15) -> str:
+        deadline = time.monotonic() + timeout
+        status = ""
+        while time.monotonic() < deadline:
+            status = self.client.get(
+                f"/api/agents/tasks/{task_id}", headers=AUTH).json()["task"]["status"]
+            if status in ("done", "failed", "cancelled"):
+                return status
+            time.sleep(0.05)
+        return status
+
+    def test_depends_on_missing_404(self):
+        response = self.client.post(
+            "/api/agents/tasks",
+            json={"agent": "fake", "prompt": "接续", "workspace": str(self.root),
+                  "depends_on": 9999},
+            headers=AUTH)
+        self.assertEqual(response.status_code, 404, response.text)
+
+    def test_depends_on_failed_parent_409(self):
+        self.spec = _fake_spec("import sys\nsys.exit(3)\n")
+        first = self.client.post(
+            "/api/agents/tasks",
+            json={"agent": "fake", "prompt": "失败", "workspace": str(self.root)},
+            headers=AUTH).json()["task"]
+        self.assertEqual(self._wait_status(first["id"]), "failed")
+        response = self.client.post(
+            "/api/agents/tasks",
+            json={"agent": "fake", "prompt": "接续", "workspace": str(self.root),
+                  "depends_on": first["id"]},
+            headers=AUTH)
+        self.assertEqual(response.status_code, 409, response.text)
+
+    def test_depends_on_done_without_result_409(self):
+        self.spec = _fake_spec(_sleep_script(0))
+        first = self.client.post(
+            "/api/agents/tasks",
+            json={"agent": "fake", "prompt": "没输出", "workspace": str(self.root)},
+            headers=AUTH).json()["task"]
+        self.assertEqual(self._wait_status(first["id"]), "done")
+        response = self.client.post(
+            "/api/agents/tasks",
+            json={"agent": "fake", "prompt": "接续", "workspace": str(self.root),
+                  "depends_on": first["id"]},
+            headers=AUTH)
+        self.assertEqual(response.status_code, 409, response.text)
+
+    def test_chain_prompt_too_long_400(self):
+        self.spec = _fake_spec(_sleep_script(1))
+        parent = self.client.post(
+            "/api/agents/tasks",
+            json={"agent": "fake", "prompt": "父任务", "workspace": str(self.root)},
+            headers=AUTH).json()["task"]
+        response = self.client.post(
+            "/api/agents/tasks",
+            json={"agent": "fake", "prompt": "长" * 19000,
+                  "workspace": str(self.root), "depends_on": parent["id"]},
+            headers=AUTH)
+        self.assertEqual(response.status_code, 400, response.text)
+        self._wait_status(parent["id"])
+
     def test_outside_workspace_400(self):
         response = self.client.post(
             "/api/agents/tasks",

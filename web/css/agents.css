@@ -316,3 +316,9 @@
   font-size: 12px;
   cursor: help;
 }
+
+.agents-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

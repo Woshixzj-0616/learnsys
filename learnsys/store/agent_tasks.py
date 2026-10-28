@@ -17,12 +17,13 @@ EVENT_KINDS = ("status", "text", "tool", "error", "result")
 _TASK_COLUMNS = (
     "id, agent, prompt, workspace, mode, status, exit_code, created_at, "
     "started_at, ended_at, duration_ms, output_path, error, cost_usd, usage_json, "
-    "route_json, timeout_s"
+    "route_json, timeout_s, depends_on, (length(result_text) > 0)"
 )
 
 _UPDATE_FIELDS = {
     "status", "exit_code", "started_at", "ended_at", "duration_ms",
     "output_path", "error", "cost_usd", "usage_json", "route_json",
+    "result_text",
 }
 
 
@@ -45,36 +46,46 @@ def _task_dict(row) -> dict:
         "output_path": row[11] or "", "error": row[12] or "",
         "cost_usd": float(row[13] or 0), "usage": _json_dict(row[14]),
         "route": _json_dict(row[15]), "timeout_s": int(row[16] or 0),
+        "depends_on": int(row[17] or 0), "has_result": bool(row[18]),
+        "parent_status": "",
     }
 
 
 def add_task(conn: sqlite3.Connection, *, agent: str, prompt: str,
              workspace: str = "", mode: str = "read", timeout_s: int = 0,
-             route_json: str = "") -> int:
+             route_json: str = "", depends_on: int = 0) -> int:
     with _LOCK:
         cur = conn.execute(
             "INSERT INTO agent_tasks (agent, prompt, workspace, mode, status, "
-            "created_at, route_json, timeout_s) "
-            "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?)",
+            "created_at, route_json, timeout_s, depends_on) "
+            "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?)",
             (str(agent), str(prompt), str(workspace), str(mode), now(),
-             str(route_json or ""), max(0, int(timeout_s or 0))))
+             str(route_json or ""), max(0, int(timeout_s or 0)),
+             max(0, int(depends_on or 0))))
         conn.commit()
         return int(cur.lastrowid)
 
 
 def add_queued(conn: sqlite3.Connection, *, agent: str, prompt: str,
                workspace: str = "", mode: str = "read", timeout_s: int = 0,
-               route_json: str = "", queue_max: int = 10) -> int | None:
-    """队列未满才落库；一条 SQL 同时判断与插入，返回 None 表示队列已满。"""
+               route_json: str = "", queue_max: int = 10,
+               depends_on: int = 0) -> int | None:
+    """队列未满且父任务可接续才落库；一条 SQL 同时判断与插入。
+
+    返回 None 时调用方要复查父任务，区分「父不可接续」与「队列已满」。
+    """
+    parent = max(0, int(depends_on or 0))
     with _LOCK:
         cur = conn.execute(
             "INSERT INTO agent_tasks (agent, prompt, workspace, mode, status, "
-            "created_at, route_json, timeout_s) "
-            "SELECT ?, ?, ?, ?, 'queued', ?, ?, ? "
-            "WHERE (SELECT count(*) FROM agent_tasks WHERE status = 'queued') < ?",
+            "created_at, route_json, timeout_s, depends_on) "
+            "SELECT ?, ?, ?, ?, 'queued', ?, ?, ?, ? "
+            "WHERE (SELECT count(*) FROM agent_tasks WHERE status = 'queued') < ? "
+            "AND (? = 0 OR EXISTS (SELECT 1 FROM agent_tasks p "
+            "     WHERE p.id = ? AND p.status NOT IN ('failed', 'cancelled')))",
             (str(agent), str(prompt), str(workspace), str(mode), now(),
-             str(route_json or ""), max(0, int(timeout_s or 0)),
-             max(1, int(queue_max or 10))))
+             str(route_json or ""), max(0, int(timeout_s or 0)), parent,
+             max(1, int(queue_max or 10)), parent, parent))
         conn.commit()
         if cur.rowcount <= 0:
             return None
@@ -88,6 +99,8 @@ def claim_next(conn: sqlite3.Connection, *, max_global: int = 2) -> int | None:
         "WHERE id = ("
         "  SELECT t.id FROM agent_tasks t"
         "  WHERE t.status = 'queued'"
+        "    AND (t.depends_on = 0 OR EXISTS (SELECT 1 FROM agent_tasks p "
+        "         WHERE p.id = t.depends_on AND p.status = 'done'))"
         "    AND NOT EXISTS (SELECT 1 FROM agent_tasks r "
         "                    WHERE r.agent = t.agent AND r.status = 'running')"
         "    AND (SELECT count(*) FROM agent_tasks "
@@ -125,6 +138,7 @@ def get_task(conn: sqlite3.Connection, task_id: int) -> dict | None:
         task["queue_position"] = _queue_position(conn, task)
     else:
         task["queue_position"] = 0
+    _attach_parent_status(conn, [task])
     return task
 
 
@@ -140,7 +154,24 @@ def list_tasks(conn: sqlite3.Connection, limit: int = 20) -> list[dict]:
         task = _task_dict(row)
         task["queue_position"] = positions.get(task["id"], 0)
         tasks.append(task)
+    _attach_parent_status(conn, tasks)
     return tasks
+
+
+def _attach_parent_status(conn: sqlite3.Connection, tasks: list[dict]) -> None:
+    """一次查询补上父任务状态（给界面区分「等待上一步」）。"""
+    parents = sorted({task["depends_on"] for task in tasks if task["depends_on"]})
+    if not parents:
+        return
+    marks = ",".join("?" for _ in parents)
+    with _LOCK:
+        rows = conn.execute(
+            f"SELECT id, status FROM agent_tasks WHERE id IN ({marks})",
+            parents).fetchall()
+    statuses = {int(row[0]): row[1] or "" for row in rows}
+    for task in tasks:
+        parent = task["depends_on"]
+        task["parent_status"] = statuses.get(parent, "") if parent else ""
 
 
 def queue_positions(conn: sqlite3.Connection) -> dict[int, int]:
@@ -232,6 +263,34 @@ def recent_terminal(conn: sqlite3.Connection, agent: str, mode: str,
             (str(agent), str(mode), limit)).fetchall()
     return [{"status": row[0], "duration_ms": int(row[1] or 0),
              "cost_usd": float(row[2] or 0)} for row in rows]
+
+
+def get_task_result(conn: sqlite3.Connection, task_id: int) -> str:
+    """结果正文只给队列内部做链式注入，不进任务列表。"""
+    with _LOCK:
+        row = conn.execute(
+            "SELECT result_text FROM agent_tasks WHERE id = ?",
+            (int(task_id),)).fetchone()
+    return str(row[0] or "") if row else ""
+
+
+def cascade_skipped(conn: sqlite3.Connection) -> list[int]:
+    """父任务已失败/已取消/不存在时，把 queued 子任务标成未执行（cancelled）。
+
+    返回被级联的任务 id，调用方负责写事件；调用方循环到返回空列表为止，
+    这样孙任务会在下一轮被处理。
+    """
+    with _LOCK:
+        rows = conn.execute(
+            "UPDATE agent_tasks SET status = 'cancelled', ended_at = ?, "
+            "error = '上一步任务 #' || depends_on || ' 未完成，链已停止' "
+            "WHERE status = 'queued' AND depends_on > 0 AND ("
+            "  NOT EXISTS (SELECT 1 FROM agent_tasks p WHERE p.id = agent_tasks.depends_on)"
+            "  OR EXISTS (SELECT 1 FROM agent_tasks p WHERE p.id = agent_tasks.depends_on"
+            "             AND p.status IN ('failed', 'cancelled'))"
+            ") RETURNING id", (now(),)).fetchall()
+        conn.commit()
+    return [int(row[0]) for row in rows]
 
 
 def add_event(conn: sqlite3.Connection, task_id: int, seq: int,

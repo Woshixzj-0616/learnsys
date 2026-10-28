@@ -19,6 +19,7 @@ from .base import AgentSpec, build_argv, parse_line
 MAX_OUTPUT_CHARS = 5_000_000
 MAX_EVENTS = 2000
 MAX_STDERR = 20_000
+MAX_RESULT_CHARS = 20_000        # 供下一步链式注入；完整内容仍写结果文件
 
 _RUNNING: dict[int, subprocess.Popen] = {}
 _CANCEL: dict[int, threading.Event] = {}
@@ -289,7 +290,8 @@ def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
                 ended_at=store.now(), duration_ms=duration_ms,
                 output_path=output_path, error=error,
                 cost_usd=cost,
-                usage_json=json.dumps(usage, ensure_ascii=False))
+                usage_json=json.dumps(usage, ensure_ascii=False),
+                result_text=answer[:MAX_RESULT_CHARS])
             emit("status", {"done": "任务完成", "failed": "任务失败",
                             "cancelled": "任务已取消"}.get(status, status))
         except Exception:
