@@ -51,6 +51,9 @@ function fill(data) {
 
   setValue("hotkey", data.hotkey || "");
   setValue("weekly-goal-days", data.weekly_goal_days ?? 5);
+  setValue("briefing-time", data.briefing?.generate_at || "07:30");
+  const briefingEnabled = document.getElementById("briefing-enabled");
+  if (briefingEnabled) briefingEnabled.checked = data.briefing?.enabled !== false;
   document.getElementById("data-root").value = data.data_root || "";
   document.getElementById("settings-path").textContent = `设置在：${data.settings_path || ""}`;
   document.getElementById("backup-dir").textContent = `备份目录：${data.backup_dir || ""}`;
@@ -296,9 +299,13 @@ function collect() {
     modules[node.dataset.module] = node.checked;
   });
   const weeklyGoalDays = Number(valueOf("weekly-goal-days"));
+  const briefing = {
+    enabled: document.getElementById("briefing-enabled")?.checked !== false,
+    generate_at: valueOf("briefing-time") || "07:30",
+  };
 
   return {
-    agent, vision, hotkey: valueOf("hotkey"), modules,
+    agent, vision, hotkey: valueOf("hotkey"), modules, briefing,
     ...(Number.isFinite(weeklyGoalDays) && weeklyGoalDays >= 3 && weeklyGoalDays <= 7
       ? { weekly_goal_days: Math.round(weeklyGoalDays) } : {}),
   };

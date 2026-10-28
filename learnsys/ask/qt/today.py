@@ -1,6 +1,7 @@
-"""今日页（Qt 试点，R4）。
+"""今日页（Qt）。
 
 数据全部来自现有 `/api/*`；本页只负责展示与跳转。
+结构对齐 Web 今日页（2026-10-28 改版）：Hero → 简报横条 → 接着上次 + 问答轨道 / 本周 + 成就。
 颜色/字号/圆角沿用 `style.py`（令牌来自 `web/css/tokens.css`）。
 """
 from __future__ import annotations
@@ -13,29 +14,15 @@ from learnsys import product
 
 from . import style
 from . import tokens as token_source
-from .today_bottom import BREAK, TodayBottomMixin
-from .today_widgets import (ActionCard, HeroCard, OnboardingBanner, PluginCard,
-                            StatStrip, chars_parts, minutes_parts)  # noqa: F401
+from .today_bottom import TodayBottomMixin
+from .today_briefing import BriefingBand
+from .today_widgets import HeroCard, OnboardingBanner
 from .widgets import StatusLabel
 
 TODAY_SIZE = (1040, 700)
 TODAY_MIN = (760, 560)
 CONTENT_MAX = 1040
 AUTO_REFRESH_MS = 60_000   # 今日页可见时每分钟静默拉一次，窗口隐藏就停
-# BREAK 由 today_bottom 统一提供：行动卡/插件卡/底栏堆叠共用一个断点。
-
-# 工作场景：与 Web 今日页的 only-work 区块同口径（2026-10-28）。
-WORK_FIRST = {"agents", "browser", "agentruns", "materials"}
-STUDY_SUB = "问出去、听清楚、抓包看明白 —— 每天留下一点能看见的进度。"
-WORK_SUB = "把整件事派出去：Agent 中枢负责执行，浏览器和运行记录都在下面。"
-WORK_ACTIONS = (
-    {"title": "看今天的运行记录", "detail": "模型、耗时、工具调用与成本",
-     "href": "#/agentruns", "label": "打开"},
-    {"title": "打开工作台浏览器", "detail": "独立窗口 + 本机浏览记录",
-     "href": "#/browser", "label": "打开"},
-    {"title": "打开资料库", "detail": "导入的资料与笔记",
-     "href": "#/materials", "label": "打开"},
-)
 
 
 def date_label(now: datetime.date | None = None) -> str:
@@ -67,15 +54,9 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         self._errors: dict[str, str] = {}
         self._pending: set[str] = set()
         self._required_failed = False
-        self._action_cols = 0
-        self._plugin_cols = 0
         self._bottom_stacked = False
-        self._scene = "study"          # 学习 / 工作：只换今日页入口与文案
-        self._actions: list[dict] = []  # 后端给的行动卡（切回学习时要用）
-        self._continue_conv = ""
+        self._scene = "study"          # 学习 / 工作：只换左侧入口
         self._silent = False
-        self.action_cards: list[ActionCard] = []
-        self.plugin_cards: list[PluginCard] = []
 
         self._auto_timer = QtCore.QTimer(self)
         self._auto_timer.setInterval(AUTO_REFRESH_MS)
@@ -119,7 +100,7 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         self.scene_study = QtWidgets.QPushButton("学习")
         self.scene_work = QtWidgets.QPushButton("工作")
         for button in (self.scene_study, self.scene_work):
-            button.setToolTip("切换今日页的内容与入口")
+            button.setToolTip("切换今日页的入口")
         self.scene_study.clicked.connect(lambda: self._set_scene("study"))
         self.scene_work.clicked.connect(lambda: self._set_scene("work"))
         head.addWidget(self.scene_study)
@@ -159,33 +140,18 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         body.setContentsMargins(0, 0, 6, int(token_source.px(self.tokens, "--s5", 24)))
         body.setSpacing(int(token_source.px(self.tokens, "--s5", 24)))
 
-        self.hero = HeroCard(self.tokens)
+        self.hero = HeroCard(self.tokens, self._navigate)
         body.addWidget(self.hero)
 
-        # 顺序照 Web 今日页：Hero → 所有工具 → 统计条 → 行动卡
-        self.plugin_section, self.plugin_grid = self._grid_section(
-            "所有工具", "点卡片进入 · 插件中心可开关")
-        self.plugin_empty = QtWidgets.QLabel("插件清单没读到；点「刷新」再试。")
-        self.plugin_empty.setObjectName("Empty")
-        self.plugin_empty.setWordWrap(True)
-        self.plugin_empty.hide()
-        self.plugin_section.layout().addWidget(self.plugin_empty)
-        body.addWidget(self.plugin_section)
-
-        self.stats = StatStrip()
-        body.addWidget(self.stats)
-
-        self.action_section, self.action_grid = self._grid_section("今天还可以")
-        body.addWidget(self.action_section)
+        self.briefing = BriefingBand(self._navigate)
+        body.addWidget(self.briefing)
 
         self._build_bottom(body)
-
         body.addStretch(1)
         scroll.setWidget(content)
         column.addWidget(scroll, 1)
 
     def _paint_scene_buttons(self) -> None:
-        """选中的场景用主按钮样式；另一个回到普通按钮。"""
         for button, key in ((self.scene_study, "study"),
                             (self.scene_work, "work")):
             name = "Primary" if self._scene == key else ""
@@ -196,43 +162,12 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
             button.style().polish(button)
 
     def _set_scene(self, scene: str) -> None:
-        """学习 / 工作两套今日页：只换入口与文案，数据和布局不动。
-
-        对齐 Web 今日页的 only-study / only-work 区块；Qt 不做四模式，
-        场景也不持久化 —— 每次打开都从「学习」开始。
-        """
         scene = "work" if scene == "work" else "study"
         if scene == self._scene:
             return
         self._scene = scene
         self._paint_scene_buttons()
-        self.hero.subtitle.setText(WORK_SUB if scene == "work" else STUDY_SUB)
-        self._render_plugins()
-        self._render_actions(self._actions)
-        self._render_shortcuts()
-        self._render_cet6()
-
-    def _grid_section(self, title: str, hint: str = ""):
-        holder = QtWidgets.QWidget()
-        box = QtWidgets.QVBoxLayout(holder)
-        box.setContentsMargins(0, 0, 0, 0)
-        box.setSpacing(12)
-        head = QtWidgets.QHBoxLayout()
-        heading = QtWidgets.QLabel(title)
-        heading.setObjectName("SectionTitle")
-        head.addWidget(heading)
-        head.addStretch(1)
-        if hint:
-            hint_label = QtWidgets.QLabel(hint)
-            hint_label.setObjectName("Hint")
-            head.addWidget(hint_label)
-        box.addLayout(head)
-        grid = QtWidgets.QGridLayout()
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(12)
-        box.addLayout(grid)
-        return holder, grid
+        self._render_scene()
 
     # ---- 加载 ----
 
@@ -269,27 +204,21 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
 
     def _on_ready(self) -> None:
         self._silent = False      # 连上了就不算「自动刷新失败」了
-        self._pending = {"overview", "today", "modules", "settings", "review",
-                         "conversations"}
+        self._pending = {"overview", "today", "settings", "briefing"}
         self.api.get("/api/overview", lambda data: self._ok("overview", data),
                      lambda message: self._fail("overview", message))
         self.api.get("/api/today", lambda data: self._ok("today", data),
                      lambda message: self._fail("today", message))
-        self.api.get("/api/modules", lambda data: self._ok("modules", data),
-                     lambda message: self._fail("modules", message))
         self.api.get("/api/settings", lambda data: self._ok("settings", data),
                      lambda message: self._fail("settings", message))
-        self.api.get("/api/review/stats", lambda data: self._ok("review", data),
-                     lambda message: self._fail("review", message))
-        self.api.get("/api/conversations?limit=8",
-                     lambda data: self._ok("conversations", data),
-                     lambda message: self._fail("conversations", message))
+        self.api.get("/api/briefing/today",
+                     lambda data: self._ok("briefing", data),
+                     lambda message: self._fail("briefing", message))
 
     def _on_failed(self, message: str) -> None:
         silent = self._silent
         self._silent = False
         if silent:
-            # 自动刷新失败不覆盖已显示的数据，只留一行提示。
             self.status_label.show_info(f"自动刷新没连上（显示上次数据）：{message}")
             return
         self.status_label.show_err(message)
@@ -303,20 +232,16 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
             self.hero.update_overview(self._data[key])
             self._render_week()
             self._render_achievements()
+            self._render_continue()
         if key == "today":
-            self._render_stats()
-            self._render_actions(self._data[key].get("actions") or [])
+            self._render_continue()
             self._render_timeline()
-            self._render_focus()
-            self._render_cet6()
-        if key in {"overview", "today", "modules", "settings"}:
-            self._render_plugins()
+            self._render_week()
         if key == "settings":
             self._render_onboarding()
-        if key == "conversations":
-            self._render_continue()
-        if key == "review":
-            self._render_stats()
+            self._render_briefing()
+        if key == "briefing":
+            self._render_briefing()
         self._finish()
 
     def _fail(self, key: str, message: str) -> None:
@@ -340,8 +265,7 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         if self._required_failed:
             return
         if self._errors:
-            names = {"modules": "插件清单", "settings": "设置",
-                     "review": "复习统计", "conversations": "最近会话"}
+            names = {"settings": "设置", "briefing": "今日简报"}
             missed = "、".join(names.get(key, key) for key in self._errors)
             self.status_label.show_info(f"已更新（{missed}没读到）")
             return
@@ -350,101 +274,10 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
 
     # ---- 渲染 ----
 
-    def _render_stats(self) -> None:
-        today = self._data.get("today") or {}
-        review = self._data.get("review") or {}
-        chars = chars_parts((today.get("transcripts") or {}).get("chars"))
-        asks = today.get("asks") or []
-        image_asks = sum(1 for ask in asks if ask.get("kind") == "image")
-        reviewed = review.get("reviewed_today")
-        next_due = review.get("next_due")
-        due_today = int(today.get("due_reviews") or 0)
-        if reviewed:
-            review_note = f"今天已复习 {reviewed} 条"
-        elif due_today:
-            review_note = f"{due_today} 条按记忆曲线排到今天"
-        elif next_due:
-            review_note = f"下张 {next_due} 到期"
-        else:
-            review_note = "今天没有到期的"
-        study = round(float(today.get("study_minutes") or 0))
-        measured = round(float(today.get("study_measured") or 0))
-        points = int((today.get("activity") or {}).get("breakpoints") or 0)
-        study_note = f"实测 {measured} 分钟" + (f" · 断点 {points} 次" if points else "")
-        self.stats.update_stats([
-            {"label": "记录", "value": str(study), "unit": "分钟",
-             "note": study_note},
-            {"label": "问答", "value": str(today.get("ask_count") or 0), "unit": "条",
-             "note": f"最近 10 条里 {image_asks} 条带图" if image_asks else "今天的提问"},
-            {"label": "课堂转写",
-             "value": str((today.get("transcripts") or {}).get("count") or 0),
-             "unit": "段", "note": f"{chars[0]} {chars[1]}"},
-            {"label": "待复习", "value": str(today.get("due_reviews") or 0),
-             "unit": "条到期", "note": review_note},
-        ])
-
-    def _render_actions(self, actions: list) -> None:
-        self._actions = list(actions or [])
-        items = list(WORK_ACTIONS) if self._scene == "work" else self._actions
-        self._clear_grid(self.action_grid)
-        self.action_cards = []
-        if not items:
-            self.action_section.hide()
-            return
-        self.action_section.show()
-        for index, item in enumerate(items[:3]):
-            card = ActionCard(item or {})
-            card.set_number(index + 1)
-            card.clicked.connect(lambda c=card: self._navigate(c.href))
-            self.action_cards.append(card)
-        self._action_cols = 0
-        self._apply_columns()
-
-    def _render_plugins(self) -> None:
-        modules = (self._data.get("modules") or {}).get("modules")
-        modules = modules if isinstance(modules, list) else []
-        prefs = (self._data.get("settings") or {}).get("modules") or {}
-        today = (self._data.get("overview") or {}).get("today") or {}
-        counts = {
-            "ask": f"{int(today.get('asks') or 0)} 问",
-            "netlab": f"{int(today.get('netlab') or 0)} 个训练",
-            "cet6": (f"{int(today.get('cet6') or 0)} 断点 · "
-                     f"{int(today.get('train') or 0)} 训练"
-                     if int(today.get("train") or 0)
-                     else f"{int(today.get('cet6') or 0)} 个断点"),
-            "review": f"{int(today.get('review') or 0)} 次复盘",
-            "quiz": f"{int(today.get('quiz') or 0)} 场测验",
-        }
-        selected = [
-            module for module in modules
-            if module.get("home") and module.get("status") == "ready"
-            and prefs.get(module.get("id"), True) is not False
-        ]
-        if self._scene == "work":
-            # 工作场景把 Agent 相关入口排到最前，其余保持原顺序。
-            selected.sort(key=lambda item: (
-                0 if str(item.get("id") or "") in WORK_FIRST else 1,
-                int(item.get("order") or 999),
-                str(item.get("id") or "")))
-        else:
-            selected.sort(key=lambda item: (int(item.get("order") or 999),
-                                            str(item.get("id") or "")))
-
-        self._clear_grid(self.plugin_grid)
-        self.plugin_cards = []
-        if not selected:
-            self.plugin_empty.setText(
-                "插件都被关掉了 —— 到设置里打开。" if modules
-                else "插件清单没读到；点「刷新」再试。")
-            self.plugin_empty.show()
-            return
-        self.plugin_empty.hide()
-        for module in selected:
-            card = PluginCard(module, counts.get(str(module.get("id") or ""), "打开"))
-            card.clicked.connect(lambda c=card: self._navigate(c.href))
-            self.plugin_cards.append(card)
-        self._plugin_cols = 0
-        self._apply_columns()
+    def _render_briefing(self) -> None:
+        settings = self._data.get("settings") or {}
+        enabled = (settings.get("briefing") or {}).get("enabled", True) is not False
+        self.briefing.set_data(self._data.get("briefing"), enabled)
 
     def _render_onboarding(self) -> None:
         settings = self._data.get("settings")
@@ -464,37 +297,4 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        self._apply_columns()
-
-    def _apply_columns(self) -> None:
-        if not hasattr(self, "bottom_grid"):
-            return
-        action_cols = 3 if self.width() >= BREAK else 1
-        plugin_cols = 4 if self.width() >= BREAK else 2
-        if self.action_cards and action_cols != self._action_cols:
-            self._action_cols = action_cols
-            self._place(self.action_grid, self.action_cards, action_cols)
-        if self.plugin_cards and plugin_cols != self._plugin_cols:
-            self._plugin_cols = plugin_cols
-            self._place(self.plugin_grid, self.plugin_cards, plugin_cols)
         self._apply_bottom_layout()
-
-    @staticmethod
-    def _place(grid: QtWidgets.QGridLayout, cards: list, cols: int) -> None:
-        for card in cards:
-            grid.removeWidget(card)
-        for index, card in enumerate(cards):
-            grid.addWidget(card, index // cols, index % cols)
-        for column in range(4):
-            grid.setColumnStretch(column, 1 if column < cols else 0)
-        for row in range((len(cards) + cols - 1) // cols):
-            grid.setRowStretch(row, 1)
-
-    @staticmethod
-    def _clear_grid(grid: QtWidgets.QGridLayout) -> None:
-        while grid.count():
-            item = grid.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.setParent(None)
-                widget.deleteLater()

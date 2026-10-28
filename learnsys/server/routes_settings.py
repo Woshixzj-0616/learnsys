@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from learnsys import config as app_config
+from learnsys.services.briefing.settings import briefing_settings
 from learnsys.llm.config import load_config
 from learnsys.agent import vision
 from learnsys.modules import load_registry
@@ -106,6 +107,7 @@ def get_settings(_=Depends(require_token)):
         "settings_path": str(app_config.SETTINGS_FILE),
         "modules": {mid: bool(modules_raw.get(mid, True)) for mid in _module_ids()},
         "weekly_goal_days": weekly_goal_days,
+        "briefing": briefing_settings(),
         "restart_fields": ["hotkey", "backup_dir"],
     }
 
@@ -135,12 +137,18 @@ class VisionPatch(BaseModel):
     model: str | None = None
 
 
+class BriefingPatch(BaseModel):
+    enabled: bool | None = None
+    generate_at: str | None = None
+
+
 class SettingsPatch(BaseModel):
     agent: AgentPatch | None = None
     vision: VisionPatch | None = None
     hotkey: str | None = None
     modules: dict[str, bool] | None = None
     weekly_goal_days: int | None = Field(default=None, ge=3, le=7)
+    briefing: BriefingPatch | None = None
 
 
 def _clean_prices(raw) -> dict[str, dict]:
@@ -247,6 +255,19 @@ def save_settings(patch: SettingsPatch, _=Depends(require_token)):
     if patch.weekly_goal_days is not None:
         data["weekly_goal_days"] = max(3, min(7, int(patch.weekly_goal_days)))
         changed.append("weekly_goal_days")
+
+    if patch.briefing is not None:
+        briefing = patch.briefing.model_dump(exclude_unset=True, exclude_none=True)
+        if "enabled" in briefing:
+            briefing["enabled"] = bool(briefing["enabled"])
+        if "generate_at" in briefing:
+            when = str(briefing["generate_at"]).strip()
+            if not re.match(r"^([01]\d|2[0-3]):[0-5]\d$", when):
+                raise HTTPException(status_code=400,
+                                    detail="简报时间要写成 HH:MM，例如 07:30")
+            briefing["generate_at"] = when
+        _put(data, "briefing", briefing)
+        changed.extend(f"briefing.{key}" for key in briefing)
 
     try:
         target = pathlib.Path(app_config.SETTINGS_FILE)

@@ -1,6 +1,7 @@
-"""今日页的原生控件（R4）：Hero、统计条、行动卡、插件卡、首次提示。
+"""今日页原生控件：Hero、简报横条、接着上次、工作入口、今天一行。
 
-只负责长什么样；数据和跳转在 `today.py`。样式仍集中在 `style.py` 的 QSS 模板。
+只负责长什么样；数据、跳转与拉取在 `today.py`。
+样式仍集中在 `style.py` 的 QSS 模板，颜色只来自 `web/css/tokens.css`。
 """
 from __future__ import annotations
 
@@ -67,26 +68,14 @@ class ClickableCard(QtWidgets.QWidget):
         super().keyPressEvent(event)
 
 
-class GoalBar(QtWidgets.QProgressBar):
-    """0–100% 的细进度条；值按千分之一存，避免整数截断。"""
-
-    def __init__(self, name: str, parent: QtWidgets.QWidget | None = None):
-        super().__init__(parent)
-        self.setObjectName(name)
-        self.setTextVisible(False)
-        self.setRange(0, 1000)
-        self.setValue(0)
-        self.setFixedHeight(9)
-
-
 class GoalRing(QtWidgets.QWidget):
-    """今日目标圆环：底环 + 进度弧 + 中间百分比（对应 Web Hero 右上角）。"""
+    """今日目标圆环：底环 + 进度弧 + 中间完成数。"""
 
     def __init__(self, tokens: dict | None = None,
                  parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("HeroRing")
-        self.setFixedSize(104, 104)
+        self.setFixedSize(96, 96)
         self.percent = 0.0
         self.label = ""
         self._tokens = token_source.merged(
@@ -103,114 +92,125 @@ class GoalRing(QtWidgets.QWidget):
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
         rect = QtCore.QRectF(self.rect()).adjusted(7, 7, -7, -7)
 
-        track = QtGui.QPen(style.color(values["--line"]), 7)
+        track = QtGui.QPen(style.color(values["--line"]), 6)
         track.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
         painter.setPen(track)
         painter.drawArc(rect, 0, 360 * 16)
 
         if self.percent > 0:
-            arc = QtGui.QPen(style.color(values["--accent"]), 7)
+            arc = QtGui.QPen(style.color(values["--accent"]), 6)
             arc.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
             painter.setPen(arc)
             painter.drawArc(rect, 90 * 16, -int(360 * 16 * self.percent / 100))
 
         painter.setPen(style.color(values["--text"]))
         font = QtGui.QFont(self.font())
-        font.setPixelSize(20)
+        font.setPixelSize(18)
         font.setBold(True)
         painter.setFont(font)
-        painter.drawText(self.rect(), QtCore.Qt.AlignmentFlag.AlignCenter,
+        painter.drawText(self.rect().adjusted(0, -6, 0, -6),
+                         QtCore.Qt.AlignmentFlag.AlignCenter,
                          self.label or f"{int(round(self.percent))}%")
+        font.setPixelSize(9)
+        font.setBold(False)
+        painter.setPen(style.color(values["--text-faint"]))
+        painter.setFont(font)
+        painter.drawText(
+            self.rect().adjusted(0, 0, 0, -14),
+            QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignBottom,
+            "今日目标")
         painter.end()
 
 
-class HeroCard(QtWidgets.QWidget):
-    """今日 Hero：问候/状态标题/徽章/目标进度 + 右侧圆环。"""
+class GoalTaskRow(ClickableCard):
+    """今日三件事的一行：勾选 + 标题 + 说明 + 分钟 + 去做的入口。"""
 
-    def __init__(self, tokens: dict | None = None,
+    def __init__(self, task: dict, parent: QtWidgets.QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("GoalTask")
+        self.setProperty("done", bool(task.get("done")))
+        self.href = str(task.get("href") or "")
+        self.setAccessibleName(str(task.get("title") or "今日任务"))
+        row = QtWidgets.QHBoxLayout(self)
+        row.setContentsMargins(12, 9, 12, 9)
+        row.setSpacing(10)
+
+        self.check = _label("√" if task.get("done") else "○", "GoalCheck")
+        self.check.setFixedWidth(18)
+        self.check.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        row.addWidget(self.check, 0)
+
+        body = QtWidgets.QVBoxLayout()
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(1)
+        self.title = _label(str(task.get("title") or ""), "GoalTaskTitle")
+        self.title.setWordWrap(True)
+        self.detail = _label(str(task.get("detail") or ""), "GoalTaskDetail")
+        self.detail.setWordWrap(True)
+        body.addWidget(self.title)
+        body.addWidget(self.detail)
+        row.addLayout(body, 1)
+
+        self.minutes = _label(f"{int(task.get('minutes') or 0)} 分钟", "GoalTaskMin")
+        row.addWidget(self.minutes, 0, QtCore.Qt.AlignmentFlag.AlignTop)
+        self.go = _label(f"{task.get('label') or '打开'} →", "GoalTaskGo")
+        row.addWidget(self.go, 0, QtCore.Qt.AlignmentFlag.AlignVCenter)
+        _click_through(self)
+
+
+class HeroCard(QtWidgets.QWidget):
+    """今日 Hero：问候 + 徽章 + 状态一句 + 三行任务 + 提问入口 + 圆环。"""
+
+    def __init__(self, tokens: dict | None = None, navigate=None,
                  parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("HeroCard")
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+        self._navigate = navigate or (lambda _href: None)
 
         outer = QtWidgets.QHBoxLayout(self)
-        outer.setContentsMargins(28, 26, 24, 26)
-        outer.setSpacing(24)
+        outer.setContentsMargins(24, 22, 22, 18)
+        outer.setSpacing(22)
 
         main = QtWidgets.QVBoxLayout()
-        main.setSpacing(7)
-        self.eyebrow = _label("今日 · 概览", "Eyebrow")
-        self.title = _label("今天，练一格。", "HeroTitle")
-        self.title.setWordWrap(True)
-        self.subtitle = _label(
-            "问出去、听清楚、抓包看明白 —— 每天留下一点能看见的进度。", "HeroSub")
-        self.subtitle.setWordWrap(True)
-        main.addWidget(self.eyebrow)
+        main.setSpacing(8)
+        self.title = _label("今日", "HeroTitle")
         main.addWidget(self.title)
-        main.addWidget(self.subtitle)
-        main.addSpacing(6)
 
-        badges = QtWidgets.QHBoxLayout()
-        badges.setSpacing(7)
-        self.level_badge = _label("Lv.1", "HeroBadge")
-        self.level_title = _label("网络小白", "HeroBadge")
-        streak_group = QtWidgets.QWidget()
-        streak_group.setObjectName("HeroBadge")
-        streak_group.setProperty("mark", True)
-        streak_group.setAttribute(
-            QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
-        streak_box = QtWidgets.QHBoxLayout(streak_group)
-        streak_box.setContentsMargins(9, 1, 9, 1)
-        streak_box.setSpacing(4)
-        streak = _label("▲", "HeroBadgeText")
-        self.streak_value = _label("0", "HeroBadgeText")
-        streak_text = _label("天连续", "HeroBadgeText")
-        for node in (streak, self.streak_value, streak_text):
-            streak_box.addWidget(node)
-        for node in (self.level_badge, self.level_title, streak_group):
-            badges.addWidget(node)
-        badges.addStretch(1)
-        main.addLayout(badges)
-        main.addSpacing(6)
+        meta = QtWidgets.QHBoxLayout()
+        meta.setSpacing(8)
+        self.level_chip = _label("Lv.1 · 网络小白", "HeroBadge")
+        self.streak_chip = _label("连续 0 天", "HeroBadgeMark")
+        self.state = _label("", "HeroState")
+        self.state.setWordWrap(True)
+        meta.addWidget(self.level_chip, 0)
+        meta.addWidget(self.streak_chip, 0)
+        meta.addWidget(self.state, 1)
+        main.addLayout(meta)
 
-        goal_head = QtWidgets.QHBoxLayout()
-        goal_label = _label("今日目标", "GoalHead")
-        self.goal_text = _label("0 / 3 件", "GoalText")
-        goal_head.addWidget(goal_label)
-        goal_head.addStretch(1)
-        goal_head.addWidget(self.goal_text)
-        main.addLayout(goal_head)
+        self.tasks_box = QtWidgets.QVBoxLayout()
+        self.tasks_box.setSpacing(6)
+        main.addLayout(self.tasks_box)
+        self.tasks: list[GoalTaskRow] = []
 
-        self.goal_bar = GoalBar("GoalBar")
-        main.addWidget(self.goal_bar)
-        # 三格任务：精听 / 训练或复习 / 复盘 —— 完成判定由后端给，Qt 只渲染。
-        self.goal_tasks = []
-        for _ in range(3):
-            row = _label("", "GoalNote")
-            row.setWordWrap(True)
-            main.addWidget(row)
-            self.goal_tasks.append(row)
-        self.goal_note = _label("预算约 0 分钟 · 已记录 0 分钟", "GoalNote")
-        self.goal_note.setWordWrap(True)
-        main.addWidget(self.goal_note)
-
-        self.level_bar = GoalBar("GoalBar")
-        self.level_bar.setFixedHeight(5)
-        main.addWidget(self.level_bar)
-        self.level_note = _label("再攒 300 学习点升级", "GoalNote")
-        self.level_note.setWordWrap(True)
-        main.addWidget(self.level_note)
-        main.addStretch(1)
+        self.ask = ClickableCard()
+        self.ask.setObjectName("HeroAsk")
+        self.ask.setFixedHeight(44)
+        ask_row = QtWidgets.QHBoxLayout(self.ask)
+        ask_row.setContentsMargins(14, 0, 12, 0)
+        ask_row.setSpacing(10)
+        ask_row.addWidget(_label("问", "HeroAskIcon"), 0)
+        ask_row.addWidget(_label("问点什么，或把题目粘进来…", "HeroAskText"), 1)
+        ask_row.addWidget(_label("发送", "HeroAskSend"), 0)
+        self.ask.clicked.connect(lambda: self._navigate("#/ask"))
+        main.addWidget(self.ask)
         outer.addLayout(main, 1)
 
         ring_box = QtWidgets.QVBoxLayout()
-        ring_box.setContentsMargins(0, 0, 0, 0)
-        ring_box.setSpacing(4)
+        ring_box.setSpacing(0)
         ring_box.addStretch(1)
-        self.goal_ring = GoalRing(tokens)
-        ring_box.addWidget(self.goal_ring, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
-        ring_box.addWidget(_label("今日目标", "RingLabel"), 0,
-                           QtCore.Qt.AlignmentFlag.AlignHCenter)
+        self.ring = GoalRing(tokens)
+        ring_box.addWidget(self.ring, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
         ring_box.addStretch(1)
         outer.addLayout(ring_box, 0)
 
@@ -222,193 +222,195 @@ class HeroCard(QtWidgets.QWidget):
         hour = QtCore.QTime.currentTime().hour()
         part = ("夜深了" if hour < 6 else "早上好" if hour < 11
                 else "中午好" if hour < 14 else "下午好" if hour < 18 else "晚上好")
-        self.eyebrow.setText(
-            f"今日 · 概览 · {part}，{name}" if name else f"今日 · 概览 · {part}")
+        self.title.setText(f"{part}，{name}" if name else part)
 
-        # 今日目标 = 三格任务（精听 / 训练或复习 / 复盘），时间只做预算。
         tasks = today.get("goal_tasks") or []
         done = int(today.get("goal_done") or 0)
         total_tasks = max(1, int(today.get("goal_total") or len(tasks) or 3))
         tier = str(today.get("goal_tier") or "none")
-        percent = min(100.0, done * 100.0 / total_tasks)
         if done >= total_tasks:
-            self.title.setText("今日目标达成。")
-            self.subtitle.setText("三件事都做完了 —— 想再往前走，去训练场开一格。")
+            state = "三件都做完了 · 今天超额完成"
         elif tier == "met":
-            self.title.setText("今天已经达标。")
-            self.subtitle.setText("第三件复盘是加分项，不做也不影响。")
+            state = "今天已达标 · 第三件复盘是加分"
         elif done > 0:
-            self.title.setText(f"已经完成 {done}/{total_tasks} 件。")
-            self.subtitle.setText("再做一件就达标 —— 不用盯着分钟数。")
+            state = f"完成 {done} 件 · 再做一件就达标"
         elif streak >= 7:
-            self.title.setText(f"连续 {streak} 天，稳住。")
-            self.subtitle.setText("今天先挑一件开始，别让这条线断。")
+            state = f"连续 {streak} 天 · 今天先挑一件"
         else:
-            self.title.setText("今天，做完两件事。")
-            self.subtitle.setText("两件算达标，第三件复盘是加分项。")
+            state = "做完两件算达标，第三件是加分"
+        self.state.setText(state)
+        self.streak_chip.setText(f"连续 {streak} 天")
+        self.level_chip.setText(
+            f"Lv.{total.get('level') or 1} · {total.get('title') or '网络小白'}")
+        percent = min(100.0, done * 100.0 / total_tasks)
+        self.ring.set_percent(percent, f"{done} / {total_tasks}")
 
-        self.goal_text.setText(f"{done} / {total_tasks} 件")
-        self.goal_bar.setValue(int(round(percent * 10)))
-        self.goal_ring.set_percent(percent, f"{done}/{total_tasks}")
-        for index, row in enumerate(self.goal_tasks):
-            if index < len(tasks):
-                task = tasks[index] or {}
-                mark = "✓" if task.get("done") else "○"
-                minutes = f" · {int(task.get('minutes') or 0)} 分钟"
-                row.setText(f"{mark} {task.get('title') or ''}{minutes}")
-                row.setVisible(True)
-            else:
-                row.setVisible(False)
-
-        study = float(today.get("study_minutes") or 0)
-        measured = float(today.get("study_measured") or 0)
-        budget = int(today.get("goal_budget_minutes") or 0)
-        self.goal_note.setText(
-            f"预算约 {budget} 分钟 · 已记录 {round(study)} 分钟"
-            f"（实测 {round(measured)}）")
-
-        self.streak_value.setText(str(streak))
-        self.level_badge.setText(f"Lv.{total.get('level') or 1}")
-        self.level_title.setText(str(total.get("title") or "网络小白"))
-        self.level_bar.setValue(int(round(float(total.get("percent") or 0) * 10)))
-        need = max(0, int(total.get("need") or 0) - int(total.get("into") or 0))
-        self.level_note.setText(
-            f"累计 {int(total.get('xp') or 0)} 点 · 再攒 {need} 点升级")
+        while self.tasks_box.count():
+            item = self.tasks_box.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
+        self.tasks = []
+        for task in tasks[:3]:
+            row = GoalTaskRow(task)
+            row.clicked.connect(lambda r=row: self._navigate(r.href))
+            self.tasks.append(row)
+            self.tasks_box.addWidget(row)
 
 
-class StatCell(QtWidgets.QWidget):
-    def __init__(self, parent: QtWidgets.QWidget | None = None):
+def _short(text, limit: int) -> str:
+    raw = " ".join(str(text or "").split())
+    return raw[:limit] + "…" if len(raw) > limit else raw
+
+
+class AltRow(ClickableCard):
+    """「也可以」：主卡下面的备选行动。"""
+
+    def __init__(self, action: dict, navigate, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
-        self.setObjectName("StatCell")
-        box = QtWidgets.QVBoxLayout(self)
-        box.setContentsMargins(18, 15, 18, 13)
-        box.setSpacing(2)
-        self.label = _label("", "StatLabel")
-        box.addWidget(self.label)
-        value_row = QtWidgets.QHBoxLayout()
-        value_row.setSpacing(3)
-        self.value = _label("0", "StatValue")
-        self.unit = _label("", "StatUnit")
-        value_row.addWidget(self.value)
-        value_row.addWidget(self.unit, 0, QtCore.Qt.AlignmentFlag.AlignBottom)
-        value_row.addStretch(1)
-        box.addLayout(value_row)
-        self.note = _label("", "StatNote")
-        self.note.setWordWrap(True)
-        box.addWidget(self.note)
-
-    def update(self, item: dict) -> None:
-        self.label.setText(str(item.get("label") or ""))
-        self.value.setText(str(item.get("value") or ""))
-        self.unit.setText(str(item.get("unit") or ""))
-        self.note.setText(str(item.get("note") or ""))
+        self.setObjectName("AltRow")
+        self.href = str(action.get("href") or "")
+        row = QtWidgets.QHBoxLayout(self)
+        row.setContentsMargins(0, 10, 0, 0)
+        row.setSpacing(9)
+        row.addWidget(_label("也可以", "AltLabel"), 0)
+        row.addWidget(_label(_short(action.get("title"), 34), "AltTitle"), 1)
+        row.addWidget(_label(_short(action.get("detail"), 30), "AltMeta"), 0)
+        row.addWidget(_label(f"{action.get('label') or '去看看'} →", "AltGo"), 0)
+        self.clicked.connect(lambda: navigate(self.href))
+        _click_through(self)
 
 
-class StatStrip(QtWidgets.QWidget):
-    """四格统计条：一个外框 + 三条分隔线。"""
+class ContinueCard(QtWidgets.QWidget):
+    """接着上次：六级断点 + 一个备选行动。"""
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None):
+    def __init__(self, navigate, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
-        self.setObjectName("StatStrip")
+        self.setObjectName("ContinueCard")
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
-        row = QtWidgets.QHBoxLayout(self)
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(0)
-        self.cells: list[StatCell] = []
-        for index in range(4):
-            if index:
-                sep = QtWidgets.QWidget()
-                sep.setObjectName("StatSep")
-                sep.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
-                sep.setFixedWidth(1)
-                row.addWidget(sep)
-            cell = StatCell()
-            self.cells.append(cell)
-            row.addWidget(cell, 1)
+        self._navigate = navigate or (lambda _href: None)
+        self._href = "#/cet6"
+        self.alts: list[AltRow] = []
 
-    def update_stats(self, items: list[dict]) -> None:
-        for index, cell in enumerate(self.cells):
-            cell.update(items[index] if index < len(items) else {})
-
-
-class ActionCard(ClickableCard):
-    def __init__(self, item: dict, parent: QtWidgets.QWidget | None = None):
-        super().__init__(parent)
-        self.setObjectName("ActionCard")
-        self.href = str(item.get("href") or "")
-        self.setAccessibleName(str(item.get("title") or "行动"))
-        row = QtWidgets.QHBoxLayout(self)
-        row.setContentsMargins(14, 14, 16, 14)
-        row.setSpacing(12)
-        self.number_label = _label("1", "ActionNo")
-        self.number_label.setFixedSize(22, 22)
-        self.number_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        row.addWidget(self.number_label, 0, QtCore.Qt.AlignmentFlag.AlignTop)
-
-        main = QtWidgets.QVBoxLayout()
-        main.setSpacing(3)
-        title = _label(str(item.get("title") or ""), "CardTitle")
-        title.setWordWrap(True)
-        detail = _label(str(item.get("detail") or ""), "CardDetail")
-        detail.setWordWrap(True)
-        main.addWidget(title)
-        main.addWidget(detail)
-        row.addLayout(main, 1)
-
-        label = _label(str(item.get("label") or "去看看") + " →", "CardLabel")
-        label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight
-                           | QtCore.Qt.AlignmentFlag.AlignVCenter)
-        row.addWidget(label, 0)
-        _click_through(self)
-
-    def set_number(self, number: int) -> None:
-        self.number_label.setText(str(number))
-
-
-class PluginCard(ClickableCard):
-    def __init__(self, module: dict, count: str,
-                 parent: QtWidgets.QWidget | None = None):
-        super().__init__(parent)
-        self.setObjectName("PluginCard")
-        self.href = f"#/{module.get('id') or ''}"
-        self.setMinimumWidth(210)
-        self.setMinimumHeight(94)
-        self.setAccessibleName(str(module.get("name") or "插件"))
         box = QtWidgets.QVBoxLayout(self)
-        box.setContentsMargins(14, 13, 15, 12)
-        box.setSpacing(5)
+        box.setContentsMargins(20, 16, 20, 14)
+        box.setSpacing(4)
 
-        top = QtWidgets.QHBoxLayout()
-        top.setSpacing(9)
-        icon = _label(str(module.get("icon") or "·"), "PluginIcon")
-        icon.setFixedSize(30, 30)
-        icon.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        name = _label(str(module.get("name") or ""), "PluginName")
-        category = _label(str(module.get("category") or "插件"), "PluginCat")
-        category.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight
-                              | QtCore.Qt.AlignmentFlag.AlignVCenter)
-        top.addWidget(icon)
-        top.addWidget(name)
-        top.addStretch(1)
-        top.addWidget(category)
-        box.addLayout(top)
+        head = QtWidgets.QHBoxLayout()
+        head.addWidget(_label("接着上次", "Eyebrow"), 1)
+        head.addWidget(_label("六级训练", "Pill"), 0)
+        box.addLayout(head)
+        self.title = _label("今天还没练六级", "ContinueTitle")
+        self.title.setWordWrap(True)
+        box.addWidget(self.title)
+        self.sub = _label("精听 / 写作 / 翻译，挑一项开始", "ContinueSub")
+        box.addWidget(self.sub)
 
-        tagline = _label(str(module.get("tagline") or module.get("note") or ""),
-                         "CardDetail")
-        tagline.setWordWrap(True)
-        box.addWidget(tagline, 1)
+        stats = QtWidgets.QHBoxLayout()
+        stats.setSpacing(14)
+        self.count = _label("今天 0 个断点", "ContinueStat")
+        self.last = _label("从 25 分钟的微训练开始", "ContinueStat")
+        self.state = _label("", "ContinueStat")
+        stats.addWidget(self.count)
+        stats.addWidget(self.last)
+        stats.addWidget(self.state)
+        stats.addStretch(1)
+        box.addLayout(stats)
 
-        foot_widget = QtWidgets.QWidget()
-        foot_widget.setObjectName("PluginFoot")
-        foot_widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
-        foot = QtWidgets.QHBoxLayout(foot_widget)
-        foot.setContentsMargins(0, 7, 0, 0)
-        foot.setSpacing(0)
-        foot.addWidget(_label(count or "打开", "PluginCount"))
-        foot.addStretch(1)
-        foot.addWidget(_label("进入 →", "PluginOpen"))
-        box.addWidget(foot_widget)
-        _click_through(self)
+        foot = QtWidgets.QHBoxLayout()
+        foot.addWidget(_label("每天 25 分钟，比周末补两小时有用", "Hint"), 1)
+        self.button = QtWidgets.QPushButton("去训练 →")
+        self.button.setObjectName("Primary")
+        foot.addWidget(self.button, 0)
+        box.addLayout(foot)
+
+        self.alts_box = QtWidgets.QVBoxLayout()
+        self.alts_box.setSpacing(0)
+        box.addLayout(self.alts_box)
+        self.button.clicked.connect(lambda: self._navigate(self._href))
+
+    def set_data(self, items, goal_tasks, actions) -> None:
+        item = (items or [{}])[0] if items else {}
+        listen_done = any(task.get("id") == "listen" and task.get("done")
+                          for task in (goal_tasks or []))
+        if item:
+            self.title.setText(str(item.get("paper") or "六级训练"))
+            self.sub.setText(" · ".join(part for part in (
+                str(item.get("section") or ""), str(item.get("item") or "")) if part)
+                or "继续上次的训练")
+            self.count.setText(f"{int(item.get('count') or 0)} 处断点")
+            stamp = str(item.get("last") or "")
+            self.last.setText(f"最近 {stamp[11:16]}" if len(stamp) >= 16 else "今天刚记下")
+            self.state.setText("今天精听已达标" if listen_done else "今天还没练")
+            paper = str(item.get("paper_id") or item.get("paper") or "")
+            self._href = "#/cet6?paper=" + _quote(paper)
+            self.button.setText("回到断点 →")
+        else:
+            self.title.setText("今天还没练六级")
+            self.sub.setText("精听 / 写作 / 翻译，挑一项开始")
+            self.count.setText("今天 0 个断点")
+            self.last.setText("从 25 分钟的微训练开始")
+            self.state.setText("")
+            self._href = "#/cet6"
+            self.button.setText("去训练 →")
+
+        while self.alts_box.count():
+            node = self.alts_box.takeAt(0)
+            widget = node.widget()
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
+        self.alts = []
+        seen = {self._href}
+        for action in actions or []:
+            href = str(action.get("href") or "")
+            if not href or href in seen:
+                continue
+            seen.add(href)
+            row = AltRow(action, self._navigate)
+            self.alts.append(row)
+            self.alts_box.addWidget(row)
+            if len(self.alts) >= 2:
+                break
+
+
+def _quote(text: str) -> str:
+    from urllib.parse import quote
+    return quote(text, safe="")
+
+
+class WorkEntryCard(QtWidgets.QWidget):
+    """工作场景入口：只换入口，不改数据。"""
+
+    def __init__(self, navigate, parent: QtWidgets.QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("ContinueCard")
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+        box = QtWidgets.QVBoxLayout(self)
+        box.setContentsMargins(20, 16, 20, 14)
+        box.setSpacing(4)
+        head = QtWidgets.QHBoxLayout()
+        head.addWidget(_label("工作入口", "Eyebrow"), 1)
+        head.addWidget(_label("只读优先", "Pill"), 0)
+        box.addLayout(head)
+        box.addWidget(_label("把整件事派出去", "ContinueTitle"))
+        box.addWidget(_label(
+            "Agent 中枢负责执行，浏览器和运行记录都在侧栏。", "ContinueSub"))
+        stats = QtWidgets.QHBoxLayout()
+        stats.setSpacing(14)
+        for text in ("Claude Code", "Codex", "限 D:\\Desktop"):
+            stats.addWidget(_label(text, "ContinueStat"))
+        stats.addStretch(1)
+        box.addLayout(stats)
+        foot = QtWidgets.QHBoxLayout()
+        foot.addWidget(_label("不接管登录，不静默执行", "Hint"), 1)
+        button = QtWidgets.QPushButton("打开中枢 →")
+        button.setObjectName("Primary")
+        button.clicked.connect(lambda: (navigate or (lambda _href: None))("#/agents"))
+        foot.addWidget(button, 0)
+        box.addLayout(foot)
+        self.hide()
 
 
 class OnboardingBanner(QtWidgets.QWidget):
@@ -433,3 +435,42 @@ class OnboardingBanner(QtWidgets.QWidget):
         button.clicked.connect(self.configure.emit)
         row.addWidget(button)
         self.hide()
+
+
+class FactsStrip(QtWidgets.QWidget):
+    """本周卡底部的今天一行：问答 / 听力断点 / 训练 / 实测专注。"""
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("FactsStrip")
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+        row = QtWidgets.QHBoxLayout(self)
+        row.setContentsMargins(12, 9, 12, 9)
+        row.setSpacing(0)
+        self.cells: list[tuple[QtWidgets.QLabel, QtWidgets.QLabel]] = []
+        for index in range(4):
+            if index:
+                sep = QtWidgets.QWidget()
+                sep.setObjectName("FactSep")
+                sep.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+                sep.setFixedWidth(1)
+                row.addWidget(sep)
+            cell = QtWidgets.QWidget()
+            cell.setObjectName("FactCell")
+            box = QtWidgets.QVBoxLayout(cell)
+            box.setContentsMargins(8, 1, 8, 1)
+            box.setSpacing(0)
+            value = _label("0", "FactValue")
+            label = _label("", "FactLabel")
+            box.addWidget(value)
+            box.addWidget(label)
+            self.cells.append((value, label))
+            row.addWidget(cell, 1)
+
+    def set_facts(self, facts: list[dict]) -> None:
+        for index, (value, label) in enumerate(self.cells):
+            item = facts[index] if index < len(facts) else {}
+            unit = str(item.get("unit") or "")
+            text = str(item.get("value") or "0")
+            value.setText(f"{text} {unit}" if unit else text)
+            label.setText(str(item.get("label") or ""))

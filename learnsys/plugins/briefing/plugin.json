@@ -1,0 +1,15 @@
+{
+  "id": "briefing",
+  "name": "每日简报",
+  "icon": "☰",
+  "type": "native-page",
+  "entry": "pages/briefing.html",
+  "script": "js/pages/briefing.js",
+  "order": 45,
+  "status": "ready",
+  "version": "2.42.0",
+  "category": "学习",
+  "home": true,
+  "tagline": "时政 + 科技前沿，每天 3 分钟",
+  "description": "每天聚合时政与各行业科技前沿，中文摘要、按天存档，可收藏回看。"
+}

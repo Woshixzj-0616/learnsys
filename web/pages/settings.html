@@ -187,6 +187,27 @@
   </section>
 
   <section class="settings-section">
+    <h2>每日简报</h2>
+    <p class="hint">每天定时抓取时政与各行业科技前沿，生成 12~15 条中文摘要。
+      关闭后不跑定时任务，仍可在简报页手动生成。</p>
+    <div class="setting-row">
+      <label class="setting-label" for="briefing-enabled">自动生成<small>每天到点后台生成</small></label>
+      <div class="setting-control">
+        <label class="toggle-row">
+          <input type="checkbox" id="briefing-enabled">
+          开启每日简报
+        </label>
+      </div>
+    </div>
+    <div class="setting-row">
+      <label class="setting-label" for="briefing-time">生成时间<small>HH:MM；错过会在下次打开时补生成</small></label>
+      <div class="setting-control">
+        <input class="input" id="briefing-time" type="time" step="60">
+      </div>
+    </div>
+  </section>
+
+  <section class="settings-section">
     <h2>数据与备份</h2>
     <div class="setting-row">
       <label class="setting-label" for="data-root">数据目录<small>只读展示</small></label>

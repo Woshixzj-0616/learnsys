@@ -1,0 +1,94 @@
+/* 每日简报：只放本页专属布局，颜色/字号全部走 tokens.css。 */
+.briefing-hero { align-items: flex-start; }
+.briefing-meta {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  margin-top: 14px;
+}
+.briefing-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.briefing-toolbar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+}
+.briefing-date { display: flex; align-items: center; gap: 6px; }
+.briefing-date .input { width: auto; min-width: 138px; }
+.briefing-history { width: auto; max-width: 220px; }
+.briefing-toolbar .chips { margin-top: 0; }
+.briefing-toolbar .chip.active {
+  border-color: var(--accent-line, var(--accent));
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.briefing-page .feed-note { color: var(--warning, var(--text-faint)); }
+
+.briefing-intro {
+  margin: 0 0 18px;
+  padding: 13px 16px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--surface-2, var(--surface));
+  color: var(--text-dim);
+  font-size: 13.5px;
+  line-height: 1.75;
+}
+.briefing-intro p { margin: 0; }
+
+.briefing-list { display: flex; flex-direction: column; gap: 12px; }
+.briefing-item {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  transition: border-color .18s, opacity .18s;
+}
+.briefing-item:hover { border-color: var(--accent); }
+.briefing-item.read { opacity: .62; }
+.briefing-item-top {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.briefing-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11.5px;
+}
+.briefing-time {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+.briefing-star {
+  border: 0; padding: 2px 4px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 16px; line-height: 1;
+  cursor: pointer;
+}
+.briefing-star[aria-pressed="true"] { color: var(--mark); }
+.briefing-item h3 {
+  margin: 0 0 7px;
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.briefing-item h3 a { color: var(--text); text-decoration: none; }
+.briefing-item h3 a:hover { color: var(--accent); }
+.briefing-item p {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.72;
+}
+.briefing-item-foot {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  margin-top: 9px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+.briefing-item-foot .feed-note { color: var(--warning, var(--text-faint)); }
+
+@media (max-width: 760px) {
+  .briefing-hero-actions { width: 100%; }
+  .briefing-date { flex: 1 1 100%; }
+  .briefing-history { flex: 1 1 100%; max-width: none; }
+}

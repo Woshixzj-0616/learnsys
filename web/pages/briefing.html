@@ -1,0 +1,37 @@
+<div class="wrongbook-page briefing-page">
+  <section class="stage-hero wrongbook-hero briefing-hero">
+    <div>
+      <p class="stage-eyebrow">每日简报 · INFORMATION</p>
+      <h2>今天值得知道的几件事。</h2>
+      <p class="stage-sub">时政与各行业科技前沿，每天 12~15 条，3 分钟扫完。
+        摘要由模型生成，以原文为准。</p>
+      <div class="briefing-meta">
+        <span class="pill" id="briefing-status">正在读简报…</span>
+        <span class="muted" id="briefing-count"></span>
+        <span class="muted" id="briefing-sources"></span>
+      </div>
+    </div>
+    <div class="briefing-hero-actions">
+      <button class="btn" type="button" id="briefing-readall">全部已读</button>
+      <button class="btn btn-primary" type="button" id="briefing-regenerate">重新生成</button>
+    </div>
+  </section>
+
+  <section class="panel wrongbook-panel briefing-panel">
+    <div class="panel-head briefing-toolbar">
+      <div class="briefing-date">
+        <button class="btn" type="button" id="briefing-prev" aria-label="前一天">←</button>
+        <input class="input" type="date" id="briefing-day">
+        <button class="btn" type="button" id="briefing-next" aria-label="后一天">→</button>
+      </div>
+      <select class="input briefing-history" id="briefing-history" aria-label="历史简报"></select>
+      <div class="chips" id="briefing-filters"></div>
+    </div>
+    <div class="panel-body">
+      <div class="briefing-intro" id="briefing-intro" hidden></div>
+      <div class="briefing-list" id="briefing-list">
+        <div class="empty">正在读简报…</div>
+      </div>
+    </div>
+  </section>
+</div>

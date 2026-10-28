@@ -144,7 +144,12 @@ def px(tokens: dict[str, str], name: str, default: int = 0) -> int:
 
 
 def font_family(tokens: dict[str, str]) -> str:
-    """`--font-ui` 是 CSS 字体列表，QSS 只要第一个族名。"""
+    """`--font-ui` 是 CSS 字体列表；跳过 mac 专用族，选 Windows 能命中的第一个。"""
     raw = str(tokens.get("--font-ui") or "")
-    first = raw.split(",")[0].strip().strip('"').strip("'")
-    return first or "Microsoft YaHei UI"
+    names = [part.strip().strip('"').strip("'") for part in raw.split(",") if part.strip()]
+    for name in names:
+        if name in {"-apple-system", "system-ui", "sans-serif", "Segoe UI"}:
+            continue
+        if not name.startswith("-"):
+            return name
+    return "Microsoft YaHei UI"

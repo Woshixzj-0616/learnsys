@@ -22,8 +22,8 @@ from fastapi.staticfiles import StaticFiles
 from learnsys import config, product
 from learnsys.llm.config import load_config
 from learnsys.modules import web_dir
-from learnsys.server import (routes_agent, routes_agents, routes_browser,
-                             routes_cet6, routes_data,
+from learnsys.server import (routes_agent, routes_agents, routes_briefing,
+                             routes_browser, routes_cet6, routes_data,
                              routes_knowledge, routes_materials, routes_memory,
                              routes_recordings, routes_results, routes_review,
                              routes_services, routes_settings, routes_train,
@@ -31,14 +31,22 @@ from learnsys.server import (routes_agent, routes_agents, routes_browser,
                              runtime)
 from learnsys.server.nav_bridge import NavBridge
 from learnsys.server.security import origin_allowed
-from learnsys.services import agents
+from learnsys.services import agents, briefing
 
 DEFAULT_PORT = 8765
 
 
 @asynccontextmanager
 async def _lifespan(_app):
+    try:
+        briefing.ensure_started()    # 测试进程里会自己跳过
+    except Exception:
+        pass
     yield
+    try:
+        briefing.shutdown()
+    except Exception:
+        pass
     try:
         from learnsys.browser.manager import get_manager
         get_manager().shutdown()     # close_on_exit=false 时什么也不做
@@ -82,6 +90,7 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
 
     app.include_router(routes_agent.router)
     app.include_router(routes_agents.router)
+    app.include_router(routes_briefing.router)
     app.include_router(routes_data.router)
     app.include_router(routes_materials.router)
     app.include_router(routes_cet6.router)

@@ -5,10 +5,11 @@
 from __future__ import annotations
 
 from .schema_agents import AGENT_SCHEMA
+from .schema_briefing import BRIEFING_SCHEMA
 
 # 统一库结构版本。改了 `SCHEMA` 或 `_migrate_columns` 就 +1：
 # `connect()` 只在版本不一致时跑建表/补列/种子，一致时只建连接。
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 
 SCHEMA = """
@@ -462,7 +463,7 @@ CREATE INDEX IF NOT EXISTS idx_train_prompt
     ON train_submissions (prompt_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_train_parent
     ON train_submissions (parent_id);
-""" + AGENT_SCHEMA
+""" + AGENT_SCHEMA + BRIEFING_SCHEMA
 
 FTS_SCHEMA = """
 CREATE VIRTUAL TABLE IF NOT EXISTS search_idx USING fts5(

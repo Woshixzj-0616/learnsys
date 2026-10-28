@@ -30,7 +30,9 @@ HEADERS = {
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
 }
 _TEXT_TYPES = ("text/html", "application/xhtml+xml", "text/plain",
-               "application/json", "application/xml", "text/xml", "text/markdown")
+               "application/json", "application/xml", "text/xml", "text/markdown",
+               "application/rss+xml", "application/atom+xml",
+               "application/rdf+xml", "text/rss")
 
 
 class FetchError(OSError):

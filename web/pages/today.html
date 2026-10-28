@@ -20,19 +20,17 @@
   <section class="card hero" id="stage-hero">
     <div class="hero-top">
       <div class="hero-copy">
-        <p class="eyebrow">今日 · 概览</p>
         <h1 id="stage-greeting">今日</h1>
-        <p class="lede" id="stage-sub">问出去、听清楚、抓包看明白 —— 每天留下一点能看见的进度。</p>
-        <div class="hero-badges">
+        <div class="hero-meta">
           <span class="badge" id="level-chip">Lv.1</span>
           <span class="badge badge-mark">连续 <b id="streak-num">0</b> 天</span>
+          <span class="hero-state" id="goal-state">做完两件算达标，第三件是加分</span>
         </div>
-        <p class="goal-line" id="goal-line">做完两件算达标，第三件是加分</p>
       </div>
       <div class="ring-wrap" aria-label="今日目标完成度">
-        <svg class="ring" viewBox="0 0 92 92" aria-hidden="true">
-          <circle class="ring-bg" cx="46" cy="46" r="38"></circle>
-          <circle class="ring-fg" id="goal-fill" cx="46" cy="46" r="38"></circle>
+        <svg class="ring" viewBox="0 0 80 80" aria-hidden="true">
+          <circle class="ring-bg" cx="40" cy="40" r="32"></circle>
+          <circle class="ring-fg" id="goal-fill" cx="40" cy="40" r="32"></circle>
         </svg>
         <div class="ring-text">
           <b><span id="goal-done">0</span><i id="goal-total">/ 3</i></b>
@@ -42,153 +40,109 @@
     </div>
 
     <div class="goal-tasks" id="goal-tasks" aria-label="今日三件事"></div>
-    <p class="goal-foot" id="goal-foot">预算约 0 分钟 · 已记录 0 分钟</p>
 
     <form class="hero-ask" id="hero-ask">
       <span class="hero-ask-icon" aria-hidden="true">✎</span>
       <input id="hero-ask-input" placeholder="问点什么，或把题目粘进来…" autocomplete="off" aria-label="提问">
-      <span class="hero-ask-hint">按 <kbd>Enter</kbd> 发送</span>
       <button class="send" type="submit">发送</button>
     </form>
-
-    <div class="chips only-study">
-      <a class="chip" href="#/cet6">继续六级精听</a>
-      <a class="chip" href="#/quiz">出 5 道题</a>
-      <a class="chip" href="#/cet6?tab=translation">翻译一句</a>
-      <a class="chip" href="#/review">复盘今天</a>
-    </div>
-    <div class="chips only-work">
-      <a class="chip" href="#/agents">派个任务</a>
-      <a class="chip" href="#/materials">打开资料</a>
-      <a class="chip" href="#/agentruns">看运行记录</a>
-      <a class="chip" href="#/browser">打开浏览器</a>
-    </div>
   </section>
 
-  <div class="today-grid">
-    <div class="today-col">
-      <section class="card continue only-study" id="continue-card">
-        <div class="card-head">
+  <section class="card brief-band" id="today-briefing" hidden>
+    <div class="brief-head">
+      <div>
+        <p class="eyebrow" id="brief-eyebrow">每日简报</p>
+        <h2 id="brief-title">今天的简报</h2>
+      </div>
+      <div class="brief-actions">
+        <span class="muted" id="brief-meta"></span>
+        <a class="btn" href="#/briefing">打开简报 →</a>
+      </div>
+    </div>
+    <div class="brief-main" id="brief-main"></div>
+  </section>
+
+  <div class="cols">
+    <div class="col">
+      <section class="card resume only-study" id="continue-card">
+        <div class="resume-head">
           <p class="eyebrow">接着上次</p>
-          <span class="pill pill-mark" id="continue-pill">六级训练</span>
+          <span class="pill" id="continue-pill">六级训练</span>
         </div>
         <h2 id="continue-title">今天还没练六级</h2>
         <p class="sub" id="continue-sub">精听 / 写作 / 翻译，挑一项开始</p>
-        <div class="continue-stats">
-          <span id="continue-count">—</span>
-          <span id="continue-last">—</span>
+        <div class="resume-stats">
+          <span id="continue-count">今天 0 个断点</span>
+          <span id="continue-last">从 25 分钟的微训练开始</span>
+          <span id="continue-state"></span>
         </div>
-        <div class="continue-foot">
+        <div class="resume-foot">
           <span class="muted">每天 25 分钟，比周末补两小时有用</span>
-          <a class="btn btn-primary" id="continue-go" href="#/cet6">去训练 <span aria-hidden="true">→</span></a>
+          <a class="btn btn-primary" id="continue-go" href="#/cet6">去训练 →</a>
         </div>
-        <div class="eq" id="continue-eq" aria-hidden="true">
-          <i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i>
-          <i style="--i:4"></i><i style="--i:5"></i><i style="--i:6"></i><i style="--i:7"></i>
-          <i style="--i:8"></i><i style="--i:9"></i><i style="--i:10"></i><i style="--i:11"></i>
-        </div>
+        <div id="continue-alts"></div>
       </section>
 
-      <section class="card continue only-work" id="work-entry">
-        <div class="card-head">
+      <section class="card resume only-work" id="work-entry">
+        <div class="resume-head">
           <p class="eyebrow">工作入口</p>
-          <span class="pill pill-mark">只读优先</span>
+          <span class="pill">只读优先</span>
         </div>
         <h2>把整件事派出去</h2>
-        <p class="sub">Agent 中枢负责执行，浏览器和运行记录各有入口。</p>
-        <div class="continue-stats">
+        <p class="sub">Agent 中枢负责执行，浏览器和运行记录都在侧栏。</p>
+        <div class="resume-stats">
           <span>Claude Code</span>
           <span>Codex</span>
           <span>限 D:\Desktop</span>
         </div>
-        <div class="continue-foot">
+        <div class="resume-foot">
           <span class="muted">不接管登录，不静默执行</span>
-          <a class="btn btn-primary" href="#/agents">打开中枢 <span aria-hidden="true">→</span></a>
+          <a class="btn btn-primary" href="#/agents">打开中枢 →</a>
         </div>
       </section>
 
-      <section class="card actions only-study" id="today-actions" aria-label="今天最值得做的三件事" hidden></section>
-
-      <section class="card actions only-work" aria-label="工作入口">
+      <section class="card timeline">
         <div class="card-head">
-          <h2>今天还可以</h2>
-          <span class="muted">3 个入口</span>
+          <div>
+            <h2>今天的问答</h2>
+            <p class="tl-sub" id="timeline-sub"></p>
+          </div>
+          <a class="link-quiet" href="#/ask">全部记录 →</a>
         </div>
-        <a class="action" href="#/agentruns">
-          <span class="action-ico" aria-hidden="true">◷</span>
-          <span class="action-body">
-            <span class="action-title">看今天的运行记录</span>
-            <span class="action-meta">模型、耗时、工具调用与成本</span>
-          </span>
-          <span class="action-label">打开 →</span>
-        </a>
-        <a class="action" href="#/browser">
-          <span class="action-ico" aria-hidden="true">◎</span>
-          <span class="action-body">
-            <span class="action-title">打开工作台浏览器</span>
-            <span class="action-meta">独立窗口 + 本机浏览记录</span>
-          </span>
-          <span class="action-label">打开 →</span>
-        </a>
-        <a class="action" href="#/materials">
-          <span class="action-ico" aria-hidden="true">▤</span>
-          <span class="action-body">
-            <span class="action-title">回到资料库</span>
-            <span class="action-meta">课件、笔记、术语表</span>
-          </span>
-          <span class="action-label">打开 →</span>
-        </a>
+        <div id="today-timeline"></div>
       </section>
     </div>
 
-    <div class="today-col">
+    <div class="col side">
       <section class="card week">
         <div class="card-head">
           <h2>本周投入</h2>
-          <span class="muted">分钟 / 天</span>
+          <span class="muted" id="week-extra">达标 0 / 5 天</span>
         </div>
-        <div class="bars" id="week-bars" role="img" aria-label="本周每天的专注分钟"></div>
+        <div class="bars" id="week-bars" role="img" aria-label="本周每天的学习分钟"></div>
         <div class="week-foot">
           <span id="week-total">共 0 分钟</span>
-          <span class="week-extra" id="week-extra">活跃 0 / 7 天</span>
+          <span id="week-active">活跃 0 / 7 天</span>
         </div>
+        <div class="facts" id="today-facts" aria-label="今天"></div>
       </section>
 
-      <section class="stats" id="today-stats" aria-label="今日概览"></section>
-    </div>
-  </div>
+      <details class="card ach" id="ach-card">
+        <summary>
+          <h2>成就</h2>
+          <span class="muted" id="ach-summary">0 / 0</span>
+          <span class="chev" aria-hidden="true">›</span>
+        </summary>
+        <div class="ach-list" id="achievements"></div>
+      </details>
 
-  <section class="card stage">
-    <div class="card-head">
-      <h2>所有工具</h2>
-      <span class="muted">点卡片进入 · <a href="#/plugins">插件中心</a>可开关</span>
-    </div>
-    <div class="plugin-grid" id="plugin-grid"></div>
-  </section>
-
-  <div class="today-lower">
-    <section class="card timeline-card">
-      <div class="card-head">
-        <h2>时间线 <span class="hint" id="timeline-count"></span></h2>
-      </div>
-      <div id="today-timeline"></div>
-    </section>
-
-    <aside class="today-side">
-      <section class="card panel-card">
-        <div class="card-head"><h2>专注</h2></div>
+      <section class="card panel-card" id="focus-card" hidden>
+        <div class="card-head">
+          <h2>专注</h2>
+          <span class="muted" id="focus-meta"></span>
+        </div>
         <div class="panel-body" id="focus-body"></div>
       </section>
-
-      <section class="card panel-card" id="cet6-panel" hidden>
-        <div class="card-head"><h2>六级断点</h2></div>
-        <div class="panel-body" id="cet6-body"></div>
-      </section>
-
-      <section class="card panel-card">
-        <div class="card-head"><h2>成就 <span class="hint" id="ach-count"></span></h2></div>
-        <div class="panel-body achievement-list" id="achievements"></div>
-      </section>
-    </aside>
+    </div>
   </div>
 </div>

@@ -23,12 +23,16 @@ def get_config(_=Depends(require_token)):
     return load_config().public()
 
 
-def _today_actions(conn, day: str, due: list) -> list[dict]:
+def _today_actions(conn, day: str, due: list,
+                   today_papers: set[str] | None = None) -> list[dict]:
     """今日页最多三张行动卡：到期复习 / 昨日断点或资料 / 薄弱点去测验。
 
     口径只在这里拼；前端只负责显示，不再各自判断「今天最该做什么」。
+    `today_papers` 是今天已经出现过的试卷 id：同一份卷子不再重复发「接着昨天」卡，
+    首页的「接着上次」已经承担这个入口。
     """
     actions: list[dict] = []
+    today_papers = today_papers or set()
     plan = train_plan.plan(conn, day, due=due)
     train_due = plan["due"]["total"]
     # 到期卡全是写作/翻译错误卡时，直接说人话；混着生词/其他错题才分开列。
@@ -68,14 +72,16 @@ def _today_actions(conn, day: str, due: list) -> list[dict]:
         "ORDER BY COUNT(*) DESC, MAX(ts) DESC LIMIT 1", (f"{yesterday}%",)).fetchone()
     if row:
         paper, section, item, count, paper_id = row
-        detail = " · ".join(part for part in (paper or "六级", section or "", item or "") if part)
-        actions.append({
-            "kind": "cet6",
-            "title": "接着昨天的听力断点",
-            "detail": f"{detail}（{int(count or 0)} 个断点）",
-            "href": "#/cet6?paper=" + quote(str(paper_id or paper or ""), safe=""),
-            "label": "回到断点",
-        })
+        paper_key = str(paper_id or paper or "")
+        if paper_key not in today_papers:
+            detail = " · ".join(part for part in (paper or "六级", section or "", item or "") if part)
+            actions.append({
+                "kind": "cet6",
+                "title": "接着昨天的听力断点",
+                "detail": f"{detail}（{int(count or 0)} 个断点）",
+                "href": "#/cet6?paper=" + quote(paper_key, safe=""),
+                "label": "回到断点",
+            })
     else:
         row = conn.execute(
             "SELECT title, COUNT(*) FROM events WHERE module='materials' AND ts LIKE ? "
@@ -140,6 +146,12 @@ def today(_=Depends(require_token)):
                 "ORDER BY MAX(ts) DESC LIMIT 10", (f"{day}%",)).fetchall()
         except Exception:
             pass
+        cet6_payload = [
+            {"paper": row[0] or "", "section": row[1] or "", "item": row[2] or "",
+             "count": int(row[3] or 0), "last": row[4] or "",
+             "paper_id": row[5] or row[0] or ""}
+            for row in cet6
+        ]
         return {
             "date": day,
             "study_minutes": recorded["minutes"],
@@ -158,13 +170,10 @@ def today(_=Depends(require_token)):
             "transcripts": {"count": int(transcript_count or 0), "chars": int(chars or 0)},
             "recordings": store.recording_totals(conn, day=day),
             "due_reviews": len(due),
-            "actions": _today_actions(conn, day, due),
-            "cet6": [
-                {"paper": row[0] or "", "section": row[1] or "", "item": row[2] or "",
-                 "count": int(row[3] or 0), "last": row[4] or "",
-                 "paper_id": row[5] or row[0] or ""}
-                for row in cet6
-            ],
+            "actions": _today_actions(
+                conn, day, due,
+                {item["paper_id"] for item in cet6_payload if item["paper_id"]}),
+            "cet6": cet6_payload,
         }
     finally:
         conn.close()

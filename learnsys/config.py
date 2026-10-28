@@ -152,6 +152,8 @@ SETTINGS_TEMPLATE = {
     },
     "_weekly_goal_days": "每周达标天数目标（默认 5，范围 3–7）。达标 = 今日三格完成两件",
     "weekly_goal_days": 5,
+    "_briefing": "每日简报：enabled 开关；generate_at 每天生成时间（HH:MM，默认 07:30）。",
+    "briefing": {"enabled": True, "generate_at": "07:30"},
     "_daily_goal_xp": "[旧口径] 每日学习点目标；现在只用于成长值，不再作为今日目标",
     "daily_goal_xp": 100,
     "_名字": "学习台左上角怎么称呼你（留空 = 不显示名字）",
