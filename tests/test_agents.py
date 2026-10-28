@@ -336,7 +336,10 @@ class AgentApiTest(unittest.TestCase):
         data = self.client.get("/api/agents", headers=AUTH).json()
         self.assertEqual(data["agents"][0]["id"], "fake")
         self.assertTrue(data["agents"][0]["available"])
-        self.assertIn(str(self.root), data["allowed_roots"])
+        # 服务端返回的是 resolve() 后的路径；GitHub runner 的临时目录是
+        # 8.3 短名（RUNNER~1），不 resolve 会拿短名比长名。
+        self.assertIn(str(pathlib.Path(self.root).resolve()),
+                      [str(pathlib.Path(p).resolve()) for p in data["allowed_roots"]])
 
     def test_create_and_poll_task(self):
         response = self.client.post(
