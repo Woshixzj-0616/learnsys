@@ -21,3 +21,4 @@ eval/
 
 dist-build/
 build-p20/
+build-*/
