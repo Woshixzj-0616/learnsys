@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 import pathlib
 import sqlite3
+import sys
 import threading
 
 from learnsys import config
@@ -11,6 +12,9 @@ from learnsys import config
 from .schema import SCHEMA, SCHEMA_VERSION
 
 _LOCK = threading.Lock()
+
+# 进程启动时的真实库路径：测试会 patch `config.DATA_ROOT`，所以不能现算。
+_REAL_DB_PATH = str(config.db_path())
 
 
 def now() -> str:
@@ -33,6 +37,16 @@ def _seed_knowledge(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _guard_test_process(target: pathlib.Path) -> None:
+    """测试进程禁止落到真实数据根：曾经把生产库跑成新 schema。"""
+    if "unittest" not in sys.modules:
+        return
+    if str(target) == _REAL_DB_PATH:
+        raise RuntimeError(
+            "测试进程禁止连接生产库；请隔离 DATA_ROOT 或显式传临时库路径："
+            f"{target}")
+
+
 def connect(path=None) -> sqlite3.Connection:
     """打开统一库（缺省 = `config.db_path()`），建表 + 迁移 + FTS。"""
     # 延迟导入：migrate 也要用 connect，顶层导入会绕成环
@@ -41,6 +55,7 @@ def connect(path=None) -> sqlite3.Connection:
 
     target = pathlib.Path(path) if path else config.db_path()
     if str(target) != ":memory:":
+        _guard_test_process(target)
         target.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(target), check_same_thread=False, timeout=15)
     conn.execute("PRAGMA journal_mode=WAL")

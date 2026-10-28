@@ -10,6 +10,7 @@ from unittest import mock
 
 from fastapi.testclient import TestClient
 
+from learnsys import config as app_config
 from learnsys import store
 from learnsys.agent.events import AgentEvent
 from learnsys.server import routes_agent, routes_cet6
@@ -23,6 +24,11 @@ class ServerTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.db_path = pathlib.Path(self.tmp.name) / "learning.db"
+        # 后台复盘线程按 cfg.data_root 取库：隔离数据根，别让它落到生产库
+        self.root_patch = mock.patch.object(
+            app_config, "DATA_ROOT", pathlib.Path(self.tmp.name))
+        self.root_patch.start()
+        self.addCleanup(self.root_patch.stop)
         conn = store.connect(self.db_path)
         store.add_ask(conn, "二叉树怎么遍历", "前序、中序、后序", 100, "test")
         conn.close()

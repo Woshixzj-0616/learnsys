@@ -122,10 +122,12 @@ def recover(conn) -> int:
 
 def _heartbeat_loop(db_path: pathlib.Path | None = None) -> None:
     """每拍刷新心跳，顺带回收已死进程的任务（崩溃后由活着的进程兜底）。"""
+    # 路径只在起线程时解析一次：别每拍重读可能被测试改写的全局配置
+    target = pathlib.Path(db_path) if db_path else app_config.db_path()
     while True:
         time.sleep(HEARTBEAT_INTERVAL)
         try:
-            conn = store.connect(db_path)
+            conn = store.connect(target)
             try:
                 touch_running(conn)
                 recover(conn)
