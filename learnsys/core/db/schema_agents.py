@@ -21,7 +21,9 @@ CREATE TABLE IF NOT EXISTS agent_tasks (
     route_json  TEXT NOT NULL DEFAULT '',
     timeout_s   INTEGER NOT NULL DEFAULT 0,
     depends_on  INTEGER NOT NULL DEFAULT 0,
-    result_text TEXT NOT NULL DEFAULT ''
+    result_text TEXT NOT NULL DEFAULT '',
+    runner      TEXT NOT NULL DEFAULT '',
+    heartbeat_at TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_created
     ON agent_tasks (created_at DESC, id DESC);

@@ -92,10 +92,15 @@ def add_queued(conn: sqlite3.Connection, *, agent: str, prompt: str,
         return int(cur.lastrowid)
 
 
-def claim_next(conn: sqlite3.Connection, *, max_global: int = 2) -> int | None:
-    """原子认领下一个可运行任务：每 agent 串行 + 全局 running 不超上限。"""
+def claim_next(conn: sqlite3.Connection, *, max_global: int = 2,
+               runner: str = "") -> int | None:
+    """原子认领下一个可运行任务：每 agent 串行 + 全局 running 不超上限。
+
+    `runner` 是本进程的实例令牌：恢复时据此区分「自己的任务」与「别人的任务」。
+    """
     sql = (
-        "UPDATE agent_tasks SET status = 'running', started_at = ? "
+        "UPDATE agent_tasks SET status = 'running', started_at = ?, runner = ?, "
+        "heartbeat_at = ? "
         "WHERE id = ("
         "  SELECT t.id FROM agent_tasks t"
         "  WHERE t.status = 'queued'"
@@ -108,8 +113,10 @@ def claim_next(conn: sqlite3.Connection, *, max_global: int = 2) -> int | None:
         "  ORDER BY t.id LIMIT 1"
         ") AND status = 'queued' RETURNING id"
     )
+    stamp = now()
     with _LOCK:
-        row = conn.execute(sql, (now(), max(1, int(max_global or 1)))).fetchone()
+        row = conn.execute(sql, (stamp, str(runner or ""), stamp,
+                                 max(1, int(max_global or 1)))).fetchone()
         conn.commit()
     return int(row[0]) if row else None
 
@@ -239,13 +246,39 @@ def cancel_queued(conn: sqlite3.Connection, task_id: int,
         return cur.rowcount > 0
 
 
-def fail_running_tasks(conn: sqlite3.Connection, error: str) -> list[int]:
-    """进程重启后把残留 running 置 failed；queued 保持不动，由队列接续。"""
+def touch_running_tasks(conn: sqlite3.Connection, runner: str) -> int:
+    """刷新本进程运行中任务的心跳；没有在跑的任务时不写库。"""
+    if not str(runner or ""):
+        return 0
+    with _LOCK:
+        row = conn.execute(
+            "SELECT count(*) FROM agent_tasks "
+            "WHERE status = 'running' AND runner = ?",
+            (str(runner),)).fetchone()
+        if int(row[0] or 0) <= 0:
+            return 0
+        cur = conn.execute(
+            "UPDATE agent_tasks SET heartbeat_at = ? "
+            "WHERE status = 'running' AND runner = ?",
+            (now(), str(runner)))
+        conn.commit()
+        return int(cur.rowcount or 0)
+
+
+def fail_stale_running_tasks(conn: sqlite3.Connection, *, runner: str,
+                             stale_before: str, error: str) -> list[int]:
+    """只回收「不属于本进程、且心跳已过期」的 running。
+
+    `runner = ''` 是升级前遗留的任务，无从确认归属，按过期处理。
+    """
     with _LOCK:
         rows = conn.execute(
             "UPDATE agent_tasks SET status = 'failed', ended_at = ?, error = ? "
-            "WHERE status = 'running' RETURNING id",
-            (now(), str(error or "工作台重启，任务中断"))).fetchall()
+            "WHERE status = 'running' AND runner != ? "
+            "AND (runner = '' OR heartbeat_at = '' OR heartbeat_at < ?) "
+            "RETURNING id",
+            (now(), str(error or "工作台重启，任务中断"), str(runner or ""),
+             str(stale_before or ""))).fetchall()
         conn.commit()
     return [int(row[0]) for row in rows]
 

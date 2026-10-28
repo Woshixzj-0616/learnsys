@@ -2,6 +2,7 @@
 """P26.3 Agent 中枢队列：入队、原子认领、串行、取消、恢复。"""
 from __future__ import annotations
 
+import datetime as dt
 import pathlib
 import sys
 import tempfile
@@ -181,6 +182,73 @@ class QueueTest(unittest.TestCase):
         self.assertEqual(store.get_agent_task(self.conn, waiting)["status"], "queued")
         queue.schedule_drain()
         self.assertEqual(self._wait(waiting)["status"], "done")
+
+    # ---- P26.5 多进程任务归属 ----
+
+    def _mark_running(self, task_id: int, runner: str,
+                      seconds_ago: float = 0) -> None:
+        stamp = (dt.datetime.now() - dt.timedelta(seconds=seconds_ago)
+                 ).strftime("%Y-%m-%d %H:%M:%S")
+        self.conn.execute(
+            "UPDATE agent_tasks SET status = 'running', started_at = ?, "
+            "runner = ?, heartbeat_at = ? WHERE id = ?",
+            (stamp, runner, stamp, int(task_id)))
+        self.conn.commit()
+
+    def _runner_of(self, task_id: int) -> tuple[str, str]:
+        row = self.conn.execute(
+            "SELECT runner, heartbeat_at FROM agent_tasks WHERE id = ?",
+            (int(task_id),)).fetchone()
+        return str(row[0] or ""), str(row[1] or "")
+
+    def test_recover_keeps_task_of_live_foreign_runner(self):
+        """另一个活着的进程正在跑的任务，后启动者不许判死。"""
+        task = self._enqueue("alpha", "别人在跑")
+        self._mark_running(task, "99999-otherproc", seconds_ago=1)
+        self.assertEqual(queue.recover(self.conn), 0)
+        self.assertEqual(
+            store.get_agent_task(self.conn, task)["status"], "running")
+        events = store.list_agent_task_events(self.conn, task)
+        self.assertEqual(events, [])
+
+    def test_recover_fails_stale_foreign_runner(self):
+        """心跳过期的外来任务才是真残留，要回收。"""
+        task = self._enqueue("alpha", "进程已死")
+        self._mark_running(task, "99999-otherproc",
+                           seconds_ago=queue.STALE_AFTER + 10)
+        self.assertEqual(queue.recover(self.conn), 1)
+        failed = store.get_agent_task(self.conn, task)
+        self.assertEqual(failed["status"], "failed")
+        self.assertIn("重启", failed["error"])
+
+    def test_recover_never_touches_own_running_task(self):
+        task = self._enqueue("alpha", "本进程在跑")
+        self._mark_running(task, queue.runner_id(), seconds_ago=0)
+        self.assertEqual(queue.recover(self.conn), 0)
+        self.assertEqual(
+            store.get_agent_task(self.conn, task)["status"], "running")
+
+    def test_claim_records_runner_and_heartbeat(self):
+        task = self._enqueue("alpha")
+        self.assertEqual(
+            store.claim_agent_task(self.conn, max_global=2,
+                                   runner=queue.runner_id()),
+            task)
+        runner, heartbeat = self._runner_of(task)
+        self.assertEqual(runner, queue.runner_id())
+        self.assertTrue(heartbeat)
+
+    def test_touch_running_only_refreshes_own_tasks(self):
+        mine = self._enqueue("alpha", "我的")
+        theirs = self._enqueue("beta", "别人的")
+        self._mark_running(mine, queue.runner_id(), seconds_ago=3)
+        self._mark_running(theirs, "99999-otherproc", seconds_ago=3)
+        _, before_theirs = self._runner_of(theirs)
+        self.assertEqual(queue.touch_running(self.conn), 1)
+        _, after_mine = self._runner_of(mine)
+        _, after_theirs = self._runner_of(theirs)
+        self.assertGreater(after_mine, before_theirs)
+        self.assertEqual(after_theirs, before_theirs)
 
 
 if __name__ == "__main__":
