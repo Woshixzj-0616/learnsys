@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 from learnsys import config as app_config
 from learnsys import store
 from learnsys.server.security import require_token
+from learnsys.services import study_time
 from .common import _conn
 
 router = APIRouter()
@@ -29,7 +30,6 @@ XP_RULES = {
 }
 LEVEL_TITLES = ["网络小白", "布线学徒", "寻址新手", "路由行者", "抓包侦探",
                 "协议解剖师", "拓扑架构师", "网络工程专家", "系统架构师"]
-
 
 def _focus_minutes(conn, day: str = "") -> float:
     """专注分钟数：ended_at 缺失的 session 算到此刻（与 focus_stats 同口径）。"""
@@ -164,6 +164,7 @@ def overview(_=Depends(require_token)):
         today_counts = _counts(conn, today)
         today_focus = _focus_minutes(conn, today)
         today_xp = _xp(today_counts, today_focus)
+        today_study, today_breakdown = study_time.study(conn, today)
 
         all_counts = _counts(conn)
         all_focus = _focus_minutes(conn)
@@ -181,11 +182,14 @@ def overview(_=Depends(require_token)):
         week_daily = []
         for offset in range(6, -1, -1):
             day = (datetime.date.today() - datetime.timedelta(days=offset)).isoformat()
+            day_study, _ = study_time.study(conn, day)
             week_daily.append({
                 "date": day,
-                "minutes": round(_focus_minutes(conn, day), 1),
+                "minutes": round(_focus_minutes(conn, day), 1),   # 旧口径，保留兼容
+                "study_minutes": day_study,
                 "active": day in days,
             })
+        week_study = round(sum(item["study_minutes"] for item in week_daily), 1)
 
         raw = app_config.load_settings()
         try:
@@ -193,14 +197,27 @@ def overview(_=Depends(require_token)):
         except (TypeError, ValueError):
             goal = 100
         goal = max(20, min(goal, 2000))
+        try:
+            goal_minutes = int(raw.get("daily_goal_minutes")
+                               or app_config.DAILY_GOAL_MINUTES)
+        except (TypeError, ValueError):
+            goal_minutes = app_config.DAILY_GOAL_MINUTES
+        goal_minutes = max(5, min(goal_minutes, 240))
         name = str(raw.get("名字") or "").strip()
 
         return {
             "date": today,
             "name": name,
             "today": {
+                # 旧口径（学习点）：保留给等级/兼容调用，不再当今日目标
                 "xp": today_xp, "goal": goal,
                 "percent": round(min(today_xp, goal) * 100.0 / goal, 1),
+                # 今日目标：有效学习分钟（专注 ∪ 转写 ∪ 事件并集去重）
+                "study_minutes": today_study,
+                "study_breakdown": today_breakdown,
+                "goal_minutes": goal_minutes,
+                "minutes_percent": round(
+                    min(today_study, goal_minutes) * 100.0 / goal_minutes, 1),
                 "asks": today_counts["asks"], "minutes": today_focus,
                 "cet6": today_counts["cet6"], "netlab": today_counts["netlab"],
                 "review": today_counts["review"], "quiz": today_counts["quiz"],
@@ -214,6 +231,7 @@ def overview(_=Depends(require_token)):
             "total": {"xp": total_xp, **level},
             "streak": streak,
             "week": {"active_days": len(week_days), "minutes": week_minutes,
+                     "study_minutes": week_study,
                      "asks": week_asks, "daily": week_daily},
             "achievements": _achievements(all_counts, streak, all_focus),
         }

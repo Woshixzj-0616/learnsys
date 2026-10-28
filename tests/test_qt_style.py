@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PySide6 import QtCore, QtGui, QtWidgets  # noqa: E402
 
+from learnsys import config  # noqa: E402
 from learnsys.ask.qt import style, tokens  # noqa: E402
 from learnsys.ask.qt.settings import SettingsWindow  # noqa: E402
 from learnsys.ask.qt.widgets import FieldRow, Section  # noqa: E402
@@ -74,7 +75,7 @@ class TestTokenParsing(unittest.TestCase):
                              tokens.default_tokens())
 
     def test_仓库_tokens_css_齐备(self):
-        values = tokens.read_web_tokens()
+        values = tokens.read_web_tokens(mood=config.DEFAULT_MOOD)
         for key in tokens.REQUIRED:
             self.assertIn(key, values)
             self.assertTrue(str(values[key]).strip(), key)
@@ -91,12 +92,12 @@ class TestTokenParsing(unittest.TestCase):
             (css / "tokens.css").write_text(
                 ":root { --bg: #010203; }", encoding="utf-8")
             with mock.patch.object(sys, "_MEIPASS", folder, create=True):
-                self.assertEqual(tokens.read_web_tokens()["--bg"], "#010203")
+                self.assertEqual(tokens.read_web_tokens(mood=config.DEFAULT_MOOD)["--bg"], "#010203")
 
 
 class TestQss(unittest.TestCase):
     def test_模板填满且没有漏占位(self):
-        values = tokens.read_web_tokens()
+        values = tokens.read_web_tokens(mood=config.DEFAULT_MOOD)
         qss = style.render_qss(values)
         self.assertIn(values["--bg"], qss)
         self.assertIn(values["--bg-raised"], qss)
@@ -109,7 +110,7 @@ class TestQss(unittest.TestCase):
         self.assertIn(tokens.default_tokens()["--text"], qss)
 
     def test_底色来自令牌(self):
-        values = tokens.read_web_tokens()
+        values = tokens.read_web_tokens(mood=config.DEFAULT_MOOD)
         qss = style.render_qss().lower()
         self.assertIn(values["--bg"].lower(), qss)
         self.assertIn(values["--bg-raised"].lower(), qss)
@@ -148,7 +149,7 @@ class TestSettingsDark(unittest.TestCase):
         self.assertTrue(self.window.styleSheet().strip())
 
     def test_调色板来自令牌(self):
-        values = tokens.read_web_tokens()
+        values = tokens.read_web_tokens(mood=config.DEFAULT_MOOD)
         palette = self.window.palette()
         window = palette.color(QtGui.QPalette.ColorRole.Window).name()
         base = palette.color(QtGui.QPalette.ColorRole.Base).name()
@@ -189,7 +190,7 @@ class TestSettingsDark(unittest.TestCase):
             QtCore.Qt.WidgetAttribute.WA_StyledBackground))
 
     def test_渲染像素与令牌一致(self):
-        values = tokens.read_web_tokens()
+        values = tokens.read_web_tokens(mood=config.DEFAULT_MOOD)
         self.window.show()
         _app().processEvents()
         image = self.window.grab().toImage()
@@ -197,7 +198,8 @@ class TestSettingsDark(unittest.TestCase):
         for x, y in ((2, 2), (image.width() - 3, 2),
                      (2, image.height() - 3), (image.width() // 2, 2)):
             pixel = image.pixelColor(x, y)
-            self.assertGreater(pixel.lightness(), 200, (x, y, pixel.name()))
+            # 默认墨夜：四角与顶边应为深色底，不再是晨雾的浅色。
+            self.assertLess(pixel.lightness(), 100, (x, y, pixel.name()))
         self.assertEqual(image.pixelColor(2, 2).name(), values["--bg"])
 
 

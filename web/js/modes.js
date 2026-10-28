@@ -1,8 +1,9 @@
 // 页面模式：气质 / 专注 / 场景 / 视图 / 密度。
 // 唯一状态落点；页面订阅 learnsys:modes 后自己决定怎么响应。
 const KEY = "wb-modes";
+// 默认气质与 config.DEFAULT_MOOD 保持一致（墨夜）；改默认只影响未存过偏好的浏览器。
 const DEFAULTS = {
-  mood: "mist",
+  mood: "ink",
   focus: false,
   scene: "study",
   view: "card",
@@ -12,10 +13,20 @@ const MOODS = ["mist", "ink", "paper"];
 const THEME_COLOR = { mist: "#f3f5f9", ink: "#12151a", paper: "#f6f2ea" };
 
 let state = { ...DEFAULTS };
+let stored = false;
 try {
   const saved = JSON.parse(localStorage.getItem(KEY) || "{}");
-  if (saved && typeof saved === "object") state = { ...state, ...saved };
+  if (saved && typeof saved === "object") {
+    state = { ...state, ...saved };
+    stored = true;
+  }
 } catch { /* 坏数据就当没存过 */ }
+// 2026-10-28 默认气质从晨雾改为墨夜：旧存储没有 _v 标记，
+// 其中的 mood=mist 是旧默认而不是用户选择，迁移到新默认；其余气质不动。
+if (stored && !state._v) {
+  if (state.mood === "mist") state.mood = DEFAULTS.mood;
+  state._v = 1;
+}
 if (!MOODS.includes(state.mood)) state.mood = "mist";
 if (!["study", "work"].includes(state.scene)) state.scene = "study";
 if (!["card", "list"].includes(state.view)) state.view = "card";

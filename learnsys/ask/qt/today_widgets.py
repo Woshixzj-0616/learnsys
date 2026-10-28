@@ -4,6 +4,8 @@
 """
 from __future__ import annotations
 
+import math
+
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from . import style
@@ -172,7 +174,7 @@ class HeroCard(QtWidgets.QWidget):
         main.addSpacing(6)
 
         goal_head = QtWidgets.QHBoxLayout()
-        goal_label = _label("今日学习点", "GoalHead")
+        goal_label = _label("今日投入", "GoalHead")
         self.goal_text = _label("0 / 100", "GoalText")
         goal_head.addWidget(goal_label)
         goal_head.addStretch(1)
@@ -181,7 +183,7 @@ class HeroCard(QtWidgets.QWidget):
 
         self.goal_bar = GoalBar("GoalBar")
         main.addWidget(self.goal_bar)
-        self.goal_note = _label("问答 10 · 转写 5 · 六级断点 8 · 专注 1 分钟 1", "GoalNote")
+        self.goal_note = _label("专注、转写、问答、训练按分钟去重", "GoalNote")
         self.goal_note.setWordWrap(True)
         main.addWidget(self.goal_note)
 
@@ -216,25 +218,36 @@ class HeroCard(QtWidgets.QWidget):
         self.eyebrow.setText(
             f"今日 · 概览 · {part}，{name}" if name else f"今日 · 概览 · {part}")
 
-        percent = float(today.get("percent") or 0)
+        # 今日目标 = 有效学习分钟（专注 ∪ 转写 ∪ 事件），学习点只做成长值。
+        study = float(today.get("study_minutes") or 0)
+        goal_minutes = max(1, int(today.get("goal_minutes") or 30))
+        percent = float(today.get("minutes_percent") or 0)
+        left = max(0.0, goal_minutes - study)
         if percent >= 100:
             self.title.setText("今日目标达成。")
-            self.subtitle.setText("学习点已经攒够 —— 想再往前走，去训练场开一格。")
+            self.subtitle.setText("今天投入已经够了 —— 想再往前走，去训练场开一格。")
         elif streak >= 7:
             self.title.setText(f"连续 {streak} 天，稳住。")
-            self.subtitle.setText("把今天的目标收掉，就是给这条连续线续命。")
+            self.subtitle.setText(
+                f"再投入 {math.ceil(left)} 分钟，就是给这条连续线续命。")
         else:
             self.title.setText("今天，练一格。")
-            self.subtitle.setText("问出去、听清楚、抓包看明白 —— 每天留下一点能看见的进度。")
+            self.subtitle.setText(
+                f"还差 {math.ceil(left)} 分钟 · 精听 1 段约 8 分钟，或去训练场开一格。")
 
-        xp = int(today.get("xp") or 0)
-        goal = int(today.get("goal") or 100)
-        self.goal_text.setText(f"{xp} / {goal}")
+        self.goal_text.setText(f"{round(study)} / {goal_minutes} 分钟")
         self.goal_bar.setValue(int(round(min(percent, 100) * 10)))
         self.goal_ring.set_percent(percent)
-        left = max(0, goal - xp)
-        self.goal_note.setText(
-            f"再攒 {left} 学习点到今天的目标" if left else "今天的目标已经完成，继续保持")
+        note = ("今天的目标已经完成，继续保持" if not left
+                else f"再投入 {math.ceil(left)} 分钟到今天的目标")
+        breakdown = today.get("study_breakdown") or {}
+        parts = []
+        for key, label in (("focus", "专注"), ("transcript", "转写"),
+                           ("activity", "问答/训练")):
+            value = float(breakdown.get(key) or 0)
+            if value > 0:
+                parts.append(f"{label} {round(value)} 分钟")
+        self.goal_note.setText(note + (" · " + " · ".join(parts) if parts else ""))
 
         self.streak_value.setText(str(streak))
         self.level_badge.setText(f"Lv.{total.get('level') or 1}")

@@ -145,11 +145,20 @@ SETTINGS_TEMPLATE = {
         "history_days": 30,
         "close_on_exit": True,
     },
-    "_daily_goal_xp": "每日学习点目标（默认 100）。问答 10 / 转写 5 / 六级断点 8 / 专注 1 分钟 1 / 收藏 3",
+    "_daily_goal_minutes": "每日有效学习分钟目标（默认 30）。专注、转写、问答、六级、训练按分钟并集去重",
+    "daily_goal_minutes": 30,
+    "_daily_goal_xp": "[旧口径] 每日学习点目标；现在只用于成长值，不再作为今日目标",
     "daily_goal_xp": 100,
     "_名字": "学习台左上角怎么称呼你（留空 = 不显示名字）",
     "名字": "",
 }
+
+# 界面默认气质：Web 和 Qt 都从这里取（ink=墨夜 / mist=晨雾 / paper=纸感）。
+# 改这一处，新安装和未存过偏好的浏览器都会用它。
+DEFAULT_MOOD = "ink"
+
+# 每日有效学习目标（分钟）；设置文件里的 daily_goal_minutes 优先。
+DAILY_GOAL_MINUTES = 30
 
 
 def load_settings() -> dict:
@@ -456,7 +465,7 @@ ASK_BAR_ANSWER_MAX_RATIO = 0.62   # 答案区最高占屏幕高度的比例（�
 ASK_BAR_ANSWER_DEFAULT_H = 420    # 答案面板默认高度（固定，拖底边才改）
 ASK_BAR_ANSWER_MIN_H = 160        # 答案面板最矮拖到多少
 ASK_BAR_PILL_WIDTH = 250          # 收起成一条小条后有多宽
-ASK_BAR_ALWAYS_ON_TOP = True      # 默认置顶：浏览器最大化时不再盖住横栏；横栏上「置顶」开关随时改
+ASK_BAR_ALWAYS_ON_TOP = False     # 默认不置顶：用户点横栏上的「置顶」才会常驻最上层（选择会被记住）
 
 # 热词：当 initial_prompt 喂给模型，能显著压掉成体系的同音错
 HOTWORDS = (

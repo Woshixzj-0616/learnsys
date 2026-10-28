@@ -89,6 +89,14 @@
   gap: 8px;
   margin-top: 14px;
 }
+/* 今日目标拆成一句人话：总分钟 + 构成，不占额外卡片 */
+.goal-line {
+  margin: 10px 0 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.goal-line b { color: var(--text); }
 .badge {
   display: inline-flex;
   align-items: center;

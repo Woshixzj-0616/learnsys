@@ -2,7 +2,7 @@
 
 颜色、字号、圆角、间距全部来自 `tokens.py` → `web/css/tokens.css`；
 本文件只描述「哪个控件用哪个令牌」，不写死配色。
-`tokens.css` 的 `:root` 是「晨雾」浅色主题，Qt 跟随它；深色「墨夜」只作用于网页。
+Qt 默认跟 `config.DEFAULT_MOOD`（墨夜）；`:root` 仍是晨雾，只是不再被 Qt 默认读取。
 """
 from __future__ import annotations
 
@@ -11,6 +11,8 @@ import re
 import tempfile
 
 from PySide6 import QtCore, QtGui, QtWidgets
+
+from learnsys import config
 
 from . import tokens as token_source
 from .qss_common import QSS_COMMON
@@ -101,12 +103,16 @@ _CHECK = ((16, 16), 2.2, [(3.5, 8.5), (6.5, 11.5), (12.5, 5.0)])
 _ARROW = ((10, 6), 1.4, [(1.5, 1.5), (5.0, 4.5), (8.5, 1.5)])
 
 
-def render_qss(tokens: dict[str, str] | None = None) -> str:
+def render_qss(tokens: dict[str, str] | None = None,
+               mood: str | None = None) -> str:
     """把令牌填进 QSS 模板；缺键用兜底，不会 KeyError。
 
-    不传 tokens 时读 `web/css/tokens.css`，和窗口实际使用的一致。
+    不传 tokens 时读 `web/css/tokens.css`，默认气质跟 `config.DEFAULT_MOOD`，
+    和窗口实际使用的一致。
     """
-    source = tokens if tokens is not None else token_source.read_web_tokens()
+    if tokens is None:
+        tokens = token_source.read_web_tokens(mood=mood or config.DEFAULT_MOOD)
+    source = tokens
     values = token_source.merged(source)
     flat = _flat(values)
     flat["font_family"] = token_source.font_family(values)
@@ -153,10 +159,16 @@ def build_palette(tokens: dict[str, str] | None = None) -> QtGui.QPalette:
 
 
 def apply_theme(window: QtWidgets.QWidget,
-                tokens: dict[str, str] | None = None) -> dict[str, str]:
-    """给窗口装样式、调色板、字体；返回本次用到的令牌（便于测试/诊断）。"""
-    values = token_source.merged(
-        tokens if tokens is not None else token_source.read_web_tokens())
+                tokens: dict[str, str] | None = None,
+                mood: str | None = None) -> dict[str, str]:
+    """给窗口装样式、调色板、字体；返回本次用到的令牌（便于测试/诊断）。
+
+    `tokens` 明确传入时原样使用；否则读 tokens.css，并用 `mood`
+    （缺省 `config.DEFAULT_MOOD` = 墨夜）覆盖 `:root` 的晨雾值。
+    """
+    if tokens is None:
+        tokens = token_source.read_web_tokens(mood=mood or config.DEFAULT_MOOD)
+    values = token_source.merged(tokens)
     window.setPalette(build_palette(values))
     window.setStyleSheet(render_qss(values))
     font = QtGui.QFont(token_source.font_family(values))

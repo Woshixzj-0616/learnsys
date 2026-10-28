@@ -11,6 +11,7 @@ from learnsys.llm.config import load_config
 from learnsys.knowledge import CATEGORY_NAMES
 from learnsys.server.security import require_token
 from learnsys.services import knowledge as knowledge_service
+from learnsys.services import study_time
 from learnsys.services import train_plan
 from .common import _ask_dict, _conn
 
@@ -122,6 +123,7 @@ def today(_=Depends(require_token)):
     conn = _conn()
     try:
         day = datetime.date.today().isoformat()
+        study_minutes, study_breakdown = study_time.study(conn, day)
         focus_stats = store.focus_stats(conn, day=day)
         asks = store.recent_asks(conn, limit=10, day=day, with_conversation=True)
         ask_count = int(conn.execute(
@@ -140,6 +142,8 @@ def today(_=Depends(require_token)):
             pass
         return {
             "date": day,
+            "study_minutes": study_minutes,
+            "study_breakdown": study_breakdown,
             "focus": {
                 "minutes": float(focus_stats.get("分钟") or 0),
                 "switches": int(focus_stats.get("切换") or 0),

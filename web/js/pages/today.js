@@ -99,15 +99,18 @@ function renderHero(overview) {
   const today = overview.today || {};
   const total = overview.total || {};
   const streak = Number(overview.streak || 0);
+  const study = Number(today.study_minutes ?? today.minutes ?? 0);
+  const goalMinutes = Number(today.goal_minutes || 30);
+  const progress = Number(today.minutes_percent ?? today.percent ?? 0);
 
   document.getElementById("stage-greeting").textContent = greeting(overview.name);
   const sub = document.getElementById("stage-sub");
-  if (today.percent >= 100) {
+  if (progress >= 100) {
     sub.textContent = "今天的目标已经达成。想再往前走，去训练场开一格。";
   } else if (streak >= 7) {
-    sub.textContent = `连续 ${streak} 天，把今天的目标收掉，就是给这条线续命。`;
+    sub.textContent = `连续 ${streak} 天，再投入 ${Math.max(0, Math.ceil(goalMinutes - study))} 分钟，就是给这条线续命。`;
   } else {
-    sub.textContent = "问出去、听清楚、抓包看明白 —— 每天留下一点能看见的进度。";
+    sub.textContent = `还差 ${Math.max(0, Math.ceil(goalMinutes - study))} 分钟 · 精听 1 段约 8 分钟，或去训练场开一格。`;
   }
   studySub = sub.textContent;
 
@@ -115,7 +118,18 @@ function renderHero(overview) {
   document.getElementById("level-chip").textContent =
     `Lv.${total.level || 1} · ${total.title || "网络小白"}`;
 
-  const percent = Math.max(0, Math.min(100, Number(today.percent) || 0));
+  const line = document.getElementById("goal-line");
+  if (line) {
+    const bd = today.study_breakdown || {};
+    const parts = [];
+    if (Number(bd.focus || 0) > 0) parts.push(`专注 ${Math.round(bd.focus)} 分钟`);
+    if (Number(bd.transcript || 0) > 0) parts.push(`转写 ${Math.round(bd.transcript)} 分钟`);
+    if (Number(bd.activity || 0) > 0) parts.push(`问答/训练 ${Math.round(bd.activity)} 分钟`);
+    line.textContent = `今日 ${Math.round(study)} / ${goalMinutes} 分钟`
+      + (parts.length ? ` · ${parts.join(" · ")}` : " · 还没有开始");
+  }
+
+  const percent = Math.max(0, Math.min(100, Number(progress) || 0));
   document.getElementById("goal-percent").textContent = String(Math.round(percent));
   const ring = document.getElementById("goal-fill");
   if (ring) {
@@ -189,15 +203,16 @@ function renderPlugins(ctx, overview, settings) {
 }
 
 function renderStats(today, reviewStats = {}) {
+  const study = Number(today.study_minutes ?? today.minutes ?? 0);
   const focus = minutesParts(today.focus?.minutes);
   const chars = charsParts(today.transcripts?.chars);
   const imageAsks = (today.asks || []).filter((ask) => ask.kind === "image").length;
   const stats = [
     {
-      label: "专注",
-      value: focus.value,
-      unit: focus.unit,
-      note: `切换 ${today.focus?.switches ?? 0} 次`,
+      label: "投入",
+      value: String(Math.round(study)),
+      unit: "分钟",
+      note: `专注 ${focus.value} ${focus.unit} · 问答 ${today.ask_count ?? 0} 条`,
     },
     {
       label: "问答",
@@ -259,7 +274,8 @@ function renderWeek(week) {
   const root = document.getElementById("week-bars");
   if (!root) return;
   const daily = Array.isArray(week.daily) ? week.daily : [];
-  const values = daily.map((day) => Number(day.minutes || 0));
+  const minutesOf = (day) => Number(day.study_minutes ?? day.minutes ?? 0);
+  const values = daily.map(minutesOf);
   const max = Math.max(1, ...values);
   const todayKey = new Date().toISOString().slice(0, 10);
   const labels = daily.map((day) => {
@@ -268,10 +284,10 @@ function renderWeek(week) {
   });
 
   if (!daily.length) {
-    root.innerHTML = '<div class="hint" style="padding:18px 4px">本周还没有专注记录。</div>';
+    root.innerHTML = '<div class="hint" style="padding:18px 4px">本周还没有学习投入。</div>';
   } else {
     root.innerHTML = daily.map((day, index) => {
-      const minutes = Number(day.minutes || 0);
+      const minutes = minutesOf(day);
       const height = minutes ? Math.max(4, Math.round((minutes / max) * 100)) : 2;
       const isToday = day.date === todayKey;
       const label = labels[index] || "";
@@ -283,12 +299,12 @@ function renderWeek(week) {
     }).join("");
   }
 
-  const total = minutesParts(week.minutes || 0);
+  const total = minutesParts(week.study_minutes ?? week.minutes ?? 0);
   document.getElementById("week-total").textContent = `共 ${total.value} ${total.unit}`;
   document.getElementById("week-extra").textContent =
     `活跃 ${Number(week.active_days || 0)} / 7 天`;
   root.setAttribute("aria-label",
-    `本周专注：${daily.map((day, index) => `${labels[index]} ${Number(day.minutes || 0)} 分钟`).join("，")}`);
+    `本周投入：${daily.map((day, index) => `${labels[index]} ${minutesOf(day)} 分钟`).join("，")}`);
 }
 
 function bindWeekTips() {

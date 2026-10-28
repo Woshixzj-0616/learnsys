@@ -368,9 +368,10 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
             review_note = f"下张 {next_due} 到期"
         else:
             review_note = "今天没有到期的"
+        study = round(float(today.get("study_minutes") or 0))
         self.stats.update_stats([
-            {"label": "专注", "value": focus[0], "unit": focus[1],
-             "note": f"切换 {(today.get('focus') or {}).get('switches') or 0} 次"},
+            {"label": "投入", "value": str(study), "unit": "分钟",
+             "note": f"专注 {focus[0]} {focus[1]} · 问答 {today.get('ask_count') or 0} 条"},
             {"label": "问答", "value": str(today.get("ask_count") or 0), "unit": "条",
              "note": f"最近 10 条里 {image_asks} 条带图" if image_asks else "今天的提问"},
             {"label": "课堂转写",

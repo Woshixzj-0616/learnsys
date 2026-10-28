@@ -14,7 +14,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PySide6 import QtCore, QtGui, QtWidgets  # noqa: E402
 
+from learnsys import config  # noqa: E402
 from learnsys.ask.desktop.qt_pilot import QtPilotMixin, open_workbench_link  # noqa: E402
+from learnsys.ask.qt import tokens as token_source  # noqa: E402
 from learnsys.ask.qt.today import (AUTO_REFRESH_MS, STUDY_SUB, WORK_SUB,  # noqa: E402
                                    TodayWindow, chars_parts, date_label,
                                    minutes_parts)
@@ -33,6 +35,8 @@ OVERVIEW = {
     "date": "2026-10-24",
     "name": "智坚",
     "today": {"xp": 45, "goal": 100, "percent": 45.0, "asks": 3, "minutes": 30,
+              "study_minutes": 45.0, "goal_minutes": 90, "minutes_percent": 50.0,
+              "study_breakdown": {"focus": 30.0, "transcript": 5.0, "activity": 10.0},
               "cet6": 2, "netlab": 1, "review": 1, "quiz": 1},
     "total": {"xp": 315, "level": 2, "title": "布线学徒", "into": 15,
               "need": 500, "percent": 3.0},
@@ -52,6 +56,8 @@ OVERVIEW = {
 
 TODAY = {
     "date": "2026-10-24",
+    "study_minutes": 45.0,
+    "study_breakdown": {"focus": 30.0, "activity": 15.0},
     "focus": {"minutes": 30, "switches": 4, "apps": []},
     "asks": [
         {"kind": "image", "question": "图上是什么", "answer": "..."},
@@ -157,21 +163,22 @@ class TestTodayWindow(unittest.TestCase):
         self.settings_opened += 1
 
     def test_Hero_数据(self):
-        self.assertEqual(self.window.hero.goal_text.text(), "45 / 100")
+        self.assertEqual(self.window.hero.goal_text.text(), "45 / 90 分钟")
         self.assertEqual(self.window.hero.streak_value.text(), "6")
         self.assertEqual(self.window.hero.level_badge.text(), "Lv.2")
         self.assertEqual(self.window.hero.level_title.text(), "布线学徒")
-        self.assertEqual(self.window.hero.goal_bar.value(), 450)
+        self.assertEqual(self.window.hero.goal_bar.value(), 500)
         self.assertEqual(self.window.hero.level_bar.value(), 30)
         self.assertEqual(self.window.hero.title.text(), "今天，练一格。")
-        self.assertIn("再攒 55 学习点", self.window.hero.goal_note.text())
+        self.assertIn("再投入 45 分钟", self.window.hero.goal_note.text())
+        self.assertIn("专注 30 分钟", self.window.hero.goal_note.text())
         self.assertIn("累计 315 点", self.window.hero.level_note.text())
 
     def test_统计四格(self):
         cells = self.window.stats.cells
-        self.assertEqual(cells[0].value.text(), "30")
+        self.assertEqual(cells[0].value.text(), "45")
         self.assertEqual(cells[0].unit.text(), "分钟")
-        self.assertEqual(cells[0].note.text(), "切换 4 次")
+        self.assertEqual(cells[0].note.text(), "专注 30 分钟 · 问答 3 条")
         self.assertEqual(cells[1].value.text(), "3")
         self.assertEqual(cells[1].note.text(), "最近 10 条里 1 条带图")
         self.assertEqual(cells[2].value.text(), "2")
@@ -226,7 +233,7 @@ class TestTodayWindow(unittest.TestCase):
         self.addCleanup(window.deleteLater)
         window.load()
         api.ready.emit()
-        self.assertEqual(window.hero.goal_text.text(), "45 / 100")
+        self.assertEqual(window.hero.goal_text.text(), "45 / 90 分钟")
         self.assertIn("插件清单", window.status_label.text())
         self.assertFalse(window.plugin_empty.isHidden())
 
@@ -269,10 +276,12 @@ class TestTodayWindow(unittest.TestCase):
         _app().processEvents()
         self.assertEqual((self.window._action_cols, self.window._plugin_cols), (1, 2))
 
-    def test_深色调色板(self):
+    def test_默认深色调色板(self):
+        """Qt 默认读 config.DEFAULT_MOOD（墨夜），不再跟 :root 的晨雾。"""
+        values = token_source.read_web_tokens(mood=config.DEFAULT_MOOD)
         palette = self.window.palette()
         self.assertEqual(palette.color(QtGui.QPalette.ColorRole.Window).name(),
-                         "#f3f5f9")
+                         values["--bg"])
         self.assertTrue(self.window.styleSheet().strip())
 
     def test_自动刷新定时器随显隐启停(self):
@@ -308,7 +317,7 @@ class TestTodayWindow(unittest.TestCase):
         self.window._auto_refresh()
         self.assertEqual(self.api.started, 2)
         self.api.failed.emit("本地服务没起来")
-        self.assertEqual(self.window.hero.goal_text.text(), "45 / 100")
+        self.assertEqual(self.window.hero.goal_text.text(), "45 / 90 分钟")
         self.assertIn("自动刷新没连上", self.window.status_label.text())
         self.assertTrue(self.window.retry_button.isHidden())
         self.assertTrue(self.window.refresh_button.isEnabled())
