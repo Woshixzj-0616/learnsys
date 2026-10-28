@@ -147,8 +147,8 @@ SETTINGS_TEMPLATE = {
         "history_days": 30,
         "close_on_exit": True,
     },
-    "_daily_goal_minutes": "每日有效学习分钟目标（默认 30）。专注、转写、问答、六级、训练按分钟并集去重",
-    "daily_goal_minutes": 30,
+    "_weekly_goal_days": "每周达标天数目标（默认 5，范围 3–7）。达标 = 今日三格完成两件",
+    "weekly_goal_days": 5,
     "_daily_goal_xp": "[旧口径] 每日学习点目标；现在只用于成长值，不再作为今日目标",
     "daily_goal_xp": 100,
     "_名字": "学习台左上角怎么称呼你（留空 = 不显示名字）",
@@ -159,8 +159,8 @@ SETTINGS_TEMPLATE = {
 # 改这一处，新安装和未存过偏好的浏览器都会用它。
 DEFAULT_MOOD = "ink"
 
-# 每日有效学习目标（分钟）；设置文件里的 daily_goal_minutes 优先。
-DAILY_GOAL_MINUTES = 30
+# 每周达标天数目标；设置文件里的 weekly_goal_days 优先。
+WEEKLY_GOAL_DAYS = 5
 
 
 def load_settings() -> dict:

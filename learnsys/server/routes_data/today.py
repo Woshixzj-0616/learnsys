@@ -123,7 +123,7 @@ def today(_=Depends(require_token)):
     conn = _conn()
     try:
         day = datetime.date.today().isoformat()
-        study_minutes, study_breakdown = study_time.study(conn, day)
+        recorded = study_time.recorded(conn, day)
         focus_stats = store.focus_stats(conn, day=day)
         asks = store.recent_asks(conn, limit=10, day=day, with_conversation=True)
         ask_count = int(conn.execute(
@@ -142,8 +142,11 @@ def today(_=Depends(require_token)):
             pass
         return {
             "date": day,
-            "study_minutes": study_minutes,
-            "study_breakdown": study_breakdown,
+            "study_minutes": recorded["minutes"],
+            "study_measured": recorded["measured"],
+            "study_estimated": recorded["estimated"],
+            "study_breakdown": recorded["breakdown"],
+            "activity": recorded["activity"],
             "focus": {
                 "minutes": float(focus_stats.get("分钟") or 0),
                 "switches": int(focus_stats.get("切换") or 0),

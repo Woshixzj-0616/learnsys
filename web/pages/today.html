@@ -27,19 +27,22 @@
           <span class="badge" id="level-chip">Lv.1</span>
           <span class="badge badge-mark">连续 <b id="streak-num">0</b> 天</span>
         </div>
-        <p class="goal-line" id="goal-line">今日 0 / 30 分钟</p>
+        <p class="goal-line" id="goal-line">做完两件算达标，第三件是加分</p>
       </div>
-      <div class="ring-wrap" aria-label="今日有效学习目标完成度">
+      <div class="ring-wrap" aria-label="今日目标完成度">
         <svg class="ring" viewBox="0 0 92 92" aria-hidden="true">
           <circle class="ring-bg" cx="46" cy="46" r="38"></circle>
           <circle class="ring-fg" id="goal-fill" cx="46" cy="46" r="38"></circle>
         </svg>
         <div class="ring-text">
-          <b><span id="goal-percent">0</span><i>%</i></b>
-          <span>今日投入</span>
+          <b><span id="goal-done">0</span><i id="goal-total">/ 3</i></b>
+          <span>今日目标</span>
         </div>
       </div>
     </div>
+
+    <div class="goal-tasks" id="goal-tasks" aria-label="今日三件事"></div>
+    <p class="goal-foot" id="goal-foot">预算约 0 分钟 · 已记录 0 分钟</p>
 
     <form class="hero-ask" id="hero-ask">
       <span class="hero-ask-icon" aria-hidden="true">✎</span>

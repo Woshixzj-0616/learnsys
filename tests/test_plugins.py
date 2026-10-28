@@ -164,6 +164,18 @@ class PluginApiTest(unittest.TestCase):
         modules = self.client.get("/api/plugins", headers=AUTH).json()["modules"]
         self.assertTrue(any(m["id"] == "netlab" for m in modules))
 
+    def test_weekly_goal_days_persists(self):
+        self.assertEqual(
+            self.client.get("/api/settings", headers=AUTH).json()["weekly_goal_days"], 5)
+        res = self.client.post(
+            "/api/settings", headers=AUTH, json={"weekly_goal_days": 6})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(
+            self.client.get("/api/settings", headers=AUTH).json()["weekly_goal_days"], 6)
+        too_many = self.client.post(
+            "/api/settings", headers=AUTH, json={"weekly_goal_days": 9})
+        self.assertEqual(too_many.status_code, 422)
+
     def test_events_require_token(self):
         res = self.client.post("/api/events", json={"module": "netlab", "title": "x"})
         self.assertEqual(res.status_code, 403)

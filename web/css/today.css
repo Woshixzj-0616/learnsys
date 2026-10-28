@@ -97,6 +97,49 @@
   line-height: 1.5;
 }
 .goal-line b { color: var(--text); }
+
+/* 今日三件事：每格都有数据库事实判定，圆环只数完成数 */
+.goal-tasks {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+.goal-task {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color .18s, transform .18s;
+}
+.goal-task:hover { border-color: var(--accent-line); transform: translateX(2px); }
+.goal-check {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 50%;
+  color: transparent;
+  font-size: 11px;
+  line-height: 1;
+}
+.goal-task.done .goal-check {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.goal-task-body { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.goal-task-title { font-size: 13.5px; font-weight: 600; }
+.goal-task.done .goal-task-title { color: var(--text-faint); }
+.goal-task-meta { color: var(--text-faint); font-size: 11.5px; line-height: 1.45; }
+.goal-task-time { flex: none; color: var(--text-faint); font-size: 11.5px; white-space: nowrap; }
+.goal-foot { margin: 10px 0 0; color: var(--text-faint); font-size: 11.5px; }
 .badge {
   display: inline-flex;
   align-items: center;
@@ -345,6 +388,8 @@ body[data-scene="work"] .only-study { display: none; }
 .bar span { color: var(--text-faint); font-size: 10.5px; }
 .bar.today i { background: var(--mark); }
 .bar.today span { color: var(--mark); }
+.bar.achieved i { background: var(--mark); opacity: .95; }
+.bar.achieved span { color: var(--mark); }
 .bar .val {
   position: absolute;
   top: -13px;

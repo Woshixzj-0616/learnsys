@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 from learnsys import config as app_config
 from learnsys import store
 from learnsys.server.security import require_token
+from learnsys.services import day_plan
 from learnsys.services import study_time
 from .common import _conn
 
@@ -164,7 +165,8 @@ def overview(_=Depends(require_token)):
         today_counts = _counts(conn, today)
         today_focus = _focus_minutes(conn, today)
         today_xp = _xp(today_counts, today_focus)
-        today_study, today_breakdown = study_time.study(conn, today)
+        today_recorded = study_time.recorded(conn, today)
+        today_plan = day_plan.build(conn, today)
 
         all_counts = _counts(conn)
         all_focus = _focus_minutes(conn)
@@ -182,14 +184,20 @@ def overview(_=Depends(require_token)):
         week_daily = []
         for offset in range(6, -1, -1):
             day = (datetime.date.today() - datetime.timedelta(days=offset)).isoformat()
-            day_study, _ = study_time.study(conn, day)
+            day_recorded = study_time.recorded(conn, day)
+            day_check = day_plan.check(conn, day)
             week_daily.append({
                 "date": day,
                 "minutes": round(_focus_minutes(conn, day), 1),   # 旧口径，保留兼容
-                "study_minutes": day_study,
+                "study_minutes": day_recorded["minutes"],
+                "study_measured": day_recorded["measured"],
+                "goal_done": day_check["done"],
+                "goal_total": day_check["total"],
+                "goal_achieved": day_check["met"],
                 "active": day in days,
             })
         week_study = round(sum(item["study_minutes"] for item in week_daily), 1)
+        week_achieved = sum(1 for item in week_daily if item["goal_achieved"])
 
         raw = app_config.load_settings()
         try:
@@ -198,11 +206,11 @@ def overview(_=Depends(require_token)):
             goal = 100
         goal = max(20, min(goal, 2000))
         try:
-            goal_minutes = int(raw.get("daily_goal_minutes")
-                               or app_config.DAILY_GOAL_MINUTES)
+            goal_days = int(raw.get("weekly_goal_days")
+                            or app_config.WEEKLY_GOAL_DAYS)
         except (TypeError, ValueError):
-            goal_minutes = app_config.DAILY_GOAL_MINUTES
-        goal_minutes = max(5, min(goal_minutes, 240))
+            goal_days = app_config.WEEKLY_GOAL_DAYS
+        goal_days = max(3, min(goal_days, 7))
         name = str(raw.get("名字") or "").strip()
 
         return {
@@ -212,12 +220,18 @@ def overview(_=Depends(require_token)):
                 # 旧口径（学习点）：保留给等级/兼容调用，不再当今日目标
                 "xp": today_xp, "goal": goal,
                 "percent": round(min(today_xp, goal) * 100.0 / goal, 1),
-                # 今日目标：有效学习分钟（专注 ∪ 转写 ∪ 事件并集去重）
-                "study_minutes": today_study,
-                "study_breakdown": today_breakdown,
-                "goal_minutes": goal_minutes,
-                "minutes_percent": round(
-                    min(today_study, goal_minutes) * 100.0 / goal_minutes, 1),
+                # 今日目标：三格任务完成数（精听 / 训练或复习 / 复盘）
+                "goal_tasks": today_plan["tasks"],
+                "goal_done": today_plan["done"],
+                "goal_total": today_plan["total"],
+                "goal_tier": today_plan["tier"],
+                "goal_budget_minutes": today_plan["budget_minutes"],
+                # 记录时长：实测 + 有上限的估算，只做参考，不参与达标
+                "study_minutes": today_recorded["minutes"],
+                "study_measured": today_recorded["measured"],
+                "study_estimated": today_recorded["estimated"],
+                "study_breakdown": today_recorded["breakdown"],
+                "activity": today_recorded["activity"],
                 "asks": today_counts["asks"], "minutes": today_focus,
                 "cet6": today_counts["cet6"], "netlab": today_counts["netlab"],
                 "review": today_counts["review"], "quiz": today_counts["quiz"],
@@ -232,6 +246,7 @@ def overview(_=Depends(require_token)):
             "streak": streak,
             "week": {"active_days": len(week_days), "minutes": week_minutes,
                      "study_minutes": week_study,
+                     "achieved_days": week_achieved, "goal_days": goal_days,
                      "asks": week_asks, "daily": week_daily},
             "achievements": _achievements(all_counts, streak, all_focus),
         }

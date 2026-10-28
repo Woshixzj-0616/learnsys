@@ -35,21 +35,51 @@ OVERVIEW = {
     "date": "2026-10-24",
     "name": "智坚",
     "today": {"xp": 45, "goal": 100, "percent": 45.0, "asks": 3, "minutes": 30,
-              "study_minutes": 45.0, "goal_minutes": 90, "minutes_percent": 50.0,
-              "study_breakdown": {"focus": 30.0, "transcript": 5.0, "activity": 10.0},
+              "study_minutes": 45.0, "study_measured": 30.0,
+              "study_estimated": 15.0,
+              "study_breakdown": {"focus": 30.0, "cet6": 15.0},
+              "activity": {"breakpoints": 4, "asks": 3},
+              "goal_tasks": [
+                  {"id": "listen", "title": "精听 · 测试卷 / Section C",
+                   "detail": "今天 2 个不同句子", "minutes": 25, "done": False,
+                   "href": "#/cet6"},
+                  {"id": "output", "title": "写作 · 练习",
+                   "detail": "写完并提交", "minutes": 30, "done": True,
+                   "href": "#/cet6?tab=writing"},
+                  {"id": "report", "title": "复盘今天",
+                   "detail": "让 AI 读一遍今天的记录", "minutes": 10, "done": False,
+                   "href": "#/review"},
+              ],
+              "goal_done": 1, "goal_total": 3, "goal_tier": "floor",
+              "goal_budget_minutes": 65,
               "cet6": 2, "netlab": 1, "review": 1, "quiz": 1},
     "total": {"xp": 315, "level": 2, "title": "布线学徒", "into": 15,
               "need": 500, "percent": 3.0},
     "streak": 6,
-    "week": {"active_days": 4, "minutes": 180, "asks": 12,
+    "week": {"active_days": 4, "minutes": 180, "study_minutes": 180,
+             "achieved_days": 1, "goal_days": 5, "asks": 12,
              "daily": [
-                 {"date": "2026-10-21", "minutes": 0.0, "active": True},
-                 {"date": "2026-10-22", "minutes": 60.0, "active": True},
-                 {"date": "2026-10-23", "minutes": 0.0, "active": True},
-                 {"date": "2026-10-24", "minutes": 120.0, "active": True},
-                 {"date": "2026-10-25", "minutes": 0.0, "active": False},
-                 {"date": "2026-10-26", "minutes": 0.0, "active": False},
-                 {"date": "2026-10-27", "minutes": 0.0, "active": False},
+                 {"date": "2026-10-21", "minutes": 0.0, "study_minutes": 0.0,
+                  "goal_done": 0, "goal_total": 3, "goal_achieved": False,
+                  "active": True},
+                 {"date": "2026-10-22", "minutes": 60.0, "study_minutes": 60.0,
+                  "goal_done": 2, "goal_total": 3, "goal_achieved": False,
+                  "active": True},
+                 {"date": "2026-10-23", "minutes": 0.0, "study_minutes": 0.0,
+                  "goal_done": 0, "goal_total": 3, "goal_achieved": False,
+                  "active": True},
+                 {"date": "2026-10-24", "minutes": 120.0, "study_minutes": 120.0,
+                  "goal_done": 3, "goal_total": 3, "goal_achieved": True,
+                  "active": True},
+                 {"date": "2026-10-25", "minutes": 0.0, "study_minutes": 0.0,
+                  "goal_done": 0, "goal_total": 3, "goal_achieved": False,
+                  "active": False},
+                 {"date": "2026-10-26", "minutes": 0.0, "study_minutes": 0.0,
+                  "goal_done": 0, "goal_total": 3, "goal_achieved": False,
+                  "active": False},
+                 {"date": "2026-10-27", "minutes": 0.0, "study_minutes": 0.0,
+                  "goal_done": 0, "goal_total": 3, "goal_achieved": False,
+                  "active": False},
              ]},
     "achievements": [],
 }
@@ -57,7 +87,10 @@ OVERVIEW = {
 TODAY = {
     "date": "2026-10-24",
     "study_minutes": 45.0,
-    "study_breakdown": {"focus": 30.0, "activity": 15.0},
+    "study_measured": 30.0,
+    "study_estimated": 15.0,
+    "study_breakdown": {"focus": 30.0, "cet6": 15.0},
+    "activity": {"breakpoints": 4, "asks": 3},
     "focus": {"minutes": 30, "switches": 4, "apps": []},
     "asks": [
         {"kind": "image", "question": "图上是什么", "answer": "..."},
@@ -163,22 +196,24 @@ class TestTodayWindow(unittest.TestCase):
         self.settings_opened += 1
 
     def test_Hero_数据(self):
-        self.assertEqual(self.window.hero.goal_text.text(), "45 / 90 分钟")
+        self.assertEqual(self.window.hero.goal_text.text(), "1 / 3 件")
         self.assertEqual(self.window.hero.streak_value.text(), "6")
         self.assertEqual(self.window.hero.level_badge.text(), "Lv.2")
         self.assertEqual(self.window.hero.level_title.text(), "布线学徒")
-        self.assertEqual(self.window.hero.goal_bar.value(), 500)
+        self.assertEqual(self.window.hero.goal_bar.value(), 333)
         self.assertEqual(self.window.hero.level_bar.value(), 30)
-        self.assertEqual(self.window.hero.title.text(), "今天，练一格。")
-        self.assertIn("再投入 45 分钟", self.window.hero.goal_note.text())
-        self.assertIn("专注 30 分钟", self.window.hero.goal_note.text())
+        self.assertEqual(self.window.hero.title.text(), "已经完成 1/3 件。")
+        self.assertIn("预算约 65 分钟", self.window.hero.goal_note.text())
+        self.assertIn("实测 30", self.window.hero.goal_note.text())
+        self.assertIn("○ 精听", self.window.hero.goal_tasks[0].text())
+        self.assertIn("✓ 写作", self.window.hero.goal_tasks[1].text())
         self.assertIn("累计 315 点", self.window.hero.level_note.text())
 
     def test_统计四格(self):
         cells = self.window.stats.cells
         self.assertEqual(cells[0].value.text(), "45")
         self.assertEqual(cells[0].unit.text(), "分钟")
-        self.assertEqual(cells[0].note.text(), "专注 30 分钟 · 问答 3 条")
+        self.assertEqual(cells[0].note.text(), "实测 30 分钟 · 断点 4 次")
         self.assertEqual(cells[1].value.text(), "3")
         self.assertEqual(cells[1].note.text(), "最近 10 条里 1 条带图")
         self.assertEqual(cells[2].value.text(), "2")
@@ -233,7 +268,7 @@ class TestTodayWindow(unittest.TestCase):
         self.addCleanup(window.deleteLater)
         window.load()
         api.ready.emit()
-        self.assertEqual(window.hero.goal_text.text(), "45 / 90 分钟")
+        self.assertEqual(window.hero.goal_text.text(), "1 / 3 件")
         self.assertIn("插件清单", window.status_label.text())
         self.assertFalse(window.plugin_empty.isHidden())
 
@@ -317,7 +352,7 @@ class TestTodayWindow(unittest.TestCase):
         self.window._auto_refresh()
         self.assertEqual(self.api.started, 2)
         self.api.failed.emit("本地服务没起来")
-        self.assertEqual(self.window.hero.goal_text.text(), "45 / 90 分钟")
+        self.assertEqual(self.window.hero.goal_text.text(), "1 / 3 件")
         self.assertIn("自动刷新没连上", self.window.status_label.text())
         self.assertTrue(self.window.retry_button.isHidden())
         self.assertTrue(self.window.refresh_button.isEnabled())
@@ -325,15 +360,30 @@ class TestTodayWindow(unittest.TestCase):
 
 PANEL_OVERVIEW = {
     **copy.deepcopy(OVERVIEW),
-    "week": {"active_days": 4, "minutes": 180, "asks": 12,
+    "week": {"active_days": 4, "minutes": 180, "study_minutes": 180,
+             "achieved_days": 1, "goal_days": 5, "asks": 12,
              "daily": [
-                 {"date": "2026-10-21", "minutes": 0.0, "active": True},
-                 {"date": "2026-10-22", "minutes": 60.0, "active": True},
-                 {"date": "2026-10-23", "minutes": 0.0, "active": True},
-                 {"date": "2026-10-24", "minutes": 120.0, "active": True},
-                 {"date": "2026-10-25", "minutes": 0.0, "active": False},
-                 {"date": "2026-10-26", "minutes": 0.0, "active": False},
-                 {"date": "2026-10-27", "minutes": 0.0, "active": False},
+                 {"date": "2026-10-21", "minutes": 0.0, "study_minutes": 0.0,
+                  "goal_done": 0, "goal_total": 3, "goal_achieved": False,
+                  "active": True},
+                 {"date": "2026-10-22", "minutes": 60.0, "study_minutes": 60.0,
+                  "goal_done": 2, "goal_total": 3, "goal_achieved": False,
+                  "active": True},
+                 {"date": "2026-10-23", "minutes": 0.0, "study_minutes": 0.0,
+                  "goal_done": 0, "goal_total": 3, "goal_achieved": False,
+                  "active": True},
+                 {"date": "2026-10-24", "minutes": 120.0, "study_minutes": 120.0,
+                  "goal_done": 3, "goal_total": 3, "goal_achieved": True,
+                  "active": True},
+                 {"date": "2026-10-25", "minutes": 0.0, "study_minutes": 0.0,
+                  "goal_done": 0, "goal_total": 3, "goal_achieved": False,
+                  "active": False},
+                 {"date": "2026-10-26", "minutes": 0.0, "study_minutes": 0.0,
+                  "goal_done": 0, "goal_total": 3, "goal_achieved": False,
+                  "active": False},
+                 {"date": "2026-10-27", "minutes": 0.0, "study_minutes": 0.0,
+                  "goal_done": 0, "goal_total": 3, "goal_achieved": False,
+                  "active": False},
              ]},
     "achievements": [
         {"id": "first_ask", "name": "第一问", "desc": "问出第一个问题",
@@ -509,7 +559,7 @@ class TestTodayPanels(unittest.TestCase):
         self.assertEqual(bars.days[3]["minutes"], 120.0)
         note = [label.text() for label in window.week_panel.findChildren(
             QtWidgets.QLabel, "PanelNote")]
-        self.assertEqual(note, ["共 3 小时 · 活跃 4 / 7 天"])
+        self.assertEqual(note, ["共 3 小时 · 达标 1 / 5 天"])
 
     def test_专注明细(self):
         window, _ = self._window()

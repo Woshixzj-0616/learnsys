@@ -15,7 +15,7 @@ from . import style
 from . import tokens as token_source
 from .today_bottom import BREAK, TodayBottomMixin
 from .today_widgets import (ActionCard, HeroCard, OnboardingBanner, PluginCard,
-                            StatStrip, chars_parts, minutes_parts)
+                            StatStrip, chars_parts, minutes_parts)  # noqa: F401
 from .widgets import StatusLabel
 
 TODAY_SIZE = (1040, 700)
@@ -353,7 +353,6 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
     def _render_stats(self) -> None:
         today = self._data.get("today") or {}
         review = self._data.get("review") or {}
-        focus = minutes_parts((today.get("focus") or {}).get("minutes"))
         chars = chars_parts((today.get("transcripts") or {}).get("chars"))
         asks = today.get("asks") or []
         image_asks = sum(1 for ask in asks if ask.get("kind") == "image")
@@ -369,15 +368,18 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         else:
             review_note = "今天没有到期的"
         study = round(float(today.get("study_minutes") or 0))
+        measured = round(float(today.get("study_measured") or 0))
+        points = int((today.get("activity") or {}).get("breakpoints") or 0)
+        study_note = f"实测 {measured} 分钟" + (f" · 断点 {points} 次" if points else "")
         self.stats.update_stats([
-            {"label": "投入", "value": str(study), "unit": "分钟",
-             "note": f"专注 {focus[0]} {focus[1]} · 问答 {today.get('ask_count') or 0} 条"},
+            {"label": "记录", "value": str(study), "unit": "分钟",
+             "note": study_note},
             {"label": "问答", "value": str(today.get("ask_count") or 0), "unit": "条",
              "note": f"最近 10 条里 {image_asks} 条带图" if image_asks else "今天的提问"},
             {"label": "课堂转写",
              "value": str((today.get("transcripts") or {}).get("count") or 0),
              "unit": "段", "note": f"{chars[0]} {chars[1]}"},
-            {"label": "今日计划", "value": str(today.get("due_reviews") or 0),
+            {"label": "待复习", "value": str(today.get("due_reviews") or 0),
              "unit": "条到期", "note": review_note},
         ])
 

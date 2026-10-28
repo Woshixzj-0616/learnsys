@@ -4,8 +4,6 @@
 """
 from __future__ import annotations
 
-import math
-
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from . import style
@@ -90,11 +88,13 @@ class GoalRing(QtWidgets.QWidget):
         self.setObjectName("HeroRing")
         self.setFixedSize(104, 104)
         self.percent = 0.0
+        self.label = ""
         self._tokens = token_source.merged(
             tokens if tokens is not None else token_source.read_web_tokens())
 
-    def set_percent(self, percent: float) -> None:
+    def set_percent(self, percent: float, label: str = "") -> None:
         self.percent = max(0.0, min(100.0, float(percent or 0)))
+        self.label = str(label or "")
         self.update()
 
     def paintEvent(self, _event) -> None:
@@ -120,7 +120,7 @@ class GoalRing(QtWidgets.QWidget):
         font.setBold(True)
         painter.setFont(font)
         painter.drawText(self.rect(), QtCore.Qt.AlignmentFlag.AlignCenter,
-                         f"{int(round(self.percent))}%")
+                         self.label or f"{int(round(self.percent))}%")
         painter.end()
 
 
@@ -174,8 +174,8 @@ class HeroCard(QtWidgets.QWidget):
         main.addSpacing(6)
 
         goal_head = QtWidgets.QHBoxLayout()
-        goal_label = _label("今日投入", "GoalHead")
-        self.goal_text = _label("0 / 100", "GoalText")
+        goal_label = _label("今日目标", "GoalHead")
+        self.goal_text = _label("0 / 3 件", "GoalText")
         goal_head.addWidget(goal_label)
         goal_head.addStretch(1)
         goal_head.addWidget(self.goal_text)
@@ -183,7 +183,14 @@ class HeroCard(QtWidgets.QWidget):
 
         self.goal_bar = GoalBar("GoalBar")
         main.addWidget(self.goal_bar)
-        self.goal_note = _label("专注、转写、问答、训练按分钟去重", "GoalNote")
+        # 三格任务：精听 / 训练或复习 / 复盘 —— 完成判定由后端给，Qt 只渲染。
+        self.goal_tasks = []
+        for _ in range(3):
+            row = _label("", "GoalNote")
+            row.setWordWrap(True)
+            main.addWidget(row)
+            self.goal_tasks.append(row)
+        self.goal_note = _label("预算约 0 分钟 · 已记录 0 分钟", "GoalNote")
         self.goal_note.setWordWrap(True)
         main.addWidget(self.goal_note)
 
@@ -218,36 +225,47 @@ class HeroCard(QtWidgets.QWidget):
         self.eyebrow.setText(
             f"今日 · 概览 · {part}，{name}" if name else f"今日 · 概览 · {part}")
 
-        # 今日目标 = 有效学习分钟（专注 ∪ 转写 ∪ 事件），学习点只做成长值。
-        study = float(today.get("study_minutes") or 0)
-        goal_minutes = max(1, int(today.get("goal_minutes") or 30))
-        percent = float(today.get("minutes_percent") or 0)
-        left = max(0.0, goal_minutes - study)
-        if percent >= 100:
+        # 今日目标 = 三格任务（精听 / 训练或复习 / 复盘），时间只做预算。
+        tasks = today.get("goal_tasks") or []
+        done = int(today.get("goal_done") or 0)
+        total_tasks = max(1, int(today.get("goal_total") or len(tasks) or 3))
+        tier = str(today.get("goal_tier") or "none")
+        percent = min(100.0, done * 100.0 / total_tasks)
+        if done >= total_tasks:
             self.title.setText("今日目标达成。")
-            self.subtitle.setText("今天投入已经够了 —— 想再往前走，去训练场开一格。")
+            self.subtitle.setText("三件事都做完了 —— 想再往前走，去训练场开一格。")
+        elif tier == "met":
+            self.title.setText("今天已经达标。")
+            self.subtitle.setText("第三件复盘是加分项，不做也不影响。")
+        elif done > 0:
+            self.title.setText(f"已经完成 {done}/{total_tasks} 件。")
+            self.subtitle.setText("再做一件就达标 —— 不用盯着分钟数。")
         elif streak >= 7:
             self.title.setText(f"连续 {streak} 天，稳住。")
-            self.subtitle.setText(
-                f"再投入 {math.ceil(left)} 分钟，就是给这条连续线续命。")
+            self.subtitle.setText("今天先挑一件开始，别让这条线断。")
         else:
-            self.title.setText("今天，练一格。")
-            self.subtitle.setText(
-                f"还差 {math.ceil(left)} 分钟 · 精听 1 段约 8 分钟，或去训练场开一格。")
+            self.title.setText("今天，做完两件事。")
+            self.subtitle.setText("两件算达标，第三件复盘是加分项。")
 
-        self.goal_text.setText(f"{round(study)} / {goal_minutes} 分钟")
-        self.goal_bar.setValue(int(round(min(percent, 100) * 10)))
-        self.goal_ring.set_percent(percent)
-        note = ("今天的目标已经完成，继续保持" if not left
-                else f"再投入 {math.ceil(left)} 分钟到今天的目标")
-        breakdown = today.get("study_breakdown") or {}
-        parts = []
-        for key, label in (("focus", "专注"), ("transcript", "转写"),
-                           ("activity", "问答/训练")):
-            value = float(breakdown.get(key) or 0)
-            if value > 0:
-                parts.append(f"{label} {round(value)} 分钟")
-        self.goal_note.setText(note + (" · " + " · ".join(parts) if parts else ""))
+        self.goal_text.setText(f"{done} / {total_tasks} 件")
+        self.goal_bar.setValue(int(round(percent * 10)))
+        self.goal_ring.set_percent(percent, f"{done}/{total_tasks}")
+        for index, row in enumerate(self.goal_tasks):
+            if index < len(tasks):
+                task = tasks[index] or {}
+                mark = "✓" if task.get("done") else "○"
+                minutes = f" · {int(task.get('minutes') or 0)} 分钟"
+                row.setText(f"{mark} {task.get('title') or ''}{minutes}")
+                row.setVisible(True)
+            else:
+                row.setVisible(False)
+
+        study = float(today.get("study_minutes") or 0)
+        measured = float(today.get("study_measured") or 0)
+        budget = int(today.get("goal_budget_minutes") or 0)
+        self.goal_note.setText(
+            f"预算约 {budget} 分钟 · 已记录 {round(study)} 分钟"
+            f"（实测 {round(measured)}）")
 
         self.streak_value.setText(str(streak))
         self.level_badge.setText(f"Lv.{total.get('level') or 1}")

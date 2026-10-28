@@ -84,12 +84,13 @@ class TodayBottomMixin:
 
     def _render_week(self) -> None:
         week = (self._data.get("overview") or {}).get("week") or {}
-        minutes = minutes_parts(week.get("minutes") or 0)
-        active = int(week.get("active_days") or 0)
+        minutes = minutes_parts(week.get("study_minutes") or week.get("minutes") or 0)
+        achieved = int(week.get("achieved_days") or 0)
+        goal_days = int(week.get("goal_days") or 5)
         bars = WeekBars(self.tokens)
         bars.set_days(week.get("daily") or [])
         note = QtWidgets.QLabel(
-            f"共 {minutes[0]} {minutes[1]} · 活跃 {active} / 7 天")
+            f"共 {minutes[0]} {minutes[1]} · 达标 {achieved} / {goal_days} 天")
         note.setObjectName("PanelNote")
         self.week_panel.set_hint("分钟 / 天")
         self.week_panel.set_widgets([bars, note])

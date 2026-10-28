@@ -68,6 +68,12 @@ def get_settings(_=Depends(require_token)):
     agent_raw = raw.get("agent") if isinstance(raw.get("agent"), dict) else {}
     vision_raw = raw.get("vision") if isinstance(raw.get("vision"), dict) else {}
     modules_raw = raw.get("modules") if isinstance(raw.get("modules"), dict) else {}
+    try:
+        weekly_goal_days = int(raw.get("weekly_goal_days")
+                               or app_config.WEEKLY_GOAL_DAYS)
+    except (TypeError, ValueError):
+        weekly_goal_days = app_config.WEEKLY_GOAL_DAYS
+    weekly_goal_days = max(3, min(weekly_goal_days, 7))
 
     token_source = ("file" if agent_raw.get("auth_token")
                     else ("env" if cfg.auth_token else "none"))
@@ -99,6 +105,7 @@ def get_settings(_=Depends(require_token)):
         "backup_dir": str(_backup_dir(raw)),
         "settings_path": str(app_config.SETTINGS_FILE),
         "modules": {mid: bool(modules_raw.get(mid, True)) for mid in _module_ids()},
+        "weekly_goal_days": weekly_goal_days,
         "restart_fields": ["hotkey", "backup_dir"],
     }
 
@@ -133,6 +140,7 @@ class SettingsPatch(BaseModel):
     vision: VisionPatch | None = None
     hotkey: str | None = None
     modules: dict[str, bool] | None = None
+    weekly_goal_days: int | None = Field(default=None, ge=3, le=7)
 
 
 def _clean_prices(raw) -> dict[str, dict]:
@@ -235,6 +243,10 @@ def save_settings(patch: SettingsPatch, _=Depends(require_token)):
         current.update({k: bool(v) for k, v in patch.modules.items() if k in known})
         data["modules"] = current
         changed.append("modules")
+
+    if patch.weekly_goal_days is not None:
+        data["weekly_goal_days"] = max(3, min(7, int(patch.weekly_goal_days)))
+        changed.append("weekly_goal_days")
 
     try:
         target = pathlib.Path(app_config.SETTINGS_FILE)

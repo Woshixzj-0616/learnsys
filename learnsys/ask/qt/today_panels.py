@@ -136,7 +136,7 @@ class WeekBars(QtWidgets.QWidget):
         slot = self.width() / len(self.days)
         bar_w = min(12.0, slot * 0.42)
         base = float(self.TOP + self.BAR_AREA)
-        peak = max([float(day.get("minutes") or 0)
+        peak = max([float(day.get("study_minutes") or day.get("minutes") or 0)
                     for day in self.days] + [1.0])
 
         font = QtGui.QFont(self.font())
@@ -147,11 +147,12 @@ class WeekBars(QtWidgets.QWidget):
 
         for index, day in enumerate(self.days):
             center = slot * (index + 0.5)
-            minutes = float(day.get("minutes") or 0)
+            minutes = float(day.get("study_minutes") or day.get("minutes") or 0)
             if minutes > 0:
                 height = max(3.0, self.BAR_AREA * minutes / peak)
                 painter.setPen(QtCore.Qt.PenStyle.NoPen)
-                painter.setBrush(style.color(values["--accent"]))
+                painter.setBrush(style.color(
+                    values["--mark"] if day.get("goal_achieved") else values["--accent"]))
                 painter.drawRoundedRect(
                     QtCore.QRectF(center - bar_w / 2, base - height, bar_w, height),
                     3.0, 3.0)

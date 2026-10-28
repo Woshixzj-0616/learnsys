@@ -99,18 +99,26 @@ function renderHero(overview) {
   const today = overview.today || {};
   const total = overview.total || {};
   const streak = Number(overview.streak || 0);
-  const study = Number(today.study_minutes ?? today.minutes ?? 0);
-  const goalMinutes = Number(today.goal_minutes || 30);
-  const progress = Number(today.minutes_percent ?? today.percent ?? 0);
+  const tasks = Array.isArray(today.goal_tasks) ? today.goal_tasks : [];
+  const done = Number(today.goal_done || 0);
+  const totalTasks = Number(today.goal_total || tasks.length || 3);
+  const tier = String(today.goal_tier || "none");
+  const budget = Number(today.goal_budget_minutes || 0);
+  const study = Number(today.study_minutes || 0);
+  const measured = Number(today.study_measured || 0);
 
   document.getElementById("stage-greeting").textContent = greeting(overview.name);
   const sub = document.getElementById("stage-sub");
-  if (progress >= 100) {
-    sub.textContent = "今天的目标已经达成。想再往前走，去训练场开一格。";
+  if (done >= totalTasks) {
+    sub.textContent = "三件事都做完了。今天超额完成，第三件复盘也拿下了。";
+  } else if (tier === "met") {
+    sub.textContent = "今天已经达标。第三件复盘是加分项，不做也不影响。";
+  } else if (done > 0) {
+    sub.textContent = `完成 ${done} 件，再做一件就达标 —— 不用盯着分钟数。`;
   } else if (streak >= 7) {
-    sub.textContent = `连续 ${streak} 天，再投入 ${Math.max(0, Math.ceil(goalMinutes - study))} 分钟，就是给这条线续命。`;
+    sub.textContent = `连续 ${streak} 天。今天先挑一件开始，别让这条线断。`;
   } else {
-    sub.textContent = `还差 ${Math.max(0, Math.ceil(goalMinutes - study))} 分钟 · 精听 1 段约 8 分钟，或去训练场开一格。`;
+    sub.textContent = "做完两件算达标，第三件复盘是加分项。";
   }
   studySub = sub.textContent;
 
@@ -120,17 +128,35 @@ function renderHero(overview) {
 
   const line = document.getElementById("goal-line");
   if (line) {
-    const bd = today.study_breakdown || {};
-    const parts = [];
-    if (Number(bd.focus || 0) > 0) parts.push(`专注 ${Math.round(bd.focus)} 分钟`);
-    if (Number(bd.transcript || 0) > 0) parts.push(`转写 ${Math.round(bd.transcript)} 分钟`);
-    if (Number(bd.activity || 0) > 0) parts.push(`问答/训练 ${Math.round(bd.activity)} 分钟`);
-    line.textContent = `今日 ${Math.round(study)} / ${goalMinutes} 分钟`
-      + (parts.length ? ` · ${parts.join(" · ")}` : " · 还没有开始");
+    if (done >= totalTasks) line.textContent = "今天的目标已经达成";
+    else if (tier === "met") line.textContent = "今天已达标 · 第三件是加分";
+    else line.textContent = `已完成 ${done} / ${totalTasks} 件 · 两件达标`;
   }
 
-  const percent = Math.max(0, Math.min(100, Number(progress) || 0));
-  document.getElementById("goal-percent").textContent = String(Math.round(percent));
+  const root = document.getElementById("goal-tasks");
+  if (root) {
+    root.innerHTML = tasks.map((task) => `
+      <a class="goal-task${task.done ? " done" : ""}" href="${escapeHtml(task.href || "#")}">
+        <span class="goal-check" aria-hidden="true">✓</span>
+        <span class="goal-task-body">
+          <span class="goal-task-title">${escapeHtml(task.title || "")}</span>
+          <span class="goal-task-meta">${escapeHtml(task.detail || "")}</span>
+        </span>
+        <span class="goal-task-time">${Number(task.minutes || 0)} 分钟</span>
+      </a>`).join("");
+  }
+
+  const foot = document.getElementById("goal-foot");
+  if (foot) {
+    foot.textContent = `预算约 ${budget} 分钟 · 已记录 ${Math.round(study)} 分钟`
+      + `（实测 ${Math.round(measured)}）`;
+  }
+
+  const percent = totalTasks ? Math.max(0, Math.min(100, done * 100 / totalTasks)) : 0;
+  const doneNode = document.getElementById("goal-done");
+  if (doneNode) doneNode.textContent = String(done);
+  const totalNode = document.getElementById("goal-total");
+  if (totalNode) totalNode.textContent = `/ ${totalTasks}`;
   const ring = document.getElementById("goal-fill");
   if (ring) {
     const circumference = 2 * Math.PI * 38;
@@ -203,16 +229,20 @@ function renderPlugins(ctx, overview, settings) {
 }
 
 function renderStats(today, reviewStats = {}) {
-  const study = Number(today.study_minutes ?? today.minutes ?? 0);
-  const focus = minutesParts(today.focus?.minutes);
+  const study = Number(today.study_minutes || 0);
+  const measured = Number(today.study_measured || 0);
+  const estimated = Number(today.study_estimated || 0);
+  const activity = today.activity || {};
   const chars = charsParts(today.transcripts?.chars);
   const imageAsks = (today.asks || []).filter((ask) => ask.kind === "image").length;
   const stats = [
     {
-      label: "投入",
+      label: "记录时长",
       value: String(Math.round(study)),
       unit: "分钟",
-      note: `专注 ${focus.value} ${focus.unit} · 问答 ${today.ask_count ?? 0} 条`,
+      note: `实测 ${Math.round(measured)} · 估算 ${Math.round(estimated)}`
+        + (Number(activity.breakpoints || 0) > 0
+          ? ` · 断点 ${activity.breakpoints} 次` : ""),
     },
     {
       label: "问答",
@@ -291,9 +321,12 @@ function renderWeek(week) {
       const height = minutes ? Math.max(4, Math.round((minutes / max) * 100)) : 2;
       const isToday = day.date === todayKey;
       const label = labels[index] || "";
+      const goalDone = Number(day.goal_done || 0);
+      const goalTotal = Number(day.goal_total || 3);
+      const achieved = Boolean(day.goal_achieved);
       const value = index === values.indexOf(max) && minutes ? `<em class="val">${minutes}</em>` : "";
-      return `<button class="bar${isToday ? " today" : ""}" type="button"
-        style="--h:${height}%;--i:${index}" data-tip="${escapeHtml(label)} · ${minutes} 分钟${isToday ? "（今天）" : ""}">
+      return `<button class="bar${isToday ? " today" : ""}${achieved ? " achieved" : ""}" type="button"
+        style="--h:${height}%;--i:${index}" data-tip="${escapeHtml(label)} · ${minutes} 分钟 · 目标 ${goalDone}/${goalTotal}${isToday ? "（今天）" : ""}">
         <i></i>${value}<span>${escapeHtml(label)}</span>
       </button>`;
     }).join("");
@@ -302,7 +335,7 @@ function renderWeek(week) {
   const total = minutesParts(week.study_minutes ?? week.minutes ?? 0);
   document.getElementById("week-total").textContent = `共 ${total.value} ${total.unit}`;
   document.getElementById("week-extra").textContent =
-    `活跃 ${Number(week.active_days || 0)} / 7 天`;
+    `达标 ${Number(week.achieved_days || 0)} / ${Number(week.goal_days || 5)} 天`;
   root.setAttribute("aria-label",
     `本周投入：${daily.map((day, index) => `${labels[index]} ${minutesOf(day)} 分钟`).join("，")}`);
 }
