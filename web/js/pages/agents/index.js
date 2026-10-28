@@ -46,7 +46,10 @@ async function startTask(body) {
   const data = await api.post("/api/agents/tasks", body);
   const task = data?.task;
   if (!task) throw new Error("后台没有返回任务");
-  toast(`任务 #${task.id} 已启动`);
+  const position = Number(data?.queue_position) || 0;
+  toast(position > 0
+    ? `任务 #${task.id} 已排队（第 ${position} 位）`
+    : `任务 #${task.id} 已启动`);
   await loadTasks();
   await log.open(task);
 }

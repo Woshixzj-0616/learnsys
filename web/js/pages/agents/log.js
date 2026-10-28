@@ -1,7 +1,7 @@
 // 任务日志：800ms 轮询增量事件与写操作审批，结束自动停。
 import { api } from "../../api.js";
 import { escapeHtml, toast } from "../../ui.js";
-import { msText, statusText, taskTitle } from "./format.js";
+import { msText, queueText, routeText, statusText, taskTitle } from "./format.js";
 
 const TERMINAL = new Set(["done", "failed", "cancelled"]);
 const MAX_LINES = 2000;
@@ -16,6 +16,7 @@ export function createLog({ root, agents, onStop, onTerminal, onDecide }) {
   const panel = root.querySelector("#ag-run");
   const title = root.querySelector("#ag-run-title");
   const status = root.querySelector("#ag-status");
+  const routeBox = root.querySelector("#ag-route");
   const log = root.querySelector("#ag-log");
   const result = root.querySelector("#ag-result");
   const approvalsBox = root.querySelector("#ag-approvals");
@@ -113,10 +114,13 @@ export function createLog({ root, agents, onStop, onTerminal, onDecide }) {
     if (!task) return;
     title.textContent = taskTitle(task, agents);
     const state = task.status || "queued";
-    status.textContent = statusText(state);
+    status.textContent = state === "queued" ? queueText(task) : statusText(state);
     status.className = `agents-status ${state}`;
     terminal = TERMINAL.has(state);
     stopBtn.hidden = terminal;
+    const routeHint = routeText(task.route, agents);
+    routeBox.hidden = !routeHint;
+    routeBox.textContent = routeHint;
     if (task.output_path) {
       result.hidden = false;
       result.innerHTML = `<strong>结果已存</strong>`

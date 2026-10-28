@@ -50,6 +50,14 @@ def _migrate_columns(conn: sqlite3.Connection) -> None:
     ):
         if run_cols and column not in run_cols:
             conn.execute(f"ALTER TABLE agent_runs ADD COLUMN {column} {ddl}")
+    task_cols = {row[1] for row in conn.execute(
+        "PRAGMA table_info(agent_tasks)").fetchall()}
+    for column, ddl in (
+        ("route_json", "TEXT NOT NULL DEFAULT ''"),
+        ("timeout_s", "INTEGER NOT NULL DEFAULT 0"),
+    ):
+        if task_cols and column not in task_cols:
+            conn.execute(f"ALTER TABLE agent_tasks ADD COLUMN {column} {ddl}")
     message_cols = {row[1] for row in conn.execute(
         "PRAGMA table_info(messages)").fetchall()}
     if message_cols and "result_id" not in message_cols:

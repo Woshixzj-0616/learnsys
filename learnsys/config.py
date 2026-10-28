@@ -87,12 +87,15 @@ SETTINGS_TEMPLATE = {
     "_agents": "Agent 中枢：把任务派给本机 Claude Code / Codex。"
                "allowed_roots 是允许读写的目录，留空 = 只允许数据目录；"
                "timeout 是单任务超时秒数（10–900）；"
-               "approval_timeout 是写操作等确认的秒数（10–600），到点按拒绝处理。",
+               "approval_timeout 是写操作等确认的秒数（10–600），到点按拒绝处理；"
+               "max_concurrent 是同时运行的任务数（1–4）；"
+               "queue_max 是最多允许多少个任务排队（1–100）。",
     "agents": {
         "allowed_roots": [],
         "timeout": 300,
         "approval_timeout": 110,
         "max_concurrent": 2,
+        "queue_max": 10,
         "claude": {"enabled": True, "command": "claude", "args": []},
         "codex": {"enabled": True, "command": "codex", "args": []},
     },

@@ -36,6 +36,16 @@ def max_concurrent(settings_: dict | None = None) -> int:
     return max(1, min(value, 4))
 
 
+def queue_max(settings_: dict | None = None) -> int:
+    """最多允许多少个任务排队（默认 10，1–100）。"""
+    raw = (settings_ or settings()).get("queue_max") or 10
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        value = 10
+    return max(1, min(value, 100))
+
+
 def approval_timeout(settings_: dict | None = None) -> int:
     """一条写操作等用户确认多久；到点按拒绝处理。"""
     raw = (settings_ or settings()).get("approval_timeout") or 110

@@ -25,6 +25,10 @@ _CANCEL: dict[int, threading.Event] = {}
 _LOCK = threading.Lock()
 
 
+class _Cancelled(Exception):
+    """认领后、进程启动前就已被取消。"""
+
+
 def _kill(proc: subprocess.Popen) -> None:
     if proc.poll() is not None:
         return
@@ -45,7 +49,8 @@ def _kill(proc: subprocess.Popen) -> None:
 def start_task(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
                timeout_s: int, data_root: pathlib.Path,
                db_path: pathlib.Path | None = None, mode: str = "read",
-               hook_url: str = "", approval_timeout: int = 110) -> threading.Thread:
+               hook_url: str = "", approval_timeout: int = 110,
+               on_finish=None) -> threading.Thread:
     mode = "write" if str(mode or "read") == "write" else "read"
     hook_token = ""
     if mode == "write" and spec.kind == "claude":
@@ -58,7 +63,8 @@ def start_task(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Pa
         args=(int(task_id), spec, str(prompt), pathlib.Path(workspace),
               int(timeout_s), pathlib.Path(data_root),
               pathlib.Path(db_path) if db_path else None, cancel,
-              mode, str(hook_url or ""), hook_token, int(approval_timeout)))
+              mode, str(hook_url or ""), hook_token, int(approval_timeout),
+              on_finish))
     thread.start()
     return thread
 
@@ -128,7 +134,8 @@ def _save_output(data_root: pathlib.Path, task_id: int, spec: AgentSpec,
 def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
          timeout_s: int, data_root: pathlib.Path, db_path: pathlib.Path | None,
          cancel: threading.Event, mode: str = "read", hook_url: str = "",
-         hook_token: str = "", approval_timeout: int = 110) -> None:
+         hook_token: str = "", approval_timeout: int = 110,
+         on_finish=None) -> None:
     conn = store.connect(db_path)
     started = time.monotonic()
     seq = 0
@@ -165,6 +172,8 @@ def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
                 "LEARNSYS_HOOK_TOKEN": hook_token,
                 "LEARNSYS_TASK_ID": str(int(task_id)),
             })
+        if cancel.is_set():             # 排队后被取消：别再拉起进程
+            raise _Cancelled()
         proc = subprocess.Popen(
             argv, cwd=str(workspace), stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -248,6 +257,9 @@ def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
             status = "done"
             # Claude 的 unrecognized_model 只是警告：成功时不进错误区。
             error = ""
+    except _Cancelled:
+        status = "cancelled"
+        error = "用户停止了任务。"
     except Exception as exc:           # 后台异常不能把任务卡在 running
         status = "failed"
         error = f"任务执行失败：{exc}"
@@ -287,3 +299,8 @@ def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
             _CANCEL.pop(task_id, None)
         approvals.unregister(hook_token)
         conn.close()
+        if on_finish is not None:
+            try:
+                on_finish()
+            except Exception:
+                pass

@@ -1,12 +1,15 @@
-"""P26.2 Agent 中枢接口：只读/可写派活、逐条审批、增量事件、停止。"""
+"""P26.2 Agent 中枢接口：只读/可写派活、逐条审批、增量事件、停止。
+
+P26.3 起建任务先入队；队列位次与影子路由建议随任务返回。
+"""
 from __future__ import annotations
 
+import json
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from learnsys import config as app_config
 from learnsys import store
 from learnsys.server.security import require_token
 from learnsys.services import agents
@@ -31,6 +34,11 @@ class DecisionIn(BaseModel):
     note: str = Field(default="", max_length=500)
 
 
+def _ready() -> None:
+    """首次访问中枢时恢复上次中断的任务并接续队列。"""
+    agents.queue.ensure_started()
+
+
 def _task_or_404(conn, task_id: int) -> dict:
     task = store.get_agent_task(conn, task_id)
     if task is None:
@@ -38,8 +46,32 @@ def _task_or_404(conn, task_id: int) -> dict:
     return task
 
 
+def _route_json(conn, spec, *, mode: str, chosen: str,
+                settings: dict) -> str:
+    """影子路由建议；算不出来就留空，绝不挡住派活。"""
+    try:
+        other_id = "codex" if chosen == "claude" else "claude"
+        other = agents.spec_for(other_id, settings)
+        available = {chosen: bool(spec.available)}
+        names = {chosen: spec.name}
+        if other is not None:
+            available[other_id] = bool(other.available)
+            names[other_id] = other.name
+        history = {
+            agent_id: store.agent_recent_terminal(conn, agent_id, mode)
+            for agent_id in (chosen, other_id)
+        }
+        data = agents.route.recommend(
+            mode=mode, chosen=chosen, available=available,
+            history=history, names=names)
+        return json.dumps(data, ensure_ascii=False)[:2000]
+    except Exception:
+        return ""
+
+
 @router.get("/api/agents")
 def list_agents(_=Depends(require_token)):
+    _ready()
     settings = agents.settings()
     return {
         "agents": [
@@ -51,11 +83,13 @@ def list_agents(_=Depends(require_token)):
         "default_workspace": str(agents.default_workspace(settings)),
         "timeout": agents.timeout(settings),
         "max_concurrent": agents.max_concurrent(settings),
+        "queue_max": agents.queue_max(settings),
     }
 
 
 @router.post("/api/agents/tasks", status_code=201)
-def create_task(req: TaskIn, request: Request, _=Depends(require_token)):
+def create_task(req: TaskIn, _=Depends(require_token)):
+    _ready()
     settings = agents.settings()
     spec = agents.spec_for(req.agent, settings)
     if spec is None:
@@ -81,32 +115,30 @@ def create_task(req: TaskIn, request: Request, _=Depends(require_token)):
             prompt = (f"{prompt}\n\n【资料 #{material.get('id')}："
                       f"{material.get('title') or '未命名'}】\n{body}")
             prompt = prompt[:MAX_PROMPT]
-        if store.agent_tasks_running(conn, agent=spec.id):
-            raise HTTPException(
-                status_code=409,
-                detail=f"{spec.name} 已有一个任务在跑，等它结束再派。")
-        if store.agent_tasks_running(conn) >= agents.max_concurrent(settings):
-            raise HTTPException(status_code=409,
-                                detail="同时运行的任务太多，等一个结束再派。")
-        task_id = store.add_agent_task(
-            conn, agent=spec.id, prompt=prompt,
-            workspace=str(workspace), mode=req.mode)
-        run_timeout = max(10, min(int(req.timeout or 0), 900)) if req.timeout \
-            else agents.timeout(settings)
-        port = int(getattr(request.app.state, "port", 8765) or 8765)
-        agents.start_task(
-            task_id, spec, prompt, workspace, run_timeout,
-            app_config.DATA_ROOT, mode=req.mode,
-            hook_url=f"http://127.0.0.1:{port}/api/agents/hooks/approval",
-            approval_timeout=agents.approval_timeout(settings))
-        task = store.get_agent_task(conn, task_id)
+        timeout_s = max(10, min(int(req.timeout or 0), 900)) if req.timeout else 0
+        task_id = store.add_agent_queued_task(
+            conn, agent=spec.id, prompt=prompt, workspace=str(workspace),
+            mode=req.mode, timeout_s=timeout_s,
+            route_json=_route_json(conn, spec, mode=req.mode, chosen=spec.id,
+                                   settings=settings),
+            queue_max=agents.queue_max(settings))
+        if task_id is None:
+            raise HTTPException(status_code=429,
+                                detail="排队任务太多，等几个跑完再派。")
     finally:
         conn.close()
-    return {"task": task}
+    agents.queue.schedule_drain()
+    conn = store.connect()
+    try:
+        task = store.get_agent_task(conn, task_id) or {}
+    finally:
+        conn.close()
+    return {"task": task, "queue_position": int(task.get("queue_position") or 0)}
 
 
 @router.get("/api/agents/tasks")
 def list_tasks(limit: int = 20, _=Depends(require_token)):
+    _ready()
     conn = store.connect()
     try:
         return {"tasks": store.list_agent_tasks(conn, limit=limit)}
@@ -116,6 +148,7 @@ def list_tasks(limit: int = 20, _=Depends(require_token)):
 
 @router.get("/api/agents/tasks/{task_id}")
 def get_task(task_id: int, _=Depends(require_token)):
+    _ready()
     conn = store.connect()
     try:
         return {"task": _task_or_404(conn, task_id)}
@@ -126,6 +159,7 @@ def get_task(task_id: int, _=Depends(require_token)):
 @router.get("/api/agents/tasks/{task_id}/events")
 def task_events(task_id: int, after: int = 0, limit: int = 1000,
                 _=Depends(require_token)):
+    _ready()
     conn = store.connect()
     try:
         task = _task_or_404(conn, task_id)
@@ -138,15 +172,24 @@ def task_events(task_id: int, after: int = 0, limit: int = 1000,
 
 @router.post("/api/agents/tasks/{task_id}/cancel")
 def cancel_task(task_id: int, _=Depends(require_token)):
+    _ready()
     conn = store.connect()
     try:
-        _task_or_404(conn, task_id)
+        task = _task_or_404(conn, task_id)
     finally:
         conn.close()
-    stopped = agents.cancel_task(task_id)
-    if not stopped:
+    if task["status"] in ("done", "failed", "cancelled"):
         raise HTTPException(status_code=409, detail="这个任务已经结束了")
-    return {"ok": True, "id": int(task_id)}
+    if agents.queue.cancel(task_id):
+        return {"ok": True, "id": int(task_id)}
+    conn = store.connect()
+    try:
+        current = store.get_agent_task(conn, task_id) or {}
+    finally:
+        conn.close()
+    if current.get("status") == "cancelled":
+        return {"ok": True, "id": int(task_id)}
+    raise HTTPException(status_code=409, detail="这个任务已经结束了")
 
 
 @router.get("/api/agents/tasks/{task_id}/approvals")

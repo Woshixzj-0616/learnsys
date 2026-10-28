@@ -306,15 +306,26 @@ class AgentApiTest(unittest.TestCase):
         self.patcher.start()
         self.addCleanup(self.patcher.stop)
         self.spec = _fake_spec(_fake_script())
+        def _spec_for(agent_id, _s=None):
+            return self.spec if agent_id == "fake" else None
+
         self.patcher_spec = mock.patch.object(agents, "spec_for",
-                                              side_effect=lambda agent_id, _s=None:
-                                              self.spec if agent_id == "fake" else None)
+                                              side_effect=_spec_for)
         self.patcher_spec.start()
         self.addCleanup(self.patcher_spec.stop)
+        # 队列直接读 registry，不经过包级别名，两个落点都要 patch
+        self.patcher_registry_spec = mock.patch.object(
+            agents.registry, "spec_for", side_effect=_spec_for)
+        self.patcher_registry_spec.start()
+        self.addCleanup(self.patcher_registry_spec.stop)
         self.patcher_list = mock.patch.object(agents, "list_specs",
                                               return_value=[self.spec])
         self.patcher_list.start()
         self.addCleanup(self.patcher_list.stop)
+        self.patcher_registry_list = mock.patch.object(
+            agents.registry, "list_specs", return_value=[self.spec])
+        self.patcher_registry_list.start()
+        self.addCleanup(self.patcher_registry_list.stop)
         self.patcher_root = mock.patch.object(
             app_config, "DATA_ROOT", self.root)
         self.patcher_root.start()
@@ -347,6 +358,43 @@ class AgentApiTest(unittest.TestCase):
         kinds = [event["kind"] for event in payload["events"]]
         self.assertIn("text", kinds)
         self.assertTrue(payload["task"]["output_path"])
+
+    def test_second_task_queues_instead_of_409(self):
+        self.spec = _fake_spec(_sleep_script(1))
+        body = {"agent": "fake", "prompt": "睡一下", "workspace": str(self.root)}
+        first = self.client.post("/api/agents/tasks", json=body, headers=AUTH)
+        second = self.client.post("/api/agents/tasks", json=body, headers=AUTH)
+        self.assertEqual(first.status_code, 201, first.text)
+        self.assertEqual(second.status_code, 201, second.text)
+        self.assertEqual(second.json()["task"]["status"], "queued")
+        self.assertEqual(second.json()["queue_position"], 1)
+        for task_id in (first.json()["task"]["id"], second.json()["task"]["id"]):
+            deadline = time.monotonic() + 15
+            status = ""
+            while time.monotonic() < deadline:
+                status = self.client.get(
+                    f"/api/agents/tasks/{task_id}", headers=AUTH).json()[
+                        "task"]["status"]
+                if status in ("done", "failed", "cancelled"):
+                    break
+                time.sleep(0.05)
+            self.assertEqual(status, "done")
+
+    def test_queue_full_429(self):
+        app_config.USER["agents"]["queue_max"] = 1
+        self.spec = _fake_spec(_sleep_script(1))
+        body = {"agent": "fake", "prompt": "睡一下", "workspace": str(self.root)}
+        codes = [self.client.post("/api/agents/tasks", json=body,
+                                  headers=AUTH).status_code for _ in range(3)]
+        self.assertEqual(codes, [201, 201, 429])
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            tasks = self.client.get("/api/agents/tasks?limit=10",
+                                    headers=AUTH).json()["tasks"]
+            if all(item["status"] in ("done", "failed", "cancelled")
+                   for item in tasks):
+                break
+            time.sleep(0.05)
 
     def test_outside_workspace_400(self):
         response = self.client.post(

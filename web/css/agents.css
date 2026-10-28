@@ -297,3 +297,22 @@
     flex-direction: column;
   }
 }
+
+.agents-route {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2, rgba(127, 127, 127, 0.08));
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.agents-route-badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.14);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: help;
+}

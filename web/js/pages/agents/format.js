@@ -11,6 +11,22 @@ export function statusText(status) {
   return STATUS_TEXT[status] || status || "—";
 }
 
+export function queueText(task) {
+  const position = Number(task?.queue_position) || 0;
+  return position > 0 ? `排队中 · 第 ${position} 位` : "排队中";
+}
+
+export function routeText(route, agents = []) {
+  const recommended = route?.recommended;
+  if (!recommended) return "";
+  const name = agentName(recommended, agents);
+  if (recommended === route.chosen) {
+    return `路由建议（影子）：与建议一致（${name}）`;
+  }
+  const reason = String(route.reason || "").trim();
+  return `路由建议（影子）：建议 ${name}${reason ? ` · ${reason}` : ""}；本次按你的选择执行`;
+}
+
 export function msText(ms) {
   const value = Number(ms) || 0;
   if (value < 1000) return `${value} 毫秒`;
