@@ -12,6 +12,8 @@ import threading
 import time
 
 from learnsys import store
+
+from . import approvals
 from .base import AgentSpec, build_argv, parse_line
 
 MAX_OUTPUT_CHARS = 5_000_000
@@ -42,7 +44,12 @@ def _kill(proc: subprocess.Popen) -> None:
 
 def start_task(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
                timeout_s: int, data_root: pathlib.Path,
-               db_path: pathlib.Path | None = None) -> threading.Thread:
+               db_path: pathlib.Path | None = None, mode: str = "read",
+               hook_url: str = "", approval_timeout: int = 110) -> threading.Thread:
+    mode = "write" if str(mode or "read") == "write" else "read"
+    hook_token = ""
+    if mode == "write" and spec.kind == "claude":
+        hook_token = approvals.register(task_id)
     cancel = threading.Event()
     with _LOCK:
         _CANCEL[int(task_id)] = cancel
@@ -50,7 +57,8 @@ def start_task(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Pa
         target=_run, daemon=True,
         args=(int(task_id), spec, str(prompt), pathlib.Path(workspace),
               int(timeout_s), pathlib.Path(data_root),
-              pathlib.Path(db_path) if db_path else None, cancel))
+              pathlib.Path(db_path) if db_path else None, cancel,
+              mode, str(hook_url or ""), hook_token, int(approval_timeout)))
     thread.start()
     return thread
 
@@ -70,7 +78,8 @@ def cancel_task(task_id: int) -> bool:
 def _save_output(data_root: pathlib.Path, task_id: int, spec: AgentSpec,
                  prompt: str, workspace: pathlib.Path, status: str,
                  duration_ms: int, exit_code: int | None, cost: float,
-                 answer: str, error: str) -> str:
+                 answer: str, error: str, approval_rows: list[dict] | None = None,
+                 mode: str = "read") -> str:
     folder = data_root / "学习档案" / "agents"
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f"{task_id:04d}-{spec.id}.md"
@@ -80,6 +89,7 @@ def _save_output(data_root: pathlib.Path, task_id: int, spec: AgentSpec,
         f"# Agent 任务 #{task_id} · {spec.name}",
         "",
         f"- 工作目录：{workspace}",
+        f"- 模式：{'可写' if mode == 'write' else '只读'}",
         f"- 状态：{status_text}",
         f"- 耗时：{duration_ms / 1000:.1f} 秒",
         f"- 退出码：{exit_code if exit_code is not None else '—'}",
@@ -93,6 +103,16 @@ def _save_output(data_root: pathlib.Path, task_id: int, spec: AgentSpec,
         "",
         answer or "（没有文本输出）",
     ]
+    if approval_rows:
+        label = {"allowed": "允许", "denied": "拒绝",
+                 "expired": "超时", "pending": "未决"}
+        lines += ["", "## 写操作审批", "",
+                  "| # | 操作 | 内容 | 结果 |", "|---|---|---|---|"]
+        for row in approval_rows:
+            summary = str(row.get("summary") or "").replace("|", "｜")
+            lines.append(
+                f"| {row.get('id')} | {row.get('tool') or ''} | {summary} | "
+                f"{label.get(row.get('status'), row.get('status') or '')} |")
     if error:
         lines += ["", "## 错误", "", error]
     body = "\n".join(lines) + "\n"
@@ -107,7 +127,8 @@ def _save_output(data_root: pathlib.Path, task_id: int, spec: AgentSpec,
 
 def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
          timeout_s: int, data_root: pathlib.Path, db_path: pathlib.Path | None,
-         cancel: threading.Event) -> None:
+         cancel: threading.Event, mode: str = "read", hook_url: str = "",
+         hook_token: str = "", approval_timeout: int = 110) -> None:
     conn = store.connect(db_path)
     started = time.monotonic()
     seq = 0
@@ -130,13 +151,25 @@ def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
 
     try:
         store.update_agent_task(conn, task_id, status="running", started_at=store.now())
-        emit("status", f"启动 {spec.name}（只读）")
-        argv = build_argv(spec, prompt, str(workspace))
+        emit("status", f"启动 {spec.name}（{'可写' if mode == 'write' else '只读'}）")
+        settings_json = ""
+        if hook_token:
+            hook_cmd = approvals.ensure_hook_cmd(data_root)
+            settings_json = approvals.hook_settings(
+                hook_cmd, max(15, int(approval_timeout) + 5))
+        argv = build_argv(spec, prompt, str(workspace), mode, settings_json)
+        env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
+        if hook_token:
+            env.update({
+                "LEARNSYS_HOOK_URL": hook_url,
+                "LEARNSYS_HOOK_TOKEN": hook_token,
+                "LEARNSYS_TASK_ID": str(int(task_id)),
+            })
         proc = subprocess.Popen(
             argv, cwd=str(workspace), stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", errors="replace", bufsize=1,
-            env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"},
+            env=env,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
             | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
         with _LOCK:
@@ -164,7 +197,7 @@ def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
         try:
             for line in proc.stdout or []:
                 total_chars += len(line)
-                for event in parse_line(spec.kind, line):
+                for event in parse_line(spec.kind, line, mode):
                     if event.kind == "text":
                         if event.text:
                             answer_parts.append(event.text)
@@ -227,9 +260,14 @@ def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
         duration_ms = int((time.monotonic() - started) * 1000)
         answer = "\n".join(part for part in answer_parts if part).strip()
         try:
+            approval_rows = store.agent_approvals_summary(conn, task_id)
+        except Exception:
+            approval_rows = []
+        try:
             output_path = _save_output(
                 data_root, task_id, spec, prompt, workspace, status,
-                duration_ms, exit_code, cost, answer, error)
+                duration_ms, exit_code, cost, answer, error,
+                approval_rows, mode)
         except OSError as exc:
             output_path = ""
             error = (error + f"；结果文件没写出来：{exc}").strip("；")
@@ -247,4 +285,5 @@ def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
         with _LOCK:
             _RUNNING.pop(task_id, None)
             _CANCEL.pop(task_id, None)
+        approvals.unregister(hook_token)
         conn.close()

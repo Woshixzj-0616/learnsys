@@ -33,4 +33,23 @@ CREATE TABLE IF NOT EXISTS agent_task_events (
 );
 CREATE INDEX IF NOT EXISTS idx_agent_task_events_task
     ON agent_task_events (task_id, seq);
+CREATE TABLE IF NOT EXISTS agent_approvals (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id      INTEGER NOT NULL,
+    seq          INTEGER NOT NULL DEFAULT 0,
+    tool         TEXT NOT NULL DEFAULT '',
+    kind         TEXT NOT NULL DEFAULT 'other',
+    target       TEXT NOT NULL DEFAULT '',
+    summary      TEXT NOT NULL DEFAULT '',
+    preview      TEXT NOT NULL DEFAULT '',
+    payload_json TEXT NOT NULL DEFAULT '{}',
+    status       TEXT NOT NULL DEFAULT 'pending',
+    created_at   TEXT NOT NULL,
+    decided_at   TEXT NOT NULL DEFAULT '',
+    reason       TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_agent_approvals_task
+    ON agent_approvals (task_id, id);
+CREATE INDEX IF NOT EXISTS idx_agent_approvals_status
+    ON agent_approvals (status, task_id);
 """

@@ -1,6 +1,6 @@
 // 最近任务列表。
 import { escapeHtml } from "../../ui.js";
-import { agentName, msText, promptPreview, statusText } from "./format.js";
+import { agentName, modeText, msText, promptPreview, statusText } from "./format.js";
 
 function timeText(value) {
   const text = String(value || "");
@@ -21,7 +21,11 @@ export function renderHistory({ root, tasks, agents, onOpen }) {
     return `<article class="agents-card">
       <div class="agents-card-top">
         <strong>${escapeHtml(agentName(task.agent, agents))} · 任务 #${task.id}</strong>
-        <span class="agents-status ${escapeHtml(state)}">${escapeHtml(statusText(state))}</span>
+        <span class="agents-card-badges">
+          <span class="agents-mode ${task.mode === "write" ? "write" : "read"}">
+            ${escapeHtml(modeText(task.mode))}</span>
+          <span class="agents-status ${escapeHtml(state)}">${escapeHtml(statusText(state))}</span>
+        </span>
       </div>
       <div class="agents-card-prompt">${escapeHtml(promptPreview(task.prompt))}</div>
       <div class="agents-card-meta">

@@ -5,6 +5,7 @@ import subprocess
 import time
 
 from learnsys import config as app_config
+
 from . import claude, codex
 from .base import AgentSpec
 
@@ -33,6 +34,16 @@ def max_concurrent(settings_: dict | None = None) -> int:
     except (TypeError, ValueError):
         value = 2
     return max(1, min(value, 4))
+
+
+def approval_timeout(settings_: dict | None = None) -> int:
+    """一条写操作等用户确认多久；到点按拒绝处理。"""
+    raw = (settings_ or settings()).get("approval_timeout") or 110
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        value = 110
+    return max(10, min(value, 600))
 
 
 def _probe_version(spec: AgentSpec) -> str:

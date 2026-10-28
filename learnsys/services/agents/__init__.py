@@ -1,14 +1,17 @@
-"""P26.1 Agent 中枢：本机 agent 只读派活。"""
+"""P26.2 Agent 中枢：只读派活 + 可写任务（写操作逐条审批）。"""
 from __future__ import annotations
 
+from . import approvals
 from .base import AgentSpec, TaskEvent, build_argv, parse_line
-from .registry import (list_specs, max_concurrent, settings, spec_for, timeout)
+from .registry import (approval_timeout, list_specs, max_concurrent, settings,
+                       spec_for, timeout)
 from .runner import cancel_task, start_task
 from .workspace import allowed_roots, default_workspace, resolve_workspace
 
 __all__ = [
     "AgentSpec", "TaskEvent", "build_argv", "parse_line",
     "list_specs", "spec_for", "settings", "timeout", "max_concurrent",
+    "approval_timeout", "approvals",
     "start_task", "cancel_task",
     "allowed_roots", "default_workspace", "resolve_workspace",
 ]

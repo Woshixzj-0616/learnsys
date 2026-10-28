@@ -136,6 +136,110 @@
   color: var(--ok);
 }
 
+/* P26.2 写操作审批：待确认的提议排在日志上方，允许/拒绝后就地变成记录。 */
+.agents-approvals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  max-height: 46vh;
+  margin-bottom: var(--s3);
+  overflow: auto;
+}
+
+.agents-approval {
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--text-faint);
+  border-radius: var(--r-sm);
+  background: var(--bg-raised);
+}
+
+.agents-approval.pending {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.agents-approval.allowed {
+  border-left-color: var(--ok);
+}
+
+.agents-approval.denied,
+.agents-approval.expired {
+  border-left-color: var(--err);
+}
+
+.agents-approval-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.agents-approval-head strong {
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.agents-approval-state {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+.agents-approval.pending .agents-approval-state {
+  color: var(--accent);
+}
+
+.agents-approval-preview {
+  max-height: 240px;
+  margin: var(--s2) 0 0;
+  padding: var(--s2) var(--s3);
+  overflow: auto;
+  border-radius: var(--r-sm);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.agents-approval-actions {
+  display: flex;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+
+.agents-approval-result {
+  margin-top: var(--s2);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+
+.agents-card-badges {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.agents-mode {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+.agents-mode.write {
+  color: var(--mark);
+  background: var(--mark-soft);
+}
+
 .agents-list {
   display: flex;
   flex-direction: column;

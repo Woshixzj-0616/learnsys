@@ -56,6 +56,12 @@ async function stopTask(taskId) {
   await loadTasks();
 }
 
+async function decideApproval(id, decision) {
+  await api.post(`/api/agents/approvals/${id}/decide`, { decision });
+  toast(decision === "allow" ? "已允许这次操作" : "已拒绝这次操作");
+  await log.poll();
+}
+
 export async function mount(ctx) {
   nodes = {
     root: ctx.root,
@@ -78,6 +84,7 @@ export async function mount(ctx) {
       root: ctx.root,
       agents: meta.agents,
       onStop: stopTask,
+      onDecide: decideApproval,
       onTerminal: () => { loadTasks().catch(() => {}); },
     });
     await loadTasks();

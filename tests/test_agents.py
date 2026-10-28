@@ -7,6 +7,7 @@ import pathlib
 import sys
 import tempfile
 import textwrap
+import threading
 import time
 import unittest
 from unittest import mock
@@ -17,7 +18,8 @@ from learnsys import config as app_config
 from learnsys import store
 from learnsys.server.app import create_app
 from learnsys.services import agents
-from learnsys.services.agents import base, runner, workspace as workspace_mod
+from learnsys.services.agents import approvals, base, runner
+from learnsys.services.agents import workspace as workspace_mod
 
 TOKEN = "test-token"
 AUTH = {"X-Learnsys-Token": TOKEN}
@@ -63,6 +65,31 @@ class AgentBaseTest(unittest.TestCase):
         argv = base.build_argv(spec, "只读", r"D:\Desktop\learnsys")
         self.assertIn("read-only", argv)
         self.assertIn("--ephemeral", argv)
+        self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", argv)
+
+    def test_claude_write_argv_has_per_tool_hook(self):
+        spec = base.AgentSpec(id="claude", name="Claude", kind="claude",
+                              command="claude")
+        settings = approvals.hook_settings(pathlib.Path(r"D:\数据\approve.cmd"), 30)
+        argv = base.build_argv(spec, "改文件", r"D:\Desktop\learnsys",
+                               mode="write", settings_json=settings)
+        joined = " ".join(argv)
+        self.assertIn("--restricted", argv)
+        self.assertIn("--settings", argv)
+        self.assertIn("approve.cmd", joined)
+        self.assertIn("PreToolUse", joined)
+        self.assertIn("Bash", argv[argv.index("--tools") + 1])
+        self.assertNotIn("bypassPermissions", joined)
+        self.assertIn("default", argv)
+        self.assertTrue(json.loads(settings)["hooks"]["PreToolUse"])
+
+    def test_codex_write_argv_uses_workspace_sandbox(self):
+        spec = base.AgentSpec(id="codex", name="Codex", kind="codex",
+                              command="codex")
+        argv = base.build_argv(spec, "改文件", r"D:\Desktop\learnsys",
+                               mode="write")
+        self.assertIn("workspace-write", argv)
+        self.assertNotIn("danger-full-access", argv)
         self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", argv)
 
     def test_parse_claude_text_tool_and_result(self):
@@ -178,6 +205,87 @@ class RunnerTest(unittest.TestCase):
         self.assertIn("超过", task["error"])
 
 
+class ApprovalDescribeTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = pathlib.Path(self.tmp.name)
+
+    def test_write_new_file(self):
+        info = approvals.describe(
+            "Write", {"file_path": str(self.root / "a.txt"), "content": "hi"})
+        self.assertEqual(info["kind"], "write")
+        self.assertIn("新建文件", info["summary"])
+        self.assertIn("hi", info["preview"])
+        self.assertIn("a.txt", info["target"])
+
+    def test_edit_shows_diff(self):
+        path = self.root / "a.txt"
+        path.write_text("one\ntwo\n", encoding="utf-8")
+        info = approvals.describe("Edit", {
+            "file_path": str(path), "old_string": "two",
+            "new_string": "three"})
+        self.assertEqual(info["kind"], "edit")
+        self.assertIn("-two", info["preview"])
+        self.assertIn("+three", info["preview"])
+        self.assertIn("1 处", info["summary"])
+
+    def test_bash_summary(self):
+        info = approvals.describe(
+            "Bash", {"command": "dir", "description": "看目录"})
+        self.assertEqual(info["kind"], "command")
+        self.assertIn("dir", info["summary"])
+        self.assertIn("看目录", info["preview"])
+
+    def test_hook_settings_and_command(self):
+        cmd_path = approvals.ensure_hook_cmd(self.root)
+        self.assertTrue(cmd_path.exists())
+        text = cmd_path.read_text(encoding="utf-8")
+        self.assertIn("%LEARNSYS_HOOK_TOKEN%", text)
+        self.assertIn("curl.exe", text)
+        settings = json.loads(approvals.hook_settings(cmd_path, 30))
+        hook = settings["hooks"]["PreToolUse"][0]
+        self.assertIn("Write", hook["matcher"])
+        self.assertIn("Bash", hook["matcher"])
+        self.assertEqual(hook["hooks"][0]["timeout"], 30)
+        self.assertIn("approve.cmd", hook["hooks"][0]["command"])
+
+    def test_unknown_tool_is_still_described(self):
+        info = approvals.describe("SomeTool", {"x": 1})
+        self.assertEqual(info["kind"], "other")
+        self.assertIn("SomeTool", info["summary"])
+
+
+class ApprovalStoreTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.addCleanup(self.tmp.cleanup)
+        self.db = pathlib.Path(self.tmp.name) / "learning.db"
+        self.conn = store.connect(self.db)
+        self.addCleanup(self.conn.close)
+        self.task_id = store.add_agent_task(
+            self.conn, agent="fake", prompt="写", workspace=str(self.tmp.name))
+
+    def test_pending_to_allowed_once(self):
+        approval_id = store.add_agent_approval(
+            self.conn, task_id=self.task_id, tool="Write", kind="write",
+            summary="新建 a.txt", preview="hi")
+        self.assertEqual(len(store.pending_agent_approvals(
+            self.conn, self.task_id)), 1)
+        self.assertTrue(store.decide_agent_approval(
+            self.conn, approval_id, "allowed", "同意"))
+        self.assertFalse(store.decide_agent_approval(
+            self.conn, approval_id, "denied", "反悔"))
+        row = store.get_agent_approval(self.conn, approval_id)
+        self.assertEqual(row["status"], "allowed")
+        self.assertEqual(row["reason"], "同意")
+        self.assertEqual(len(store.pending_agent_approvals(
+            self.conn, self.task_id)), 0)
+        summary = store.agent_approvals_summary(self.conn, self.task_id)
+        self.assertEqual(summary[0]["status"], "allowed")
+        self.assertNotIn("payload_json", summary[0])
+
+
 class AgentApiTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
@@ -187,7 +295,8 @@ class AgentApiTest(unittest.TestCase):
         store.connect(self.db).close()
         self.user = mock.patch.object(
             app_config, "USER",
-            {"agents": {"allowed_roots": [str(self.root)], "timeout": 20}})
+            {"agents": {"allowed_roots": [str(self.root)], "timeout": 20,
+                        "approval_timeout": 1}})
         self.user.start()
         self.addCleanup(self.user.stop)
         original_connect = store.connect
@@ -256,6 +365,110 @@ class AgentApiTest(unittest.TestCase):
             headers=AUTH)
         self.assertEqual(response.status_code, 409, response.text)
         self.assertIn("没装", response.json()["detail"])
+
+    def _write_task(self) -> int:
+        conn = store.connect()
+        try:
+            return store.add_agent_task(
+                conn, agent="fake", prompt="写一点东西",
+                workspace=str(self.root), mode="write")
+        finally:
+            conn.close()
+
+    def _hook_headers(self, token: str, task_id: int) -> dict:
+        return {"X-Learnsys-Hook": token, "X-Learnsys-Task": str(task_id)}
+
+    def test_approval_list_and_decide(self):
+        task_id = self._write_task()
+        conn = store.connect()
+        try:
+            approval_id = store.add_agent_approval(
+                conn, task_id=task_id, tool="Write", kind="write",
+                summary="新建 a.txt", preview="hi")
+        finally:
+            conn.close()
+        data = self.client.get(
+            f"/api/agents/tasks/{task_id}/approvals", headers=AUTH).json()
+        self.assertEqual(data["approvals"][0]["status"], "pending")
+        response = self.client.post(
+            f"/api/agents/approvals/{approval_id}/decide",
+            json={"decision": "allow"}, headers=AUTH)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["approval"]["status"], "allowed")
+        again = self.client.post(
+            f"/api/agents/approvals/{approval_id}/decide",
+            json={"decision": "deny"}, headers=AUTH)
+        self.assertEqual(again.status_code, 409, again.text)
+
+    def test_hook_rejects_unknown_token(self):
+        task_id = self._write_task()
+        response = self.client.post(
+            "/api/agents/hooks/approval",
+            json={"tool_name": "Write",
+                  "tool_input": {"file_path": "x", "content": "y"}},
+            headers=self._hook_headers("bad-token", task_id))
+        self.assertEqual(response.status_code, 403, response.text)
+
+    def test_hook_waits_for_user_allow(self):
+        task_id = self._write_task()
+        token = approvals.register(task_id)
+        self.addCleanup(approvals.unregister, token)
+        result = {}
+
+        def hook():
+            result["response"] = self.client.post(
+                "/api/agents/hooks/approval",
+                json={"tool_name": "Write",
+                      "tool_input": {"file_path": str(self.root / "a.txt"),
+                                     "content": "hi"}},
+                headers=self._hook_headers(token, task_id))
+
+        worker = threading.Thread(target=hook)
+        worker.start()
+        deadline = time.monotonic() + 5
+        approval = None
+        while time.monotonic() < deadline:
+            conn = store.connect()
+            try:
+                rows = store.pending_agent_approvals(conn, task_id)
+            finally:
+                conn.close()
+            if rows:
+                approval = rows[0]
+                break
+            time.sleep(0.05)
+        self.assertIsNotNone(approval, "钩子没有落提议")
+        decided = self.client.post(
+            f"/api/agents/approvals/{approval['id']}/decide",
+            json={"decision": "allow"}, headers=AUTH)
+        self.assertEqual(decided.status_code, 200, decided.text)
+        worker.join(timeout=5)
+        self.assertFalse(worker.is_alive())
+        payload = result["response"].json()
+        self.assertEqual(
+            payload["hookSpecificOutput"]["permissionDecision"], "allow")
+
+    def test_hook_timeout_denies(self):
+        task_id = self._write_task()
+        token = approvals.register(task_id)
+        self.addCleanup(approvals.unregister, token)
+        started = time.monotonic()
+        response = self.client.post(
+            "/api/agents/hooks/approval",
+            json={"tool_name": "Bash", "tool_input": {"command": "dir"}},
+            headers=self._hook_headers(token, task_id))
+        elapsed = time.monotonic() - started
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(
+            payload["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertLess(elapsed, 15)
+        conn = store.connect()
+        try:
+            rows = store.list_agent_approvals(conn, task_id)
+        finally:
+            conn.close()
+        self.assertEqual(rows[0]["status"], "expired")
 
 
 if __name__ == "__main__":

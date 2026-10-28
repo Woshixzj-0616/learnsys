@@ -18,6 +18,10 @@ export function msText(ms) {
   return `${Math.floor(value / 60000)} 分 ${Math.round((value % 60000) / 1000)} 秒`;
 }
 
+export function modeText(mode) {
+  return mode === "write" ? "可写" : "只读";
+}
+
 export function agentName(id, agents = []) {
   return agents.find((item) => item.id === id)?.name || id || "—";
 }

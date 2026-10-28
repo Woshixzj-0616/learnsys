@@ -6,6 +6,13 @@
 from __future__ import annotations
 
 from ._base import SCHEMA, _LOCK, _migrate, connect, now, stamp
+from .agent_approvals import (STATUSES as AGENT_APPROVAL_STATUSES,
+                              add_approval as add_agent_approval,
+                              approvals_summary as agent_approvals_summary,
+                              decide_approval as decide_agent_approval,
+                              get_approval as get_agent_approval,
+                              list_approvals as list_agent_approvals,
+                              pending_approvals as pending_agent_approvals)
 from .agent_runs import add_agent_run, get_agent_run, list_agent_runs, route_stats
 from .agent_tasks import (STATUSES as AGENT_TASK_STATUSES, add_event as add_agent_task_event,
                           add_task as add_agent_task, get_task as get_agent_task,
@@ -70,6 +77,9 @@ __all__ = [
     "AGENT_TASK_STATUSES", "add_agent_task_event", "add_agent_task",
     "get_agent_task", "list_agent_task_events", "list_agent_tasks",
     "agent_tasks_running", "update_agent_task",
+    "AGENT_APPROVAL_STATUSES", "add_agent_approval", "get_agent_approval",
+    "list_agent_approvals", "pending_agent_approvals", "decide_agent_approval",
+    "agent_approvals_summary",
     "add_ask", "recent_asks", "starred_asks",
     "add_browser_event", "cleanup_browser_events", "clear_browser_events",
     "list_browser_events",
