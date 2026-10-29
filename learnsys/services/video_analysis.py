@@ -131,18 +131,8 @@ def _usage(raw: dict) -> tuple[int, int]:
 
 
 def _generate(prompt: str, cfg, abort: threading.Event) -> tuple[str, str, dict]:
-    text = ""
-    error = ""
-    usage: dict = {}
-    request = agent.AgentRequest(prompt, system_override=SYSTEM,
-                                 use_tools=False, mode="quick")
-    for event in agent.run(request, cfg=cfg, abort=abort):
-        if event.kind == "done":
-            text = str(event.data.get("text") or "")
-            usage = event.data.get("usage") or {}
-        elif event.kind == "error":
-            error = event.text
-    return text, error, usage
+    return agent.complete(prompt, system_override=SYSTEM,
+                          cfg=cfg, abort=abort, mode="quick")
 
 
 def _ensure_worker() -> None:

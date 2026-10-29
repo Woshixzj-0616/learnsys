@@ -4,7 +4,9 @@
 （或 OpenAI 兼容协议）说话。界面层只消费 `AgentEvent`，不关心底下是谁。
 """
 from learnsys.llm.config import AgentConfig, load_config
+from learnsys.agent.single_turn import complete
 from learnsys.agent.events import AgentEvent
 from learnsys.agent.loop import AgentError, AgentRequest, run
 
-__all__ = ["AgentConfig", "load_config", "AgentEvent", "AgentError", "AgentRequest", "run"]
+__all__ = ["AgentConfig", "load_config", "AgentEvent", "AgentError", "AgentRequest",
+           "complete", "run"]

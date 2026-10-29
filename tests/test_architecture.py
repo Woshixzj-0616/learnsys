@@ -33,6 +33,11 @@ class ArchitectureTest(unittest.TestCase):
         detail = "；".join(f"{row['file']}:{row['line']} {row['text']}" for row in bad)
         self.assertEqual(bad, [], f"路由层直接写了 SQL（应下沉到 store）：{detail}")
 
+    def test_services_use_complete_only(self):
+        bad = layering_report.scan_service_agent_calls()
+        detail = "；".join(f"{row['file']}:{row['line']} {row['symbol']}" for row in bad)
+        self.assertEqual(bad, [], f"services 直接调 agent.run/AgentRequest，应改 agent.complete：{detail}")
+
     def test_layering_rules_cover_existing_packages(self):
         packages = {path.name for path in (ROOT / "learnsys").iterdir()
                     if path.is_dir() and (path / "__init__.py").exists()}

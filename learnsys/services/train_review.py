@@ -6,7 +6,7 @@
 - 每条错误的 quote 由 `train.review` 逐条核对，伪造的直接丢弃；
 - 结果落 `service_results`（kind=`writing_review` / `translation_review` /
   `sentence_review`），页面按 id 轮询；
-- 成本由 `agent.run` 内部记入 `model_usage`，这里只汇总 token 与耗时。
+- 成本由 `agent.complete` 内部记入 `model_usage`，这里只汇总 token 与耗时。
 """
 from __future__ import annotations
 
@@ -118,18 +118,8 @@ def resolve(payload: dict) -> dict:
 
 
 def _generate(prompt: str, cfg, abort: threading.Event) -> tuple[str, str, dict]:
-    text = ""
-    error = ""
-    usage: dict = {}
-    request = agent.AgentRequest(prompt, system_override=prompts.SYSTEM,
-                                 use_tools=False, mode="quick")
-    for event in agent.run(request, cfg=cfg, abort=abort):
-        if event.kind == "done":
-            text = str(event.data.get("text") or "")
-            usage = event.data.get("usage") or {}
-        elif event.kind == "error":
-            error = event.text
-    return text, error, usage
+    return agent.complete(prompt, system_override=prompts.SYSTEM,
+                          cfg=cfg, abort=abort, mode="quick")
 
 
 def _usage(raw: dict) -> tuple[int, int]:

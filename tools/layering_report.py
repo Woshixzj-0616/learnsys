@@ -123,6 +123,30 @@ def scan_route_sql(root: pathlib.Path | None = None) -> list[dict]:
     return rows
 
 
+def scan_service_agent_calls(root: pathlib.Path | None = None) -> list[dict]:
+    """services 只许经 `agent.complete()` 做单轮调用；直接摸 run/AgentRequest 即失败。
+
+    这是「拆环」的前置约束：服务与 agent 的耦合面收敛到一个函数，
+    将来把单轮调用下沉到更底层时只需要搬这一个文件。
+    """
+    base = pathlib.Path(root or PACKAGE_ROOT) / "services"
+    rows: list[dict] = []
+    for path in sorted(base.rglob("*.py")):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                continue
+            owner = node.func.value
+            if (isinstance(owner, ast.Name) and owner.id == "agent"
+                    and node.func.attr in ("run", "AgentRequest")):
+                rows.append({"file": path.relative_to(ROOT).as_posix(),
+                             "line": node.lineno, "symbol": f"agent.{node.func.attr}"})
+    return rows
+
+
 def package_edges(root: pathlib.Path | None = None) -> dict[str, set[str]]:
     """包级导入图：`{包: {它导入的其他包}}`。"""
     base = pathlib.Path(root or PACKAGE_ROOT)
@@ -173,10 +197,12 @@ def cycles(graph: dict[str, set[str]] | None = None) -> list[list[str]]:
 
 def report(rows: list[dict] | None = None,
            loops: list[list[str]] | None = None,
-           route_sql: list[dict] | None = None) -> str:
+           route_sql: list[dict] | None = None,
+           service_calls: list[dict] | None = None) -> str:
     rows = rows if rows is not None else scan()
     loops = loops if loops is not None else cycles()
     route_sql = route_sql if route_sql is not None else scan_route_sql()
+    service_calls = service_calls if service_calls is not None else scan_service_agent_calls()
     lines = ["分层报告（低层不得依赖高层：core/store/browser → services/agent/ask/server；"
              "llm → store/services/agent/ask/server；agent/services → ask/server；server → ask）", ""]
     if not rows:
@@ -193,6 +219,12 @@ def report(rows: list[dict] | None = None,
             lines.append(f"  ✗ {row['file']}:{row['line']}  {row['text']}")
     else:
         lines.append("路由层直接写 SQL 0 处 —— 通过。")
+    if service_calls:
+        lines.append(f"services 绕过单轮接口 {len(service_calls)} 处（应改 agent.complete）：")
+        for row in service_calls:
+            lines.append(f"  ✗ {row['file']}:{row['line']}  {row['symbol']}")
+    else:
+        lines.append("services 单轮调用只走 agent.complete —— 通过。")
     if loops:
         # 同级复用的循环（如 services 调用 agent.run）由规则允许，不计入失败；
         # 这里只报告，方便评审时看见全图，不用它卡 CI。
@@ -213,13 +245,15 @@ def main(argv: list[str] | None = None) -> int:
     rows = scan()
     loops = cycles()
     route_sql = scan_route_sql()
+    service_calls = scan_service_agent_calls()
     if args.json:
         print(json.dumps({"violations": rows, "cycles": loops,
-                          "route_sql": route_sql},
+                          "route_sql": route_sql,
+                          "service_agent_calls": service_calls},
                          ensure_ascii=False, indent=1))
     else:
-        print(report(rows, loops, route_sql))
-    if args.check and (rows or route_sql):
+        print(report(rows, loops, route_sql, service_calls))
+    if args.check and (rows or route_sql or service_calls):
         return 1
     return 0
 

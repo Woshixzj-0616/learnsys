@@ -59,16 +59,10 @@ def _run_text(prompt: str, cfg, max_tokens: int = 600) -> tuple[str, str, dict]:
     timer = threading.Timer(TRANSLATE_TIMEOUT, abort.set)
     timer.daemon = True
     timer.start()
-    text, error, usage = "", "", {}
     try:
-        request = agent.AgentRequest(
-            prompt, system_override=SYSTEM, use_tools=False, mode="quick")
-        for event in agent.run(request, cfg=_fast_cfg(cfg, max_tokens), abort=abort):
-            if event.kind == "done":
-                text = str(event.data.get("text") or "")
-                usage = event.data.get("usage") or {}
-            elif event.kind == "error":
-                error = event.text
+        text, error, usage = agent.complete(
+            prompt, system_override=SYSTEM, cfg=_fast_cfg(cfg, max_tokens),
+            abort=abort, mode="quick")
     finally:
         timer.cancel()
     if abort.is_set() and not text.strip():

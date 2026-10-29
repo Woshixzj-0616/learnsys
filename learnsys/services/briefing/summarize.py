@@ -56,17 +56,8 @@ def _prompt(items: list[dict]) -> str:
 
 
 def _call(prompt: str, cfg) -> tuple[str, str]:
-    text, error = "", ""
-    try:
-        request = agent.AgentRequest(
-            prompt, system_override=SYSTEM, use_tools=False, mode="briefing")
-        for event in agent.run(request, cfg=cfg):
-            if event.kind == "done":
-                text = str(event.data.get("text") or "")
-            elif event.kind == "error":
-                error = str(event.text or "模型调用失败")
-    except Exception as exc:
-        error = str(exc) or "模型调用失败"
+    text, error, _usage = agent.complete(
+        prompt, system_override=SYSTEM, cfg=cfg, mode="briefing")
     return text, error
 
 
