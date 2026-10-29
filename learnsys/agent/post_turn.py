@@ -3,6 +3,8 @@
 触发：非 internal 会话每完成 4 条消息（2 轮问答）跑一次后台线程。
 口径：
 - 摘要写回 `conversations.summary`，下一轮起注入系统提示词，历史窗口 4 → 8 轮；
+- **滚动合并**：每次把「已有摘要 + 最近 12 条」合成新摘要，不再覆盖式只看最近几轮；
+  长会话的早期结论不会在第 16 条消息之后被挤丢；
 - 记忆只收**明确、跨会话有效**的偏好/规矩，自动生效（负责人 2026-10-27 拍板）；
 - 一次调用最多 2 条，去重后写入 `agent_memories`；启用条数上限 40；
 - 失败只记诊断日志，不影响主回答；模型调用走 `agent/usage.py` 记账。
@@ -31,11 +33,14 @@ MIN_MEMORY_CHARS = 6
 _RUNNING: set[int] = set()
 _LOCK = threading.Lock()
 
-SYSTEM = """你是「学习工作台」的会话整理器。读最近一段对话，只输出一个 JSON 对象：
-{"summary": "不超过 120 字的中文摘要", "memories": [{"content": "一条长期规矩", "kind": "preference"}]}
+SYSTEM = """你是「学习工作台」的会话整理器。读「已有会话摘要」和「最近对话」，只输出一个 JSON 对象：
+{"summary": "不超过 200 字的中文摘要", "memories": [{"content": "一条长期规矩", "kind": "preference"}]}
 
-摘要要求：写清用户在学什么、卡在哪、下一步可以做什么；只陈述对话里真实出现的内容，不编造；
-没有实质内容就给空串。
+摘要要求：
+- 写清用户在学什么、卡在哪、已经解决了什么、下一步可以做什么；
+- **必须把旧摘要和最近对话合并成一份新摘要**：旧摘要里仍然有效的信息保留，
+  已经过时、被推翻或被用户纠正的内容删掉；不能只写最近几轮而丢掉更早的内容；
+- 只陈述对话里真实出现的内容，不编造；没有实质内容就给空串。
 
 记忆要求：
 - 只收用户**明确表达、跨会话有效**的偏好或规矩（出现「以后 / 每次 / 默认 / 我习惯 / 记住 / 不要 / 我喜欢」等）；
@@ -54,7 +59,9 @@ def _transcript(conn, conversation_id: int) -> str:
     for message in store.conversation_messages(conn, conversation_id)[-RECENT_MESSAGES:]:
         content = message.get("content")
         if isinstance(content, dict):
-            text = str(content.get("text") or content.get("error") or "")
+            if content.get("error") or content.get("interrupted"):
+                continue          # 半截回答不当成事实写进摘要
+            text = str(content.get("text") or "")
         elif isinstance(content, str):
             text = content
         else:
@@ -143,7 +150,12 @@ def _generate(conn, conversation_id: int, data_root) -> dict:
         cfg, model=cfg.fast_model or cfg.model, thinking=False,
         max_tokens=min(int(cfg.max_tokens or 700), 700), speed="fast")
     existing = "\n".join(f"- {item}" for item in _existing(conn)) or "（无）"
-    prompt = f"【已有长期记忆】\n{existing}\n\n【最近对话】\n{transcript}"
+    conversation = store.get_conversation(conn, int(conversation_id))
+    old_summary = (str(conversation[4] or "").strip()
+                   if conversation is not None else "")
+    prompt = (f"【已有会话摘要】\n{old_summary or '（无）'}\n\n"
+              f"【已有长期记忆】\n{existing}\n\n"
+              f"【最近对话】\n{transcript}")
     parts: list[str] = []
     result = None
     for event in provider_anthropic.stream_messages(

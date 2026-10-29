@@ -74,6 +74,32 @@ class ChatDetachTest(unittest.TestCase):
         self.assertEqual(len(runs), 1)
         self.assertEqual(runs[0]["stop_reason"], "end_turn")
 
+    def test_title_takes_first_nonempty_line(self):
+        self.assertEqual(chat_module._title_for("1. (程序题, 17分)\n\n基于栈"),
+                         "1. (程序题, 17分)")
+        self.assertEqual(chat_module._title_for("  \n   \n 真问题"), "真问题")
+        self.assertEqual(chat_module._title_for("#include<iostream>\nint main(){}"),
+                         "#include<iostream>")
+        self.assertEqual(chat_module._title_for(""), "新对话")
+        self.assertEqual(chat_module._title_for("字" * 40), "字" * 30)
+
+    def test_history_skips_interrupted_answers(self):
+        from learnsys.server.routes_agent.common import _load_history
+        conn = store.connect(self.db_path)
+        try:
+            cid = store.create_conversation(conn, title="测试", module="ask")
+            store.add_message(conn, cid, "user", {"text": "q1"})
+            store.add_message(conn, cid, "assistant", {"text": "a1"})
+            store.add_message(conn, cid, "user", {"text": "q2"})
+            store.add_message(conn, cid, "assistant",
+                              {"text": "半截", "interrupted": True, "error": "断了"})
+            store.add_message(conn, cid, "user", {"text": "q3"})
+            store.add_message(conn, cid, "assistant", {"text": "a3"})
+            pairs = _load_history(conn, cid, turns=8)
+        finally:
+            conn.close()
+        self.assertEqual(pairs, [("q1", "a1"), ("q3", "a3")])
+
     def test_partial_text_survives_exception(self):
         def fake_run(request, cfg=None, abort=None, **_kwargs):
             yield AgentEvent("text", text="已经写出来的半截。")

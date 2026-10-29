@@ -59,13 +59,16 @@ def _load_history(conn, conversation_id: int, turns: int = 4) -> list[tuple[str,
             elif isinstance(content, str):
                 question = content
         elif message.get("role") == "assistant" and question:
+            broken = False
             if isinstance(content, dict):
                 answer = str(content.get("text") or "")
+                # 中断 / 出错留下的半截回答不能当完整答案喂给下一轮。
+                broken = bool(content.get("error") or content.get("interrupted"))
             elif isinstance(content, str):
                 answer = content
             else:
                 answer = ""
-            if answer.strip():
+            if answer.strip() and not broken:
                 pairs.append((question, answer))
             question = ""
     return pairs[-max(1, turns):]

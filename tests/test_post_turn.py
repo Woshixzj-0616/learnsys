@@ -31,11 +31,13 @@ def make_cfg(root: pathlib.Path) -> AgentConfig:
     )
 
 
-def fake_stream(payload: dict):
+def fake_stream(payload: dict, seen: list | None = None):
     text = json.dumps(payload, ensure_ascii=False)
 
     def stream(cfg, system, messages, tools, *, abort=None, response_sink=None,
                **kwargs):
+        if seen is not None:
+            seen.append(messages)
         yield ProviderEvent("text", text)
         yield ProviderEvent("done", result=ProviderResult(
             text=text, stop_reason="end_turn",
@@ -119,6 +121,41 @@ class PostTurnTest(unittest.TestCase):
         self.assertIn("代码示例默认用 C++", contents)
         self.assertIn("每天先复习再学新的", contents)
         self.assertEqual(contents.count("以后回答先给结论"), 1)
+
+    def test_summary_rolls_previous_summary_into_prompt(self):
+        conv_id = self._conversation(8)
+        store.set_conversation_summary(
+            self.conn, conv_id, "旧摘要：用户在学 GIL，已经讲清锁。")
+        seen = []
+        with mock.patch.object(post_turn.provider_anthropic, "stream_messages",
+                               side_effect=fake_stream(
+                                   {"summary": "新摘要", "memories": []}, seen)):
+            post_turn.run_once(conv_id, self.root)
+        prompt = seen[0][0]["content"][0]["text"]
+        self.assertIn("【已有会话摘要】", prompt)
+        self.assertIn("旧摘要：用户在学 GIL", prompt)
+        self.assertIn("【最近对话】", prompt)
+        row = store.get_conversation(self.conn, conv_id)
+        self.assertEqual(row[4], "新摘要")
+
+    def test_transcript_skips_interrupted_answer(self):
+        conv_id = self._conversation(2)
+        store.add_message(self.conn, conv_id, "user", {"text": "问了一半"})
+        store.add_message(self.conn, conv_id, "assistant",
+                          {"text": "半截回答", "interrupted": True})
+        text = post_turn._transcript(self.conn, conv_id)
+        self.assertIn("问了一半", text)
+        self.assertNotIn("半截回答", text)
+
+    def test_first_summary_prompt_says_no_previous(self):
+        conv_id = self._conversation(4)
+        seen = []
+        with mock.patch.object(post_turn.provider_anthropic, "stream_messages",
+                               side_effect=fake_stream(
+                                   {"summary": "首份摘要", "memories": []}, seen)):
+            post_turn.run_once(conv_id, self.root)
+        prompt = seen[0][0]["content"][0]["text"]
+        self.assertIn("【已有会话摘要】\n（无）", prompt)
 
     def test_usage_recorded(self):
         conv_id = self._conversation(4)

@@ -36,6 +36,15 @@ def _take_event(events: queue.Queue):
         return _QUEUE_TICK
 
 
+def _title_for(message: str) -> str:
+    """会话标题：取第一行有内容的文字，不把整个题面/代码的头 30 字塞进侧栏。"""
+    for line in str(message or "").splitlines():
+        line = " ".join(line.split())
+        if line:
+            return line[:30]
+    return "新对话"
+
+
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
     conversation_id: int | None = None
@@ -97,7 +106,7 @@ def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
             recording_id = 0
         if conv_id is None:
             conv_id = store.create_conversation(
-                conn, title=req.message.strip()[:30] or "新对话",
+                conn, title=_title_for(req.message),
                 module=module, mode=req.mode,
                 origin=origin, recording_id=recording_id)
         # 先取旧账（含已有摘要），再记这一问。有摘要才放宽到 8 轮。
@@ -241,6 +250,8 @@ def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
                     model_calls=model_calls, error_count=error_count,
                     cost=cost, currency=currency)
                 if final:
+                    # messages 是会话真相；asks 是时间线/检索索引（同一轮问答的派生）。
+                    # 先写真相，再写索引；索引失败不影响会话历史。
                     store.add_message(conn, conv_id, "assistant",
                                       {"text": final, "thinking": thinking,
                                        "run_id": run_id})
