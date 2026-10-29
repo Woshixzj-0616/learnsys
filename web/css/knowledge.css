@@ -1,4 +1,4 @@
-/* 知识点页：8 类目列表 + 最近答题。 */
+/* 知识点页：13 类目列表 + 最近答题。 */
 .knowledge-hero-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}
 .knowledge-stats .review-chip.warn strong{color:var(--warn)}
 .knowledge-grid{display:grid;grid-template-columns:minmax(280px,0.9fr) minmax(0,1.4fr);gap:16px;align-items:start}

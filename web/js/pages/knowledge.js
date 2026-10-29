@@ -1,4 +1,4 @@
-// 知识点：8 个类目的答题流水、正确率与最近答题；旧错题回填只展示。
+// 知识点：13 个类目（英语 7 + 编程 5 + 其他）的答题流水、正确率与最近答题；旧错题回填只展示。
 import { api } from "../api.js";
 import { escapeHtml, relative, toast } from "../ui.js";
 
@@ -229,7 +229,7 @@ async function backfill() {
 }
 
 export async function mount(ctx) {
-  ctx.setSub("每次测验作答（含答对）按 8 个类目落库；回填只展示");
+  ctx.setSub("每次测验作答（含答对）按 13 个类目落库；回填只展示");
   ctx.setActions('<a class="btn" href="#/quiz">去测验</a>');
   days = 0;
   selected = null;
