@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""知识点与全量答题流水：8 类目、归一、落库、统计、BKT-ready、回填。"""
+"""知识点与全量答题流水：13 类目、归一、落库、统计、BKT-ready、回填。"""
 from __future__ import annotations
 
 import pathlib
@@ -21,10 +21,11 @@ AUTH = {"X-Learnsys-Token": TOKEN}
 
 
 class KnowledgeConstantsTest(unittest.TestCase):
-    def test_eight_categories(self):
+    def test_category_list(self):
         names = [c["name"] for c in CATEGORIES]
         self.assertEqual(names, ["词汇", "语音", "语法", "听力细节", "听力主旨",
-                                 "听力推断", "阅读", "其他"])
+                                 "听力推断", "阅读", "数据结构", "算法",
+                                 "C/C++", "计算机网络", "操作系统", "其他"])
 
     def test_aliases_and_fallback(self):
         self.assertEqual(normalize_points("生词、连读")[0], ["词汇", "语音"])
@@ -35,8 +36,7 @@ class KnowledgeConstantsTest(unittest.TestCase):
 
     def test_prompt_rules_include_contract(self):
         text = prompt_rules()
-        for name in ("词汇", "语音", "语法", "听力细节", "听力主旨",
-                     "听力推断", "阅读", "其他"):
+        for name in (c["name"] for c in CATEGORIES):
             self.assertIn(name, text)
         self.assertIn("【知识点】", text)
         self.assertIn("【批改】正确", text)
@@ -53,8 +53,7 @@ class PromptContractTest(unittest.TestCase):
             self.assertIn("【知识点】", text)
             self.assertIn("【批改】正确", text)
             self.assertIn("【批改】错误", text)
-            for name in ("词汇", "语音", "语法", "听力细节", "听力主旨",
-                         "听力推断", "阅读", "其他"):
+            for name in (c["name"] for c in CATEGORIES):
                 self.assertIn(name, text)
         self.assertIn("save_wrongbook", texts[0])
         self.assertIn("save_wrongbook", texts[1])
@@ -86,7 +85,7 @@ class KnowledgeDbTest(unittest.TestCase):
         self.assertTrue(store.meta_value(self.conn, "knowledge_attempts_since"))
         store.connect(self.db).close()
         self.assertEqual(self.conn.execute(
-            "SELECT COUNT(*) FROM knowledge_points").fetchone()[0], 8)
+            "SELECT COUNT(*) FROM knowledge_points").fetchone()[0], len(CATEGORIES))
 
     def test_attempt_stats_and_bkt_ready(self):
         first = self.add()
@@ -359,7 +358,7 @@ class KnowledgeApiTest(unittest.TestCase):
         stats = self.client.get("/api/knowledge", headers=AUTH)
         self.assertEqual(stats.status_code, 200)
         data = stats.json()
-        self.assertEqual(len(data["points"]), 8)
+        self.assertEqual(len(data["points"]), len(CATEGORIES))
         self.assertEqual(data["totals"]["attempts"], 1)
         self.assertEqual(data["totals"]["bkt_ready"], 1)
         point = next(p for p in data["points"] if p["name"] == "听力推断")

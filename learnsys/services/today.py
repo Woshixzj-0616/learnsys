@@ -71,7 +71,7 @@ def payload(conn, day: str = "") -> dict:
 def study_payload(conn, focus: str = "", day: str = "") -> dict:
     """复盘 / 测验插件共用的今日素材与提示词（拼题口径只在 `services/study.py`）。
 
-    `focus` 只接受 8 个类目里除「其他」以外的值；其余一律忽略，不拼进提示词。
+    `focus` 只接受 13 个类目里除「其他」以外的值；其余一律忽略，不拼进提示词。
     """
     day = day or datetime.date.today().isoformat()
     summary_lines: list[str] = []

@@ -217,9 +217,9 @@ SAVE_WRONGBOOK_SCHEMA = {
             "my_answer": {"type": "string",
                           "description": "用户这题的作答原文；纯代码题可留空"},
             "tags": {"type": "string",
-                     "description": "知识点类目，逗号分隔；只能从："
-                                    + "、".join(knowledge.CATEGORY_NAMES)
-                                    + " 中选 1–3 个"},
+                     "description": ("知识点类目，逗号分隔；只能从以下类目里选 "
+                                     "1–3 个，且同一学科；"
+                                     + knowledge.category_help())},
             "code": {"type": "string",
                      "description": "代码题：用户原始代码（不要补全或改写）"},
             "language": {"type": "string", "enum": ["cpp", "c", "python"]},

@@ -22,7 +22,7 @@ def now() -> str:
 
 
 def _seed_knowledge(conn: sqlite3.Connection) -> None:
-    """种 8 个知识点类目 + 回填 cutoff；幂等。"""
+    """种 13 个知识点类目 + 回填 cutoff；幂等，只插不删。"""
     from learnsys import knowledge
 
     stamp = now()
@@ -34,7 +34,27 @@ def _seed_knowledge(conn: sqlite3.Connection) -> None:
     conn.execute(
         "INSERT OR IGNORE INTO meta (key, value) VALUES ('knowledge_attempts_since', ?)",
         (stamp,))
+    conn.execute(
+        "INSERT INTO meta (key, value) VALUES ('knowledge_seed_version', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (str(knowledge.SEED_VERSION),))
     conn.commit()
+
+
+def _seed_knowledge_if_needed(conn: sqlite3.Connection) -> None:
+    """结构已是最新版本时，只检查类目种子是否过期。
+
+    类目只加行、不改表结构，所以不能靠 `SCHEMA_VERSION` 触发补种；
+    又因为路由层每个请求都开连接，不能每次都 `INSERT OR IGNORE` 抢写锁。
+    这里用一次 `meta` 主键查询判断，只有种子版本变了才写一次。
+    """
+    from learnsys import knowledge
+
+    row = conn.execute(
+        "SELECT value FROM meta WHERE key = 'knowledge_seed_version'").fetchone()
+    if row and str(row[0]) == str(knowledge.SEED_VERSION):
+        return
+    _seed_knowledge(conn)
 
 
 def _guard_test_process(target: pathlib.Path) -> None:
@@ -59,10 +79,18 @@ def connect(path=None) -> sqlite3.Connection:
         target.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(target), check_same_thread=False, timeout=15)
     conn.execute("PRAGMA journal_mode=WAL")
-    # 版本一致 = 结构已经就绪：只保留连接与 WAL，跳过一次建表/补列/种子。
-    # 0 是旧库或新库，走完整迁移；比当前版本新（降级打开）就不动它。
+    # 版本比当前新（降级打开）：不动它。
+    # 版本一致 = 结构已就绪：不建表/补列，但仍要检查类目种子是否过期（只加行）。
+    # 0 是旧库或新库，走完整迁移。
     version = int(conn.execute("PRAGMA user_version").fetchone()[0] or 0)
-    if version >= SCHEMA_VERSION:
+    if version > SCHEMA_VERSION:
+        return conn
+    if version == SCHEMA_VERSION:
+        try:
+            _seed_knowledge_if_needed(conn)
+        except Exception:
+            conn.close()
+            raise
         return conn
     try:
         conn.executescript(SCHEMA)
