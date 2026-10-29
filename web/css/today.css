@@ -545,7 +545,7 @@
 
 /* ---------- 专注（仅在今天有记录时出现） ---------- */
 .panel-card { padding: 16px 18px; }
-.panel-body { display: flex; flex-direction: column; gap: 2px; }
+.today-panel-body { display: flex; flex-direction: column; gap: 2px; }
 .panel-row {
   display: flex;
   align-items: baseline;
