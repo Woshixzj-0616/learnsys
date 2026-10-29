@@ -28,6 +28,7 @@ class TaskIn(BaseModel):
     mode: str = Field(default="read", pattern="^(read|write)$")
     timeout: int = Field(default=0, ge=0, le=900)
     depends_on: int = Field(default=0, ge=0)
+    project_id: int = Field(default=0, ge=0)
 
 
 class DecisionIn(BaseModel):
@@ -120,6 +121,8 @@ def create_task(req: TaskIn, _=Depends(require_token)):
 
     conn = store.connect()
     try:
+        if req.project_id and store.get_project(conn, int(req.project_id)) is None:
+            raise HTTPException(status_code=400, detail="项目不存在")
         if req.material_id:
             material = store.get_material(conn, int(req.material_id), with_body=True)
             if material is None:
@@ -138,6 +141,7 @@ def create_task(req: TaskIn, _=Depends(require_token)):
         task_id = store.add_agent_queued_task(
             conn, agent=spec.id, prompt=prompt, workspace=str(workspace),
             mode=req.mode, timeout_s=timeout_s, depends_on=req.depends_on,
+            project_id=req.project_id,
             route_json=_route_json(conn, spec, mode=req.mode, chosen=spec.id,
                                    settings=settings),
             queue_max=agents.queue_max(settings))

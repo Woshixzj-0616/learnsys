@@ -67,6 +67,7 @@ def _migrate_columns(conn: sqlite3.Connection) -> None:
         ("result_text", "TEXT NOT NULL DEFAULT ''"),
         ("runner", "TEXT NOT NULL DEFAULT ''"),
         ("heartbeat_at", "TEXT NOT NULL DEFAULT ''"),
+        ("project_id", "INTEGER NOT NULL DEFAULT 0"),
     ):
         if task_cols and column not in task_cols:
             conn.execute(f"ALTER TABLE agent_tasks ADD COLUMN {column} {ddl}")

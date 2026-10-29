@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS agent_tasks (
     depends_on  INTEGER NOT NULL DEFAULT 0,
     result_text TEXT NOT NULL DEFAULT '',
     runner      TEXT NOT NULL DEFAULT '',
-    heartbeat_at TEXT NOT NULL DEFAULT ''
+    heartbeat_at TEXT NOT NULL DEFAULT '',
+    project_id  INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_created
     ON agent_tasks (created_at DESC, id DESC);

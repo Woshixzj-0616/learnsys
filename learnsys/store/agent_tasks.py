@@ -17,7 +17,8 @@ EVENT_KINDS = ("status", "text", "tool", "error", "result")
 _TASK_COLUMNS = (
     "id, agent, prompt, workspace, mode, status, exit_code, created_at, "
     "started_at, ended_at, duration_ms, output_path, error, cost_usd, usage_json, "
-    "route_json, timeout_s, depends_on, (length(result_text) > 0)"
+    "route_json, timeout_s, depends_on, (length(result_text) > 0), project_id, "
+    "COALESCE((SELECT p.name FROM project_refs p WHERE p.id = project_id), '')"
 )
 
 _UPDATE_FIELDS = {
@@ -47,21 +48,23 @@ def _task_dict(row) -> dict:
         "cost_usd": float(row[13] or 0), "usage": _json_dict(row[14]),
         "route": _json_dict(row[15]), "timeout_s": int(row[16] or 0),
         "depends_on": int(row[17] or 0), "has_result": bool(row[18]),
+        "project_id": int(row[19] or 0), "project_name": row[20] or "",
         "parent_status": "",
     }
 
 
 def add_task(conn: sqlite3.Connection, *, agent: str, prompt: str,
              workspace: str = "", mode: str = "read", timeout_s: int = 0,
-             route_json: str = "", depends_on: int = 0) -> int:
+             route_json: str = "", depends_on: int = 0,
+             project_id: int = 0) -> int:
     with _LOCK:
         cur = conn.execute(
             "INSERT INTO agent_tasks (agent, prompt, workspace, mode, status, "
-            "created_at, route_json, timeout_s, depends_on) "
-            "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?)",
+            "created_at, route_json, timeout_s, depends_on, project_id) "
+            "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?)",
             (str(agent), str(prompt), str(workspace), str(mode), now(),
              str(route_json or ""), max(0, int(timeout_s or 0)),
-             max(0, int(depends_on or 0))))
+             max(0, int(depends_on or 0)), max(0, int(project_id or 0))))
         conn.commit()
         return int(cur.lastrowid)
 
@@ -69,7 +72,7 @@ def add_task(conn: sqlite3.Connection, *, agent: str, prompt: str,
 def add_queued(conn: sqlite3.Connection, *, agent: str, prompt: str,
                workspace: str = "", mode: str = "read", timeout_s: int = 0,
                route_json: str = "", queue_max: int = 10,
-               depends_on: int = 0) -> int | None:
+               depends_on: int = 0, project_id: int = 0) -> int | None:
     """队列未满且父任务可接续才落库；一条 SQL 同时判断与插入。
 
     返回 None 时调用方要复查父任务，区分「父不可接续」与「队列已满」。
@@ -78,13 +81,14 @@ def add_queued(conn: sqlite3.Connection, *, agent: str, prompt: str,
     with _LOCK:
         cur = conn.execute(
             "INSERT INTO agent_tasks (agent, prompt, workspace, mode, status, "
-            "created_at, route_json, timeout_s, depends_on) "
-            "SELECT ?, ?, ?, ?, 'queued', ?, ?, ?, ? "
+            "created_at, route_json, timeout_s, depends_on, project_id) "
+            "SELECT ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ? "
             "WHERE (SELECT count(*) FROM agent_tasks WHERE status = 'queued') < ? "
             "AND (? = 0 OR EXISTS (SELECT 1 FROM agent_tasks p "
             "     WHERE p.id = ? AND p.status NOT IN ('failed', 'cancelled')))",
             (str(agent), str(prompt), str(workspace), str(mode), now(),
              str(route_json or ""), max(0, int(timeout_s or 0)), parent,
+             max(0, int(project_id or 0)),
              max(1, int(queue_max or 10)), parent, parent))
         conn.commit()
         if cur.rowcount <= 0:
