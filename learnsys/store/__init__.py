@@ -72,6 +72,17 @@ from .materials import (MATERIAL_KINDS, add_material, delete_material_row, get_m
 from .memories import add_memory, delete_memory, list_memories, update_memory
 from .model_usage import add_usage as add_model_usage, day_by_model, day_totals, \
     recent as recent_model_usage
+from .personal import (CADENCES as PERSONAL_CADENCES,
+                       CARD_DOMAINS as PERSONAL_CARD_DOMAINS,
+                       FACT_KINDS as PERSONAL_FACT_KINDS,
+                       FACT_STATUSES as PERSONAL_FACT_STATUSES,
+                       PROJECT_STATUSES as PERSONAL_PROJECT_STATUSES,
+                       SUBSCRIPTION_KINDS as PERSONAL_SUBSCRIPTION_KINDS,
+                       archive_fact, due_subscriptions, get_card, get_fact,
+                       get_project, get_subscription, list_cards, list_facts,
+                       list_projects, list_subscriptions, mark_read, mark_run,
+                       set_next_step, upsert_card, upsert_fact, upsert_project,
+                       upsert_subscription)
 from .recordings import (default_title as recording_title,
                          delete_recording, get_recording, list_recordings,
                          recording_slides, recording_totals,
@@ -95,10 +106,10 @@ from .study import (add_frame_text, add_transcript, add_window_event,
 from .vocab import (add_vocab, delete_vocab, export_vocab, get_vocab, import_vocab,
                     list_vocab, update_vocab)
 from .wrongbook import (WRONG_SOURCES, add_wrong_item, delete_wrong_item,
-                        due_starred, get_wrong_item, set_wrong_mastered,
-                        toggle_ask_wrong, toggle_star, wrong_counts,
-                        wrong_due_items, wrong_fingerprint, wrong_items,
-                        wrong_material_facets)
+                        due_starred, get_wrong_item, recent_wrong_items,
+                        set_wrong_mastered, toggle_ask_wrong, toggle_star,
+                        wrong_counts, wrong_due_items, wrong_fingerprint,
+                        wrong_items, wrong_material_facets)
 
 __all__ = [
     "SCHEMA", "connect", "now", "stamp",
@@ -141,6 +152,13 @@ __all__ = [
     "list_materials", "material_counts", "set_material_path",
     "set_material_status", "touch_material", "update_material",
     "add_memory", "delete_memory", "list_memories", "update_memory",
+    "PERSONAL_FACT_KINDS", "PERSONAL_FACT_STATUSES", "PERSONAL_PROJECT_STATUSES",
+    "PERSONAL_SUBSCRIPTION_KINDS", "PERSONAL_CADENCES", "PERSONAL_CARD_DOMAINS",
+    "list_facts", "get_fact", "upsert_fact", "archive_fact",
+    "list_projects", "get_project", "upsert_project", "set_next_step",
+    "list_subscriptions", "get_subscription", "upsert_subscription",
+    "due_subscriptions", "mark_run",
+    "list_cards", "get_card", "upsert_card", "mark_read",
     "recording_title", "delete_recording", "get_recording", "list_recordings",
     "recording_slides", "recording_totals", "set_recording_analysis",
     "set_recording_material",
@@ -159,7 +177,8 @@ __all__ = [
     "add_vocab", "delete_vocab", "export_vocab", "get_vocab", "import_vocab",
     "list_vocab", "update_vocab",
     "WRONG_SOURCES", "add_wrong_item", "delete_wrong_item", "due_starred",
-    "get_wrong_item", "set_wrong_mastered", "toggle_ask_wrong", "toggle_star",
+    "get_wrong_item", "recent_wrong_items", "set_wrong_mastered",
+    "toggle_ask_wrong", "toggle_star",
     "wrong_counts", "wrong_due_items", "wrong_fingerprint", "wrong_items",
     "wrong_material_facets",
 ]

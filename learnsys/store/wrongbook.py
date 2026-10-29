@@ -159,6 +159,16 @@ def wrong_due_items(conn: sqlite3.Connection, today=None) -> list[dict]:
     return wrong_items(conn, status="due", limit=1000, today=today)
 
 
+def recent_wrong_items(conn: sqlite3.Connection, limit: int = 3) -> list[dict]:
+    """最新未掌握的几条错题；首页 / Agent 状态用，避免先读全表再截断。"""
+    limit = max(1, min(int(limit or 3), 50))
+    with _LOCK:
+        rows = conn.execute(
+            f"SELECT {_WRONG_COLUMNS} FROM wrong_items WHERE mastered = 0 "
+            "ORDER BY ts DESC, id DESC LIMIT ?", (limit,)).fetchall()
+    return _attach_review_states(conn, [_wrong_dict(row) for row in rows])
+
+
 def wrong_counts(conn: sqlite3.Connection, today=None) -> dict:
     day = str(today or dt.date.today().isoformat())[:10]
     with _LOCK:
