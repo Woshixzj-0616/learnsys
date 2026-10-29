@@ -1,35 +1,29 @@
-// 结构化上下文快照：九键白名单、截断、20KB 上限。
-// 口径与后端 `learnsys/context.py` 保持一致；页面只构造，不再自己拼大段字符串。
-
-export const MAX_BYTES = 20 * 1024;
-export const MAX_SELECTION = 2000;
-export const MAX_TITLE = 200;
-export const MAX_SURROUNDING = 1000;
-export const MAX_RECENT_ACTIONS = 20;
+// 结构化上下文快照：九键白名单与形状归一。
+// 截断与 20KB 上限**只在后端** `learnsys/context.py` 判定（唯一真相）；
+// 前端不再维护一份 MAX_* 常量，改上限只改后端一处。
 
 const KEYS = [
   "surface", "object_type", "object_id", "title", "selection",
   "surrounding", "learning_state", "recent_actions", "provenance",
 ];
 
-function text(value, cap) {
-  const raw = String(value ?? "");
-  return raw.length <= cap ? raw : raw.slice(0, cap);
+function text(value) {
+  return String(value ?? "");
 }
 
-function shortDict(value, cap) {
+function shortDict(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const out = {};
   for (const [key, item] of Object.entries(value)) {
     if (typeof key !== "string") continue;
-    if (typeof item === "string") out[key] = text(item, cap);
+    if (typeof item === "string") out[key] = text(item);
     else if (typeof item === "number" || typeof item === "boolean" || item === null) out[key] = item;
-    else if (Array.isArray(item)) out[key] = item.slice(0, 20).map((x) => text(x, cap));
+    else if (Array.isArray(item)) out[key] = item.map((x) => text(x));
     else if (item && typeof item === "object") {
       const inner = {};
       for (const [k, v] of Object.entries(item)) {
         if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
-          inner[String(k)] = text(v, cap);
+          inner[String(k)] = text(v);
         }
       }
       out[key] = inner;
@@ -39,12 +33,12 @@ function shortDict(value, cap) {
 }
 
 function action(value) {
-  if (typeof value === "string") return text(value, 300);
+  if (typeof value === "string") return text(value);
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const out = {};
     for (const [key, item] of Object.entries(value)) {
       if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") {
-        out[String(key)] = text(item, 300);
+        out[String(key)] = text(item);
       }
     }
     return out;
@@ -52,33 +46,29 @@ function action(value) {
   return null;
 }
 
-/** 按九键白名单构造快照；未知键丢弃，超 20KB 抛错。 */
+/** 按九键白名单构造快照；未知键丢弃，截断与上限由后端执行。 */
 export function buildSnapshot(fields = {}) {
   if (!fields || typeof fields !== "object" || Array.isArray(fields)) {
     throw new Error("上下文必须是对象");
   }
   const recent = [];
-  for (const item of (Array.isArray(fields.recent_actions) ? fields.recent_actions : []).slice(0, MAX_RECENT_ACTIONS)) {
+  for (const item of (Array.isArray(fields.recent_actions) ? fields.recent_actions : [])) {
     const one = action(item);
     if (one !== null) recent.push(one);
   }
   const snapshot = {
-    surface: text(fields.surface, 40),
-    object_type: text(fields.object_type, 40),
-    object_id: text(fields.object_id, 300),
-    title: text(fields.title, MAX_TITLE),
-    selection: text(fields.selection, MAX_SELECTION),
-    surrounding: shortDict(fields.surrounding, MAX_SURROUNDING),
-    learning_state: shortDict(fields.learning_state, MAX_SURROUNDING),
+    surface: text(fields.surface),
+    object_type: text(fields.object_type),
+    object_id: text(fields.object_id),
+    title: text(fields.title),
+    selection: text(fields.selection),
+    surrounding: shortDict(fields.surrounding),
+    learning_state: shortDict(fields.learning_state),
     recent_actions: recent,
-    provenance: shortDict(fields.provenance, 300),
+    provenance: shortDict(fields.provenance),
   };
   for (const key of KEYS) {
     if (!(key in snapshot)) throw new Error(`缺少上下文键：${key}`);
-  }
-  const bytes = new TextEncoder().encode(JSON.stringify(snapshot)).length;
-  if (bytes > MAX_BYTES) {
-    throw new Error("上下文太大（超过 20KB），先少选一点内容");
   }
   return snapshot;
 }

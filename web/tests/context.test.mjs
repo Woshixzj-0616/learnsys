@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { buildSnapshot, describeSnapshot, MAX_SELECTION } from "../js/context.js";
+import { buildSnapshot, describeSnapshot } from "../js/context.js";
 
 test("未知键被丢弃，九个键都在", () => {
   const snapshot = buildSnapshot({
@@ -21,33 +21,25 @@ test("未知键被丢弃，九个键都在", () => {
   );
 });
 
-test("选区截断到 2000 字", () => {
-  const snapshot = buildSnapshot({ selection: "字".repeat(MAX_SELECTION + 50) });
-  assert.equal(snapshot.selection.length, MAX_SELECTION);
+// 上限归后端（learnsys/context.py）；前端若再截一份，就会出现两个真相源。
+test("前端不截断，长文本原样交给后端", () => {
+  const long = "字".repeat(5000);
+  const snapshot = buildSnapshot({ selection: long });
+  assert.equal(snapshot.selection.length, 5000);
 });
 
-test("周围内容按值截断，保留数字", () => {
+test("前端不裁条数，最近操作原样交给后端", () => {
+  const actions = Array.from({ length: 30 }, (_, i) => `动作${i}`);
+  const snapshot = buildSnapshot({ recent_actions: actions });
+  assert.equal(snapshot.recent_actions.length, 30);
+});
+
+test("周围内容只归一形状，保留数字", () => {
   const snapshot = buildSnapshot({
     surrounding: { sentence: "a".repeat(2000), loops: 3 },
   });
-  assert.equal(snapshot.surrounding.sentence.length, 1000);
+  assert.equal(snapshot.surrounding.sentence.length, 2000);
   assert.equal(snapshot.surrounding.loops, 3);
-});
-
-test("最近操作只留前 20 条", () => {
-  const snapshot = buildSnapshot({
-    recent_actions: Array.from({ length: 30 }, (_, i) => `动作${i}`),
-  });
-  assert.equal(snapshot.recent_actions.length, 20);
-});
-
-test("超过 20KB 抛错", () => {
-  const surrounding = {};
-  for (let i = 0; i < 30; i += 1) surrounding[`k${i}`] = "x".repeat(1000);
-  assert.throws(
-    () => buildSnapshot({ surrounding }),
-    /上下文太大/,
-  );
 });
 
 test("摘要优先用标题", () => {
