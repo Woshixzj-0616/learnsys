@@ -132,10 +132,30 @@ def guess_language(code: str) -> str:
     return ""
 
 
+def _python_argv() -> list[str]:
+    """Python 解释器参数（不含脚本路径）。
+
+    源码运行时 `sys.executable` 就是解释器；打包后它指向「学习工作台.exe」，
+    直接拿来跑脚本会再启动一个工作台、最终超时。打包版必须找系统 Python：
+    依次试 `python` / `python3` / `py -3`，并排除 Windows 商店的占位 exe
+    （`WindowsApps\\python.exe` 被调用时只会打开商店）。
+    """
+    if not getattr(sys, "frozen", False):
+        return [sys.executable, "-I", "-B", "-X", "utf8"]
+    for name in ("python", "python3"):
+        found = shutil.which(name)
+        if found and "windowsapps" not in found.lower():
+            return [found, "-I", "-B", "-X", "utf8"]
+    launcher = shutil.which("py")
+    if launcher:
+        return [launcher, "-3", "-I", "-B", "-X", "utf8"]
+    return []
+
+
 def runtime_available(language: str) -> bool:
     language = normalize_language(language)
     if language == "python":
-        return bool(sys.executable)
+        return bool(_python_argv())
     if language == "cpp":
         return bool(shutil.which("g++"))
     if language == "c":
@@ -432,11 +452,17 @@ def run(language: str, code: str, *, stdin_text: str = "",
             command = str(exe)
             argv = [str(exe)]
         else:
-            command = sys.executable
             # `-I` 会忽略 PYTHONIOENCODING / PYTHONUTF8（隔离模式连环境变量也不看），
             # 英文 Windows（cp1252）下 print('你好') 会直接 UnicodeEncodeError。
             # 用命令行 `-X utf8` 强制 UTF-8 模式，和 -I 的隔离不冲突。
-            argv = [sys.executable, "-I", "-B", "-X", "utf8", str(source)]
+            py = _python_argv()
+            if not py:
+                return SandboxResult(
+                    False, language=language,
+                    note="没有找到可用的系统 Python（需要 python.exe 或 py 启动器），"
+                         "无法运行 Python 代码；C++ / C 不受影响。")
+            argv = py + [str(source)]
+            command = " ".join(argv)
 
         result = _run_process(argv, cwd=workdir, timeout=timeout,
                               output_limit=output_limit, memory_mb=memory_mb,
