@@ -105,7 +105,8 @@ class TestBriefingFeed(unittest.TestCase):
         items = feed.parse_feed(atom, mock.Mock(url="https://example.com/feed"))
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0].url, "https://example.com/b")
-        self.assertTrue(items[0].published_at)
+        # 统一按北京时间（UTC+8）存，不随运行机器时区变化。
+        self.assertEqual(items[0].published_at, "2026-10-28 10:00")
 
     def test_gbk_and_entity_rejected(self):
         gbk = ('<?xml version="1.0" encoding="gb2312"?><rss><channel>'

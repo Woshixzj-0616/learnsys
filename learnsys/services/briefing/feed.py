@@ -23,6 +23,12 @@ def _local(tag: str) -> str:
     return str(tag or "").rsplit("}", 1)[-1].lower()
 
 
+# 发布时间统一换到北京时间（UTC+8）再存。
+# 不能用 `astimezone()` 取本机时区：CI runner 是 UTC，同一份源会差 8 小时，
+# 测试和简报排序都会跟着漂。中文 RSS 按北京时间读也最符合直觉。
+BRIEFING_TZ = dt.timezone(dt.timedelta(hours=8))
+
+
 def _parse_time(value: str) -> str:
     text = str(value or "").strip()
     if not text:
@@ -42,7 +48,7 @@ def _parse_time(value: str) -> str:
     if moment is None:
         return ""
     if moment.tzinfo is not None:
-        moment = moment.astimezone().replace(tzinfo=None)
+        moment = moment.astimezone(BRIEFING_TZ).replace(tzinfo=None)
     return moment.strftime("%Y-%m-%d %H:%M")
 
 
