@@ -13,6 +13,7 @@ from PySide6 import QtGui
 
 from learnsys import config, product
 from learnsys.ask import icon as icon_mod, shortcuts, workbench
+from learnsys.ask.desktop import deep_link
 from learnsys.product import VERSION
 
 
@@ -181,6 +182,9 @@ class WebServiceMixin:
             self._warn(f"{product.PRODUCT_NAME}打不开：本地服务没起来。")
             return
         self.bar.show_message(f"正在打开{product.PRODUCT_NAME}：http://127.0.0.1:{self._web_port}/")
+        # 默认入口语义：窗口已经开在别的页，也通过深链桥叫回 #/today。
+        # 新窗口本来就从根路径落到 today，这条请求不会改变结果。
+        deep_link.post_navigate(self._web_port, "#/today")
         how = workbench.open_or_focus(self.web_url())
         if how == "默认浏览器":
             self._warn(f"没找到 Edge / Chrome，已改用默认浏览器打开{product.PRODUCT_NAME}。")

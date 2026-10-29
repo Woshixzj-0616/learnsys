@@ -75,10 +75,24 @@ class StartWebTest(unittest.TestCase):
     def test_open_web_uses_app_window(self):
         obj = _bare_app()
         obj._web_port = 8765
-        with mock.patch.object(workbench, "open_or_focus", return_value="msedge.exe") as opened:
+        with mock.patch.object(workbench, "open_or_focus", return_value="msedge.exe") as opened, \
+                mock.patch.object(web_service.deep_link, "post_navigate",
+                                  return_value=True) as navigate:
             app_mod.AskApp.open_web(obj)
         opened.assert_called_once_with("http://127.0.0.1:8765/")
+        navigate.assert_called_once_with(8765, "#/today")
         self.assertIn("学习工作台", obj.bar.messages[-1])
+
+    def test_open_web_returns_to_today_even_if_window_exists(self):
+        """默认入口：已有窗口停在别的页，也要通过深链桥回 #/today。"""
+        obj = _bare_app()
+        obj._web_port = 8765
+        with mock.patch.object(workbench, "open_or_focus",
+                               return_value="已聚焦现有学习工作台"), \
+                mock.patch.object(web_service.deep_link, "post_navigate",
+                                  return_value=True) as navigate:
+            app_mod.AskApp.open_web(obj)
+        navigate.assert_called_once_with(8765, "#/today")
 
 
 if __name__ == "__main__":
