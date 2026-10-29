@@ -3,8 +3,9 @@ import { api, download } from "../api.js";
 import { renderInto } from "../markdown.js";
 import { escapeHtml, toast } from "../ui.js";
 
-const SOURCE_LABEL = { ask: "问答收藏", quiz: "测验错题", writing: "写作错误", translation: "翻译错误", manual: "手动收录", cet6: "六级断点" };
+const SOURCE_LABEL = { ask: "问答收藏", quiz: "测验错题", writing: "写作错误", translation: "翻译错误", manual: "手动收录", cet6: "六级断点", code: "代码调试" };
 const RATING_LABELS = { 1: "忘了", 2: "模糊", 3: "记得", 4: "简单" };
+const LANGUAGE_LABEL = { cpp: "C++", c: "C", python: "Python" };
 
 let status = "due";
 let source = "";
@@ -140,6 +141,18 @@ function renderList() {
           </span>
         </button>
         <div class="wrong-card-body" hidden>
+          ${item.code ? `<div class="wrong-block wrong-code-block">
+            <h4>代码 <span class="hint">${escapeHtml(LANGUAGE_LABEL[item.language] || item.language || "自动识别")}</span></h4>
+            <pre class="wrong-code"><code>${escapeHtml(item.code)}</code></pre>
+            ${item.error_type ? `<p class="wrong-error-type">错误类型：${escapeHtml(item.error_type)}</p>` : ""}
+            ${item.test_cases ? `<pre class="wrong-cases"><code>${escapeHtml(item.test_cases)}</code></pre>` : ""}
+            <div class="wrong-run">
+              <textarea class="wrong-stdin" rows="1" placeholder="标准输入（可空）" aria-label="标准输入"></textarea>
+              <button class="btn" type="button" data-act="run">▶ 运行代码</button>
+              <span class="wrong-run-status" aria-live="polite"></span>
+            </div>
+            <pre class="wrong-run-output" hidden></pre>
+          </div>` : ""}
           <div class="wrong-block">
             <h4>正确答案</h4>
             <div class="wrong-answer"></div>
@@ -189,6 +202,10 @@ function onListClick(event) {
 }
 
 async function act(action, item, button) {
+  if (action === "run") {
+    await runCode(item, button);
+    return;
+  }
   button.disabled = true;
   try {
     if (action === "rating") {
@@ -211,6 +228,49 @@ async function act(action, item, button) {
   } catch (error) {
     button.disabled = false;
     toast(error.message || "操作没成功", "err");
+  }
+}
+
+function formatRun(data) {
+  const meta = [];
+  if (data.language) meta.push(LANGUAGE_LABEL[data.language] || data.language);
+  if (data.duration_ms) meta.push(`${data.duration_ms} 毫秒`);
+  if (data.exit_code !== null && data.exit_code !== undefined) {
+    meta.push(`退出码 ${data.exit_code}`);
+  }
+  if (data.timed_out) meta.push("超时");
+  if (data.truncated) meta.push("输出已截断");
+  const parts = [`【${data.ok ? "运行成功" : "运行失败"}】${meta.join(" · ")}`];
+  // 成功时沙箱的 note 就是「运行成功。」，与标题重复，不再单独显示。
+  if (data.note && data.note !== "运行成功。") parts.push(data.note);
+  parts.push("—— 标准输出 ——", data.stdout || "（无输出）");
+  if (data.stderr) parts.push("—— 标准错误 ——", data.stderr);
+  return parts.join("\n");
+}
+
+// 只读操作：只调用沙箱，不写错题、不记学习点、不触发评级。
+async function runCode(item, button) {
+  const card = button.closest(".wrong-card");
+  const output = card?.querySelector(".wrong-run-output");
+  const status = card?.querySelector(".wrong-run-status");
+  if (!card || !output) return;
+  button.disabled = true;
+  if (status) status.textContent = "运行中…";
+  output.hidden = false;
+  output.textContent = "运行中…";
+  try {
+    const data = await api.post("/api/code/run", {
+      language: item.language || "",
+      code: item.code || "",
+      stdin: card.querySelector(".wrong-stdin")?.value || "",
+    });
+    output.textContent = formatRun(data);
+    if (status) status.textContent = data.ok ? "运行完成" : "运行失败";
+  } catch (error) {
+    output.textContent = error.message || "运行失败";
+    if (status) status.textContent = "运行失败";
+  } finally {
+    button.disabled = false;
   }
 }
 

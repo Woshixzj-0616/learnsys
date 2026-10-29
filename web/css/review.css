@@ -285,6 +285,51 @@
 }
 .wrong-actions .btn { min-height: 32px; padding: 4px 14px; font-size: var(--fs-xs); }
 
+/* 代码题：代码块、错误类型、关键用例、运行区 */
+.wrong-code-block h4 .hint { font-weight: 400; }
+.wrong-code,
+.wrong-cases,
+.wrong-run-output {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-input);
+  color: var(--text);
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.wrong-code { overflow: auto; max-height: 320px; tab-size: 4; }
+.wrong-code code,
+.wrong-cases code { font: inherit; }
+.wrong-cases { margin-top: 8px; color: var(--text-dim); font-size: var(--fs-xs); }
+.wrong-error-type { margin: 8px 0 0; color: var(--mark); font-size: var(--fs-xs); }
+.wrong-run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.wrong-stdin {
+  flex: 1 1 220px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--bg-input);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  resize: vertical;
+}
+.wrong-run .btn { min-height: 34px; padding: 4px 14px; font-size: var(--fs-xs); }
+.wrong-run-status { color: var(--text-faint); font-size: var(--fs-xs); }
+.wrong-run-output { margin-top: 10px; color: var(--text-dim); }
+
 .quiz-msg-actions {
   display: flex;
   align-items: center;
