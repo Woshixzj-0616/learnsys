@@ -7,6 +7,8 @@
 支持：
 - **追问上下文**：`history` 带上同一张图的前几轮问答，AI 才知道「它」指谁。
 - **流式**：`ask_stream()` 边生成边吐字，界面可以逐字往出长。
+
+成功调用的用量会记进统一账本（`agent/usage.py`），与工作台共用每日成本上限。
 """
 from __future__ import annotations
 
@@ -404,6 +406,27 @@ def ask_stream(image_path: str | None, question: str, history: list | None = Non
             pass
 
 
+def _record_usage(data) -> None:
+    """把一次直连调用的 usage 记进统一账本；记账失败不影响回答。
+
+    直连路径不走 `agent.run`，所以必须自己补这一步 —— 否则托盘里的
+    「今日素材 / 术语表」花费不会进成本面板，也不受每日上限约束。
+    chat 风格 usage 在顶层，responses 风格在 `response.usage`，两处都兜。
+    """
+    usage = data.get("usage") if isinstance(data, dict) else None
+    if not isinstance(usage, dict) or not usage:
+        nested = data.get("response") if isinstance(data, dict) else None
+        usage = nested.get("usage") if isinstance(nested, dict) else None
+    if not isinstance(usage, dict) or not usage:
+        return
+    try:
+        from learnsys.agent import usage as agent_usage
+        agent_usage.record(config.DATA_ROOT, source="desktop",
+                           model=config.ASK_API_MODEL, usage=usage)
+    except Exception:  # noqa: BLE001 —— 记账失败不能挡住主流程
+        pass
+
+
 def ask(image_path: str | None, question: str, history: list | None = None,
         timeout: float | None = None, extra_images: list[str] | None = None) -> str:
     """同步问一次，拿完整答案（调用方放后台线程，别卡界面）。image_path=None = 纯文字问。"""
@@ -422,6 +445,7 @@ def ask(image_path: str | None, question: str, history: list | None = None,
             response.close()
         except Exception:
             pass
+    _record_usage(data)
     # 被长度上限掐断：模型想完了没额度写正文（推理模型的思考也吃配额）
     if _is_truncated(data, style):
         raise AskError(_TRUNCATED_MSG)
