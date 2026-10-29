@@ -33,6 +33,7 @@ class AgentRequest:
     extra_images: list[str] | None = None
     context: str = ""
     context_title: str = ""          # 上下文标题（六级传「当前学习上下文」）
+    personal_state: str = ""         # 路由层生成的三域状态（≤600 字），agent 只收字符串
     history_summary: str = ""        # 更早对话的压缩摘要（会话摘要功能写入）
     attachment_name: str = ""
     attachment_text: str = ""

@@ -14,6 +14,15 @@ MAX_SELECTION = 2000
 MAX_TITLE = 200
 MAX_SURROUNDING = 1000
 MAX_RECENT_ACTIONS = 20
+MAX_PERSONAL_STATE = 600      # Agent 每轮自动带入的个人状态上限
+
+
+def clip_personal_state(text) -> str:
+    """个人状态一律从这里截断，别处不要再写 600 这个数字。"""
+    text = str(text or "").strip()
+    if len(text) <= MAX_PERSONAL_STATE:
+        return text
+    return text[:MAX_PERSONAL_STATE - 1] + "…"
 
 _ALLOWED_KEYS = {
     "surface", "object_type", "object_id", "title", "selection",

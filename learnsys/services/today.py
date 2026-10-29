@@ -9,6 +9,7 @@ import datetime
 
 from learnsys import store
 from learnsys.knowledge import CATEGORY_NAMES
+from learnsys.services import day_plan
 from learnsys.services import knowledge as knowledge_service
 from learnsys.services import study as study_mod
 from learnsys.services import study_time, today_actions
@@ -16,14 +17,32 @@ from learnsys.store import asks as ask_store
 from learnsys.store import stats
 
 
+def learning_summary(conn, day: str = "") -> dict:
+    """学习域的共用装配：三格 / 到期复习 / 最近卡点 / 六级断点。
+
+    `/api/today` 与个人工作台 `/api/home` 都读这一份，避免两处各查一遍。
+    """
+    day = day or datetime.date.today().isoformat()
+    due = store.wrong_due_items(conn, day)
+    recent_wrong = store.recent_wrong_items(conn, limit=3)
+    return {
+        "date": day,
+        "plan": day_plan.build(conn, day, due=due),
+        "due_reviews": len(due),
+        "due_items": due,
+        "recent_wrong": recent_wrong,
+        "cet6": stats.cet6_groups(conn, day),
+        "breakpoint": stats.latest_cet6_group(conn, day),
+    }
+
+
 def payload(conn, day: str = "") -> dict:
     """一天的学习概况：时长、专注、问答、转写、六级断点、行动卡。"""
     day = day or datetime.date.today().isoformat()
+    learning = learning_summary(conn, day)
     recorded = study_time.recorded(conn, day)
     focus_stats = store.focus_stats(conn, day=day)
     recent = store.recent_asks(conn, limit=10, day=day, with_conversation=True)
-    cet6_payload = stats.cet6_groups(conn, day)
-    due = store.wrong_due_items(conn, datetime.date.today())
     return {
         "date": day,
         "study_minutes": recorded["minutes"],
@@ -41,11 +60,11 @@ def payload(conn, day: str = "") -> dict:
         "ask_count": stats.ask_count(conn, day),
         "transcripts": stats.transcript_totals(conn, day),
         "recordings": store.recording_totals(conn, day=day),
-        "due_reviews": len(due),
+        "due_reviews": learning["due_reviews"],
         "actions": today_actions.build(
-            conn, day, due,
-            {item["paper_id"] for item in cet6_payload if item["paper_id"]}),
-        "cet6": cet6_payload,
+            conn, day, learning["due_items"],
+            {item["paper_id"] for item in learning["cet6"] if item["paper_id"]}),
+        "cet6": learning["cet6"],
     }
 
 

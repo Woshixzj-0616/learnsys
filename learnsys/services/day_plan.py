@@ -129,11 +129,12 @@ def check(conn, day: str = "") -> dict:
     }
 
 
-def build(conn, day: str = "") -> dict:
+def build(conn, day: str = "", due: list | None = None) -> dict:
     """今日三格：精听 / 训练或复习 / 复盘。
 
     每格带 `done`、`detail`（人话进度）和 `minutes`（预算估算）。
     预算只用于「今天大概要花多久」，不改完成判定。
+    `due` 可由调用方传入已查好的到期列表（首页装配不重复查）。
     """
     day = str(day or datetime.date.today().isoformat())[:10]
     state = check(conn, day)
@@ -160,7 +161,8 @@ def build(conn, day: str = "") -> dict:
         "minutes": LISTEN_MINUTES, "done": state["checks"]["listen"],
     }
 
-    due = store.wrong_due_items(conn, day)
+    if due is None:
+        due = store.wrong_due_items(conn, day)
     plan = train_plan.plan(conn, day, due=due)
     task = plan.get("task") or {}
     kind = task.get("kind") or ""

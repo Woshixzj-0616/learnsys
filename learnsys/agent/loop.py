@@ -174,7 +174,8 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
                                       profile=profile, memories=memory_text,
                                       summary=request.history_summary,
                                       code_debug=code_debug,
-                                      concise=concise))
+                                      concise=concise,
+                                      personal_state=request.personal_state))
     tool_schemas = tools.schemas_for(request.mode, use_tools=request.use_tools,
                                      surface=request.surface)
     messages = _history_messages(request.history, image_text)

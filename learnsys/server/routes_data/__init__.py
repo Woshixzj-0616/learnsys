@@ -6,10 +6,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from . import cet6_context, events, overview, search, today, wrongbook
+from . import cet6_context, events, home, overview, search, today, wrongbook
 from .common import _ask_dict, _conn
 
 router = APIRouter()
+router.include_router(home.router)
 router.include_router(today.router)
 router.include_router(overview.router)
 router.include_router(events.router)

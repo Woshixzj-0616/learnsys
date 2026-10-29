@@ -17,6 +17,7 @@ from learnsys.agent import cost as agent_cost, debug_intent
 from learnsys.agent.events import AgentEvent
 from learnsys.llm.config import load_config
 from learnsys.context import ContextSnapshot
+from learnsys.services import home as home_service
 from learnsys.server.security import require_token
 from .common import _load_history, _sse, _trace_event
 from .state import (_ACTIVE, _ACTIVE_LOCK, _ACTIVE_RUNS, _CONFIRM, _CONFIRM_LOCK,
@@ -162,6 +163,13 @@ def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
         conn.close()
         raise
 
+    # 个人状态：每轮自动带入，不依赖模型主动调工具；agent 包只收这段字符串。
+    try:
+        personal_state = home_service.agent_state(conn)
+    except Exception as exc:
+        diagnostics.log_swallow("个人状态注入", exc)
+        personal_state = ""
+
     # 用户明确要求跑 / 粘贴代码在调试：沙箱内运行属于回答的一部分，不再弹确认。
     intent = debug_intent.detect(req.message)
     auto_run_code = bool(req.surface == "ask" and req.mode != "quiz"
@@ -293,6 +301,7 @@ def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
                 message=req.message,
                 history=history,
                 history_summary=history_summary,
+                personal_state=personal_state,
                 image_path=req.image_path,
                 extra_images=list(req.extra_images or []),
                 context=context_text,

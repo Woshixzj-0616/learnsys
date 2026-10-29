@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 from learnsys import knowledge
+from learnsys.context import clip_personal_state
 
 BASE_SYSTEM = """你是「学习工作台」里的学习导师，不是客服，也不是只会附和的聊天机器人。
 
@@ -213,12 +214,13 @@ def mode_label(mode: str) -> str:
 
 def build_system(mode: str = "explain", has_image: bool = False,
                  profile: str = "", *, memories: str = "", summary: str = "",
-                 code_debug: bool = False, concise: bool = True) -> str:
-    """拼系统提示词：基础口径 + 长度档 + 模式 + 篇幅示例 + 会话摘要 + 学习档案 + 长期记忆。
+                 code_debug: bool = False, concise: bool = True,
+                 personal_state: str = "") -> str:
+    """拼系统提示词：基础口径 + 长度档 + 模式 + 篇幅示例 + 会话摘要 + 学习档案 + 个人状态 + 长期记忆。
 
     `concise` 现在表示「自适应标准档」（True）还是「深入档」（False），不是「短 vs 长」。
-    `summary` 是更早对话的压缩；`memories` 放在最后：它是用户亲口强调的跨会话规矩，
-    必须压过默认风格。
+    `summary` 是更早对话的压缩；`personal_state` 由路由层生成、本轮自动带入；
+    `memories` 放在最后：它是用户亲口强调的跨会话规矩，必须压过默认风格。
     """
     parts = [BASE_SYSTEM, CONCISE_ADDITION if concise else DEEP_ADDITION]
     if code_debug:
@@ -234,6 +236,9 @@ def build_system(mode: str = "explain", has_image: bool = False,
                      + summary.strip()[:1200])
     if profile.strip():
         parts.append("【学习档案（用户自己维护 / 确认过的）】\n" + profile.strip()[:2000])
+    if personal_state.strip():
+        parts.append("【个人状态（本轮自动带入，不用再调工具核对）】\n"
+                     + clip_personal_state(personal_state))
     if memories.strip():
         parts.append(memories.strip())
     if has_image:
