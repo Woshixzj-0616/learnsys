@@ -4,11 +4,15 @@
 """
 from __future__ import annotations
 
+import pathlib
+import sqlite3
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from learnsys import store
 from learnsys.server.security import require_token
+from learnsys.services import handoff as handoff_service
 from learnsys.services import home as home_service
 from .common import _conn
 
@@ -31,6 +35,16 @@ class ProjectBody(BaseModel):
     status: str = "active"
     next_step: str = ""
     risk: str = ""
+
+
+class ProjectPatch(BaseModel):
+    """部分更新；字段缺省/为空表示不改，显式传空串才会清空。"""
+    name: str | None = None
+    repo_path: str | None = None
+    handoff_path: str | None = None
+    status: str | None = None
+    next_step: str | None = None
+    risk: str | None = None
 
 
 class SubscriptionBody(BaseModel):
@@ -117,10 +131,14 @@ def archive_fact(fact_id: int, _=Depends(require_token)):
 # --------------------------------------------------------------------- projects
 
 @router.get("/api/projects")
-def list_projects(status: str = "", _=Depends(require_token)):
+def list_projects(status: str = "active", _=Depends(require_token)):
+    """默认只列进行中；`status=all` 看全部（含已归档）。"""
     conn = _conn()
     try:
-        items = store.list_projects(conn, status=status)
+        items = store.list_projects(conn, status="" if status == "all" else status)
+        for item in items:
+            raw = str(item.get("repo_path") or "").strip()
+            item["repo_exists"] = bool(raw) and pathlib.Path(raw).is_dir()
         return {"items": items, "count": len(items)}
     finally:
         conn.close()
@@ -141,6 +159,70 @@ def save_project(body: ProjectBody, _=Depends(require_token)):
                 next_step=body.next_step, risk=body.risk)
         except ValueError as exc:
             raise _bad(str(exc)) from exc
+    finally:
+        conn.close()
+
+
+@router.patch("/api/projects/{project_id}")
+def patch_project(project_id: int, body: ProjectPatch,
+                  _=Depends(require_token)):
+    changes = body.model_dump(exclude_none=True)
+    if "status" in changes and changes["status"] not in store.PERSONAL_PROJECT_STATUSES:
+        raise _bad("项目状态只能是 active / paused / archived")
+    conn = _conn()
+    try:
+        try:
+            item = store.update_project(conn, project_id, **changes)
+        except ValueError as exc:
+            raise _bad(str(exc)) from exc
+        except sqlite3.IntegrityError as exc:
+            raise _bad("项目名已经存在") from exc
+        if item is None:
+            raise HTTPException(status_code=404, detail="没有找到这个项目")
+        return item
+    finally:
+        conn.close()
+
+
+@router.post("/api/projects/{project_id}/archive")
+def archive_project(project_id: int, _=Depends(require_token)):
+    conn = _conn()
+    try:
+        item = store.archive_project(conn, project_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="没有找到这个项目")
+        return item
+    finally:
+        conn.close()
+
+
+@router.post("/api/projects/{project_id}/handoff")
+def generate_handoff(project_id: int, _=Depends(require_token)):
+    """生成本地 HANDOFF；只写数据目录，不写回项目仓库。"""
+    conn = _conn()
+    try:
+        project = store.get_project(conn, project_id)
+        if project is None:
+            raise HTTPException(status_code=404, detail="没有找到这个项目")
+        text, path = handoff_service.write(conn, project)
+        return {"path": str(path), "text": text,
+                "project": store.get_project(conn, project_id)}
+    finally:
+        conn.close()
+
+
+@router.get("/api/projects/{project_id}/handoff")
+def read_handoff(project_id: int, _=Depends(require_token)):
+    conn = _conn()
+    try:
+        project = store.get_project(conn, project_id)
+        if project is None:
+            raise HTTPException(status_code=404, detail="没有找到这个项目")
+        path = handoff_service.output_path(project)
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail="还没有生成交接页")
+        return {"path": str(path),
+                "text": path.read_text(encoding="utf-8")}
     finally:
         conn.close()
 

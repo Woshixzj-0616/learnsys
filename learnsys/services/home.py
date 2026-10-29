@@ -38,7 +38,7 @@ def _work(conn) -> dict:
     next_step = next((item["next_step"] for item in projects
                       if item["next_step"]), "")
     return {
-        "href": "#/agents",
+        "href": "#/projects",
         "running": store.agent_tasks_running(conn),
         "queued": store.agent_tasks_queued(conn),
         "projects": projects,

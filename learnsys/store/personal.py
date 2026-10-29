@@ -201,6 +201,35 @@ def set_next_step(conn: sqlite3.Connection, project_id: int,
     return get_project(conn, project_id) if cur.rowcount else None
 
 
+_PROJECT_EDITABLE = ("name", "repo_path", "handoff_path", "status",
+                     "next_step", "risk")
+
+
+def update_project(conn: sqlite3.Connection, project_id: int,
+                   **changes) -> dict | None:
+    """部分更新项目；只认白名单字段，`None` 表示不改。
+
+    重名由表上的 UNIQUE 约束拦截，调用方把 `sqlite3.IntegrityError` 转成 400。
+    """
+    fields = [(key, str(changes[key])) for key in _PROJECT_EDITABLE
+              if key in changes and changes[key] is not None]
+    if "name" in [key for key, _ in fields] and not str(changes["name"]).strip():
+        raise ValueError("项目名不能为空")
+    if not fields:
+        return get_project(conn, project_id)
+    sets = ", ".join(f"{key} = ?" for key, _ in fields) + ", updated_at = ?"
+    args = [value for _, value in fields] + [now(), int(project_id)]
+    with _LOCK:
+        cur = conn.execute(f"UPDATE project_refs SET {sets} WHERE id = ?", args)
+        conn.commit()
+    return get_project(conn, project_id) if cur.rowcount else None
+
+
+def archive_project(conn: sqlite3.Connection, project_id: int) -> dict | None:
+    """归档不物理删除：保留路径与交接记录，默认列表不再显示。"""
+    return update_project(conn, project_id, status="archived")
+
+
 # ----------------------------------------------------------------- subscriptions
 
 def list_subscriptions(conn: sqlite3.Connection, *,

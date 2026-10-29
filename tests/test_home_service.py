@@ -39,7 +39,7 @@ class TestHomePayload(unittest.TestCase):
     def test_domain_hrefs_are_the_single_source(self):
         data = home.payload(self.conn, self.day)
         self.assertEqual(data["learning"]["href"], "#/cet6")
-        self.assertEqual(data["work"]["href"], "#/agents")
+        self.assertEqual(data["work"]["href"], "#/projects")
         self.assertEqual(data["life"]["href"], "#/briefing")
 
         item_id, _ = store.add_wrong_item(self.conn, question="到期题")
