@@ -107,6 +107,31 @@ def normalize_language(language: str) -> str:
     return aliases.get(value, value)
 
 
+def guess_language(code: str) -> str:
+    """模型偶尔漏传 / 传错 language；按代码特征补一个，别让一次运行白等。
+
+    只在「没给或给了不认识的值」时用；识别不出就返回空串，由调用方报错。
+    """
+    text = str(code or "")
+    if not text.strip():
+        return ""
+    lower = text.lower()
+    if ("def " in text and ":" in text) or "import " in lower or (
+            "print(" in lower and ";" not in text and "#include" not in lower):
+        return "python"
+    if "#include" in lower:
+        if any(word in lower for word in ("iostream", "using namespace std", "std::",
+                                          "cout", "cin", "template<", "template <")):
+            return "cpp"
+        if any(word in lower for word in ("stdio.h", "stdlib.h", "string.h", "printf(",
+                                          "scanf(", "struct ")):
+            return "c"
+        return "cpp"          # 只有 #include 时按 C++ 试，编译器会给出真实错误
+    if any(word in lower for word in ("cout", "cin", "std::", "using namespace std")):
+        return "cpp"
+    return ""
+
+
 def runtime_available(language: str) -> bool:
     language = normalize_language(language)
     if language == "python":
@@ -348,11 +373,13 @@ def run(language: str, code: str, *, stdin_text: str = "",
         output_limit: int = DEFAULT_OUTPUT_LIMIT,
         memory_mb: int = DEFAULT_MEMORY_MB) -> SandboxResult:
     """在临时目录里编译/运行一段代码；任何失败都给中文原因。"""
+    code = str(code or "")
     language = normalize_language(language)
+    if language not in LANGUAGES:
+        language = guess_language(code)          # 漏传 / 传错：按代码特征补
     if language not in LANGUAGES:
         return SandboxResult(False, language=language,
                              note=f"不支持的语言「{language}」，只支持 C++ / C / Python。")
-    code = str(code or "")
     if not code.strip():
         return SandboxResult(False, language=language, note="代码是空的。")
     if len(code.encode("utf-8", errors="replace")) > MAX_CODE_BYTES:

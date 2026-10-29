@@ -44,6 +44,7 @@ class AgentRequest:
     conversation_id: int | None = None   # 测验自动收题的去重键要用
     conversation_key: str = ""           # 快捷栏一轮对话的稳定 key
     material_id: int = 0                 # 从资料出题时，错题按资料归档
+    auto_run_code: bool = False          # 用户明确要求跑 / 代码调试：run_code 不再弹确认
 
 
 @dataclass
@@ -245,11 +246,15 @@ def _handle_tool_call(turn: _Turn, call, tool_results: list[dict], *,
 
     if call.name in tools.CONFIRM_TOOLS:
         approved = False
-        if confirm is not None:
+        if call.name == "run_code" and getattr(turn.request, "auto_run_code", False):
+            # 用户明确要求跑 / 代码调试：沙箱内自动执行，不再打断。
+            approved = True
+        elif confirm is not None:
             request_id = uuid.uuid4().hex[:12]
             yield AgentEvent("confirm", data={
                 "request_id": request_id,
                 "tool": call.name,
+                "label": tools.label_for(call.name),
                 "summary": tools.write_summary(call.name, call.input),
                 "goal": goal,
             })

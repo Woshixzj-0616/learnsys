@@ -64,15 +64,17 @@ export async function newConversation() {
 }
 
 export async function openConversation(id, options = {}) {
-  if (!id || state.streaming) {
-    if (state.streaming) toast("先停止正在写的回答，再换会话");
+  if (!id) return;
+  if (state.streaming && !options.allowStreaming) {
+    // 切页不会中断回答；这里只拦「同一页面里换会话」（会把流写到别的会话里）。
+    toast("这一轮还在生成：等它写完再换会话；切到别的页面不会中断");
     return;
   }
   try {
     const data = await api.get(`/api/conversations/${id}`);
     if (!state.mounted) return;
     state.convId = data.id;
-    state.assistant = null;
+    if (!options.allowStreaming) state.assistant = null;
     state.messages = Array.isArray(data.messages) ? data.messages : [];
     if (data.origin === "video" && data.recording_id) {
       try {

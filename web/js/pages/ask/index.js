@@ -8,14 +8,32 @@ import { closeMaterialPicker, loadMaterialPicker, onPickerKey, openMaterialPicke
 import { pickFile, renderAttachments, updateSendButton } from "./attachments.js";
 import { loadDeepStatus, runDeepAnalysis } from "./deep.js";
 import { sendMessage } from "./composer.js";
-import { stopStreaming } from "./stream.js";
+import { resumeStreamingView, stopStreaming } from "./stream.js";
 
 
 export async function mount(ctx) {
+  // 切页离开时这一轮可能还在跑：先记住，resetState 之后接回来。
+  const running = state.streaming && state.convId ? {
+    controller: state.controller,
+    assistant: state.assistant,     // 旧 DOM 块：内容完整，接回新页面即可，工具轨迹也不丢
+    convId: state.convId,
+    text: state.text,
+    thinking: state.thinking,
+    runId: state.runId,
+    startedAt: state.startedAt,
+    usedTools: new Set(state.usedTools),
+    usedVision: state.usedVision,
+    stopped: state.stopped,
+    thinkingDirty: state.thinkingDirty,
+  } : null;
+  const lastConv = state.convId;   // 切页期间跑完的会话：回来还停在这里
   resetState();
   setCtx(ctx);
   state.mounted = true;
-  state.convId = Number(ctx.params[0]) || null;
+  if (running) {
+    Object.assign(state, running, { streaming: true });
+  }
+  state.convId = running?.convId || Number(ctx.params[0]) || lastConv || null;
 
   setDom({
     thread: ctx.root.querySelector("#thread"),
@@ -46,7 +64,17 @@ export async function mount(ctx) {
   await loadConversations();
   await loadDeepStatus();
   if (state.convId) {
-    await openConversation(state.convId, { replaceHash: false, quiet: true });
+    await openConversation(state.convId, {
+      replaceHash: false, quiet: true, allowStreaming: Boolean(running),
+    });
+    if (running) {
+      // 流还在跑：把 hash 指回这轮会话，然后把已收到的正文接回新 DOM。
+      history.replaceState(null, "", `#/ask/${running.convId}`);
+      resumeStreamingView();
+    } else if (!ctx.params[0] && !ctx.query?.toString()) {
+      // 切页期间跑完再回来：hash 也落回这轮会话，刷新不会回到空页。
+      history.replaceState(null, "", `#/ask/${state.convId}`);
+    }
   } else {
     renderThread();
     setSubDefault();
@@ -90,8 +118,11 @@ export async function mount(ctx) {
 
 export function unmount() {
   state.mounted = false;
-  state.controller?.abort();
+  // 不 abort：切页只是离开视图，不是叫停这一轮。
+  // 后台继续跑（服务端也会继续并落库），回来时 mount 会把正文接回来。
+  // 真正停止只走「停止」按钮 -> stopStreaming -> /api/agent/stop。
   clearInterval(state.timer);
+  state.timer = 0;
   clearTimeout(state.pickerTimer);
   window.removeEventListener("learnsys:answer-think", onAnswerThink);
   window.removeEventListener("keydown", onPickerKey);

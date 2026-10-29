@@ -467,9 +467,11 @@ def write_summary(name: str, args: dict) -> str:
     if name == "write_study_file":
         return f"{label}：学习档案/{str(args.get('relative_path') or '').strip()[:80]}"
     if name == "run_code":
-        language = sandbox.normalize_language(args.get("language") or "")
-        label_name = sandbox.LANGUAGES.get(language, {}).get("label", language)
         code = str(args.get("code") or "")
+        language = sandbox.normalize_language(args.get("language") or "")
+        if language not in sandbox.LANGUAGES:
+            language = sandbox.guess_language(code)
+        label_name = sandbox.LANGUAGES.get(language, {}).get("label") or "代码"
         first = next((line.strip() for line in code.splitlines() if line.strip()), "")
         return (f"{label}（{label_name}，{len(code.splitlines())} 行）"
                 + (f"：{first[:60]}" if first else ""))

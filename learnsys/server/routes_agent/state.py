@@ -8,6 +8,9 @@ import threading
 
 
 _ACTIVE: dict[str, threading.Event] = {}
+# 一轮运行自己的停止开关：同一会话可以同时有多轮（多标签页 / Web + 快捷栏），
+# 停止必须按 run_id 精确命中，不能再靠 conversation_id 覆盖。
+_ACTIVE_RUNS: dict[str, threading.Event] = {}
 _ACTIVE_LOCK = threading.Lock()
 
 # 写操作确认：key = "run_id:request_id"；等用户点「允许 / 拒绝」或超时。

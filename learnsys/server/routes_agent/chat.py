@@ -2,24 +2,38 @@
 from __future__ import annotations
 
 import dataclasses
+import queue
 import threading
 import time
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+import anyio
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from learnsys import agent, diagnostics, store
-from learnsys.agent import cost as agent_cost
+from learnsys.agent import cost as agent_cost, debug_intent
+from learnsys.agent.events import AgentEvent
 from learnsys.llm.config import load_config
 from learnsys.context import ContextSnapshot
 from learnsys.server.security import require_token
 from .common import _load_history, _sse, _trace_event
-from .state import (_ACTIVE, _ACTIVE_LOCK, _CONFIRM, _CONFIRM_LOCK,
+from .state import (_ACTIVE, _ACTIVE_LOCK, _ACTIVE_RUNS, _CONFIRM, _CONFIRM_LOCK,
                     CONFIRM_WAIT_SECONDS)
 
 router = APIRouter()
+
+_RUN_END = object()      # 这一轮结束（落库已完成）
+_QUEUE_TICK = object()   # 队列暂时没事件：让订阅循环回去检查客户端还在不在
+
+
+def _take_event(events: queue.Queue):
+    """带超时地取一个事件；超时返回哨兵，订阅循环据此轮询断连。"""
+    try:
+        return events.get(timeout=0.25)
+    except queue.Empty:
+        return _QUEUE_TICK
 
 
 class ChatRequest(BaseModel):
@@ -43,6 +57,7 @@ class ChatRequest(BaseModel):
 
 class StopRequest(BaseModel):
     conversation_id: int | None = None
+    run_id: str = ""            # 精确停止某一轮；为空时退回按会话停（旧前端兼容）
 
 
 class ConfirmRequest(BaseModel):
@@ -52,8 +67,14 @@ class ConfirmRequest(BaseModel):
 
 
 @router.post("/api/agent/chat")
-def chat(req: ChatRequest, _=Depends(require_token)):
-    """一次对话；SSE 逐事件返回。客户端断开时生成器会关连接、DB 连接也会关。"""
+def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
+    """一次对话；SSE 逐事件返回。
+
+    **运行与连接解耦**：模型在后台线程里跑，SSE 只是一个订阅者。
+    浏览器切页 / 刷新 / 网络抖动导致订阅断开时，只停止发送，不停止思考；
+    这一轮会继续跑完并落库，回到问一问能看到完整回答。
+    真要停下，走 /api/agent/stop（按 run_id 精确命中）。
+    """
     snapshot = None
     if req.context_snapshot:
         try:
@@ -132,23 +153,36 @@ def chat(req: ChatRequest, _=Depends(require_token)):
         conn.close()
         raise
 
+    # 用户明确要求跑 / 粘贴代码在调试：沙箱内运行属于回答的一部分，不再弹确认。
+    intent = debug_intent.detect(req.message)
+    auto_run_code = bool(req.surface == "ask" and req.mode != "quiz"
+                         and (intent["code_debug"] or intent["run_requested"]))
+
     cfg = load_config()
     if req.surface == "cet6":
         # 六级里的「直接问」是精听现场提问，固定快模型 + 不思考；深度问答仍走主模型。
         cfg = dataclasses.replace(cfg, model=cfg.fast_model or cfg.model,
                                   thinking=False, speed="fast")
+    started = time.monotonic()
+    run_id = uuid.uuid4().hex
+    started_at = store.now()
     abort = threading.Event()
     key = str(conv_id)
     with _ACTIVE_LOCK:
         _ACTIVE[key] = abort
-    started = time.monotonic()
-    run_id = uuid.uuid4().hex
-    started_at = store.now()
+        _ACTIVE_RUNS[run_id] = abort
 
-    def stream():
+    events: queue.Queue = queue.Queue()
+
+    def worker():
+        """真正跑模型的地方：与 HTTP 连接无关。
+
+        连接断了只会让下面的订阅循环退出，这里照常跑完、照常落库。
+        """
         final = ""
         error = ""
         thinking = ""
+        partial = ""             # 已流出的正文（异常时也要保住，不能只留一句报错）
         first_ms = None          # 首个可见片段（思考或正文）到达的耗时，闸门要量「首 token」
         usage: dict = {}
         steps = 0
@@ -162,6 +196,7 @@ def chat(req: ChatRequest, _=Depends(require_token)):
         run_cost = 0.0
         run_currency = ""
         trace: list[dict] = []
+        persisted = False
 
         def ask_confirm(request_id: str, tool_name: str, args: dict) -> bool:
             """阻塞等界面点确认；超时 / 停止都按拒绝处理。"""
@@ -181,65 +216,13 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 with _CONFIRM_LOCK:
                     _CONFIRM.pop(slot_key, None)
 
-        try:
-            yield _sse("start", data={"conversation_id": conv_id, "model": cfg.model,
-                                      "run_id": run_id})
-            request = agent.AgentRequest(
-                message=req.message,
-                history=history,
-                history_summary=history_summary,
-                image_path=req.image_path,
-                extra_images=list(req.extra_images or []),
-                context=context_text,
-                context_title=context_title,
-                attachment_name=attachment_name,
-                attachment_text=attachment_text,
-                mode=req.mode,
-                module=module,
-                surface=req.surface,
-                conversation_id=conv_id,
-                conversation_key=str(conv_id),
-                material_id=material_id or 0,
-            )
-            for event in agent.run(request, cfg=cfg, abort=abort,
-                                   confirm=ask_confirm):
-                if first_ms is None and event.kind in ("text", "thinking"):
-                    first_ms = int((time.monotonic() - started) * 1000)
-                data = dict(event.data or {})
-                if event.kind == "confirm":
-                    data["run_id"] = run_id
-                trace_item = _trace_event(event)
-                if trace_item is not None:
-                    trace.append(trace_item)
-                yield _sse(event.kind, event.text, data)
-                if event.kind == "route":
-                    routed_model = str(data.get("model") or "") or routed_model
-                elif event.kind == "check":
-                    check_ok = bool(data.get("ok"))
-                elif event.kind == "tool_end":
-                    if data.get("ok") is False:
-                        error_count += 1
-                elif event.kind == "done":
-                    final = str(data.get("text") or "")
-                    thinking = str(data.get("thinking") or "")
-                    usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
-                    usage_by_model = (data.get("usage_by_model")
-                                      if isinstance(data.get("usage_by_model"), dict) else {})
-                    run_cost = float(data.get("cost") or 0)
-                    run_currency = str(data.get("currency") or "")
-                    steps = int(data.get("steps") or 0)
-                    model_calls = int(data.get("model_calls") or 0)
-                    tool_count = int(data.get("tool_calls") or 0)
-                    stop_reason = str(data.get("stop_reason") or "")
-                elif event.kind == "error":
-                    error = event.text
-                    error_count += 1
-        except Exception as exc:                 # 不让异常把 SSE 流撕成半截
-            error = f"服务端出错：{exc}"
-            yield _sse("error", error)
-        finally:
-            with _ACTIVE_LOCK:
-                _ACTIVE.pop(key, None)
+        def persist():
+            """落库只做一次；done 时先落库再通知前端，回来重读能看到完整回答。"""
+            nonlocal persisted
+            if persisted:
+                return
+            persisted = True
+            schedule_post = not req.internal
             try:
                 total_ms = int((time.monotonic() - started) * 1000)
                 if run_cost or usage_by_model:
@@ -269,8 +252,17 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                             image_path=req.image_path or "", thread=str(conv_id),
                             conversation_id=conv_id, first_ms=first_ms)
                 elif error:
-                    store.add_message(conn, conv_id, "assistant", {"error": error})
-                schedule_post = not req.internal
+                    payload = {"error": error, "run_id": run_id}
+                    if partial.strip():
+                        # 中途断流 / 模型出错：已经写给用户看的正文不能丢。
+                        payload["text"] = partial
+                        payload["interrupted"] = True
+                    store.add_message(conn, conv_id, "assistant", payload)
+                elif partial.strip():
+                    # 用户点停止时 agent 会发 done(aborted)；这里兜住没有 done 的极端情况。
+                    store.add_message(conn, conv_id, "assistant",
+                                      {"text": partial, "run_id": run_id,
+                                       "interrupted": True})
             except Exception as exc:
                 diagnostics.log_swallow("对话落库（消息/问答）", exc)
                 schedule_post = False
@@ -283,14 +275,107 @@ def chat(req: ChatRequest, _=Depends(require_token)):
                 except Exception as exc:
                     diagnostics.log_swallow("会话摘要/记忆排程", exc)
 
+        try:
+            events.put(("start", "", {"conversation_id": conv_id,
+                                      "model": cfg.model, "run_id": run_id}))
+            agent_request = agent.AgentRequest(
+                message=req.message,
+                history=history,
+                history_summary=history_summary,
+                image_path=req.image_path,
+                extra_images=list(req.extra_images or []),
+                context=context_text,
+                context_title=context_title,
+                attachment_name=attachment_name,
+                attachment_text=attachment_text,
+                mode=req.mode,
+                module=module,
+                surface=req.surface,
+                conversation_id=conv_id,
+                conversation_key=str(conv_id),
+                material_id=material_id or 0,
+                auto_run_code=auto_run_code,
+            )
+            for event in agent.run(agent_request, cfg=cfg, abort=abort,
+                                   confirm=ask_confirm):
+                if first_ms is None and event.kind in ("text", "thinking"):
+                    first_ms = int((time.monotonic() - started) * 1000)
+                data = dict(event.data or {})
+                if event.kind == "confirm":
+                    data["run_id"] = run_id
+                trace_item = _trace_event(event)
+                if trace_item is not None:
+                    trace.append(trace_item)
+                if event.kind == "text":
+                    partial += event.text or ""
+                if event.kind == "route":
+                    routed_model = str(data.get("model") or "") or routed_model
+                elif event.kind == "check":
+                    check_ok = bool(data.get("ok"))
+                elif event.kind == "tool_end":
+                    if data.get("ok") is False:
+                        error_count += 1
+                elif event.kind == "done":
+                    final = str(data.get("text") or "")
+                    thinking = str(data.get("thinking") or "")
+                    usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
+                    usage_by_model = (data.get("usage_by_model")
+                                      if isinstance(data.get("usage_by_model"), dict) else {})
+                    run_cost = float(data.get("cost") or 0)
+                    run_currency = str(data.get("currency") or "")
+                    steps = int(data.get("steps") or 0)
+                    model_calls = int(data.get("model_calls") or 0)
+                    tool_count = int(data.get("tool_calls") or 0)
+                    stop_reason = str(data.get("stop_reason") or "")
+                    persist()               # 先写库，再让前端收到 done
+                elif event.kind == "error":
+                    error = event.text
+                    error_count += 1
+                events.put((event.kind, event.text, data))
+        except Exception as exc:                 # 不让异常把这一轮撕成半截
+            error = f"服务端出错：{exc}"
+            events.put(("error", error, {}))
+        finally:
+            with _ACTIVE_LOCK:
+                _ACTIVE.pop(key, None)
+                _ACTIVE_RUNS.pop(run_id, None)
+            persist()
+            events.put(_RUN_END)
+
+    threading.Thread(target=worker, daemon=True, name=f"chat-{run_id}").start()
+
+    async def subscribe():
+        """只负责把事件转给浏览器；断开就退订，不碰后台那一轮。"""
+        while True:
+            if await request.is_disconnected():
+                return
+            item = await anyio.to_thread.run_sync(_take_event, events)
+            if item is _QUEUE_TICK:
+                continue
+            batch = [item]
+            while True:
+                try:
+                    batch.append(events.get_nowait())
+                except queue.Empty:
+                    break
+            for event in batch:
+                if event is _RUN_END:
+                    return
+                kind, text, data = event
+                yield _sse(kind, text, data)
+
     headers = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
-    return StreamingResponse(stream(), media_type="text/event-stream", headers=headers)
+    return StreamingResponse(subscribe(), media_type="text/event-stream", headers=headers)
 
 
 @router.post("/api/agent/stop")
 def stop(req: StopRequest, _=Depends(require_token)):
+    """停止一轮运行：优先按 run_id 精确命中，旧前端仍可按会话停。"""
     with _ACTIVE_LOCK:
-        if req.conversation_id is not None:
+        if req.run_id:
+            event = _ACTIVE_RUNS.get(str(req.run_id))
+            targets = [event] if event is not None else []
+        elif req.conversation_id is not None:
             event = _ACTIVE.get(str(req.conversation_id))
             targets = [event] if event is not None else []
         else:

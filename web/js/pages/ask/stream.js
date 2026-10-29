@@ -2,11 +2,21 @@
 import { streamChat, stopChat } from "../../api.js";
 import { state, dom, TOOL_NAMES } from "./state.js";
 import { addSource, addToolRow, attachReplay, createAssistantBlock,
-         paintAssistant, renderPlan, setAssistantStatus, showCheck,
+         paintAssistant, renderPlan, scrollBottom, setAssistantStatus, showCheck,
          updateToolPreview } from "./thread.js";
 import { loadConversations } from "./conversations.js";
 import { updateSendButton } from "./attachments.js";
 
+
+function startTimer() {
+  clearInterval(state.timer);
+  state.timer = setInterval(() => {
+    if (!state.assistant || !state.streaming) return;
+    const seconds = Math.max(1, Math.round((Date.now() - state.startedAt) / 1000));
+    const label = state.text ? "正在写" : "思考中";
+    setAssistantStatus(state.assistant, `${label} · ${seconds} 秒`, true);
+  }, 1000);
+}
 
 export async function startStreaming(payload) {
   state.streaming = true;
@@ -25,13 +35,7 @@ export async function startStreaming(payload) {
   dom.stop.hidden = false;
   dom.mode.disabled = true;
   updateSendButton();
-
-  state.timer = setInterval(() => {
-    if (!state.assistant) return;
-    const seconds = Math.max(1, Math.round((Date.now() - state.startedAt) / 1000));
-    const label = state.text ? "正在写" : "思考中";
-    setAssistantStatus(state.assistant, `${label} · ${seconds} 秒`, true);
-  }, 1000);
+  startTimer();
 
   state.controller = new AbortController();
   let paintTimer = 0;
@@ -130,6 +134,47 @@ export async function startStreaming(payload) {
   }
 }
 
+export function resumeStreamingView() {
+  /* 切页回来：把这一轮的块接回新页面（旧块内容完整，工具轨迹也还在）。
+     流还在跑就继续写它；恰好已经跑完就显示收尾状态。 */
+  let block = state.assistant;
+  if (!block) {
+    block = createAssistantBlock();
+    state.assistant = block;
+    if (state.thinking) {
+      block.thinkingEl.hidden = false;
+      block.thinkingEl.open = !state.text;
+      block.thinkingPre.textContent = state.thinking;
+    }
+    paintAssistant(true);
+  } else if (block.wrap && !block.wrap.isConnected) {
+    dom.inner.appendChild(block.wrap);
+  }
+  if (state.streaming) {
+    setAssistantStatus(block, state.text ? "正在写" : "思考中", true);
+    dom.input.disabled = true;
+    dom.send.hidden = true;
+    dom.stop.hidden = false;
+    dom.mode.disabled = true;
+    updateSendButton();
+    startTimer();
+  } else {
+    dom.input.disabled = false;
+    dom.send.hidden = false;
+    dom.stop.hidden = true;
+    dom.mode.disabled = false;
+    updateSendButton();
+  }
+  scrollBottom(true);
+}
+
+function alreadySaved() {
+  /* 切页期间流结束了：重新打开会话会从库里读到同一条回答，别再塞一份。 */
+  const last = state.messages[state.messages.length - 1];
+  return Boolean(last && last.role === "assistant"
+    && last.content && last.content.run_id === state.runId);
+}
+
 export function finishStreaming(block, ok, note = "") {
   if (!state.streaming) return;
   state.streaming = false;
@@ -149,7 +194,7 @@ export function finishStreaming(block, ok, note = "") {
     setAssistantStatus(block, note || `用了 ${seconds} 秒`);
     for (const name of state.usedTools) addSource(block, TOOL_NAMES[name] || name);
     if (state.usedVision) addSource(block, "视觉模型");
-    if (state.text) {
+    if (state.text && !alreadySaved()) {
       state.messages.push({ role: "assistant", content: {
         text: state.text, thinking: state.thinking, run_id: state.runId || undefined } });
     }
@@ -158,13 +203,15 @@ export function finishStreaming(block, ok, note = "") {
     setAssistantStatus(block, note || "已停止");
     if (state.text) {
       paintAssistant(true);
-      state.messages.push({ role: "assistant", content: {
-        text: state.text, thinking: state.thinking, run_id: state.runId || undefined } });
+      if (!alreadySaved()) {
+        state.messages.push({ role: "assistant", content: {
+          text: state.text, thinking: state.thinking, run_id: state.runId || undefined } });
+      }
     }
   }
 
   if (state.convId) loadConversations();
-  dom.input.focus();
+  if (state.mounted) dom.input.focus();
 }
 
 export function showStreamError(block, message) {
@@ -191,7 +238,7 @@ export async function stopStreaming() {
   dom.status.textContent = "正在停止…";
   state.controller?.abort();
   try {
-    await stopChat(state.convId);
+    await stopChat(state.runId, state.convId);
   } catch {
     // 已经断了就不用再报
   }

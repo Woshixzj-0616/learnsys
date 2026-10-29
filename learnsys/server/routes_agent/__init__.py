@@ -12,8 +12,8 @@ from learnsys import agent
 from . import chat, conversations, deep, runs
 from .chat import ChatRequest, ConfirmRequest, StopRequest
 from .common import _clip, _load_history, _sse, _trace_event
-from .state import (_ACTIVE, _ACTIVE_LOCK, _CONFIRM, _CONFIRM_LOCK, _TRACE_KINDS,
-                    CONFIRM_WAIT_SECONDS)
+from .state import (_ACTIVE, _ACTIVE_LOCK, _ACTIVE_RUNS, _CONFIRM, _CONFIRM_LOCK,
+                    _TRACE_KINDS, CONFIRM_WAIT_SECONDS)
 
 router = APIRouter()
 router.include_router(chat.router)
@@ -23,6 +23,7 @@ router.include_router(conversations.router)
 
 __all__ = [
     "router", "agent", "ChatRequest", "StopRequest", "ConfirmRequest",
-    "_ACTIVE", "_ACTIVE_LOCK", "_CONFIRM", "_CONFIRM_LOCK", "CONFIRM_WAIT_SECONDS",
+    "_ACTIVE", "_ACTIVE_LOCK", "_ACTIVE_RUNS", "_CONFIRM", "_CONFIRM_LOCK",
+    "CONFIRM_WAIT_SECONDS",
     "_TRACE_KINDS", "_sse", "_clip", "_trace_event", "_load_history",
 ]

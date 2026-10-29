@@ -93,17 +93,134 @@ export async function upload(file) {
   });
 }
 
-/** 写操作确认：原生确认框 → 告诉后台允许/拒绝。四个页面共用这一处。 */
-function askWriteConfirm(data) {
-  const summary = String(data.summary || "这次写入");
-  const allowed = window.confirm(`${summary}\n\n允许这次写入吗？`);
-  api.post("/api/agent/confirm", {
+/* ---- 写操作确认：非阻塞卡片，四个页面共用 ----
+   之前用 window.confirm：同步阻塞整个页面，流式渲染停住，切页/关标签后确认就丢了。
+   现在放在 body 上排队显示，SSE 继续收；超时按拒绝处理（后端 120 秒）。 */
+const CONFIRM_SECONDS = 120;
+const RUN_CODE_ALLOW_KEY = "learnsys_allow_run_code";
+const confirmQueue = [];
+let activeConfirm = null;
+let confirmTimer = 0;
+
+function postConfirm(data, approve) {
+  return api.post("/api/agent/confirm", {
     run_id: data.run_id || "",
     request_id: data.request_id || "",
-    approve: allowed,
-  }).catch((error) => {
-    console.warn("写入确认没有送到后台（可能已超时）", error);
+    approve: Boolean(approve),
   });
+}
+
+function confirmNotice(text) {
+  let node = document.getElementById("confirm-notice");
+  if (!node) {
+    node = document.createElement("div");
+    node.id = "confirm-notice";
+    node.className = "confirm-notice";
+    document.body.appendChild(node);
+  }
+  node.textContent = String(text || "");
+  node.hidden = false;
+  clearTimeout(confirmNotice.timer);
+  confirmNotice.timer = setTimeout(() => { node.hidden = true; }, 3600);
+}
+
+function confirmCard() {
+  let card = document.getElementById("confirm-card");
+  if (card) return card;
+  card = document.createElement("div");
+  card.id = "confirm-card";
+  card.className = "confirm-card";
+  card.setAttribute("role", "group");
+  card.setAttribute("aria-live", "assertive");
+  card.innerHTML = `
+    <div class="confirm-head">
+      <span class="confirm-label"></span>
+      <span class="confirm-left"></span>
+    </div>
+    <div class="confirm-summary"></div>
+    <div class="confirm-hint"></div>
+    <div class="confirm-actions">
+      <button type="button" class="btn btn-primary" data-act="allow">允许一次</button>
+      <button type="button" class="btn" data-act="allow-session" hidden>本页面内不再询问</button>
+      <button type="button" class="btn btn-quiet" data-act="deny">拒绝</button>
+    </div>
+    <div class="confirm-error" hidden></div>`;
+  document.body.appendChild(card);
+  card.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-act]");
+    if (!button || !activeConfirm) return;
+    const act = button.dataset.act;
+    if (act === "allow-session") {
+      sessionStorage.setItem(RUN_CODE_ALLOW_KEY, "1");
+      confirmNotice("本页面内运行代码不再询问（刷新页面后恢复）");
+      finishConfirm(true);
+    } else if (act === "allow") {
+      finishConfirm(true);
+    } else {
+      finishConfirm(false);
+    }
+  });
+  return card;
+}
+
+function finishConfirm(approve, note = "") {
+  const data = activeConfirm;
+  if (!data) return;
+  clearInterval(confirmTimer);
+  confirmTimer = 0;
+  activeConfirm = null;
+  const card = document.getElementById("confirm-card");
+  if (card) card.hidden = true;
+  postConfirm(data, approve).catch((error) => {
+    // 用户已经做了选择，但后台没收到：明确说出来，不要静默。
+    confirmNotice(`确认没有送到后台：${error?.message || "可能已超时"}`);
+  });
+  if (note) confirmNotice(note);
+  pumpConfirm();
+}
+
+function renderConfirm(data) {
+  const card = confirmCard();
+  card.hidden = false;
+  card.querySelector(".confirm-label").textContent = String(data.label || "需要你确认");
+  card.querySelector(".confirm-summary").textContent = String(data.summary || "这次操作");
+  card.querySelector(".confirm-hint").textContent = data.tool === "run_code"
+    ? "在临时目录运行，默认禁网、有超时，不改你的学习数据。"
+    : "这一步会修改本机数据，确认后才会执行。";
+  const sessionButton = card.querySelector('[data-act="allow-session"]');
+  sessionButton.hidden = data.tool !== "run_code";
+  const errorNode = card.querySelector(".confirm-error");
+  errorNode.hidden = true;
+  const left = card.querySelector(".confirm-left");
+  let remaining = CONFIRM_SECONDS;
+  left.textContent = `${remaining} 秒`;
+  clearInterval(confirmTimer);
+  confirmTimer = setInterval(() => {
+    remaining -= 1;
+    left.textContent = `${Math.max(0, remaining)} 秒`;
+    if (remaining <= 0) {
+      finishConfirm(false, "确认超时，已按拒绝处理");
+    }
+  }, 1000);
+}
+
+function pumpConfirm() {
+  if (activeConfirm) return;
+  const data = confirmQueue.shift();
+  if (!data) return;
+  activeConfirm = data;
+  renderConfirm(data);
+}
+
+function askWriteConfirm(data) {
+  if (data?.tool === "run_code" && sessionStorage.getItem(RUN_CODE_ALLOW_KEY) === "1") {
+    postConfirm(data, true).catch((error) => {
+      confirmNotice(`自动允许运行代码失败：${error?.message || "可能已超时"}`);
+    });
+    return;
+  }
+  confirmQueue.push(data || {});
+  pumpConfirm();
 }
 
 /**
@@ -164,6 +281,9 @@ export async function streamChat(body, onEvent, signal) {
   if (buffer.trim()) dispatch(buffer);
 }
 
-export function stopChat(conversationId) {
-  return api.post("/api/agent/stop", { conversation_id: conversationId ?? null });
+export function stopChat(runId, conversationId) {
+  return api.post("/api/agent/stop", {
+    run_id: runId || "",
+    conversation_id: conversationId ?? null,
+  });
 }

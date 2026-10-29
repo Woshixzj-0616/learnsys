@@ -478,3 +478,58 @@ kbd {
   .topbar-actions { gap: 6px; }
   .view { padding: 18px 16px 48px; }
 }
+
+/* ---- 写操作确认卡：非阻塞，切页也在 ---- */
+.confirm-card {
+  position: fixed;
+  right: 24px;
+  bottom: 96px;
+  z-index: 90;
+  width: min(420px, calc(100vw - 32px));
+  padding: 16px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .28);
+}
+.confirm-card[hidden] { display: none; }
+.confirm-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+.confirm-label { font-weight: 600; color: var(--text); }
+.confirm-left { font-variant-numeric: tabular-nums; }
+.confirm-summary {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.55;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.confirm-hint { margin-top: 6px; font-size: 12px; color: var(--text-faint); }
+.confirm-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.confirm-error { margin-top: 10px; font-size: 12px; color: var(--err); }
+.confirm-notice {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 95;
+  transform: translateX(-50%);
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 9px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .22);
+}
+.confirm-notice[hidden] { display: none; }
+@media (max-width: 720px) {
+  .confirm-card { right: 12px; bottom: 84px; width: calc(100vw - 24px); }
+}

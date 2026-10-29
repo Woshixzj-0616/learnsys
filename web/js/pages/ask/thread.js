@@ -52,6 +52,11 @@ export function renderThread() {
           block.thinkingEl.hidden = false;
           block.thinkingPre.textContent = thinking;
         }
+        if (message.content?.error) {
+          // 中途断流 / 模型出错：正文保留，下面补一条原因，不假装回答完整。
+          block.error.hidden = false;
+          block.error.textContent = `生成中断：${message.content.error}`;
+        }
         dom.inner.appendChild(block.wrap);
         if (message.content?.run_id) attachReplay(block, message.content.run_id);
       } else if (message.content?.error) {
