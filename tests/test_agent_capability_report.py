@@ -35,7 +35,7 @@ class CapabilityReportTest(unittest.TestCase):
         self.assertEqual(data["perception"]["recordings"], 0)
         self.assertFalse(data["perception"]["vision_ready"])
         self.assertEqual(data["memory"]["memories_active"], 0)
-        self.assertEqual(data["tools"]["total"], 29)
+        self.assertEqual(data["tools"]["total"], 30)
         self.assertEqual(data["perception"]["web_tools"], ["fetch_url", "web_search"])
         self.assertEqual(data["tools"]["surface_quickbar"], 18)
         self.assertEqual(data["tools"]["mcp_tools"], 5)

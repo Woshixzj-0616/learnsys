@@ -136,6 +136,13 @@ class TestAgentState(unittest.TestCase):
         self.assertEqual(len(present), 2, "项目最多写 2 个")
         self.assertIn("AI 新闻", text)
 
+    def test_multiline_question_is_flattened(self):
+        store.add_wrong_item(
+            self.conn, question="第一行\n第二行代码\nprint(1)", answer="")
+        text = home.agent_state(self.conn, self.day)
+        self.assertIn("- 第一行 第二行代码 print(1)", text)
+        self.assertNotIn("- 第一行\n", text, "卡点不能把换行带进状态串")
+
     def test_long_state_is_clipped(self):
         for index in range(5):
             store.upsert_project(

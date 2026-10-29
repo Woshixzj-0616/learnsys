@@ -8,36 +8,61 @@ from learnsys.services import knowledge, train_plan, train_stats
 from .context import ToolContext, _one_line, _stamp
 
 
-def save_wrongbook(question: str, my_answer: str, correct_answer: str = "",
-                   tags: str = "", *, ctx: ToolContext) -> str:
-    """测验判错时把题收进错题本；同会话同题只收一次。"""
-    if ctx.mode != "quiz":
-        return "只有测验模式能自动收错题。"
+def save_wrongbook(question: str, my_answer: str = "",
+                   correct_answer: str = "", tags: str = "", *,
+                   code: str = "", language: str = "",
+                   error_type: str = "", test_cases: str = "",
+                   ctx: ToolContext) -> str:
+    """把值得复习的错误收进错题本 / 复习队列；测验、问答、代码调试共用。
+
+    同 `source + 会话 + 题干(+代码)` 只收一次；保存后立刻补 FSRS 初始状态。
+    """
+    if ctx.mode == "quick":
+        return "速答模式不写复习卡；切到讲解或测验模式再收。"
     question = str(question or "").strip()
     my_answer = str(my_answer or "").strip()
-    if not question or not my_answer:
-        return "缺少题目或我的作答，没有保存。"
+    correct_answer = str(correct_answer or "").strip()
+    code = str(code or "").strip()
+    if not question:
+        return "缺少题目或现象，没有收进复习。"
+    if not (my_answer or code or correct_answer):
+        return "缺少代码或作答，没有收进复习。"
+    language = str(language or "").strip().lower()
+    if language not in ("cpp", "c", "python"):
+        language = ""
     ref = str(ctx.conversation_id or ctx.conversation_key or "0")
-    fingerprint = store.wrong_fingerprint(question)
-    key = f"{ref}:{fingerprint}"
+    fingerprint = store.wrong_fingerprint(
+        question if not code else question + "\n" + code)
+    source = "quiz" if ctx.mode == "quiz" else ("code" if code else "manual")
+    key = f"{source}:{ref}:{fingerprint}"
     if key in ctx.saved:
         return "这道题本轮已经收过了，不用重复收。"
     conn = None
+    seeded = True
     try:
         conn = store.connect(ctx.db_path)
         item_id, created = store.add_wrong_item(
             conn, question=question, answer=correct_answer, my_answer=my_answer,
-            tags=tags, source="quiz", source_id=f"quiz:{ref}:{fingerprint}",
-            auto=True, material_id=ctx.material_id)
+            tags=tags, source=source, source_id=f"{source}:{ref}:{fingerprint}",
+            auto=ctx.mode == "quiz", material_id=ctx.material_id,
+            code=code, language=language, error_type=str(error_type or ""),
+            test_cases=str(test_cases or ""))
+        if created:
+            try:
+                store.seed_review_states(conn)
+            except Exception:
+                seeded = False
     except Exception as exc:
-        return f"错题本保存失败：{exc}"
+        return f"复习卡保存失败：{exc}"
     finally:
         if conn is not None:
             conn.close()
     ctx.saved.add(key)
-    if created:
-        return f"已收进错题本（#{item_id}）。"
-    return f"这道题已经在错题本里（#{item_id}），没有重复添加。"
+    if not created:
+        return f"这道题已经收过（#{item_id}），没有重复添加。"
+    if seeded:
+        return f"已收进复习（#{item_id}）。明天会出现在复习队列。"
+    return f"已收进复习（#{item_id}），复习排期稍后自动补。"
 
 
 def get_cet6_context(paper_id: str = "", section: str = "", item: str = "",
@@ -167,12 +192,20 @@ def recent_wrong_items(limit: int = 8, days: int = 0, material_id: int = 0,
                     if item.get("material_title") else "")
         tags = f" ｜ 标签：{item['tags']}" if item.get("tags") else ""
         state = "已掌握" if item.get("mastered") else "待复习"
-        lines.append(
+        detail = [
             f"\n错题 #{item['id']} ｜ {_stamp(item.get('ts'))} ｜ {state}"
-            f"{material}{tags}\n"
-            f"题目：{_one_line(item.get('question'), 300)}\n"
-            f"正确答案：{_one_line(item.get('answer'), 200)}\n"
-            f"我的作答：{_one_line(item.get('my_answer'), 200)}")
+            f"{material}{tags}",
+            f"题目：{_one_line(item.get('question'), 300)}",
+            f"正确答案：{_one_line(item.get('answer'), 200)}",
+            f"我的作答：{_one_line(item.get('my_answer'), 200)}",
+        ]
+        if item.get("error_type"):
+            detail.append(f"错误类型：{_one_line(item.get('error_type'), 80)}")
+        if item.get("code"):
+            detail.append(f"代码：{_one_line(item.get('code'), 400)}")
+        if item.get("test_cases"):
+            detail.append(f"关键用例：{_one_line(item.get('test_cases'), 300)}")
+        lines.append("\n".join(detail))
     lines.append("（以上是错题本原文，不要改写题目；引用时写「错题 #编号」。）")
     return "\n".join(lines)
 

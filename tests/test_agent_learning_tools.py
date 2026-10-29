@@ -104,8 +104,12 @@ class ToolPruningTest(unittest.TestCase):
     def test_ask_has_full_tools(self):
         names = self.names("explain", "ask")
         for name in ("run_code", "open_file", "write_study_file",
-                     "due_reviews", "get_mastery"):
+                     "due_reviews", "get_mastery", "save_wrongbook"):
             self.assertIn(name, names)
+
+    def test_quick_mode_has_no_wrongbook_write(self):
+        names = self.names("quick", "ask")
+        self.assertNotIn("save_wrongbook", names)
 
     def test_quiz_keeps_wrongbook_but_not_system(self):
         names = self.names("quiz", "ask")

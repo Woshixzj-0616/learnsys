@@ -203,24 +203,32 @@ BROWSER_HISTORY_SCHEMA = {
 SAVE_WRONGBOOK_SCHEMA = {
     "name": "save_wrongbook",
     "description": (
-        "把刚批改错的测验题收进错题本。只在用户答错或部分答错时调用；"
-        "同一道题只调用一次，答对不要调用。"
+        "把值得复习的错误收进复习队列（错题本）。测验判错、代码调试定位到错误、"
+        "用户说「收进复习 / 把这个错误收起来」时调用；同一道题只调用一次。"
+        "代码题把原代码放 code、错误类型放 error_type、关键用例放 test_cases。"
     ),
     "input_schema": {
         "type": "object",
         "properties": {
             "question": {"type": "string",
-                         "description": "完整题目原文，不要改写，不要带【第N题】前缀和【知识点】行"},
+                         "description": "完整题目原文或错误现象，不要改写，不要带【第N题】前缀"},
             "correct_answer": {"type": "string",
-                               "description": "正确答案；不确定可留空"},
+                               "description": "正确答案 / 正确写法；不确定可留空"},
             "my_answer": {"type": "string",
-                          "description": "用户这题的作答原文"},
+                          "description": "用户这题的作答原文；纯代码题可留空"},
             "tags": {"type": "string",
                      "description": "知识点类目，逗号分隔；只能从："
                                     + "、".join(knowledge.CATEGORY_NAMES)
                                     + " 中选 1–3 个"},
+            "code": {"type": "string",
+                     "description": "代码题：用户原始代码（不要补全或改写）"},
+            "language": {"type": "string", "enum": ["cpp", "c", "python"]},
+            "error_type": {"type": "string",
+                           "description": "错误类型：语法 / 边界 / 超时 / 逻辑 / 空指针 / 其他"},
+            "test_cases": {"type": "string",
+                           "description": "关键用例：输入 → 实际输出 → 期望输出（纯文本）"},
         },
-        "required": ["question", "correct_answer", "my_answer"],
+        "required": ["question"],
     },
 }
 
@@ -366,7 +374,7 @@ WRITE_TOOLS = {"save_wrongbook", "save_memory", "forget_memory",
 CONFIRM_TOOLS = WRITE_TOOLS | {"run_code", "open_file", "launch_app", "open_url"}
 
 WRITE_LABELS = {
-    "save_wrongbook": "收进错题本",
+    "save_wrongbook": "收进复习",
     "save_memory": "写进长期记忆",
     "forget_memory": "删除长期记忆",
     "save_material_note": "保存资料笔记",
@@ -441,8 +449,9 @@ def schemas_for(mode: str = "explain", *, use_tools: bool = True,
                        OPEN_URL_SCHEMA, BROWSER_STATUS_SCHEMA, BROWSER_HISTORY_SCHEMA])
         schemas += WRITING_WRITE_SCHEMAS
     schemas += [SAVE_MATERIAL_NOTE_SCHEMA, WRITE_STUDY_FILE_SCHEMA, RUN_CODE_SCHEMA]
-    if mode == "quiz":
-        schemas.append(SAVE_WRONGBOOK_SCHEMA)
+    # 收进复习是学习闭环的共用写入口：测验判错、问答收题、代码调试都走它。
+    # quick 模式在前面已提前返回，cet6 / video / quickbar 也不会走到这里。
+    schemas.append(SAVE_WRONGBOOK_SCHEMA)
     return schemas
 
 
@@ -460,7 +469,9 @@ def write_summary(name: str, args: dict) -> str:
         return f"{label}：编号 #{args.get('memory_id')}"
     if name == "save_wrongbook":
         question = " ".join(str(args.get("question") or "").split())[:80]
-        return f"{label}：「{question}」"
+        error_type = " ".join(str(args.get("error_type") or "").split())[:20]
+        suffix = f"（{error_type}）" if error_type else ""
+        return f"{label}{suffix}：「{question}」"
     if name == "save_material_note":
         title = " ".join(str(args.get("title") or "").split())[:80]
         return f"{label}：「{title or '未命名笔记'}」"

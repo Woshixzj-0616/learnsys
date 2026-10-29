@@ -99,7 +99,9 @@ def agent_state(conn, day: str = "") -> str:
     wrong = learning["recent_wrong"]
     if wrong:
         lines.append("卡点：")
-        lines.extend(f"- {str(item['question']).strip()[:40]}" for item in wrong)
+        lines.extend(
+            "- " + " ".join(str(item["question"]).split())[:40]
+            for item in wrong)
     else:
         lines.append("卡点：暂无")
 

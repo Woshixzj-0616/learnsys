@@ -168,15 +168,19 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
             text = save_wrongbook(
                 str(args.get("question") or ""), str(args.get("my_answer") or ""),
                 str(args.get("correct_answer") or ""), str(args.get("tags") or ""),
+                code=str(args.get("code") or ""),
+                language=str(args.get("language") or ""),
+                error_type=str(args.get("error_type") or ""),
+                test_cases=str(args.get("test_cases") or ""),
                 ctx=ctx)
             if text.startswith("已收进"):
-                preview = "已收进错题本"
+                preview = "收进复习"
             elif text.startswith("这道题已经"):
-                preview = "错题已在错题本"
+                preview = "复习卡已在"
             elif "失败" in text:
-                preview = "错题本保存失败"
+                preview = "复习卡保存失败"
             else:
-                preview = "没有收进错题本"
+                preview = "没有收进复习"
             ok = text.startswith(("已收进", "这道题已经"))
             return text, preview, ok
     except Exception as exc:

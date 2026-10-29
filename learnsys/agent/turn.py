@@ -471,6 +471,12 @@ def _finish(turn: _Turn, *, abort) -> Generator[AgentEvent, None, None]:
         state.text = final_text
         code_unverified = True
 
+    # 代码调试结束主动提议一次收进复习；只提议，不自动写 —— 是否值得收由用户确认。
+    if turn.code_debug and final_text and "收进复习" not in final_text:
+        final_text += ("\n\n> 想把这道题收进复习吗？回复「收进复习」，"
+                       "我会先弹确认卡再保存。")
+        state.text = final_text
+
     yield AgentEvent("done", data={
         "text": final_text,
         "thinking": state.thinking,

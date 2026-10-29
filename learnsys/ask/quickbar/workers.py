@@ -2,13 +2,51 @@
 from __future__ import annotations
 
 import threading
+import time
 
 from PySide6 import QtCore, QtWidgets
 
-from learnsys import agent
+from learnsys import agent, store
 from learnsys.agent import tools as agent_tools
 from learnsys.ask import usage
 from .common import GRIP_H
+
+# 快捷栏每轮都带个人状态；60 秒内复用，避免每次敲 Alt+Q 都开库重算。
+PERSONAL_STATE_TTL = 60.0
+_STATE_LOCK = threading.Lock()
+_STATE_CACHE = {"at": None, "text": ""}
+
+
+def reset_personal_state_cache() -> None:
+    with _STATE_LOCK:
+        _STATE_CACHE.update(at=None, text="")
+
+
+def _load_personal_state() -> str:
+    """真正查库的动作；放单独函数方便测试替换。"""
+    from learnsys.services import home
+
+    conn = store.connect()
+    try:
+        return home.agent_state(conn)
+    finally:
+        conn.close()
+
+
+def personal_state(now: float | None = None) -> str:
+    """给快捷栏本轮的个人状态；60 秒缓存，失败不缓存、下一轮重试。"""
+    moment = time.monotonic() if now is None else float(now)
+    with _STATE_LOCK:
+        cached_at = _STATE_CACHE["at"]
+        if cached_at is not None and moment - cached_at < PERSONAL_STATE_TTL:
+            return str(_STATE_CACHE["text"] or "")
+    try:
+        text = _load_personal_state()
+    except Exception:
+        return ""
+    with _STATE_LOCK:
+        _STATE_CACHE.update(at=moment, text=text)
+    return text
 
 
 class _UsageWorker(QtCore.QThread):
@@ -88,6 +126,7 @@ class _AskWorker(QtCore.QThread):
                 image_path=self._image_path,
                 extra_images=self._extra_images,
                 context=self._context,
+                personal_state=personal_state(),
                 mode=self._mode,
                 surface="quickbar",
                 system_override=self._system_override,

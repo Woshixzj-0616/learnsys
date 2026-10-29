@@ -83,6 +83,9 @@ class RouterCodeDebugTest(unittest.TestCase):
         system = prompts.build_system("explain", code_debug=True)
         self.assertIn("本轮是代码调试", system)
         self.assertIn("run_code", system)
+        self.assertIn("save_wrongbook", system)
+        self.assertIn("error_type", system)
+        self.assertIn("test_cases", system)
         self.assertNotIn("本轮是代码调试", prompts.build_system("explain"))
 
 
@@ -107,6 +110,15 @@ class LoopCodeDebugTest(unittest.TestCase):
         done = [event for event in events if event.kind == "done"][0]
         self.assertTrue(done.data["code_unverified"])
         self.assertTrue(done.data["text"].startswith("（未运行验证"))
+        self.assertIn("收进复习", done.data["text"], "代码调试结束要主动提议一次")
+
+    def test_non_debug_has_no_review_proposal(self):
+        provider = _Provider()
+        events = list(loop.run(
+            loop.AgentRequest("什么是二叉树", mode="explain", surface="ask"),
+            provider=provider, cfg=make_cfg(self.root)))
+        done = [event for event in events if event.kind == "done"][0]
+        self.assertNotIn("收进复习", done.data["text"])
 
     def test_quickbar_does_not_force(self):
         provider = _Provider()
