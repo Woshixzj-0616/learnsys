@@ -1,0 +1,15 @@
+/* 到期复习窄提醒：单行提示，明细与评级在错题本 */
+.review-reminder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  border: 1px solid var(--mark-soft);
+  background: var(--mark-soft);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  transition: background .15s ease;
+}
+.review-reminder:hover { background: var(--bg-raised); }
+.review-reminder b { color: var(--mark); }
+.review-reminder-icon { font-size: 15px; }

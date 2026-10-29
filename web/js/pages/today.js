@@ -4,6 +4,7 @@ import { api } from "../api.js";
 import { plain } from "../markdown.js";
 import { escapeHtml, minutesParts, timeOf, toast } from "../ui.js";
 import { renderDomains } from "./today-domains.js";
+import { renderReminder } from "./today-reminder.js";
 
 const WEEK_NAMES = "日一二三四五六";
 const PERIODS = ["凌晨", "上午", "下午", "晚上"];
@@ -24,6 +25,7 @@ export async function mount(ctx) {
   const goalTasks = overview.today?.goal_tasks || [];
   renderOnboarding(settings);
   renderHero(overview);
+  renderReminder(today);
   renderDomains(home);
   renderContinue(today.cet6 || [], goalTasks);
   renderAlts(today.actions || [], (today.cet6 || [])[0]);
