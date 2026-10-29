@@ -237,6 +237,19 @@ class WrongbookApiTest(unittest.TestCase):
         self.assertEqual(len(data["items"]), 1)
         self.assertEqual(data["counts"]["all"], 1)
 
+    def test_add_accepts_code_source_and_fields(self):
+        body = {"source": "code", "question": "二分查找越界报错",
+                "code": "int mid = (l + r) / 2;", "language": "cpp",
+                "error_type": "边界", "test_cases": "输入 1 2 3 → 期望 2"}
+        data = self.client.post("/api/wrongbook", json=body, headers=AUTH).json()
+        self.assertTrue(data["created"])
+        item = data["item"]
+        self.assertEqual(item["source"], "code")
+        self.assertEqual(item["language"], "cpp")
+        self.assertEqual(item["error_type"], "边界")
+        self.assertIn("int mid", item["code"])
+        self.assertIn("期望", item["test_cases"])
+
     def test_quiz_add_review_master_delete(self):
         body = {"source": "quiz", "conversation_id": 12,
                 "question": "【第1题】/28 有多少可用主机？", "answer": "14 个",

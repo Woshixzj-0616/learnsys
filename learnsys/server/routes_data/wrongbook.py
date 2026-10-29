@@ -16,7 +16,7 @@ router = APIRouter()
 
 
 class WrongAddIn(BaseModel):
-    source: str = "manual"          # quiz / writing / translation / manual
+    source: str = "manual"    # quiz / writing / translation / code / cet6 / manual
     conversation_id: int | None = None
     material_id: int = 0
     question: str = Field(min_length=1, max_length=4000)
@@ -24,6 +24,11 @@ class WrongAddIn(BaseModel):
     my_answer: str = Field(default="", max_length=4000)
     tags: str = Field(default="", max_length=300)
     note: str = Field(default="", max_length=8000)
+    # P28.1 代码题字段：手动补录也允许带，避免出现 source=code 却没有代码的畸形行。
+    code: str = Field(default="", max_length=100_000)
+    language: str = Field(default="", max_length=20)
+    error_type: str = Field(default="", max_length=100)
+    test_cases: str = Field(default="", max_length=8000)
 
 
 class WrongReviewIn(BaseModel):
@@ -55,7 +60,7 @@ def add_wrongbook(req: WrongAddIn, _=Depends(require_token)):
     conn = _conn()
     try:
         source = req.source if req.source in (
-            "quiz", "writing", "translation", "manual") else "manual"
+            "quiz", "writing", "translation", "code", "cet6", "manual") else "manual"
         question = req.question.strip()
         if source == "quiz":
             ref = int(req.conversation_id or 0)
@@ -65,7 +70,8 @@ def add_wrongbook(req: WrongAddIn, _=Depends(require_token)):
         item_id, created = store.add_wrong_item(
             conn, question=question, answer=req.answer, my_answer=req.my_answer,
             tags=req.tags, note=req.note, source=source, source_id=source_id,
-            material_id=req.material_id)
+            material_id=req.material_id, code=req.code, language=req.language,
+            error_type=req.error_type, test_cases=req.test_cases)
         return {"ok": True, "id": item_id, "created": created,
                 "item": store.get_wrong_item(conn, item_id)}
     except ValueError as exc:

@@ -23,12 +23,12 @@ from learnsys import config, product
 from learnsys.llm.config import load_config
 from learnsys.modules import web_dir
 from learnsys.server import (routes_agent, routes_agents, routes_briefing,
-                             routes_browser, routes_cet6, routes_data,
-                             routes_knowledge, routes_materials, routes_memory,
-                             routes_recordings, routes_results, routes_review,
-                             routes_services, routes_settings, routes_train,
-                             routes_ui, routes_upload, routes_vocab, routes_web,
-                             runtime)
+                             routes_browser, routes_cet6, routes_code,
+                             routes_data, routes_knowledge, routes_materials,
+                             routes_memory, routes_recordings, routes_results,
+                             routes_review, routes_services, routes_settings,
+                             routes_train, routes_ui, routes_upload,
+                             routes_vocab, routes_web, runtime)
 from learnsys.server.nav_bridge import NavBridge
 from learnsys.server.security import origin_allowed
 from learnsys.services import agents, briefing
@@ -98,6 +98,7 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
     app.include_router(routes_results.router)
     app.include_router(routes_services.router)
     app.include_router(routes_review.router)
+    app.include_router(routes_code.router)
     app.include_router(routes_knowledge.router)
     app.include_router(routes_web.router)
     app.include_router(routes_settings.router)
