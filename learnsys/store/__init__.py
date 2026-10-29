@@ -33,7 +33,7 @@ from .agent_tasks import (STATUSES as AGENT_TASK_STATUSES,
                           running_count as agent_tasks_running,
                           touch_running_tasks as touch_agent_running_tasks,
                           update_task as update_agent_task)
-from .asks import add_ask, recent_asks, starred_asks
+from .asks import add_ask, ask_dict, recent_asks, starred_asks
 from .briefings import (CATEGORIES as BRIEFING_CATEGORIES,
                         STATUSES as BRIEFING_STATUSES,
                         claim as claim_briefing,
@@ -49,14 +49,16 @@ from .briefings import (CATEGORIES as BRIEFING_CATEGORIES,
                         update_item as update_briefing_item)
 from .browser import (add_browser_event, cleanup_browser_events,
                       clear_browser_events, list_browser_events)
-from .cet6 import (add_cet6_dualwrite_diffs, add_cet6_dualwrite_run,
-                   cet6_progress_item, cet6_progress_paper_rows,
-                   cet6_progress_summary, cet6_recent_events,
+from .cet6 import (add_breakpoint_events, add_cet6_dualwrite_diffs,
+                   add_cet6_dualwrite_run, cet6_progress_item,
+                   cet6_progress_paper_rows, cet6_progress_summary,
+                   cet6_recent_events, cet6_summary, latest_progress_item,
+                   load_import_items, progress_paper_title, save_import_items,
                    upsert_cet6_progress)
 from .conversations import (add_message, conversation_messages, create_conversation,
                             get_conversation, list_conversations,
                             set_conversation_summary, touch_conversation)
-from .events import add_event, event_days, event_kind_counts
+from .events import add_event, event_days, event_kind_counts, list_events
 from .knowledge import (BKT_READY_SQL, add_attempt as add_knowledge_attempt,
                         all_points as knowledge_points, attempt_exists,
                         backfill_candidates, has_live_attempt, meta_value as knowledge_meta,
@@ -65,8 +67,8 @@ from .knowledge import (BKT_READY_SQL, add_attempt as add_knowledge_attempt,
                         set_meta as set_knowledge_meta, stats as knowledge_stats,
                         meta_value, set_meta)
 from .materials import (MATERIAL_KINDS, add_material, delete_material_row, get_material,
-                        list_materials, material_counts, set_material_status,
-                        touch_material, update_material)
+                        list_materials, material_counts, set_material_path,
+                        set_material_status, touch_material, update_material)
 from .memories import add_memory, delete_memory, list_memories, update_memory
 from .model_usage import add_usage as add_model_usage, day_by_model, day_totals, \
     recent as recent_model_usage
@@ -87,8 +89,9 @@ from .train import (STATUSES as TRAIN_STATUSES, activity_counts,
                     update_submission)
 from .study import (add_frame_text, add_transcript, add_window_event,
                     add_window_event_at, end_session, focus_stats, frame_text_between,
-                    last_transcript, minutes, search_transcripts, session_stats,
-                    session_summary, session_windows, start_session, window_titles)
+                    last_transcript, minutes, search_transcripts, session_exists,
+                    session_stats, session_summary, session_title, session_windows,
+                    start_session, window_titles)
 from .vocab import (add_vocab, delete_vocab, export_vocab, get_vocab, import_vocab,
                     list_vocab, update_vocab)
 from .wrongbook import (WRONG_SOURCES, add_wrong_item, delete_wrong_item,
@@ -111,7 +114,7 @@ __all__ = [
     "AGENT_APPROVAL_STATUSES", "add_agent_approval", "get_agent_approval",
     "list_agent_approvals", "pending_agent_approvals", "decide_agent_approval",
     "agent_approvals_summary",
-    "add_ask", "recent_asks", "starred_asks",
+    "add_ask", "ask_dict", "recent_asks", "starred_asks",
     "BRIEFING_CATEGORIES", "BRIEFING_STATUSES", "claim_briefing",
     "create_briefing_day", "finish_briefing", "get_briefing_day",
     "get_briefing_item", "list_briefing_days", "read_all_briefing",
@@ -122,19 +125,21 @@ __all__ = [
     "cet6_progress_item", "cet6_progress_summary", "cet6_recent_events",
     "cet6_progress_paper_rows", "add_cet6_dualwrite_run",
     "add_cet6_dualwrite_diffs", "upsert_cet6_progress",
+    "add_breakpoint_events", "cet6_summary", "latest_progress_item",
+    "load_import_items", "progress_paper_title", "save_import_items",
     "add_model_usage", "day_by_model", "day_totals", "recent_model_usage",
     "add_message", "conversation_messages", "create_conversation",
     "get_conversation", "list_conversations", "set_conversation_summary",
     "touch_conversation",
-    "add_event", "event_days", "event_kind_counts",
+    "add_event", "event_days", "event_kind_counts", "list_events",
     "BKT_READY_SQL", "add_knowledge_attempt", "knowledge_points",
     "attempt_exists", "backfill_candidates", "has_live_attempt",
     "knowledge_meta", "knowledge_point_attempts", "knowledge_point",
     "ready_attempts", "set_knowledge_meta", "knowledge_stats",
     "meta_value", "set_meta",
     "MATERIAL_KINDS", "add_material", "delete_material_row", "get_material",
-    "list_materials", "material_counts", "set_material_status", "touch_material",
-    "update_material",
+    "list_materials", "material_counts", "set_material_path",
+    "set_material_status", "touch_material", "update_material",
     "add_memory", "delete_memory", "list_memories", "update_memory",
     "recording_title", "delete_recording", "get_recording", "list_recordings",
     "recording_slides", "recording_totals", "set_recording_analysis",
@@ -148,8 +153,9 @@ __all__ = [
     "update_submission",
     "add_frame_text", "add_transcript", "add_window_event", "add_window_event_at",
     "end_session", "focus_stats", "frame_text_between", "last_transcript",
-    "minutes", "search_transcripts", "session_stats", "session_summary",
-    "session_windows", "start_session", "window_titles",
+    "minutes", "search_transcripts", "session_exists", "session_stats",
+    "session_summary", "session_title", "session_windows", "start_session",
+    "window_titles",
     "add_vocab", "delete_vocab", "export_vocab", "get_vocab", "import_vocab",
     "list_vocab", "update_vocab",
     "WRONG_SOURCES", "add_wrong_item", "delete_wrong_item", "due_starred",

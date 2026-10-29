@@ -33,6 +33,27 @@ def event_kind_counts(conn: sqlite3.Connection, module: str, *,
             for kind, count in conn.execute(sql, args).fetchall()}
 
 
+def list_events(conn: sqlite3.Connection, module: str = "",
+                limit: int = 50) -> list[dict]:
+    """时间线事件（新→旧）；`module` 为空 = 全部模块。"""
+    sql = "SELECT id, ts, module, kind, title, meta_json FROM events"
+    args: list = []
+    if module:
+        sql += " WHERE module = ?"
+        args.append(str(module))
+    sql += " ORDER BY id DESC LIMIT ?"
+    args.append(int(limit))
+    out = []
+    for row in conn.execute(sql, args).fetchall():
+        try:
+            meta = json.loads(row[5] or "{}")
+        except Exception:
+            meta = {}
+        out.append({"id": row[0], "ts": row[1], "module": row[2],
+                    "kind": row[3], "title": row[4], "meta": meta})
+    return out
+
+
 def event_days(conn: sqlite3.Connection, module: str) -> set[str]:
     """某个模块有事件的日期集合（连续天数口径）。"""
     rows = conn.execute(

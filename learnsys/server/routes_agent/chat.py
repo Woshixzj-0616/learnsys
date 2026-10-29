@@ -72,11 +72,8 @@ def chat(req: ChatRequest, _=Depends(require_token)):
         if conv_id is not None and store.get_conversation(conn, conv_id) is None:
             conv_id = None
         new_conv = conv_id is None
-        if recording_id:
-            hit = conn.execute(
-                "SELECT 1 FROM sessions WHERE id = ?", (recording_id,)).fetchone()
-            if hit is None:
-                recording_id = 0
+        if recording_id and not store.session_exists(conn, recording_id):
+            recording_id = 0
         if conv_id is None:
             conv_id = store.create_conversation(
                 conn, title=req.message.strip()[:30] or "新对话",

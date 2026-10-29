@@ -124,10 +124,7 @@ def create_task(req: TaskIn, _=Depends(require_token)):
             material = store.get_material(conn, int(req.material_id), with_body=True)
             if material is None:
                 raise HTTPException(status_code=404, detail="资料不存在")
-            body = str(material.get("body") or "")[:MAX_PROMPT]
-            prompt = (f"{prompt}\n\n【资料 #{material.get('id')}："
-                      f"{material.get('title') or '未命名'}】\n{body}")
-            prompt = prompt[:MAX_PROMPT]
+            prompt = agents.queue.compose_material_prompt(prompt, material)
         parent = None
         if req.depends_on:
             parent = store.get_agent_task(conn, int(req.depends_on))

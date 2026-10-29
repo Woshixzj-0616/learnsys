@@ -29,11 +29,7 @@ def conversation(conversation_id: int, _=Depends(require_token)):
         if row is None:
             raise HTTPException(status_code=404, detail="会话不存在")
         messages = store.conversation_messages(conn, conversation_id)
-        recording_title = ""
-        if int(row[8] or 0):
-            hit = conn.execute("SELECT title FROM sessions WHERE id = ?",
-                               (int(row[8]),)).fetchone()
-            recording_title = (hit[0] or "") if hit else ""
+        recording_title = store.session_title(conn, int(row[8])) if int(row[8] or 0) else ""
         return {
             "id": row[0], "title": row[1] or "", "module": row[2] or "ask",
             "mode": row[3] or "explain", "summary": row[4] or "",

@@ -1,9 +1,9 @@
-"""分层门禁：包级反向依赖必须为 0。
+"""分层门禁：包级反向依赖必须为 0，路由层不得直接写 SQL。
 
 规则只在这里定义一次；`docs/架构-前后端.md` 只引用本脚本，不抄规则表。
 
     .venv/Scripts/python.exe tools/layering_report.py            # 看报告
-    .venv/Scripts/python.exe tools/layering_report.py --check    # 有反向依赖返回 1
+    .venv/Scripts/python.exe tools/layering_report.py --check    # 有违规返回 1
     .venv/Scripts/python.exe tools/layering_report.py --json     # 给脚本消费
 
 方向约定（数字越小越底层）：
@@ -12,6 +12,7 @@
     services                      ← 不得依赖 ask / server
     server                        ← 不得依赖 ask（HTTP 层不反向依赖桌面入口）
 
+路由层（`server/routes_*`）只做参数校验、鉴权、拼响应；SQL 归 store。
 门禁零白名单：出现反向依赖就修依赖，不要把文件塞进豁免表。
 """
 from __future__ import annotations
@@ -20,6 +21,7 @@ import argparse
 import ast
 import json
 import pathlib
+import re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PACKAGE_ROOT = ROOT / "learnsys"
@@ -95,6 +97,32 @@ def scan(root: pathlib.Path | None = None) -> list[dict]:
     return rows
 
 
+# 路由层只认这些大写 SQL 关键字 —— 和小写英文单词区分开，减少误报。
+_SQL_WORDS = re.compile(r"\b(SELECT|INSERT|UPDATE|DELETE)\b")
+
+
+def scan_route_sql(root: pathlib.Path | None = None) -> list[dict]:
+    """路由文件里直接出现的 SQL；每条含文件、行号、源码行。"""
+    server = pathlib.Path(root or PACKAGE_ROOT) / "server"
+    rows: list[dict] = []
+    for path in sorted(server.rglob("*.py")):
+        parts = path.relative_to(server).parts
+        if not (path.name.startswith("routes_") or parts[0].startswith("routes_")):
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for lineno, line in enumerate(lines, 1):
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            if _SQL_WORDS.search(line):
+                rows.append({"file": path.relative_to(ROOT).as_posix(),
+                             "line": lineno, "text": stripped[:120]})
+    return rows
+
+
 def package_edges(root: pathlib.Path | None = None) -> dict[str, set[str]]:
     """包级导入图：`{包: {它导入的其他包}}`。"""
     base = pathlib.Path(root or PACKAGE_ROOT)
@@ -144,9 +172,11 @@ def cycles(graph: dict[str, set[str]] | None = None) -> list[list[str]]:
 
 
 def report(rows: list[dict] | None = None,
-           loops: list[list[str]] | None = None) -> str:
+           loops: list[list[str]] | None = None,
+           route_sql: list[dict] | None = None) -> str:
     rows = rows if rows is not None else scan()
     loops = loops if loops is not None else cycles()
+    route_sql = route_sql if route_sql is not None else scan_route_sql()
     lines = ["分层报告（低层不得依赖高层：core/store/browser → services/agent/ask/server；"
              "llm → store/services/agent/ask/server；agent/services → ask/server；server → ask）", ""]
     if not rows:
@@ -157,6 +187,12 @@ def report(rows: list[dict] | None = None,
             lines.append(
                 f"  ✗ {row['file']}:{row['line']}  {row['package']} → {row['imported']}"
                 f"（{row['module']}）")
+    if route_sql:
+        lines.append(f"路由层直接写 SQL {len(route_sql)} 处（SQL 归 store）：")
+        for row in route_sql:
+            lines.append(f"  ✗ {row['file']}:{row['line']}  {row['text']}")
+    else:
+        lines.append("路由层直接写 SQL 0 处 —— 通过。")
     if loops:
         # 同级复用的循环（如 services 调用 agent.run）由规则允许，不计入失败；
         # 这里只报告，方便评审时看见全图，不用它卡 CI。
@@ -176,12 +212,14 @@ def main(argv: list[str] | None = None) -> int:
 
     rows = scan()
     loops = cycles()
+    route_sql = scan_route_sql()
     if args.json:
-        print(json.dumps({"violations": rows, "cycles": loops},
+        print(json.dumps({"violations": rows, "cycles": loops,
+                          "route_sql": route_sql},
                          ensure_ascii=False, indent=1))
     else:
-        print(report(rows, loops))
-    if args.check and rows:
+        print(report(rows, loops, route_sql))
+    if args.check and (rows or route_sql):
         return 1
     return 0
 

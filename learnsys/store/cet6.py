@@ -1,8 +1,11 @@
 """六级精听逐句进度：localStorage 仍是第一现场，这里是服务端镜像。"""
 from __future__ import annotations
 
+import hashlib
+import json
 import sqlite3
 
+from learnsys.core import db as core_db
 from ._base import _LOCK, now
 
 
@@ -173,3 +176,118 @@ def cet6_recent_events(conn: sqlite3.Connection, limit: int = 20) -> list[dict]:
          "note": row[7] or "", "loops": int(row[8] or 0), "plays": int(row[9] or 0)}
         for row in rows
     ]
+
+
+def latest_progress_item(conn: sqlite3.Connection) -> dict | None:
+    """最近更新过的一段进度（没给 paper 时，上下文接口用它兜底）。"""
+    with _LOCK:
+        row = conn.execute(
+            "SELECT paper_id, paper_title, section, item FROM cet6_progress "
+            "ORDER BY updated_at DESC LIMIT 1").fetchone()
+    if not row:
+        return None
+    return {"paper_id": row[0], "paper": row[1] or "", "section": row[2], "item": row[3]}
+
+
+def progress_paper_title(conn: sqlite3.Connection, paper_id: str) -> str:
+    with _LOCK:
+        row = conn.execute(
+            "SELECT MAX(paper_title) FROM cet6_progress WHERE paper_id = ?",
+            (str(paper_id),)).fetchone()
+    return str(row[0] or "") if row and row[0] else ""
+
+
+def cet6_summary(conn: sqlite3.Connection) -> list[dict]:
+    """按卷聚合的断点数 / Section 数 / 最近时间（上下文页兜底）。"""
+    with _LOCK:
+        rows = conn.execute(
+            "SELECT paper_title, COUNT(*), COUNT(DISTINCT section), MAX(ts) "
+            "FROM cet6_events GROUP BY paper_title ORDER BY MAX(ts) DESC").fetchall()
+    return [{"paper": row[0] or "", "breakpoints": int(row[1] or 0),
+             "sections": int(row[2] or 0), "last": row[3] or ""}
+            for row in rows]
+
+
+def _dedupe_key(paper_id: str, section: str, item: str, one: dict) -> str:
+    payload = json.dumps({
+        "paper_id": paper_id, "section": section, "item": item,
+        "sentence": one.get("sentence"), "tags": one.get("tags"),
+        "note": one.get("note"), "loops": one.get("loops"),
+        "plays": one.get("plays"),
+    }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def add_breakpoint_events(conn: sqlite3.Connection, *, stamp: str, paper_id: str,
+                          paper: str, section: str, item: str,
+                          sentences: list[dict], analysis: dict | None = None) -> int:
+    """把一段里真正的断点写进 `cet6_events`；返回新增条数。
+
+    逐句进度本身在 `cet6_progress`；时间线只收带标签 / 笔记 / 循环的句子，
+    否则每段几十句空记录会把「今日 / 学习点」撑爆。
+    """
+    count = 0
+    index_rows: list[tuple[int, str]] = []
+    analysis_json = json.dumps(analysis, ensure_ascii=False) if analysis else ""
+    with _LOCK:
+        for one in sentences:
+            tags = "、".join(one.get("tags") or [])
+            note = str(one.get("note") or "")
+            loops = int(one.get("loops") or 0)
+            plays = int(one.get("plays") or 0)
+            if not (tags or note.strip() or loops > 0):
+                continue
+            key = _dedupe_key(paper_id, section, item, one)
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO cet6_events "
+                "(ts, paper_id, paper_title, section, item, sentence, tags, note, "
+                " loops, plays, analysis_json, dedupe_key) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (stamp, paper_id, paper, section, item, int(one.get("sentence") or 0),
+                 tags, note, loops, plays, analysis_json, key))
+            if cur.rowcount:
+                count += 1
+                index_rows.append((int(cur.lastrowid),
+                                   f"{paper} {section} {item} {one.get('en') or ''} "
+                                   f"{note} {tags}"))
+            elif analysis_json:
+                conn.execute(
+                    "UPDATE cet6_events SET analysis_json = ? WHERE dedupe_key = ?",
+                    (analysis_json, key))
+        if count:
+            conn.execute(
+                "INSERT INTO events (ts, module, kind, ref_id, title, meta_json) "
+                "VALUES (?, 'cet6', 'breakpoint', 0, ?, ?)",
+                (stamp, f"{paper} / {section} / {item}",
+                 json.dumps({"count": count, "analysis": bool(analysis_json)},
+                            ensure_ascii=False)))
+        conn.commit()
+    for ref_id, body in index_rows:
+        core_db.index_row(conn, "cet6", ref_id, stamp, body)
+    return count
+
+
+def _ensure_imports(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS cet6_imports "
+        "(key TEXT PRIMARY KEY, value TEXT, ts TEXT)")
+
+
+def save_import_items(conn: sqlite3.Connection, items: dict, stamp: str) -> int:
+    """file:// 版工作台送来的 localStorage 快照（P4 迁移桥）。"""
+    with _LOCK:
+        _ensure_imports(conn)
+        for key, value in items.items():
+            conn.execute(
+                "INSERT INTO cet6_imports (key, value, ts) VALUES (?, ?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value, ts = excluded.ts",
+                (key, value, stamp))
+        conn.commit()
+    return len(items)
+
+
+def load_import_items(conn: sqlite3.Connection) -> dict:
+    with _LOCK:
+        _ensure_imports(conn)
+        rows = conn.execute("SELECT key, value FROM cet6_imports").fetchall()
+    return {row[0]: row[1] for row in rows}

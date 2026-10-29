@@ -160,6 +160,14 @@ def update_material(conn: sqlite3.Connection, item_id: int, *,
     return get_material(conn, item_id)
 
 
+def set_material_path(conn: sqlite3.Connection, item_id: int, path: str) -> None:
+    """只改原文路径（回收站 / 移回原文目录），不动正文与索引。"""
+    with _LOCK:
+        conn.execute("UPDATE materials SET path = ? WHERE id = ?",
+                     (str(path), int(item_id)))
+        conn.commit()
+
+
 def set_material_status(conn: sqlite3.Connection, item_id: int, status: str) -> bool:
     if status not in ("active", "trashed"):
         return False

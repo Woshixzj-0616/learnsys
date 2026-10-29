@@ -265,8 +265,7 @@ def trash_material(item_id: int, _=Depends(require_token)):
             try:
                 source.rename(target)
                 rel = target.relative_to(pathlib.Path(app_config.DATA_ROOT)).as_posix()
-                conn.execute("UPDATE materials SET path = ? WHERE id = ?", (rel, item_id))
-                conn.commit()
+                store.set_material_path(conn, item_id, rel)
             except OSError as exc:
                 raise HTTPException(status_code=500, detail=f"原文移不进回收站：{exc}") from exc
         store.set_material_status(conn, item_id, "trashed")
@@ -292,8 +291,7 @@ def restore_material(item_id: int, _=Depends(require_token)):
             try:
                 source.rename(target)
                 rel = target.relative_to(pathlib.Path(app_config.DATA_ROOT)).as_posix()
-                conn.execute("UPDATE materials SET path = ? WHERE id = ?", (rel, item_id))
-                conn.commit()
+                store.set_material_path(conn, item_id, rel)
             except OSError as exc:
                 raise HTTPException(status_code=500, detail=f"原文移不回原文目录：{exc}") from exc
         store.set_material_status(conn, item_id, "active")

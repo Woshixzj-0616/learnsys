@@ -52,6 +52,17 @@ def add_transcript(conn: sqlite3.Connection, session_id: int, ts_start: str, ts_
     core_db.index_row(conn, "transcript", row_id, ts_start, text)
 
 
+def session_exists(conn: sqlite3.Connection, session_id: int) -> bool:
+    return conn.execute("SELECT 1 FROM sessions WHERE id = ?",
+                        (int(session_id),)).fetchone() is not None
+
+
+def session_title(conn: sqlite3.Connection, session_id: int) -> str:
+    row = conn.execute("SELECT title FROM sessions WHERE id = ?",
+                       (int(session_id),)).fetchone()
+    return str(row[0] or "") if row else ""
+
+
 def session_stats(conn: sqlite3.Connection, session_id: int) -> dict:
     with _LOCK:
         row = conn.execute(

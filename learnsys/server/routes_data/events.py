@@ -1,8 +1,6 @@
 """插件事件：网工训练、复盘打卡等时间线事件。"""
 from __future__ import annotations
 
-import json
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
@@ -39,22 +37,6 @@ def list_events(module: str = "", limit: int = 50, _=Depends(require_token)):
     limit = max(1, min(int(limit or 50), 200))
     conn = _conn()
     try:
-        if module:
-            rows = conn.execute(
-                "SELECT id, ts, module, kind, title, meta_json FROM events "
-                "WHERE module = ? ORDER BY id DESC LIMIT ?", (module, limit)).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT id, ts, module, kind, title, meta_json FROM events "
-                "ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
-        items = []
-        for row in rows:
-            try:
-                meta = json.loads(row[5] or "{}")
-            except Exception:
-                meta = {}
-            items.append({"id": row[0], "ts": row[1], "module": row[2],
-                          "kind": row[3], "title": row[4], "meta": meta})
-        return {"items": items}
+        return {"items": store.list_events(conn, module=module, limit=limit)}
     finally:
         conn.close()

@@ -60,6 +60,14 @@ def hook_url() -> str:
     return f"{_HOOK_BASE}/api/agents/hooks/approval"
 
 
+def compose_material_prompt(prompt: str, material: dict) -> str:
+    """把资料正文接在用户任务后面；总长不超过 20000（与运行上限同口径）。"""
+    body = str(material.get("body") or "")[:MAX_RUN_PROMPT]
+    text = (f"{prompt}\n\n【资料 #{material.get('id')}："
+            f"{material.get('title') or '未命名'}】\n{body}")
+    return text[:MAX_RUN_PROMPT]
+
+
 def compose_chain_prompt(prompt: str, parent_id: int, result: str) -> str:
     """上一步结果拼进本次任务；总长 ≤20000，只截父结果，不截用户原文。"""
     prompt = str(prompt or "")

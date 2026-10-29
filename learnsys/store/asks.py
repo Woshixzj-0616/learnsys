@@ -72,6 +72,15 @@ def recent_asks(conn: sqlite3.Connection, limit: int = 8, day: str = "",
             "FROM asks ORDER BY id DESC LIMIT ?",
             (limit,),
         ).fetchall()
+def ask_dict(row) -> dict:
+    """问答行 → 接口形状（新→旧顺序由调用方的 SQL 决定）。"""
+    return {
+        "ts": row[0], "question": row[1], "answer": row[2],
+        "kind": row[3] or "text", "image_path": row[4] or "", "id": row[5],
+        "conversation_id": row[6] if len(row) > 6 else None,
+    }
+
+
 def starred_asks(conn: sqlite3.Connection):
     """旧形状（ts, question, answer, kind, image_path, id）的收藏问答，兼容老调用。"""
     with _LOCK:

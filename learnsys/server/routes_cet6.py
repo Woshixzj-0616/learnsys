@@ -1,8 +1,6 @@
 """六级精听：静态挂载 `/cet6/` + AI 分析任务 + 翻译 + 断点同步 + 旧接口兼容。"""
 from __future__ import annotations
 
-import hashlib
-import json
 import urllib.parse
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
@@ -11,7 +9,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from learnsys import agent, config, store   # agent 保留：旧测试按 routes_cet6.agent.run 打桩
-from learnsys.core import db as core_db
 from learnsys.server.cet6_models import Cet6Sentence, Cet6Sync
 from learnsys.server.security import require_token
 from learnsys.services import analysis, observability, results, translate
@@ -183,16 +180,6 @@ def runs(limit: int = 50, _=Depends(require_token)):
         conn.close()
 
 
-def _dedupe_key(req: Cet6Sync, item: Cet6Sentence) -> str:
-    payload = json.dumps({
-        "paper_id": req.paper_id or req.paper,
-        "section": req.section, "item": req.item,
-        "sentence": item.sentence, "tags": item.tags, "note": item.note,
-        "loops": item.loops, "plays": item.plays,
-    }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:16]
-
-
 @router.post("/api/cet6/sync")
 def cet6_sync(req: Cet6Sync):
     """工作台把逐句进度与分析结果送进学习工作台；失败不影响工作台。"""
@@ -206,41 +193,11 @@ def cet6_sync(req: Cet6Sync):
             conn, paper_id=paper_id, paper_title=req.paper,
             section=req.section, item=req.item,
             rows=[item.model_dump() for item in req.sentences], done=req.done)
-        count = 0
-        for item in req.sentences:
-            # 逐句进度全部写入 cet6_progress；时间线只收真正的断点，
-            # 否则每段几十句空记录会把「今日/学习点」撑爆。
-            if not (item.tags or item.note.strip() or item.loops > 0):
-                continue
-            key = _dedupe_key(req, item)
-            tags = "、".join(item.tags or [])
-            cur = conn.execute(
-                "INSERT OR IGNORE INTO cet6_events "
-                "(ts, paper_id, paper_title, section, item, sentence, tags, note, "
-                " loops, plays, analysis_json, dedupe_key) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (stamp, paper_id, req.paper, req.section, req.item, item.sentence,
-                 tags, item.note, item.loops, item.plays,
-                 json.dumps(req.analysis, ensure_ascii=False) if req.analysis else "",
-                 key))
-            if cur.rowcount:
-                count += 1
-                core_db.index_row(
-                    conn, "cet6", int(cur.lastrowid), stamp,
-                    f"{req.paper} {req.section} {req.item} {item.en} "
-                    f"{item.note} {tags}")
-            elif req.analysis:
-                conn.execute(
-                    "UPDATE cet6_events SET analysis_json = ? WHERE dedupe_key = ?",
-                    (json.dumps(req.analysis, ensure_ascii=False), key))
-        if count:
-            conn.execute(
-                "INSERT INTO events (ts, module, kind, ref_id, title, meta_json) "
-                "VALUES (?, 'cet6', 'breakpoint', 0, ?, ?)",
-                (stamp, f"{req.paper} / {req.section} / {req.item}",
-                 json.dumps({"count": count, "analysis": bool(req.analysis)},
-                            ensure_ascii=False)))
-        conn.commit()
+        count = store.add_breakpoint_events(
+            conn, stamp=stamp, paper_id=paper_id, paper=req.paper,
+            section=req.section, item=req.item,
+            sentences=[item.model_dump() for item in req.sentences],
+            analysis=req.analysis)
         return {"ok": True, "count": count}
     except HTTPException:
         conn.rollback()
@@ -252,26 +209,13 @@ def cet6_sync(req: Cet6Sync):
         conn.close()
 
 
-def _ensure_imports(conn) -> None:
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS cet6_imports "
-        "(key TEXT PRIMARY KEY, value TEXT, ts TEXT)")
-
-
 @router.post("/api/cet6/import")
 def cet6_import(req: Cet6Import):
     """file:// 版工作台把 localStorage 快照送过来（P4 迁移桥用）。"""
     conn = store.connect()
     try:
-        _ensure_imports(conn)
-        stamp = store.now()
-        for key, value in req.items.items():
-            conn.execute(
-                "INSERT INTO cet6_imports (key, value, ts) VALUES (?, ?, ?) "
-                "ON CONFLICT(key) DO UPDATE SET value = excluded.value, ts = excluded.ts",
-                (key, value, stamp))
-        conn.commit()
-        return {"ok": True, "count": len(req.items)}
+        count = store.save_import_items(conn, req.items, store.now())
+        return {"ok": True, "count": count}
     finally:
         conn.close()
 
@@ -281,9 +225,8 @@ def cet6_restore():
     """HTTP 首开且 localStorage 为空时，把旧进度读回去（迁移桥另一端）。"""
     conn = store.connect()
     try:
-        _ensure_imports(conn)
-        rows = conn.execute("SELECT key, value FROM cet6_imports").fetchall()
-        return {"ok": True, "items": {row[0]: row[1] for row in rows}, "count": len(rows)}
+        items = store.load_import_items(conn)
+        return {"ok": True, "items": items, "count": len(items)}
     finally:
         conn.close()
 

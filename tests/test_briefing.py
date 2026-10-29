@@ -353,7 +353,9 @@ class TestBriefingScheduler(unittest.TestCase):
             runner.scheduler_tick(dt.datetime(2026, 10, 28, 12, 0))
             submit.assert_called_once()
         conn = store.connect(self.db)
-        day = runner.day_of()
+        # 用被模拟的那一刻取日期：`day_of()` 不传参数会拿真实今天，
+        # 测试跨天后会对不上「10-28 已生成」而误报。
+        day = runner.day_of(dt.datetime(2026, 10, 28, 12, 0))
         briefing_id, _ = store.create_briefing_day(conn, day)
         store.finish_briefing(conn, briefing_id, status="ready")
         conn.close()

@@ -28,17 +28,13 @@ def cet6_context(paper_id: str = "", section: str = "", item: str = "",
             return out
         from learnsys.services import analysis, results
         if not paper_id:
-            latest = conn.execute(
-                "SELECT paper_id, paper_title, section, item FROM cet6_progress "
-                "ORDER BY updated_at DESC LIMIT 1").fetchone()
+            latest = store.latest_progress_item(conn)
             if not latest:
                 return out
-            paper_id, paper, section, item = latest
+            paper_id, paper = latest["paper_id"], latest["paper"]
+            section, item = latest["section"], latest["item"]
         else:
-            row = conn.execute(
-                "SELECT MAX(paper_title) FROM cet6_progress WHERE paper_id = ?",
-                (paper_id,)).fetchone()
-            paper = (row[0] if row and row[0] else "")
+            paper = store.progress_paper_title(conn, paper_id)
         sentences = store.cet6_progress_item(
             conn, paper_id=paper_id, section=section, item=item)
         target = analysis.target_id(paper_id, section, item, "item")
@@ -60,13 +56,6 @@ def cet6_context(paper_id: str = "", section: str = "", item: str = "",
 def cet6_summary(_=Depends(require_token)):
     conn = _conn()
     try:
-        rows = conn.execute(
-            "SELECT paper_title, COUNT(*), COUNT(DISTINCT section), MAX(ts) "
-            "FROM cet6_events GROUP BY paper_title ORDER BY MAX(ts) DESC").fetchall()
-        return {"papers": [
-            {"paper": row[0] or "", "breakpoints": int(row[1] or 0),
-             "sections": int(row[2] or 0), "last": row[3] or ""}
-            for row in rows
-        ]}
+        return {"papers": store.cet6_summary(conn)}
     finally:
         conn.close()
