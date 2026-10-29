@@ -10,7 +10,7 @@ from .schema_personal import PERSONAL_SCHEMA
 
 # 统一库结构版本。改了 `SCHEMA` 或 `_migrate_columns` 就 +1：
 # `connect()` 只在版本不一致时跑建表/补列/种子，一致时只建连接。
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 
 
 SCHEMA = """
@@ -175,7 +175,12 @@ CREATE TABLE IF NOT EXISTS wrong_items (
     review_stage INTEGER NOT NULL DEFAULT 0,
     last_review  TEXT NOT NULL DEFAULT '',
     mastered     INTEGER NOT NULL DEFAULT 0,
-    material_id  INTEGER NOT NULL DEFAULT 0
+    material_id  INTEGER NOT NULL DEFAULT 0,
+    -- P28：代码题字段（纯文本，不复制仓库）
+    code         TEXT NOT NULL DEFAULT '',
+    language     TEXT NOT NULL DEFAULT '',
+    error_type   TEXT NOT NULL DEFAULT '',
+    test_cases   TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_wrong_ts ON wrong_items (ts);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_wrong_source

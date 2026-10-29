@@ -14,11 +14,13 @@ from .review import _attach_review_states, _next_review, save_review_state
 # ---- 统一错题本 ----
 # 唯一来源是 wrong_items；asks.starred 只是 v1 的历史快照，迁移后不再读写。
 
-WRONG_SOURCES = ("ask", "quiz", "cet6", "writing", "translation", "manual")
+WRONG_SOURCES = ("ask", "quiz", "cet6", "writing", "translation", "code",
+                 "manual")
 
 _WRONG_COLUMNS = (
     "id, ts, source, source_id, question, answer, my_answer, tags, note, "
-    "auto, review_stage, last_review, mastered, material_id"
+    "auto, review_stage, last_review, mastered, material_id, "
+    "code, language, error_type, test_cases"
 )
 
 
@@ -46,6 +48,8 @@ def _wrong_dict(row) -> dict:
         "auto": bool(row[9]), "review_stage": int(row[10] or 0),
         "last_review": row[11] or "", "mastered": bool(row[12]),
         "material_id": int(row[13] or 0), "material_title": "",
+        "code": row[14] or "", "language": row[15] or "",
+        "error_type": row[16] or "", "test_cases": row[17] or "",
     }
     item["next_review"] = _next_review(item["ts"], item["last_review"],
                                        item["review_stage"])
@@ -55,7 +59,10 @@ def _wrong_dict(row) -> dict:
 def add_wrong_item(conn: sqlite3.Connection, *, question: str, answer: str = "",
                    my_answer: str = "", tags: str = "", note: str = "",
                    source: str = "manual", source_id: str | None = None,
-                   auto: bool = False, material_id: int = 0) -> tuple[int, bool]:
+                   auto: bool = False, material_id: int = 0,
+                   code: str = "", language: str = "",
+                   error_type: str = "",
+                   test_cases: str = "") -> tuple[int, bool]:
     """收一道错题；返回 (id, 是否新建)。同 source+source_id 只留第一条。"""
     question = str(question or "").strip()
     if not question:
@@ -66,10 +73,13 @@ def add_wrong_item(conn: sqlite3.Connection, *, question: str, answer: str = "",
         cur = conn.execute(
             "INSERT OR IGNORE INTO wrong_items "
             "(ts, source, source_id, question, answer, my_answer, tags, note, "
-            "auto, material_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "auto, material_id, code, language, error_type, test_cases) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (now(), source, source_id, question, str(answer or ""),
              str(my_answer or ""), str(tags or ""), str(note or ""),
-             1 if auto else 0, int(material_id or 0)))
+             1 if auto else 0, int(material_id or 0), str(code or ""),
+             str(language or ""), str(error_type or ""),
+             str(test_cases or "")))
         created = cur.rowcount > 0
         item_id = int(cur.lastrowid or 0) if created else 0
         if not created and source_id:

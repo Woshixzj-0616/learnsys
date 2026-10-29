@@ -36,6 +36,14 @@ def _migrate_columns(conn: sqlite3.Connection) -> None:
     if wrong_cols and "material_id" not in wrong_cols:
         conn.execute(
             "ALTER TABLE wrong_items ADD COLUMN material_id INTEGER NOT NULL DEFAULT 0")
+    for column, ddl in (
+        ("code", "TEXT NOT NULL DEFAULT ''"),
+        ("language", "TEXT NOT NULL DEFAULT ''"),
+        ("error_type", "TEXT NOT NULL DEFAULT ''"),
+        ("test_cases", "TEXT NOT NULL DEFAULT ''"),
+    ):
+        if wrong_cols and column not in wrong_cols:
+            conn.execute(f"ALTER TABLE wrong_items ADD COLUMN {column} {ddl}")
     if wrong_cols:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_wrong_material ON wrong_items (material_id)")

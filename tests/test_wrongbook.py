@@ -346,11 +346,15 @@ class TestWrongbookTool(unittest.TestCase):
         conn = store.connect(self.db_path)
         conn.close()
 
-    def test_schema_only_in_quiz_mode(self):
+    def test_schema_in_quiz_and_explain_but_not_quick(self):
         quiz = [tool["name"] for tool in tools.schemas_for("quiz")]
         explain = [tool["name"] for tool in tools.schemas_for("explain")]
+        quick = [tool["name"] for tool in tools.schemas_for("quick")]
+        cet6 = [tool["name"] for tool in tools.schemas_for("explain", surface="cet6")]
         self.assertIn("save_wrongbook", quiz)
-        self.assertNotIn("save_wrongbook", explain)
+        self.assertIn("save_wrongbook", explain)
+        self.assertNotIn("save_wrongbook", quick)
+        self.assertNotIn("save_wrongbook", cet6)
         self.assertIsNone(tools.schemas_for("quiz", use_tools=False))
 
     def test_save_and_dedupe(self):
@@ -359,7 +363,7 @@ class TestWrongbookTool(unittest.TestCase):
             mode="quiz", conversation_id=7, material_id=42)
         text = tools.save_wrongbook(
             "【第1题】/27 有多少可用主机？", "32", "30", "子网", ctx=ctx)
-        self.assertIn("已收进错题本", text)
+        self.assertIn("已收进复习", text)
         again = tools.save_wrongbook(
             "【第1题】/27 有多少可用主机？", "32", "30", "子网", ctx=ctx)
         self.assertIn("已经收过", again)
@@ -371,11 +375,37 @@ class TestWrongbookTool(unittest.TestCase):
         finally:
             conn.close()
 
-    def test_other_mode_refuses(self):
+    def test_explain_mode_saves_code_fields_and_seeds_review(self):
+        ctx = tools.ToolContext(
+            data_root=pathlib.Path(self.tmp.name), db_path=self.db_path,
+            mode="explain", conversation_id=9)
+        text = tools.save_wrongbook(
+            "这段代码为什么 WA？", "", "补 n=0 特判", "边界",
+            code="int main(){int a;cin>>a;cout<<a;}",
+            language="cpp", error_type="边界", test_cases="n=0 → 崩溃 → 输出 0",
+            ctx=ctx)
+        self.assertIn("已收进复习", text)
+        conn = store.connect(self.db_path)
+        try:
+            items = store.wrong_items(conn)
+            self.assertEqual(len(items), 1)
+            item = items[0]
+            self.assertEqual(item["source"], "code")
+            self.assertEqual(item["language"], "cpp")
+            self.assertEqual(item["error_type"], "边界")
+            self.assertEqual(item["test_cases"], "n=0 → 崩溃 → 输出 0")
+            self.assertIn("int main", item["code"])
+            state = store.get_review_state(conn, "wrong", item["id"])
+            self.assertIsNotNone(state, "保存后要立刻 seed 复习状态")
+            self.assertGreater(state["due"], item["ts"][:10])
+        finally:
+            conn.close()
+
+    def test_quick_mode_refuses(self):
         ctx = tools.ToolContext(data_root=pathlib.Path(self.tmp.name),
-                                db_path=self.db_path, mode="explain")
+                                db_path=self.db_path, mode="quick")
         text = tools.save_wrongbook("题", "答", "对", "", ctx=ctx)
-        self.assertIn("只有测验模式", text)
+        self.assertIn("速答", text)
 
     def test_execute_preview(self):
         ctx = tools.ToolContext(
@@ -385,8 +415,8 @@ class TestWrongbookTool(unittest.TestCase):
             "question": "第 2 题", "my_answer": "错", "correct_answer": "对",
         }, ctx)
         self.assertTrue(ok)
-        self.assertIn("已收进错题本", content)
-        self.assertEqual(preview, "已收进错题本")
+        self.assertIn("已收进复习", content)
+        self.assertEqual(preview, "收进复习")
 
     def test_quiz_prompt_mentions_tool(self):
         prompt = study.build_quiz_question([], [], "")

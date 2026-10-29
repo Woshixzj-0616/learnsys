@@ -34,7 +34,9 @@ CREATE TABLE wrong_items (
     question TEXT, answer TEXT, my_answer TEXT, tags TEXT, note TEXT,
     auto INTEGER DEFAULT 0, review_stage INTEGER DEFAULT 0,
     last_review TEXT DEFAULT '', mastered INTEGER DEFAULT 0,
-    material_id INTEGER DEFAULT 0);
+    material_id INTEGER DEFAULT 0, code TEXT DEFAULT '',
+    language TEXT DEFAULT '', error_type TEXT DEFAULT '',
+    test_cases TEXT DEFAULT '');
 CREATE TABLE review_state (
     item_type TEXT, item_id INTEGER, due TEXT, state TEXT DEFAULT 'new',
     reps INTEGER DEFAULT 0, lapses INTEGER DEFAULT 0,
