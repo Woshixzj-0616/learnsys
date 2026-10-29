@@ -113,6 +113,32 @@ QLabel#HeroAskSend {
     font-weight: 600;
 }
 
+/* ---------- 三域卡（学习 / 工作 / 生活） ---------- */
+QWidget#DomainGrid {
+    background: transparent;
+}
+QWidget#DomainCard {
+    background: {{surface}};
+    border: 1px solid {{line}};
+    border-radius: {{r_lg}};
+}
+QWidget#DomainCard:hover, QWidget#DomainCard:focus {
+    border-color: {{accent_line}};
+}
+QLabel#DomainLabel {
+    color: {{text_faint}};
+    font-size: {{fs_xs}};
+}
+QLabel#DomainTitle {
+    color: {{text}};
+    font-size: {{fs_md}};
+    font-weight: 600;
+}
+QLabel#DomainSub {
+    color: {{text_faint}};
+    font-size: {{fs_xs}};
+}
+
 /* ---------- 今日简报 ---------- */
 QWidget#BriefingBand {
     background: {{surface}};

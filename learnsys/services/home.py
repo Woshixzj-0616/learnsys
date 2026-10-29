@@ -18,6 +18,7 @@ def _learning(conn, day: str) -> dict:
     plan = summary["plan"]
     return {
         "date": summary["date"],
+        "href": "#/review" if summary["due_reviews"] else "#/cet6",
         "done": plan["done"],
         "total": plan["total"],
         "tier": plan["tier"],
@@ -37,6 +38,7 @@ def _work(conn) -> dict:
     next_step = next((item["next_step"] for item in projects
                       if item["next_step"]), "")
     return {
+        "href": "#/agents",
         "running": store.agent_tasks_running(conn),
         "queued": store.agent_tasks_queued(conn),
         "projects": projects,
@@ -61,6 +63,7 @@ def _life(conn, day: str) -> dict:
         if title:
             reminders.append(f"卡片：{title}")
     return {
+        "href": "#/briefing",       # P30 前生活域先进简报；P30 再换 #/life
         "cards": cards,
         "subscriptions": subscriptions,
         "events": events,

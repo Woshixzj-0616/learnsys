@@ -16,6 +16,7 @@ from . import style
 from . import tokens as token_source
 from .today_bottom import TodayBottomMixin
 from .today_briefing import BriefingBand
+from .today_domains import DomainGrid
 from .today_widgets import HeroCard, OnboardingBanner
 from .widgets import StatusLabel
 
@@ -143,6 +144,9 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         self.hero = HeroCard(self.tokens, self._navigate)
         body.addWidget(self.hero)
 
+        self.domains = DomainGrid(self._navigate)
+        body.addWidget(self.domains)
+
         self.briefing = BriefingBand(self._navigate)
         body.addWidget(self.briefing)
 
@@ -204,11 +208,13 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
 
     def _on_ready(self) -> None:
         self._silent = False      # 连上了就不算「自动刷新失败」了
-        self._pending = {"overview", "today", "settings", "briefing"}
+        self._pending = {"overview", "today", "settings", "briefing", "home"}
         self.api.get("/api/overview", lambda data: self._ok("overview", data),
                      lambda message: self._fail("overview", message))
         self.api.get("/api/today", lambda data: self._ok("today", data),
                      lambda message: self._fail("today", message))
+        self.api.get("/api/home", lambda data: self._ok("home", data),
+                     lambda message: self._fail("home", message))
         self.api.get("/api/settings", lambda data: self._ok("settings", data),
                      lambda message: self._fail("settings", message))
         self.api.get("/api/briefing/today",
@@ -237,6 +243,8 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
             self._render_continue()
             self._render_timeline()
             self._render_week()
+        if key == "home":
+            self.domains.set_data(self._data[key])
         if key == "settings":
             self._render_onboarding()
             self._render_briefing()
@@ -265,7 +273,8 @@ class TodayWindow(TodayBottomMixin, QtWidgets.QDialog):
         if self._required_failed:
             return
         if self._errors:
-            names = {"settings": "设置", "briefing": "今日简报"}
+            names = {"settings": "设置", "briefing": "今日简报",
+                     "home": "三域入口"}
             missed = "、".join(names.get(key, key) for key in self._errors)
             self.status_label.show_info(f"已更新（{missed}没读到）")
             return

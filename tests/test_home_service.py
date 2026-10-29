@@ -36,6 +36,22 @@ class TestHomePayload(unittest.TestCase):
         self.assertEqual(data["life"]["subscriptions"], [])
         self.assertEqual(data["life"]["events"], [])
 
+    def test_domain_hrefs_are_the_single_source(self):
+        data = home.payload(self.conn, self.day)
+        self.assertEqual(data["learning"]["href"], "#/cet6")
+        self.assertEqual(data["work"]["href"], "#/agents")
+        self.assertEqual(data["life"]["href"], "#/briefing")
+
+        item_id, _ = store.add_wrong_item(self.conn, question="到期题")
+        two_days_ago = (dt.date.today() - dt.timedelta(days=2)).isoformat()
+        self.conn.execute("UPDATE wrong_items SET ts = ? WHERE id = ?",
+                          (f"{two_days_ago} 10:00:00", item_id))
+        self.conn.commit()
+        data = home.payload(self.conn, self.day)
+        self.assertGreaterEqual(data["learning"]["due_reviews"], 1)
+        self.assertEqual(data["learning"]["href"], "#/review",
+                         "有到期复习时学习卡直接进复习页")
+
     def test_seeded_domains(self):
         store.add_wrong_item(self.conn, question="二叉树的前序遍历怎么写",
                              answer="根左右")

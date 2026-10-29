@@ -3,6 +3,7 @@
 import { api } from "../api.js";
 import { plain } from "../markdown.js";
 import { escapeHtml, minutesParts, timeOf, toast } from "../ui.js";
+import { renderDomains } from "./today-domains.js";
 
 const WEEK_NAMES = "日一二三四五六";
 const PERIODS = ["凌晨", "上午", "下午", "晚上"];
@@ -12,16 +13,18 @@ export async function mount(ctx) {
   ctx.setActions("");
   document.title = "今日 · 学习工作台";
 
-  const [overview, today, settings, briefing] = await Promise.all([
+  const [overview, today, settings, briefing, home] = await Promise.all([
     api.get("/api/overview"),
     api.get("/api/today"),
     api.get("/api/settings").catch(() => null),
     api.get("/api/briefing/today").catch(() => null),
+    api.get("/api/home").catch(() => null),
   ]);
 
   const goalTasks = overview.today?.goal_tasks || [];
   renderOnboarding(settings);
   renderHero(overview);
+  renderDomains(home);
   renderContinue(today.cet6 || [], goalTasks);
   renderAlts(today.actions || [], (today.cet6 || [])[0]);
   renderBriefing(briefing, settings);
