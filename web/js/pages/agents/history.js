@@ -43,6 +43,7 @@ export function renderHistory({ root, tasks, agents, onOpen, onContinue }) {
         ${escapeHtml(timeText(task.created_at))}
         ${task.duration_ms ? ` · ${escapeHtml(msText(task.duration_ms))}` : ""}
         ${chain ? ` · ${escapeHtml(chain)}` : ""}
+        ${task.project_name ? ` · 项目 ${escapeHtml(task.project_name)}` : ""}
         ${task.workspace ? ` · ${escapeHtml(task.workspace)}` : ""}
       </div>
       <div class="agents-card-actions">

@@ -1,0 +1,158 @@
+/* 项目页：卡片、表单、交接预览。 */
+.projects-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  max-width: var(--page-max);
+  margin: 0 auto;
+}
+.projects-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s5);
+  align-items: flex-start;
+}
+.projects-hero h2 {
+  margin: 8px 0 10px;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.22;
+  letter-spacing: -.02em;
+  font-weight: 650;
+}
+.projects-hero .stage-sub {
+  max-width: 58ch;
+  color: var(--text-dim);
+  font-size: 13.5px;
+}
+.projects-hero-actions { flex: none; }
+.projects-panel { margin-top: 0; }
+
+.project-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-sunken);
+}
+.project-form h3 { margin: 0; font-size: var(--fs-base); }
+.project-form-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 2fr 140px;
+  gap: 12px;
+}
+.project-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+.project-field input,
+.project-field select,
+.project-field textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--bg-input);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+.project-field textarea { resize: vertical; }
+.project-form-actions { display: flex; gap: 8px; }
+
+.project-list { display: flex; flex-direction: column; gap: 10px; }
+.project-card {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-sunken);
+}
+.project-card.status-archived { opacity: .68; }
+.project-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.project-card-head h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--fs-base);
+}
+.project-status {
+  padding: 1px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.project-status.active {
+  border-color: var(--accent-line);
+  color: var(--accent-strong);
+}
+.project-status.paused { border-color: var(--mark-soft); color: var(--mark); }
+.project-status.archived { color: var(--text-faint); }
+.project-card-meta { margin-top: 6px; font-size: var(--fs-xs); }
+.project-repo {
+  color: var(--text-dim);
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  word-break: break-all;
+}
+.project-repo.bad { color: var(--warn); }
+.project-next,
+.project-risk {
+  margin: 8px 0 0;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+.project-risk { color: var(--mark); }
+.project-next b,
+.project-risk b {
+  margin-right: 6px;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.project-actions .btn {
+  min-height: 32px;
+  padding: 4px 14px;
+  font-size: var(--fs-xs);
+}
+.project-handoff {
+  max-height: 360px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-input);
+  color: var(--text-dim);
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.project-path {
+  margin-top: 6px;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+@media (max-width: 900px) {
+  .projects-hero { flex-direction: column; }
+  .project-form-grid { grid-template-columns: 1fr; }
+}

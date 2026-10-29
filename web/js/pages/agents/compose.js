@@ -8,6 +8,7 @@ export function createCompose({ root, onStart }) {
   const workspace = root.querySelector("#ag-workspace");
   const roots = root.querySelector("#ag-roots");
   const material = root.querySelector("#ag-material");
+  const project = root.querySelector("#ag-project");
   const parent = root.querySelector("#ag-parent");
   const prompt = root.querySelector("#ag-prompt");
   const mode = root.querySelector("#ag-mode");
@@ -52,6 +53,9 @@ export function createCompose({ root, onStart }) {
       text += write
         ? "；上一步输出会作为资料注入，请确认来源可信"
         : "；上一步输出会作为资料注入";
+    }
+    if (Number(project.value)) {
+      text += "；项目交接包会作为背景注入";
     }
     note.textContent = text;
     hint.textContent = text;
@@ -98,13 +102,30 @@ export function createCompose({ root, onStart }) {
     }
   }
 
+  async function renderProjects() {
+    const current = project.value;
+    try {
+      const data = await api.get("/api/projects?status=active");
+      const items = data?.items || [];
+      project.innerHTML = '<option value="0">不挂项目</option>'
+        + items.map((item) => `<option value="${item.id}">`
+          + `${escapeHtml(item.name || "未命名")}</option>`).join("");
+      if ([...project.options].some((one) => one.value === current)) {
+        project.value = current;
+      }
+    } catch {
+      project.innerHTML = '<option value="0">不挂项目</option>';
+    }
+    renderNote();
+  }
+
   async function load(nextMeta, nextTasks) {
     meta = nextMeta || meta;
     if (nextTasks) tasks = nextTasks;
     renderAgents();
     renderRoots();
     renderParents();
-    await renderMaterials();
+    await Promise.all([renderMaterials(), renderProjects()]);
   }
 
   function setTasks(items) {
@@ -129,6 +150,7 @@ export function createCompose({ root, onStart }) {
       mode: mode.value === "write" ? "write" : "read",
       timeout: Number(timeout.value) || 0,
       depends_on: Number(parent.value) || 0,
+      project_id: Number(project.value) || 0,
       prompt: prompt.value.trim(),
     };
   }

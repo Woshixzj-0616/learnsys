@@ -1,0 +1,61 @@
+<div class="projects-page">
+  <section class="stage-hero projects-hero">
+    <div>
+      <p class="stage-eyebrow">项目 · 工作交接</p>
+      <h2>换个会话接手，读一份交接页就能开工。</h2>
+      <p class="stage-sub">只登记路径和状态，不复制仓库内容；交接页自动生成、只含指针，手改会被覆盖。</p>
+      <div class="review-stats" id="project-stats">
+        <div class="review-chip"><span>进行中</span><strong>—</strong></div>
+        <div class="review-chip"><span>暂停</span><strong>—</strong></div>
+        <div class="review-chip"><span>已归档</span><strong>—</strong></div>
+      </div>
+    </div>
+    <div class="projects-hero-actions">
+      <button class="btn btn-primary" type="button" id="project-new">新建项目</button>
+    </div>
+  </section>
+
+  <section class="panel projects-panel">
+    <div class="panel-body">
+      <form class="project-form" id="project-form" hidden>
+        <h3 id="project-form-title">新建项目</h3>
+        <div class="project-form-grid">
+          <label class="project-field">
+            <span>名称</span>
+            <input id="pf-name" maxlength="80" placeholder="学习工作台" required>
+          </label>
+          <label class="project-field">
+            <span>仓库路径</span>
+            <input id="pf-repo" maxlength="500" placeholder="D:\Desktop\learnsys">
+          </label>
+          <label class="project-field">
+            <span>状态</span>
+            <select id="pf-status">
+              <option value="active">进行中</option>
+              <option value="paused">暂停</option>
+              <option value="archived">已归档</option>
+            </select>
+          </label>
+        </div>
+        <label class="project-field">
+          <span>下一步</span>
+          <textarea id="pf-next" rows="2" maxlength="2000"
+                    placeholder="一句话说清接手的人先做什么"></textarea>
+        </label>
+        <label class="project-field">
+          <span>风险 / 禁忌</span>
+          <textarea id="pf-risk" rows="2" maxlength="2000"
+                    placeholder="比如：别动生产库；先停 8766；不要碰某目录"></textarea>
+        </label>
+        <div class="project-form-actions">
+          <button class="btn btn-primary" type="submit">保存</button>
+          <button class="btn btn-quiet" type="button" id="pf-cancel">取消</button>
+        </div>
+      </form>
+
+      <div class="project-list" id="project-list">
+        <div class="empty">正在读项目…</div>
+      </div>
+    </div>
+  </section>
+</div>

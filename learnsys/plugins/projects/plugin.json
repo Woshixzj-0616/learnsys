@@ -1,0 +1,15 @@
+{
+  "id": "projects",
+  "name": "项目",
+  "icon": "▤",
+  "type": "native-page",
+  "entry": "pages/projects.html",
+  "script": "js/pages/projects.js",
+  "order": 50,
+  "status": "ready",
+  "version": "2.45.1",
+  "category": "工具",
+  "home": false,
+  "tagline": "项目卡片与交接页",
+  "description": "登记项目路径、状态、下一步与风险；一键生成只含指针的 HANDOFF，交接给下一个会话。"
+}

@@ -99,6 +99,9 @@ SETTINGS_TEMPLATE = {
         "claude": {"enabled": True, "command": "claude", "args": []},
         "codex": {"enabled": True, "command": "codex", "args": []},
     },
+    "_handoff": "项目交接页读外部记忆库的根目录（只读，不修改）。"
+                "留空 = D:\\cahier\\智库\\智库\\Codex记忆系统。",
+    "handoff_memory_root": "",
     "api_base": "",
     "api_key": "",
     "api_model": "",
