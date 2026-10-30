@@ -43,9 +43,9 @@ export function renderDomains(home) {
     {
       key: "life",
       label: "生活",
-      href: life.href || "#/briefing",
-      title: `今日订阅 ${Number(life.subscription_count || 0)}`
-        + ` · 待办 ${Number(life.event_count || 0)}`,
+      href: life.href || "#/life",
+      title: `今日卡片 ${Number(life.card_count || 0)}`
+        + ` · 未读 ${Number(life.unread_count || 0)}`,
       sub: reminder ? `提醒：${shortText(reminder)}` : "提醒：暂无",
     },
   ];

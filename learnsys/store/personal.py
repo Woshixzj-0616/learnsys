@@ -284,6 +284,36 @@ def upsert_subscription(conn: sqlite3.Connection, *, topic: str,
     return _subscription_dict(row)
 
 
+_SUBSCRIPTION_EDITABLE = ("topic", "kind", "cadence", "at_time", "enabled")
+
+
+def update_subscription(conn: sqlite3.Connection, sub_id: int,
+                        *, sources: list | None = None,
+                        **changes) -> dict | None:
+    """部分更新订阅；`sources=None` 表示不改。
+
+    改 `topic` 可能撞 `(topic, kind)` 唯一键，由调用方把 IntegrityError 转 400。
+    """
+    if changes.get("enabled") is not None:
+        changes = dict(changes)
+        changes["enabled"] = 1 if changes["enabled"] else 0
+    fields = [(key, changes[key]) for key in _SUBSCRIPTION_EDITABLE
+              if key in changes and changes[key] is not None]
+    if any(key == "topic" and not str(value).strip() for key, value in fields):
+        raise ValueError("订阅主题不能为空")
+    if sources is not None:
+        fields.append(("sources_json",
+                       json.dumps(list(sources or []), ensure_ascii=False)))
+    if not fields:
+        return get_subscription(conn, sub_id)
+    sets = ", ".join(f"{key} = ?" for key, _ in fields) + ", updated_at = ?"
+    args = [value for _, value in fields] + [now(), int(sub_id)]
+    with _LOCK:
+        cur = conn.execute(f"UPDATE subscriptions SET {sets} WHERE id = ?", args)
+        conn.commit()
+    return get_subscription(conn, sub_id) if cur.rowcount else None
+
+
 def _time_reached(at_time: str, moment: dt.datetime) -> bool:
     """`at_time` 是 HH:MM；解析不了就当作不限制时间。"""
     try:
@@ -328,6 +358,18 @@ def mark_run(conn: sqlite3.Connection, sub_id: int, *, ts: str = "") -> dict | N
     return get_subscription(conn, sub_id) if cur.rowcount else None
 
 
+def delete_subscription(conn: sqlite3.Connection,
+                        sub_id: int) -> dict | None:
+    """硬删一条订阅；已生成的 `daily_cards` 保留（历史卡片不跟着消失）。"""
+    item = get_subscription(conn, sub_id)
+    if item is None:
+        return None
+    with _LOCK:
+        conn.execute("DELETE FROM subscriptions WHERE id = ?", (int(sub_id),))
+        conn.commit()
+    return item
+
+
 # ------------------------------------------------------------------- daily_cards
 
 def list_cards(conn: sqlite3.Connection, *, day: str = "", domain: str = "",
@@ -344,6 +386,19 @@ def list_cards(conn: sqlite3.Connection, *, day: str = "", domain: str = "",
     args.append(max(1, min(int(limit or 100), 1000)))
     with _LOCK:
         rows = conn.execute(sql, args).fetchall()
+    return [_card_dict(row) for row in rows]
+
+
+def list_recent_cards(conn: sqlite3.Connection, *, days: int = 1,
+                      limit: int = 30) -> list[dict]:
+    """最近 N 天（含今天）的卡片；日期是 ISO 文本，可直接按字符串比较。"""
+    days = max(1, min(int(days or 1), 30))
+    since = (dt.date.today() - dt.timedelta(days=days - 1)).isoformat()
+    limit = max(1, min(int(limit or 30), 500))
+    with _LOCK:
+        rows = conn.execute(
+            f"SELECT {_CARD_COLUMNS} FROM daily_cards WHERE day >= ? "
+            "ORDER BY day DESC, id ASC LIMIT ?", (since, limit)).fetchall()
     return [_card_dict(row) for row in rows]
 
 

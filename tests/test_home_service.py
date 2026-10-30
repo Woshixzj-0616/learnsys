@@ -40,7 +40,7 @@ class TestHomePayload(unittest.TestCase):
         data = home.payload(self.conn, self.day)
         self.assertEqual(data["learning"]["href"], "#/cet6")
         self.assertEqual(data["work"]["href"], "#/projects")
-        self.assertEqual(data["life"]["href"], "#/briefing")
+        self.assertEqual(data["life"]["href"], "#/life")
 
         item_id, _ = store.add_wrong_item(self.conn, question="到期题")
         two_days_ago = (dt.date.today() - dt.timedelta(days=2)).isoformat()
@@ -72,6 +72,8 @@ class TestHomePayload(unittest.TestCase):
         self.assertEqual(data["work"]["projects"][0]["name"], "学习工作台")
         self.assertEqual(data["work"]["next_step"], "完成 P27.1")
         self.assertEqual(data["life"]["cards"][0]["title"], "今晚早睡")
+        self.assertEqual(data["life"]["card_count"], 1)
+        self.assertEqual(data["life"]["unread_count"], 1)
         self.assertEqual(data["life"]["subscriptions"][0]["topic"], "AI 新闻")
         self.assertEqual([item["title"] for item in data["life"]["events"]],
                          ["交水电费"])

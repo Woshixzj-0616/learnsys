@@ -123,10 +123,11 @@ class TestHomeRoutes(unittest.TestCase):
         self.assertEqual(listed["count"], 1)
         self.assertEqual(listed["items"][0]["cadence"], "weekly")
 
+        # P30.1 起 run 会真的生成卡片；当天简报还没生成时新闻订阅返回 400，不空转。
         ran = self.client.post(f"/api/subscriptions/{sub['id']}/run",
                                headers=self.headers)
-        self.assertEqual(ran.status_code, 200)
-        self.assertTrue(ran.json()["last_run"])
+        self.assertEqual(ran.status_code, 400)
+        self.assertIn("简报", ran.json()["detail"])
         self.assertEqual(
             self.client.post("/api/subscriptions/99999/run",
                              headers=self.headers).status_code, 404)

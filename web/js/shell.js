@@ -35,10 +35,11 @@ function moduleById(id) {
 }
 
 // 侧栏分组：只在这里定义一次。今日单列，不归任何组。
-const GROUP_ORDER = ["学习", "资料", "工具", "系统"];
+const GROUP_ORDER = ["学习", "生活", "资料", "工具", "系统"];
 const GROUP_OF = {
   ask: "学习", cet6: "学习", netlab: "学习", review: "学习", quiz: "学习",
   knowledge: "学习", wrongbook: "学习", vocab: "学习", briefing: "学习",
+  life: "生活",
   materials: "资料", recordings: "资料",
   agents: "工具", browser: "工具", agentruns: "工具", projects: "工具",
   settings: "系统", plugins: "系统",
@@ -67,7 +68,7 @@ function renderNav(activeId) {
   const today = visible.find((m) => m.id === "today");
   let html = today ? navItem(today, activeId) : "";
   const order = getModes().scene === "work"
-    ? ["工具", "资料", "学习", "系统"]
+    ? ["工具", "生活", "资料", "学习", "系统"]
     : GROUP_ORDER;
   for (const label of order) {
     const items = visible

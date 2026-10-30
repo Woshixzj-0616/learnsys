@@ -14,6 +14,7 @@ from learnsys import store
 from learnsys.server.security import require_token
 from learnsys.services import handoff as handoff_service
 from learnsys.services import home as home_service
+from learnsys.services import life as life_service
 from .common import _conn
 
 router = APIRouter()
@@ -54,6 +55,19 @@ class SubscriptionBody(BaseModel):
     at_time: str = "07:30"
     sources: list[str] = Field(default_factory=list)
     enabled: bool = True
+
+
+class SubscriptionPatch(BaseModel):
+    topic: str | None = None
+    kind: str | None = None
+    cadence: str | None = None
+    at_time: str | None = None
+    sources: list[str] | None = None
+    enabled: bool | None = None
+
+
+class CardReadBody(BaseModel):
+    read: bool = True
 
 
 def _bad(detail: str) -> HTTPException:
@@ -262,13 +276,86 @@ def save_subscription(body: SubscriptionBody, _=Depends(require_token)):
         conn.close()
 
 
-@router.post("/api/subscriptions/{sub_id}/run")
-def run_subscription(sub_id: int, _=Depends(require_token)):
+@router.patch("/api/subscriptions/{sub_id}")
+def update_subscription(sub_id: int, body: SubscriptionPatch,
+                        _=Depends(require_token)):
+    if body.kind is not None and body.kind not in store.PERSONAL_SUBSCRIPTION_KINDS:
+        raise _bad("订阅类型只能是 news / word / price / stock / custom")
+    if body.cadence is not None and body.cadence not in store.PERSONAL_CADENCES:
+        raise _bad("频率只能是 daily / weekly")
+    if body.at_time is not None and not _valid_time(body.at_time):
+        raise _bad("提醒时间要用 HH:MM 格式")
+    changes = {key: value for key, value in body.model_dump().items()
+               if key != "sources" and value is not None}
     conn = _conn()
     try:
-        item = store.mark_run(conn, sub_id)
+        try:
+            item = store.update_subscription(
+                conn, sub_id, sources=body.sources, **changes)
+        except ValueError as exc:
+            raise _bad(str(exc)) from exc
+        except sqlite3.IntegrityError as exc:
+            raise _bad("同类型同主题的订阅已经存在") from exc
         if item is None:
             raise HTTPException(status_code=404, detail="没有找到这条订阅")
+        return item
+    finally:
+        conn.close()
+
+
+@router.delete("/api/subscriptions/{sub_id}")
+def delete_subscription(sub_id: int, _=Depends(require_token)):
+    conn = _conn()
+    try:
+        item = store.delete_subscription(conn, sub_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="没有找到这条订阅")
+        return {"deleted": True, "id": int(sub_id)}
+    finally:
+        conn.close()
+
+
+@router.post("/api/subscriptions/{sub_id}/run")
+def run_subscription(sub_id: int, _=Depends(require_token)):
+    """立即生成一次；成功返回订阅对象（含 `last_run`）和当天卡片。"""
+    conn = _conn()
+    try:
+        item = store.get_subscription(conn, sub_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="没有找到这条订阅")
+        try:
+            card = life_service.generate(conn, item)
+        except ValueError as exc:
+            raise _bad(str(exc)) from exc
+        updated = store.mark_run(conn, sub_id) or item
+        return {**updated, "card": card}
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------- life cards
+
+@router.get("/api/life/cards")
+def list_life_cards(day: str = "", limit: int = 50, _=Depends(require_token)):
+    conn = _conn()
+    try:
+        if day:
+            items = store.list_cards(conn, day=day, domain="life", limit=limit)
+        else:
+            items = store.list_recent_cards(conn, days=1, limit=limit)
+        return {"items": items, "count": len(items)}
+    finally:
+        conn.close()
+
+
+@router.post("/api/life/cards/{card_id}/read")
+def read_life_card(card_id: int, body: CardReadBody,
+                   _=Depends(require_token)):
+    conn = _conn()
+    try:
+        item = store.mark_read(conn, card_id, bool(body.read))
+        if item is None:
+            raise HTTPException(status_code=404, detail="没有找到这张卡片")
         return item
     finally:
         conn.close()

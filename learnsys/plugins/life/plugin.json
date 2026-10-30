@@ -1,0 +1,15 @@
+{
+  "id": "life",
+  "name": "生活订阅",
+  "icon": "◐",
+  "type": "native-page",
+  "entry": "pages/life.html",
+  "script": "js/pages/life.js",
+  "order": 20,
+  "status": "ready",
+  "version": "2.47.0",
+  "category": "生活",
+  "home": false,
+  "tagline": "订阅与每日卡片",
+  "description": "按主题订阅新闻、每日一词或自定义内容；每天自动生成一张卡片，新闻只筛选当天简报，全部本地保存。"
+}

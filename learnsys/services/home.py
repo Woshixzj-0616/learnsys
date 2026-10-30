@@ -63,12 +63,14 @@ def _life(conn, day: str) -> dict:
         if title:
             reminders.append(f"卡片：{title}")
     return {
-        "href": "#/briefing",       # P30 前生活域先进简报；P30 再换 #/life
+        "href": "#/life",
         "cards": cards,
         "subscriptions": subscriptions,
         "events": events,
         "subscription_count": len(subscriptions),
         "event_count": len(events),
+        "card_count": len(cards),
+        "unread_count": len([item for item in cards if not item.get("read")]),
         "reminders": reminders,
     }
 

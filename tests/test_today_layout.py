@@ -95,7 +95,7 @@ class TodayLayoutTest(unittest.TestCase):
         self.assertEqual([row["key"] for row in rows],
                          ["learn", "work", "life"])
         self.assertEqual([row["href"] for row in rows],
-                         ["#/cet6", "#/agents", "#/briefing"])
+                         ["#/cet6", "#/agents", "#/life"])
         for key in ('"learn"', '"work"', '"life"'):
             self.assertIn(key, QT_DOMAINS)
         self.assertIn('"href"', QT_DOMAINS)
@@ -105,8 +105,8 @@ class TodayLayoutTest(unittest.TestCase):
         self.assertIn("到期复习", DOMAINS_JS)
         self.assertIn("进行中", DOMAINS_JS)
         self.assertIn("待排队", DOMAINS_JS)
-        self.assertIn("今日订阅", DOMAINS_JS)
-        self.assertIn("待办", DOMAINS_JS)
+        self.assertIn("今日卡片", DOMAINS_JS)
+        self.assertIn("未读", DOMAINS_JS)
         self.assertIn("暂无", DOMAINS_JS)
         self.assertIn("暂无", QT_DOMAINS)
         self.assertNotIn('" ".join(', DOMAINS_JS,

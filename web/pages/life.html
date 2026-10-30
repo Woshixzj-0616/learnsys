@@ -1,0 +1,81 @@
+<div class="life-page">
+  <section class="stage-hero life-hero">
+    <div>
+      <p class="stage-eyebrow">生活 · 订阅中心</p>
+      <h2>每天一张卡片，不刷信息流。</h2>
+      <p class="stage-sub">新闻订阅只筛选当天的每日简报，不另抓一遍；每日一词和自定义订阅各调用一次模型。
+        所有卡片只存在本地库里。</p>
+      <div class="review-stats" id="life-stats">
+        <div class="review-chip"><span>订阅</span><strong>—</strong></div>
+        <div class="review-chip"><span>今日卡片</span><strong>—</strong></div>
+        <div class="review-chip"><span>未读</span><strong>—</strong></div>
+      </div>
+    </div>
+    <div class="life-hero-actions">
+      <button class="btn btn-primary" type="button" id="life-new">新建订阅</button>
+    </div>
+  </section>
+
+  <section class="panel life-panel">
+    <div class="panel-body">
+      <form class="life-form" id="life-form" hidden>
+        <h3 id="life-form-title">新建订阅</h3>
+        <div class="life-form-grid">
+          <label class="life-field">
+            <span>主题</span>
+            <input id="lf-topic" maxlength="60" placeholder="AI 前沿 / 每日一词" required>
+          </label>
+          <label class="life-field">
+            <span>类型</span>
+            <select id="lf-kind">
+              <option value="news">新闻（筛选当天简报）</option>
+              <option value="word">每日一词</option>
+              <option value="custom">自定义</option>
+              <option value="price">价格（暂不支持）</option>
+              <option value="stock">行情（暂不支持）</option>
+            </select>
+          </label>
+          <label class="life-field">
+            <span>频率</span>
+            <select id="lf-cadence">
+              <option value="daily">每天</option>
+              <option value="weekly">每周</option>
+            </select>
+          </label>
+          <label class="life-field">
+            <span>时间</span>
+            <input id="lf-time" type="time" value="07:30" required>
+          </label>
+        </div>
+        <label class="life-field" id="lf-sources-field">
+          <span>来源（可选，逗号分隔；填来源名或类目，如 量子位, ai）</span>
+          <input id="lf-sources" maxlength="300" placeholder="量子位, IT之家">
+        </label>
+        <label class="life-check">
+          <input id="lf-enabled" type="checkbox" checked>
+          <span>启用</span>
+        </label>
+        <div class="life-form-actions">
+          <button class="btn btn-primary" type="submit">保存</button>
+          <button class="btn btn-quiet" type="button" id="lf-cancel">取消</button>
+        </div>
+      </form>
+
+      <div class="life-cards" id="life-cards">
+        <div class="empty">正在读今日卡片…</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel life-panel">
+    <div class="panel-body">
+      <div class="life-section-head">
+        <h3>订阅</h3>
+        <span class="life-hint">新闻订阅依赖每日简报；简报没生成前不会落卡。</span>
+      </div>
+      <div class="life-subs" id="life-subs">
+        <div class="empty">正在读订阅…</div>
+      </div>
+    </div>
+  </section>
+</div>

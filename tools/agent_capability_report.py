@@ -31,6 +31,7 @@ DOMAINS = {
     "资料库": ("search_materials", "read_material"),
     "六级精听": ("get_cet6_context",),
     "问答/转写": ("search_records", "today_summary"),
+    "生活助手": ("life_cards",),
 }
 WEB_NAMES = ("web_search", "web_fetch", "fetch_url")
 
@@ -255,7 +256,7 @@ def render(data: dict) -> str:
     if missing:
         lines.append("结论：仍缺数据域工具 —— " + "、".join(missing) + "。")
     else:
-        lines.append("结论：七个学习数据域都有读工具；下一步看真实使用与写入闭环。")
+        lines.append(f"结论：{len(DOMAINS)} 个数据域都有读工具；下一步看真实使用与写入闭环。")
     if not p["vision_ready"]:
         lines.append("提醒：视觉未启用，截图题只剩 OCR。")
     if not p["web_tools"]:

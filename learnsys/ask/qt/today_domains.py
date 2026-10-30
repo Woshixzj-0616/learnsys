@@ -46,9 +46,9 @@ def domain_rows(home: dict | None) -> list[dict]:
         },
         {
             "key": "life", "label": "生活",
-            "href": str(life.get("href") or "#/briefing"),
-            "title": f"今日订阅 {int(life.get('subscription_count') or 0)}"
-                     f" · 待办 {int(life.get('event_count') or 0)}",
+            "href": str(life.get("href") or "#/life"),
+            "title": f"今日卡片 {int(life.get('card_count') or 0)}"
+                     f" · 未读 {int(life.get('unread_count') or 0)}",
             "sub": (f"提醒：{_short(reminders[0])}" if reminders
                     else "提醒：暂无"),
         },

@@ -142,7 +142,8 @@ HOME = {
         "next_step": "完成 P27.2",
     },
     "life": {
-        "href": "#/briefing", "subscription_count": 3, "event_count": 2,
+        "href": "#/life", "card_count": 3, "unread_count": 2,
+        "subscription_count": 3, "event_count": 2,
         "reminders": ["订阅：AI 新闻"],
     },
 }
@@ -266,12 +267,12 @@ class TestTodayWindow(unittest.TestCase):
         self.assertIn("二叉树遍历怎么写", learn.sub.text())
         self.assertEqual(work.title.text(), "进行中 1 · 待排队 2")
         self.assertIn("完成 P27.2", work.sub.text())
-        self.assertEqual(life.title.text(), "今日订阅 3 · 待办 2")
+        self.assertEqual(life.title.text(), "今日卡片 3 · 未读 2")
         self.assertIn("AI 新闻", life.sub.text())
         learn.clicked.emit()
         work.clicked.emit()
         life.clicked.emit()
-        self.assertEqual(self.opened, ["#/review", "#/agents", "#/briefing"])
+        self.assertEqual(self.opened, ["#/review", "#/agents", "#/life"])
 
     def test_三域卡无数据仍保留入口(self):
         window, opened = _window(responses={

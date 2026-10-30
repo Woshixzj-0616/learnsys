@@ -31,7 +31,7 @@ from learnsys.server import (routes_agent, routes_agents, routes_briefing,
                              routes_vocab, routes_web, runtime)
 from learnsys.server.nav_bridge import NavBridge
 from learnsys.server.security import origin_allowed
-from learnsys.services import agents, briefing
+from learnsys.services import agents, briefing, life
 
 DEFAULT_PORT = 8765
 
@@ -42,7 +42,15 @@ async def _lifespan(_app):
         briefing.ensure_started()    # 测试进程里会自己跳过
     except Exception:
         pass
+    try:
+        life.ensure_started()        # 生活订阅调度，和简报互不依赖
+    except Exception:
+        pass
     yield
+    try:
+        life.shutdown()
+    except Exception:
+        pass
     try:
         briefing.shutdown()
     except Exception:
