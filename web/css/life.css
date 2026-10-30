@@ -76,6 +76,39 @@
 }
 .life-form-actions { display: flex; gap: 8px; }
 
+.life-stock-config {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-sunken);
+}
+.life-stock-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.life-stock-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.life-stock-row input {
+  flex: 1 1 260px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--bg-input);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
 /* 事务箱 */
 .life-filters { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
 .life-filter {

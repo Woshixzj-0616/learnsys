@@ -5,7 +5,7 @@ import { mount as mountItems, unmount as unmountItems } from "./life-items.js";
 
 const KIND_LABEL = {
   news: "新闻", word: "每日一词", custom: "自定义",
-  price: "价格（暂不支持）", stock: "行情（暂不支持）",
+  price: "价格（暂不支持）", stock: "股票（Tushare 日线）",
 };
 const CADENCE_LABEL = { daily: "每天", weekly: "每周" };
 
@@ -29,8 +29,12 @@ export async function mount(ctx) {
     time: ctx.root.querySelector("#lf-time"),
     sources: ctx.root.querySelector("#lf-sources"),
     sourcesField: ctx.root.querySelector("#lf-sources-field"),
+    sourcesLabel: ctx.root.querySelector("#lf-sources-label"),
     enabled: ctx.root.querySelector("#lf-enabled"),
     cancel: ctx.root.querySelector("#lf-cancel"),
+    stockToken: ctx.root.querySelector("#lf-stock-token"),
+    stockSave: ctx.root.querySelector("#lf-stock-save"),
+    stockStatus: ctx.root.querySelector("#lf-stock-status"),
   };
   ctx.root.querySelector("#life-new").addEventListener("click", () => openForm());
   nodes.cancel.addEventListener("click", closeForm);
@@ -38,6 +42,8 @@ export async function mount(ctx) {
   nodes.kind.addEventListener("change", syncSourcesField);
   nodes.cards.addEventListener("click", onCardsClick);
   nodes.subs.addEventListener("click", onSubsClick);
+  nodes.stockSave.addEventListener("click", onSaveStockToken);
+  await loadStockConfig();
   await mountItems(ctx, (counts) => {
     itemStats = counts || { open: 0, overdue: 0 };
     renderStats();
@@ -163,7 +169,49 @@ function renderSubs() {
 }
 
 function syncSourcesField() {
-  nodes.sourcesField.hidden = nodes.kind.value !== "news";
+  const kind = nodes.kind.value;
+  const visible = kind === "news" || kind === "stock";
+  nodes.sourcesField.hidden = !visible;
+  if (kind === "stock") {
+    nodes.sourcesLabel.textContent =
+      "股票/指数代码（逗号分隔；指数如 000001.SH 上证、399001.SZ 深证；最多 5 个）";
+    nodes.sources.placeholder = "600519.SH, 000001.SH";
+  } else {
+    nodes.sourcesLabel.textContent =
+      "来源（可选，逗号分隔；填来源名或类目，如 量子位, ai）";
+    nodes.sources.placeholder = "量子位, IT之家";
+  }
+}
+
+async function loadStockConfig() {
+  try {
+    const data = await api.get("/api/life/stock/config");
+    renderStockStatus(data);
+  } catch (error) {
+    nodes.stockStatus.textContent = "股票配置没读出来";
+  }
+}
+
+function renderStockStatus(data) {
+  const configured = Boolean(data && data.configured);
+  nodes.stockStatus.textContent = configured
+    ? `已配置（尾号 ${data.token_tail || "****"}）`
+    : "未配置：股票卡片会提示先填 token";
+}
+
+async function onSaveStockToken() {
+  const token = nodes.stockToken.value.trim();
+  nodes.stockSave.disabled = true;
+  try {
+    const data = await api.post("/api/life/stock/config", { token });
+    nodes.stockToken.value = "";
+    renderStockStatus(data);
+    toast(token ? "股票 token 已保存" : "已清除股票 token");
+  } catch (error) {
+    toast(error.message || error, "err");
+  } finally {
+    nodes.stockSave.disabled = false;
+  }
 }
 
 function openForm(sub = null) {
@@ -186,7 +234,9 @@ function closeForm() {
 }
 
 function formPayload() {
-  const sources = nodes.sources.value.split(",").map((item) => item.trim())
+  const codes = nodes.kind.value === "stock";
+  const sources = nodes.sources.value.split(/[,，\s]+/)
+    .map((item) => (codes ? item.trim().toUpperCase() : item.trim()))
     .filter(Boolean);
   return {
     topic: nodes.topic.value.trim(),

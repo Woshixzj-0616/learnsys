@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from learnsys import store
 from learnsys.server.security import require_token
 from learnsys.services import life as life_service
+from learnsys.services.life import stock as stock_service
 from .common import _conn
 
 router = APIRouter()
@@ -36,6 +37,10 @@ class ItemPatch(BaseModel):
 
 class CardReadBody(BaseModel):
     read: bool = True
+
+
+class StockConfigBody(BaseModel):
+    token: str = ""
 
 
 def _bad(detail: str) -> HTTPException:
@@ -142,6 +147,26 @@ def delete_item(item_id: int, _=Depends(require_token)):
         return {"deleted": True, "id": int(item_id)}
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------- 股票配置
+
+def _stock_state() -> dict:
+    token = stock_service.configured_token()
+    return {"configured": bool(token),
+            "token_tail": token[-4:] if token else "",
+            "source": "tushare"}
+
+
+@router.get("/api/life/stock/config")
+def get_stock_config(_=Depends(require_token)):
+    return _stock_state()
+
+
+@router.post("/api/life/stock/config")
+def save_stock_config(body: StockConfigBody, _=Depends(require_token)):
+    stock_service.save_token(body.token)
+    return _stock_state()
 
 
 # ---------------------------------------------------------------- 订阅卡片

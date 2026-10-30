@@ -105,18 +105,17 @@ class LifeCardsTest(unittest.TestCase):
         self.assertLessEqual(len(card["content"]["summary"]), cards.MAX_TEXT)
 
     # ---------------------------------------------------------- 不支持类型
-    def test_price_and_stock_are_unsupported(self):
-        for kind in ("price", "stock"):
-            sub = self._sub(topic=f"{kind}测试", kind=kind)
-            with self.assertRaises(cards.LifeUnsupported):
-                cards.generate(self.conn, sub, DAY)
+    def test_price_is_unsupported(self):
+        sub = self._sub(topic="手机价格", kind="price")
+        with self.assertRaises(cards.LifeUnsupported):
+            cards.generate(self.conn, sub, DAY)
 
     def test_supported_kinds(self):
         self.assertTrue(cards.supported("news"))
         self.assertTrue(cards.supported("word"))
         self.assertTrue(cards.supported("custom"))
+        self.assertTrue(cards.supported("stock"))
         self.assertFalse(cards.supported("price"))
-        self.assertFalse(cards.supported("stock"))
 
 
 if __name__ == "__main__":

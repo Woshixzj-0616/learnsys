@@ -84,7 +84,7 @@
               <option value="word">每日一词</option>
               <option value="custom">自定义</option>
               <option value="price">价格（暂不支持）</option>
-              <option value="stock">行情（暂不支持）</option>
+              <option value="stock">股票（Tushare 免费日线）</option>
             </select>
           </label>
           <label class="life-field">
@@ -100,7 +100,7 @@
           </label>
         </div>
         <label class="life-field" id="lf-sources-field">
-          <span>来源（可选，逗号分隔；填来源名或类目，如 量子位, ai）</span>
+          <span id="lf-sources-label">来源（可选，逗号分隔；填来源名或类目，如 量子位, ai）</span>
           <input id="lf-sources" maxlength="300" placeholder="量子位, IT之家">
         </label>
         <label class="life-check">
@@ -112,6 +112,19 @@
           <button class="btn btn-quiet" type="button" id="lf-cancel">取消</button>
         </div>
       </form>
+
+      <div class="life-stock-config" id="life-stock-config">
+        <div class="life-stock-head">
+          <strong>股票数据</strong>
+          <span class="life-hint">Tushare 免费档 · 日线；只在本机使用，可能延迟，不构成投资建议</span>
+        </div>
+        <div class="life-stock-row">
+          <input id="lf-stock-token" type="password" autocomplete="off"
+                 placeholder="粘贴 Tushare token（tushare.pro 免费注册）">
+          <button class="btn btn-quiet" type="button" id="lf-stock-save">保存 token</button>
+          <span class="life-hint" id="lf-stock-status">正在读…</span>
+        </div>
+      </div>
 
       <div class="life-cards" id="life-cards">
         <div class="empty">正在读今日卡片…</div>

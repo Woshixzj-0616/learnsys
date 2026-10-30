@@ -14,9 +14,12 @@ import re
 
 from learnsys import agent, store
 
+from . import stock as stock_service
+from .errors import LifeNotReady, LifeUnsupported
+
 PROMPT_VERSION = "life-sub-v1"
-SUPPORTED_KINDS = ("news", "word", "custom")
-UNSUPPORTED_KINDS = ("price", "stock")
+SUPPORTED_KINDS = ("news", "word", "custom", "stock")
+UNSUPPORTED_KINDS = ("price",)
 MAX_TEXT = 400
 MAX_ITEMS = 5
 ITEM_SUMMARY = 160
@@ -30,14 +33,6 @@ SYSTEM = """你是学习工作台的生活订阅编辑。遵守：
 4. 直接给正文，不要写「好的」「以下是」。"""
 
 _SPLIT = re.compile(r"[\s,，、·/]+")
-
-
-class LifeNotReady(ValueError):
-    """前置资料还没准备好（例如当天简报未生成）：下个 tick 再试，不记时间。"""
-
-
-class LifeUnsupported(ValueError):
-    """本轮不支持的订阅类型（价格 / 行情）：按「已处理」记一次，不重试。"""
 
 
 def supported(kind: str) -> bool:
@@ -119,7 +114,9 @@ def generate(conn, sub: dict, day: str = "") -> dict:
         raise LifeUnsupported(f"未知订阅类型：{kind}")
 
     topic = str(sub.get("topic") or "").strip()
-    if kind == "news":
+    if kind == "stock":
+        content = stock_service.card_content(conn, sub, day)
+    elif kind == "news":
         items = _news_items(conn, sub, day)
         if items:
             summary = "；".join(

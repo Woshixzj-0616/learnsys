@@ -2,6 +2,7 @@
 """P30.1 接口：订阅真正生成、卡片列表/已读、删除、错误码。"""
 from __future__ import annotations
 
+import json
 import pathlib
 import tempfile
 import unittest
@@ -127,6 +128,19 @@ class TestLifeRoutes(unittest.TestCase):
         self.assertEqual(
             self.client.post("/api/subscriptions/99999/run",
                              headers=self.headers).status_code, 404)
+
+    def test_stock_config_masks_token(self):
+        empty = self.client.get("/api/life/stock/config", headers=self.headers)
+        self.assertEqual(empty.status_code, 200)
+        self.assertFalse(empty.json()["configured"])
+        saved = self.client.post("/api/life/stock/config", headers=self.headers,
+                                 json={"token": "abcd1234efgh"})
+        self.assertEqual(saved.status_code, 200, saved.text)
+        self.assertEqual(saved.json()["token_tail"], "efgh")
+        self.assertTrue(saved.json()["configured"])
+        self.assertNotIn("abcd1234efgh", json.dumps(saved.json(), ensure_ascii=False))
+        listed = self.client.get("/api/life/stock/config", headers=self.headers)
+        self.assertEqual(listed.json()["token_tail"], "efgh")
 
     def test_cards_require_token(self):
         self.assertEqual(self.client.get("/api/life/cards").status_code, 403)

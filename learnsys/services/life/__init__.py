@@ -10,9 +10,11 @@ from .cards import (KIND_LABELS, LifeNotReady, LifeUnsupported, MAX_TEXT,
                     PROMPT_VERSION, SUPPORTED_KINDS, generate, supported)
 from .items import change_status, reminder_lines, summary, validate
 from .scheduler import ensure_started, shutdown, tick
+from .stock import configured_token, mask_token, save_token
 
 __all__ = ["KIND_LABELS", "LifeNotReady", "LifeUnsupported", "MAX_TEXT",
            "PROMPT_VERSION", "SUPPORTED_KINDS", "generate", "supported",
            "change_status", "reminder_lines", "summary", "validate",
            "import_works", "parse_import", "safe_image_path", "validate_work",
+           "configured_token", "mask_token", "save_token",
            "ensure_started", "shutdown", "tick"]
