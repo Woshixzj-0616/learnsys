@@ -35,7 +35,7 @@ class CapabilityReportTest(unittest.TestCase):
         self.assertEqual(data["perception"]["recordings"], 0)
         self.assertFalse(data["perception"]["vision_ready"])
         self.assertEqual(data["memory"]["memories_active"], 0)
-        self.assertEqual(data["tools"]["total"], 32)
+        self.assertEqual(data["tools"]["total"], 33)
         self.assertEqual(data["perception"]["web_tools"], ["fetch_url", "web_search"])
         self.assertEqual(data["tools"]["surface_quickbar"], 18)
         self.assertEqual(data["tools"]["mcp_tools"], 5)
@@ -45,7 +45,7 @@ class CapabilityReportTest(unittest.TestCase):
         text = report.render(report.collect(self.db, cfg=fake_cfg()))
         for section in ("感知面", "工具面", "记忆面", "可靠性", "主动性与互操作"):
             self.assertIn(section, text)
-        self.assertIn("9 个数据域都有读工具", text)
+        self.assertIn("10 个数据域都有读工具", text)
         self.assertIn("视觉未启用", text)
         self.assertIn("联网工具：fetch_url、web_search", text)
 

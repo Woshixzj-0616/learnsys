@@ -27,6 +27,45 @@ def _due_text(due: str) -> str:
     return f"到期 {due}"
 
 
+def art_works(status: str = "active", limit: int = 10, *,
+              ctx: ToolContext) -> str:
+    """读创作库作品档案；只读。"""
+    status = str(status or "active")
+    if status != "all" and status not in store.ART_WORK_STATUSES:
+        status = "active"
+    limit = max(1, min(int(limit or 10), 50))
+    conn = None
+    try:
+        conn = store.connect(ctx.db_path)
+        works = store.list_art_works(conn, status=status, limit=limit)
+        presets = {item["id"]: item["name"]
+                   for item in store.list_art_presets(conn)}
+    except Exception as exc:  # noqa: BLE001 —— 工具失败要如实告诉模型
+        return f"读创作库失败：{exc}"
+    finally:
+        if conn is not None:
+            conn.close()
+    if not works:
+        return "创作库里没有作品。"
+    lines = [f"创作库（最近 {len(works)} 件）："]
+    for work in works:
+        style = presets.get(work.get("preset_id") or 0, "")
+        parts = [f"- {work.get('title') or ''}"]
+        if style:
+            parts.append(f"风格：{style}")
+        if work.get("model"):
+            parts.append(f"模型：{work['model']}")
+        day = str(work.get("created_at") or "")[:10]
+        if day:
+            parts.append(day)
+        line = " · ".join(parts)
+        prompt = _one_line(work.get("prompt") or "", 80)
+        if prompt:
+            line += f"：{prompt}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def life_items(status: str = "open", limit: int = 10, *,
                ctx: ToolContext) -> str:
     """读生活事务箱；只读，不改状态。"""

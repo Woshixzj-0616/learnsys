@@ -33,6 +33,7 @@ DOMAINS = {
     "问答/转写": ("search_records", "today_summary"),
     "生活助手": ("life_cards",),
     "生活事务": ("life_items",),
+    "创作库": ("art_works",),
 }
 WEB_NAMES = ("web_search", "web_fetch", "fetch_url")
 

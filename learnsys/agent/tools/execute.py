@@ -6,7 +6,7 @@ from .context import ToolContext
 from .files import run_code, write_study_file
 from .learning_write import (add_vocab, delete_vocab, rate_review,
                              save_training_error)
-from .life_tools import life_cards, life_items
+from .life_tools import art_works, life_cards, life_items
 from .materials import read_material, save_material_note, search_materials
 from .records import ocr_image, read_attachment, search_records, today_summary
 from .study_tools import (due_reviews, forget_memory, get_cet6_context,
@@ -60,6 +60,10 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
             text = life_items(str(args.get("status") or "open"),
                               int(args.get("limit") or 10), ctx=ctx)
             return text, "读了生活事务", not text.startswith("读生活事务失败")
+        if name == "art_works":
+            text = art_works(str(args.get("status") or "active"),
+                             int(args.get("limit") or 10), ctx=ctx)
+            return text, "读了创作库", not text.startswith("读创作库失败")
         if name == "due_reviews":
             text = due_reviews(int(args.get("limit") or 20),
                                str(args.get("item_type") or ""), ctx=ctx)

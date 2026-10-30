@@ -112,6 +112,7 @@ GET_CET6_CONTEXT_SCHEMA = {
 }
 TOOL_SCHEMAS.append(GET_CET6_CONTEXT_SCHEMA)
 
+from .schemas_art import ART_WORKS_SCHEMA
 from .schemas_learning import (DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
                                GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA)
 from .schemas_life import LIFE_CARDS_SCHEMA, LIFE_ITEMS_SCHEMA
@@ -373,6 +374,7 @@ TOOL_LABELS = {
     "fetch_url": "读取网页",
     "life_cards": "读生活卡片",
     "life_items": "读生活事务",
+    "art_works": "读创作库",
 }
 
 
@@ -416,7 +418,7 @@ def schemas_for(mode: str = "explain", *, use_tools: bool = True,
                        OPEN_URL_SCHEMA, BROWSER_STATUS_SCHEMA, BROWSER_HISTORY_SCHEMA])
         schemas += WRITING_WRITE_SCHEMAS
         # 生活数据只给工作台问答，不给快速栏 / 六级 / 录像 / 测验。
-        schemas += [LIFE_CARDS_SCHEMA, LIFE_ITEMS_SCHEMA]
+        schemas += [LIFE_CARDS_SCHEMA, LIFE_ITEMS_SCHEMA, ART_WORKS_SCHEMA]
     schemas += [SAVE_MATERIAL_NOTE_SCHEMA, WRITE_STUDY_FILE_SCHEMA, RUN_CODE_SCHEMA]
     # 收进复习是学习闭环的共用写入口：测验判错、问答收题、代码调试都走它。
     # quick 模式在前面已提前返回，cet6 / video / quickbar 也不会走到这里。

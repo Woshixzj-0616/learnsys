@@ -1,0 +1,15 @@
+{
+  "id": "art",
+  "name": "创作库",
+  "icon": "✦",
+  "type": "native-page",
+  "entry": "pages/art.html",
+  "script": "js/pages/art.js",
+  "order": 25,
+  "status": "ready",
+  "version": "2.47.0",
+  "category": "生活",
+  "home": false,
+  "tagline": "作品、提示词与风格",
+  "description": "把生成过的图、提示词、风格和模型归档在本地；风格可复用，支持从豆包导出的文本粘贴导入。"
+}

@@ -1,0 +1,211 @@
+/* 创作库：作品网格、风格预设、导入表单。 */
+.art-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  max-width: var(--page-max);
+  margin: 0 auto;
+}
+.art-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s5);
+  align-items: flex-start;
+}
+.art-hero h2 {
+  margin: 8px 0 10px;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.22;
+  letter-spacing: -.02em;
+  font-weight: 650;
+}
+.art-hero .stage-sub {
+  max-width: 58ch;
+  color: var(--text-dim);
+  font-size: 13.5px;
+}
+.art-hero-actions {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.art-panel { margin-top: 0; }
+
+.art-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.art-tab {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.art-tab.is-active {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.art-filters { display: flex; gap: 6px; margin-bottom: 12px; }
+.art-filter {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.art-filter.is-active {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.art-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-sunken);
+}
+.art-form h3 { margin: 0; font-size: var(--fs-base); }
+.art-form-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1fr 1.6fr;
+  gap: 12px;
+}
+.art-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+.art-field input,
+.art-field select,
+.art-field textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--bg-input);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+.art-field textarea { resize: vertical; }
+.art-hint { color: var(--text-dim); font-size: var(--fs-xs); }
+.art-form-actions { display: flex; gap: 8px; }
+
+.art-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.art-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+.art-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--bg-input);
+}
+.art-card-body { padding: 12px 14px 14px; }
+.art-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.art-card-head strong { font-size: var(--fs-sm); }
+.art-badge {
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+.art-card-meta {
+  margin-top: 6px;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+.art-card-prompt {
+  margin: 8px 0 0;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.art-card-note {
+  margin-top: 6px;
+  color: var(--warn);
+  font-size: var(--fs-xs);
+}
+.art-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.art-preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.art-preset {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-sunken);
+}
+.art-preset-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.art-preset-prompt {
+  margin-top: 6px;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+.art-preset-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+@media (max-width: 900px) {
+  .art-hero { flex-direction: column; }
+  .art-form-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 620px) {
+  .art-form-grid { grid-template-columns: 1fr; }
+  .art-grid { grid-template-columns: 1fr; }
+}

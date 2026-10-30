@@ -69,4 +69,28 @@ CREATE TABLE IF NOT EXISTS life_items (
 );
 CREATE INDEX IF NOT EXISTS idx_life_items_status
     ON life_items (status, due_date);
+
+CREATE TABLE IF NOT EXISTS style_presets (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL UNIQUE,
+    prompt     TEXT NOT NULL DEFAULT '',   -- 风格描述 / 正向前缀
+    negative   TEXT NOT NULL DEFAULT '',   -- 反向词
+    note       TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS art_works (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    title      TEXT NOT NULL,
+    prompt     TEXT NOT NULL DEFAULT '',
+    preset_id  INTEGER NOT NULL DEFAULT 0,
+    model      TEXT NOT NULL DEFAULT '',
+    file_path  TEXT NOT NULL DEFAULT '',   -- 只接受 DATA_ROOT 内的图片
+    note       TEXT NOT NULL DEFAULT '',
+    status     TEXT NOT NULL DEFAULT 'active', -- active / archived
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_art_works_status ON art_works (status, id);
 """

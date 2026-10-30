@@ -1,0 +1,118 @@
+<div class="art-page">
+  <section class="stage-hero art-hero">
+    <div>
+      <p class="stage-eyebrow">生活 · 创作库</p>
+      <h2>作品和提示词，留一份能复用的档案。</h2>
+      <p class="stage-sub">每件作品记下提示词、风格、模型和本地图片；风格预设可反复套用。
+        图片先上传到工作台数据目录，档案只存本地。</p>
+      <div class="review-stats" id="art-stats">
+        <div class="review-chip"><span>作品</span><strong>—</strong></div>
+        <div class="review-chip"><span>风格</span><strong>—</strong></div>
+      </div>
+    </div>
+    <div class="art-hero-actions">
+      <button class="btn btn-primary" type="button" id="art-new">新建作品</button>
+      <button class="btn btn-quiet" type="button" id="art-import-open">从豆包导入</button>
+    </div>
+  </section>
+
+  <section class="panel art-panel">
+    <div class="panel-body">
+      <div class="art-tabs" id="art-tabs">
+        <button class="art-tab is-active" type="button" data-tab="works">作品</button>
+        <button class="art-tab" type="button" data-tab="presets">风格预设</button>
+      </div>
+
+      <div id="art-tab-works">
+        <div class="art-filters" id="art-work-filters">
+          <button class="art-filter is-active" type="button" data-status="active">未归档</button>
+          <button class="art-filter" type="button" data-status="archived">已归档</button>
+        </div>
+        <form class="art-form" id="art-work-form" hidden>
+          <h3 id="art-work-form-title">新建作品</h3>
+          <div class="art-form-grid">
+            <label class="art-field">
+              <span>标题</span>
+              <input id="aw-title" maxlength="120" placeholder="霓虹城市" required>
+            </label>
+            <label class="art-field">
+              <span>风格</span>
+              <select id="aw-preset"></select>
+            </label>
+            <label class="art-field">
+              <span>模型</span>
+              <input id="aw-model" maxlength="60" placeholder="豆包 / 即梦 / 其他">
+            </label>
+            <label class="art-field">
+              <span>图片（可选，上传到工作台）</span>
+              <input id="aw-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+              <span class="art-hint" id="aw-file-name"></span>
+            </label>
+          </div>
+          <label class="art-field">
+            <span>提示词</span>
+            <textarea id="aw-prompt" rows="4" maxlength="4000"
+                      placeholder="完整提示词，原样保留"></textarea>
+          </label>
+          <label class="art-field">
+            <span>备注</span>
+            <textarea id="aw-note" rows="2" maxlength="2000"
+                      placeholder="参数、失败原因、下次怎么改"></textarea>
+          </label>
+          <div class="art-form-actions">
+            <button class="btn btn-primary" type="submit">保存</button>
+            <button class="btn btn-quiet" type="button" id="aw-cancel">取消</button>
+          </div>
+        </form>
+        <div class="art-grid" id="art-work-list">
+          <div class="empty">正在读作品…</div>
+        </div>
+      </div>
+
+      <div id="art-tab-presets" hidden>
+        <form class="art-form" id="art-preset-form" hidden>
+          <h3 id="art-preset-form-title">新建风格</h3>
+          <div class="art-form-grid">
+            <label class="art-field">
+              <span>名称</span>
+              <input id="ap-name" maxlength="60" placeholder="霓虹赛博" required>
+            </label>
+            <label class="art-field">
+              <span>反向词（可选）</span>
+              <input id="ap-negative" maxlength="300" placeholder="模糊、低清">
+            </label>
+          </div>
+          <label class="art-field">
+            <span>风格描述 / 正向前缀</span>
+            <textarea id="ap-prompt" rows="3" maxlength="2000"
+                      placeholder="霓虹灯、雨夜、赛博朋克、电影感"></textarea>
+          </label>
+          <label class="art-field">
+            <span>备注</span>
+            <textarea id="ap-note" rows="2" maxlength="1000"></textarea>
+          </label>
+          <div class="art-form-actions">
+            <button class="btn btn-primary" type="submit">保存</button>
+            <button class="btn btn-quiet" type="button" id="ap-cancel">取消</button>
+          </div>
+        </form>
+        <div class="art-preset-list" id="art-preset-list">
+          <div class="empty">正在读风格…</div>
+        </div>
+      </div>
+
+      <form class="art-form" id="art-import-form" hidden>
+        <h3>从豆包粘贴导入</h3>
+        <label class="art-field">
+          <span>每件作品空一行；支持「标题：/提示词：/风格：/模型：/备注：」标签</span>
+          <textarea id="ai-text" rows="8" maxlength="20000"
+                    placeholder="标题：霓虹城市&#10;提示词：赛博朋克街道，霓虹灯，雨夜&#10;风格：霓虹赛博&#10;模型：豆包"></textarea>
+        </label>
+        <div class="art-form-actions">
+          <button class="btn btn-primary" type="submit">导入</button>
+          <button class="btn btn-quiet" type="button" id="ai-cancel">取消</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>
