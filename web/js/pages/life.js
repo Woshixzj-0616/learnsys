@@ -174,8 +174,8 @@ function syncSourcesField() {
   nodes.sourcesField.hidden = !visible;
   if (kind === "stock") {
     nodes.sourcesLabel.textContent =
-      "股票/指数代码（逗号分隔；指数如 000001.SH 上证、399001.SZ 深证；最多 5 个）";
-    nodes.sources.placeholder = "600519.SH, 000001.SH";
+      "股票/指数代码（逗号分隔；指数如 000001.SH 上证、399001.SZ 深证；个股需 token；最多 5 个）";
+    nodes.sources.placeholder = "000001.SH, 399001.SZ, 600519.SH";
   } else {
     nodes.sourcesLabel.textContent =
       "来源（可选，逗号分隔；填来源名或类目，如 量子位, ai）";
@@ -196,7 +196,7 @@ function renderStockStatus(data) {
   const configured = Boolean(data && data.configured);
   nodes.stockStatus.textContent = configured
     ? `已配置（尾号 ${data.token_tail || "****"}）`
-    : "未配置：股票卡片会提示先填 token";
+    : "未配置：个股卡片需要 token；指数卡片不需要";
 }
 
 async function onSaveStockToken() {

@@ -16,16 +16,17 @@ from learnsys import config
 from .errors import LifeUnsupported
 
 TUSHARE_API = "https://api.tushare.pro"
+EASTMONEY_API = "https://push2.eastmoney.com/api/qt/ulist.np/get"
 FIELDS = ("ts_code,trade_date,close,pre_close,change,pct_chg,vol,amount")
 MAX_CODES = 5
 PROMPT_VERSION = "life-stock-v1"
-# 常见指数走 index_daily；000001.SH 是上证指数，000001.SZ 才是平安银行。
+# 指数走东方财富公开行情（免费档的 index_daily 要 2000 积分）；个股走 Tushare daily。
 INDEX_CODES = {"000001.SH", "399001.SZ", "399006.SZ",
                "000300.SH", "000905.SH", "399005.SZ"}
 
 
-def _api_name(code: str) -> str:
-    return "index_daily" if code in INDEX_CODES else "daily"
+def _is_index(code: str) -> bool:
+    return code in INDEX_CODES
 
 
 def configured_token() -> str:
@@ -117,7 +118,7 @@ def fetch_quotes(codes: list[str], token: str, day: str) -> list[dict]:
     quotes: list[dict] = []
     for code in codes:
         data = _request({
-            "api_name": _api_name(code), "token": token,
+            "api_name": "daily", "token": token,
             "params": {"ts_code": code, "start_date": start, "end_date": end},
             "fields": FIELDS,
         })
@@ -143,34 +144,77 @@ def fetch_quotes(codes: list[str], token: str, day: str) -> list[dict]:
     return quotes
 
 
+def _secid(code: str) -> str:
+    number, market = code.split(".", 1)
+    return f"{'1' if market == 'SH' else '0'}.{number}"
+
+
+def fetch_index_quotes(codes: list[str], day: str) -> list[dict]:
+    """东方财富公开行情：一次请求拿多个指数，免 token、免积分。"""
+    secids = [_secid(code) for code in codes]
+    url = (f"{EASTMONEY_API}?secids={','.join(secids)}"
+           "&fields=f2,f3,f4,f12,f14")
+    request = urllib.request.Request(
+        url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+    with urllib.request.urlopen(request, timeout=10) as response:
+        data = json.loads(response.read().decode("utf-8") or "{}")
+    rows = (data.get("data") or {}).get("diff") or []
+    if isinstance(rows, dict):
+        rows = [rows]
+    quotes: list[dict] = []
+    for code, row in zip(codes, rows):
+        price = _num(row.get("f2")) / 100
+        if price <= 0:
+            continue
+        quotes.append({
+            "code": code,
+            "name": str(row.get("f14") or ""),
+            "trade_date": str(day),
+            "close": price,
+            "change": _num(row.get("f4")) / 100,
+            "pct_chg": _num(row.get("f3")) / 100,
+        })
+    return quotes
+
+
 def card_content(conn, sub: dict, day: str) -> dict:
     """生成股票卡片内容；失败抛中文 `LifeUnsupported`。"""
     codes = normalize_codes(sub.get("sources") or [])
     if not codes:
-        raise LifeUnsupported("股票订阅要先填股票代码（如 600519.SH）")
-    token = configured_token()
-    if not token:
-        raise LifeUnsupported(
-            "未配置 Tushare token：到 tushare.pro 注册免费档后，在生活订阅页填入 token")
-    quotes = fetch_quotes(codes, token, day)
+        raise LifeUnsupported("股票订阅要先填股票/指数代码（如 000001.SH）")
+    indices = [code for code in codes if _is_index(code)]
+    stocks = [code for code in codes if not _is_index(code)]
+    quotes: list[dict] = []
+    sources: list[str] = []
+    if indices:
+        quotes += fetch_index_quotes(indices, day)
+        sources.append("eastmoney")
+    if stocks:
+        token = configured_token()
+        if not token:
+            raise LifeUnsupported(
+                "个股需要 Tushare token：到 tushare.pro 注册免费档后，在生活订阅页填入 token")
+        quotes += fetch_quotes(stocks, token, day)
+        sources.append("tushare")
     if not quotes:
         summary = "最近 14 天没有交易数据（可能停牌或代码不对）"
         items: list[dict] = []
     else:
-        parts = [f"{row['code']} {row['close']:.2f}（{row['pct_chg']:+.2f}%）"
-                 for row in quotes]
-        summary = "；".join(parts)[:200]
+        labels = [f"{(row.get('name') or row['code'])} "
+                  f"{row['close']:.2f}（{row['pct_chg']:+.2f}%）"
+                  for row in quotes]
+        summary = "；".join(labels)[:200]
         items = [{
-            "title": f"{row['code']} {row['close']:.2f}（{row['pct_chg']:+.2f}%）",
-            "summary": f"交易日 {row['trade_date']}",
-            "source": "Tushare",
-        } for row in quotes]
+            "title": label,
+            "summary": f"代码 {row['code']} · 交易日 {row['trade_date']}",
+            "source": "东方财富" if row["code"] in indices else "Tushare",
+        } for label, row in zip(labels, quotes)]
     return {
         "kind": "stock",
         "topic": str(sub.get("topic") or ""),
         "summary": summary,
         "items": items,
-        "source": "tushare",
+        "source": "+".join(sources),
         "prompt_version": PROMPT_VERSION,
         "fetched_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }

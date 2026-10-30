@@ -105,14 +105,19 @@ class FetchTest(unittest.TestCase):
                 stock.fetch_quotes(["600519.SH"], "token", DAY)
         self.assertIn("Tushare", str(ctx.exception))
 
-    def test_index_uses_index_daily(self):
-        payload = _tushare_payload(code="000001.SH", close=3200.0)
+    def test_index_uses_eastmoney(self):
+        payload = {"rc": 0, "data": {"diff": [
+            {"f2": 359902, "f3": -144, "f4": -5241,
+             "f12": "000001", "f14": "上证指数"},
+        ]}}
         with mock.patch.object(stock.urllib.request, "urlopen",
                                return_value=_FakeResponse(payload)) as call:
-            rows = stock.fetch_quotes(["000001.SH"], "token", DAY)
-        sent = json.loads(call.call_args.args[0].data.decode("utf-8"))
-        self.assertEqual(sent["api_name"], "index_daily")
-        self.assertEqual(rows[0]["close"], 3200.0)
+            rows = stock.fetch_index_quotes(["000001.SH"], DAY)
+        url = call.call_args.args[0].full_url
+        self.assertIn("secids=1.000001", url)
+        self.assertEqual(rows[0]["close"], 3599.02)
+        self.assertEqual(rows[0]["pct_chg"], -1.44)
+        self.assertEqual(rows[0]["name"], "上证指数")
 
     def test_empty_items_returns_empty(self):
         payload = {"code": 0, "msg": "", "data": {"fields": [], "items": []}}
@@ -159,7 +164,19 @@ class GenerateTest(unittest.TestCase):
         with mock.patch.object(stock, "configured_token", return_value="token"):
             with self.assertRaises(cards.LifeUnsupported) as ctx:
                 cards.generate(self.conn, sub, DAY)
-        self.assertIn("股票代码", str(ctx.exception))
+        self.assertIn("代码", str(ctx.exception))
+
+    def test_index_only_needs_no_token(self):
+        sub = self._sub(sources=["000001.SH"])
+        rows = [{"code": "000001.SH", "name": "上证指数",
+                 "trade_date": DAY, "close": 3599.02, "pct_chg": -1.44,
+                 "change": -52.41}]
+        with mock.patch.object(stock, "configured_token", return_value=""), \
+                mock.patch.object(stock, "fetch_index_quotes", return_value=rows):
+            card = cards.generate(self.conn, sub, DAY)
+        self.assertEqual(card["content"]["source"], "eastmoney")
+        self.assertIn("上证指数", card["content"]["summary"])
+        self.assertIn("3599.02", card["content"]["summary"])
 
     def test_same_day_reuses_card(self):
         sub = self._sub()
