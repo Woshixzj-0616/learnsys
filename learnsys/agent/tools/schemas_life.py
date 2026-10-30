@@ -15,3 +15,20 @@ LIFE_CARDS_SCHEMA = {
         },
     },
 }
+
+LIFE_ITEMS_SCHEMA = {
+    "name": "life_items",
+    "description": (
+        "看用户生活事务箱里的待办：标题、类型（待办/作息记录/备注）、到期日、"
+        "状态和备注。用户问「我有什么待办」「今天要做什么」时使用；只读，不改状态。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "status": {"type": "string",
+                       "enum": ["open", "done", "archived", "all"],
+                       "description": "默认 open（未完成）"},
+            "limit": {"type": "integer", "description": "最多返回几条，默认 10"},
+        },
+    },
+}

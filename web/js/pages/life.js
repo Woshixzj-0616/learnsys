@@ -1,6 +1,7 @@
 // 生活：订阅中心 + 今日卡片。新闻只读当天简报，生成/编辑/删除都走本地接口。
 import { api } from "../api.js";
 import { escapeHtml, relative, toast } from "../ui.js";
+import { mount as mountItems, unmount as unmountItems } from "./life-items.js";
 
 const KIND_LABEL = {
   news: "新闻", word: "每日一词", custom: "自定义",
@@ -10,6 +11,7 @@ const CADENCE_LABEL = { daily: "每天", weekly: "每周" };
 
 let subs = [];
 let cards = [];
+let itemStats = { open: 0, overdue: 0 };
 let editingId = 0;
 let nodes = {};
 
@@ -36,10 +38,16 @@ export async function mount(ctx) {
   nodes.kind.addEventListener("change", syncSourcesField);
   nodes.cards.addEventListener("click", onCardsClick);
   nodes.subs.addEventListener("click", onSubsClick);
+  await mountItems(ctx, (counts) => {
+    itemStats = counts || { open: 0, overdue: 0 };
+    renderStats();
+  });
   await load();
 }
 
-export function unmount() {}
+export function unmount() {
+  unmountItems();
+}
 
 async function load() {
   await Promise.all([loadCards(), loadSubs()]);
@@ -78,7 +86,7 @@ function renderStats() {
   const today = localToday();
   const todayCards = cards.filter((card) => card.day === today);
   nodes.stats.innerHTML = [
-    ["订阅", subs.filter((item) => item.enabled).length],
+    ["待办", Number(itemStats.open || 0)],
     ["今日卡片", todayCards.length],
     ["未读", cards.filter((card) => !card.read).length],
   ].map(([label, value]) => `

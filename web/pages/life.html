@@ -1,18 +1,70 @@
 <div class="life-page">
   <section class="stage-hero life-hero">
     <div>
-      <p class="stage-eyebrow">生活 · 订阅中心</p>
-      <h2>每天一张卡片，不刷信息流。</h2>
-      <p class="stage-sub">新闻订阅只筛选当天的每日简报，不另抓一遍；每日一词和自定义订阅各调用一次模型。
-        所有卡片只存在本地库里。</p>
+      <p class="stage-eyebrow">生活 · 事务与订阅</p>
+      <h2>待办收在一处，卡片每天一张。</h2>
+      <p class="stage-sub">事务箱记待办、作息与备注，到期进每日提醒；订阅新闻只筛选当天简报，
+        每日一词和自定义订阅各调用一次模型。所有数据只存在本地库里。</p>
       <div class="review-stats" id="life-stats">
-        <div class="review-chip"><span>订阅</span><strong>—</strong></div>
+        <div class="review-chip"><span>待办</span><strong>—</strong></div>
         <div class="review-chip"><span>今日卡片</span><strong>—</strong></div>
         <div class="review-chip"><span>未读</span><strong>—</strong></div>
       </div>
     </div>
     <div class="life-hero-actions">
-      <button class="btn btn-primary" type="button" id="life-new">新建订阅</button>
+      <button class="btn btn-primary" type="button" id="life-item-new">新建事务</button>
+      <button class="btn btn-quiet" type="button" id="life-new">新建订阅</button>
+    </div>
+  </section>
+
+  <section class="panel life-panel">
+    <div class="panel-body">
+      <div class="life-section-head">
+        <h3>事务箱</h3>
+        <span class="life-hint" id="life-item-stats">待办 — · 逾期 —</span>
+      </div>
+      <form class="life-form" id="life-item-form" hidden>
+        <h3 id="life-item-form-title">新建事务</h3>
+        <div class="life-form-grid">
+          <label class="life-field">
+            <span>标题</span>
+            <input id="li-title" maxlength="120" placeholder="交房租 / 07:10 起床" required>
+          </label>
+          <label class="life-field">
+            <span>类型</span>
+            <select id="li-kind">
+              <option value="todo">待办</option>
+              <option value="habit">作息记录</option>
+              <option value="note">备注</option>
+            </select>
+          </label>
+          <label class="life-field">
+            <span>到期日（可空）</span>
+            <input id="li-due" type="date">
+          </label>
+        </div>
+        <label class="life-field" id="li-value-field" hidden>
+          <span>一行记录</span>
+          <input id="li-value" maxlength="120" placeholder="07:10 起床 / 精力 3/5">
+        </label>
+        <label class="life-field">
+          <span>备注</span>
+          <textarea id="li-note" rows="2" maxlength="2000"
+                    placeholder="可选；只写给自己的话"></textarea>
+        </label>
+        <div class="life-form-actions">
+          <button class="btn btn-primary" type="submit">保存</button>
+          <button class="btn btn-quiet" type="button" id="li-cancel">取消</button>
+        </div>
+      </form>
+      <div class="life-filters" id="life-item-filters">
+        <button class="life-filter is-active" type="button" data-status="open">未完成</button>
+        <button class="life-filter" type="button" data-status="done">已完成</button>
+        <button class="life-filter" type="button" data-status="archived">已归档</button>
+      </div>
+      <div class="life-item-list" id="life-item-list">
+        <div class="empty">正在读事务…</div>
+      </div>
     </div>
   </section>
 

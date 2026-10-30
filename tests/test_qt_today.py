@@ -143,6 +143,7 @@ HOME = {
     },
     "life": {
         "href": "#/life", "card_count": 3, "unread_count": 2,
+        "item_count": 2, "overdue_count": 1,
         "subscription_count": 3, "event_count": 2,
         "reminders": ["订阅：AI 新闻"],
     },
@@ -267,7 +268,7 @@ class TestTodayWindow(unittest.TestCase):
         self.assertIn("二叉树遍历怎么写", learn.sub.text())
         self.assertEqual(work.title.text(), "进行中 1 · 待排队 2")
         self.assertIn("完成 P27.2", work.sub.text())
-        self.assertEqual(life.title.text(), "今日卡片 3 · 未读 2")
+        self.assertEqual(life.title.text(), "待办 2 · 卡片 3")
         self.assertIn("AI 新闻", life.sub.text())
         learn.clicked.emit()
         work.clicked.emit()

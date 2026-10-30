@@ -29,8 +29,8 @@ class AgentProjectTest(unittest.TestCase):
         self.conn = store.connect(":memory:")
         self.addCleanup(self.conn.close)
 
-    def test_schema_is_14_and_has_project_id(self):
-        self.assertEqual(schema_mod.SCHEMA_VERSION, 14)
+    def test_current_schema_has_project_id(self):
+        self.assertGreaterEqual(schema_mod.SCHEMA_VERSION, 14)
         cols = {row[1] for row in self.conn.execute(
             "PRAGMA table_info(agent_tasks)").fetchall()}
         self.assertIn("project_id", cols)

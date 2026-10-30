@@ -11,7 +11,7 @@ from .schema_personal import PERSONAL_SCHEMA
 # 统一库结构版本。改了 `SCHEMA` 或 `_migrate_columns` 就 +1：
 # `connect()` 只在版本不一致时跑建表/补列；类目这类“只加行”的数据种子
 # 由 `knowledge.SEED_VERSION` + `meta.knowledge_seed_version` 单独判断。
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 
 
 SCHEMA = """

@@ -25,7 +25,13 @@
   color: var(--text-dim);
   font-size: 13.5px;
 }
-.life-hero-actions { flex: none; }
+.life-hero-actions {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .life-panel { margin-top: 0; }
 
 .life-form {
@@ -69,6 +75,57 @@
   font-size: var(--fs-sm);
 }
 .life-form-actions { display: flex; gap: 8px; }
+
+/* 事务箱 */
+.life-filters { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
+.life-filter {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.life-filter.is-active {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.life-item-list { display: flex; flex-direction: column; gap: 10px; }
+.life-item {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-sunken);
+}
+.life-item.is-muted { opacity: .66; }
+.life-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.life-item-value {
+  margin-top: 6px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.life-item-note {
+  margin-top: 4px;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+.life-due {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+.life-due.is-today { color: var(--warn); }
+.life-due.is-overdue { color: var(--danger); font-weight: 600; }
+.life-item-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 
 .life-cards { display: grid; gap: 10px; }
 .life-card {

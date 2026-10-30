@@ -66,10 +66,6 @@ class SubscriptionPatch(BaseModel):
     enabled: bool | None = None
 
 
-class CardReadBody(BaseModel):
-    read: bool = True
-
-
 def _bad(detail: str) -> HTTPException:
     return HTTPException(status_code=400, detail=detail)
 
@@ -332,30 +328,3 @@ def run_subscription(sub_id: int, _=Depends(require_token)):
     finally:
         conn.close()
 
-
-# ---------------------------------------------------------------- life cards
-
-@router.get("/api/life/cards")
-def list_life_cards(day: str = "", limit: int = 50, _=Depends(require_token)):
-    conn = _conn()
-    try:
-        if day:
-            items = store.list_cards(conn, day=day, domain="life", limit=limit)
-        else:
-            items = store.list_recent_cards(conn, days=1, limit=limit)
-        return {"items": items, "count": len(items)}
-    finally:
-        conn.close()
-
-
-@router.post("/api/life/cards/{card_id}/read")
-def read_life_card(card_id: int, body: CardReadBody,
-                   _=Depends(require_token)):
-    conn = _conn()
-    try:
-        item = store.mark_read(conn, card_id, bool(body.read))
-        if item is None:
-            raise HTTPException(status_code=404, detail="没有找到这张卡片")
-        return item
-    finally:
-        conn.close()

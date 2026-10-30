@@ -114,10 +114,11 @@ TOOL_SCHEMAS.append(GET_CET6_CONTEXT_SCHEMA)
 
 from .schemas_learning import (DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
                                GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA)
-from .schemas_life import LIFE_CARDS_SCHEMA
+from .schemas_life import LIFE_CARDS_SCHEMA, LIFE_ITEMS_SCHEMA
 from .schemas_web import WEB_SCHEMAS
 from .schemas_write import (ADD_VOCAB_SCHEMA, CET6_WRITE_SCHEMAS,
-                            WRITE_LABELS_EXTRA, WRITING_WRITE_SCHEMAS,
+                            RUN_CODE_SCHEMA, WRITE_LABELS_EXTRA,
+                            WRITE_STUDY_FILE_SCHEMA, WRITING_WRITE_SCHEMAS,
                             WRITING_WRITE_TOOLS, extra_write_summary)
 
 TOOL_SCHEMAS.extend([DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
@@ -331,42 +332,6 @@ SAVE_MATERIAL_NOTE_SCHEMA = {
     },
 }
 
-WRITE_STUDY_FILE_SCHEMA = {
-    "name": "write_study_file",
-    "description": (
-        "把文本 / 代码文件写进数据目录的「学习档案」下（相对路径）。"
-        "扩展名只支持 md/txt/cpp/cc/c/h/hpp/py/json/csv；写盘前需要用户确认。"
-        "不要用它写资料库原文或系统目录。"
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "relative_path": {"type": "string",
-                              "description": "相对「学习档案」的路径，例如 代码/栈示例.cpp"},
-            "content": {"type": "string", "description": "文件内容，最多 20 万字"},
-        },
-        "required": ["relative_path", "content"],
-    },
-}
-
-RUN_CODE_SCHEMA = {
-    "name": "run_code",
-    "description": (
-        "在临时目录运行一段 C++ / C / Python 代码，带超时、内存和输出上限。"
-        "**默认禁网**：代码里出现网络 API / 网址会被直接拒绝。"
-        "用户说「跑一下 / 验证这段代码」时使用；只能读写自己的临时目录。"
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "language": {"type": "string", "enum": ["cpp", "c", "python"]},
-            "code": {"type": "string", "description": "完整源代码"},
-            "stdin": {"type": "string", "description": "可选的标准输入"},
-        },
-        "required": ["language", "code"],
-    },
-}
-
 WRITE_TOOLS = {"save_wrongbook", "save_memory", "forget_memory",
                "save_material_note", "write_study_file"} | WRITING_WRITE_TOOLS
 # 需要用户确认的副作用工具：写数据 + 运行代码 + 动系统（打开文件/启动程序）。
@@ -407,6 +372,7 @@ TOOL_LABELS = {
     "web_search": "联网搜索",
     "fetch_url": "读取网页",
     "life_cards": "读生活卡片",
+    "life_items": "读生活事务",
 }
 
 
@@ -449,8 +415,8 @@ def schemas_for(mode: str = "explain", *, use_tools: bool = True,
                     + [OPEN_FILE_SCHEMA, LAUNCH_APP_SCHEMA,
                        OPEN_URL_SCHEMA, BROWSER_STATUS_SCHEMA, BROWSER_HISTORY_SCHEMA])
         schemas += WRITING_WRITE_SCHEMAS
-        # 生活卡片只给工作台问答，不给快速栏 / 六级 / 录像 / 测验。
-        schemas.append(LIFE_CARDS_SCHEMA)
+        # 生活数据只给工作台问答，不给快速栏 / 六级 / 录像 / 测验。
+        schemas += [LIFE_CARDS_SCHEMA, LIFE_ITEMS_SCHEMA]
     schemas += [SAVE_MATERIAL_NOTE_SCHEMA, WRITE_STUDY_FILE_SCHEMA, RUN_CODE_SCHEMA]
     # 收进复习是学习闭环的共用写入口：测验判错、问答收题、代码调试都走它。
     # quick 模式在前面已提前返回，cet6 / video / quickbar 也不会走到这里。

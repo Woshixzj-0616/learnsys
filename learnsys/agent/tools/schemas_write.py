@@ -90,6 +90,42 @@ SAVE_TRAINING_ERROR_SCHEMA = {
     },
 }
 
+WRITE_STUDY_FILE_SCHEMA = {
+    "name": "write_study_file",
+    "description": (
+        "把文本 / 代码文件写进数据目录的「学习档案」下（相对路径）。"
+        "扩展名只支持 md/txt/cpp/cc/c/h/hpp/py/json/csv；写盘前需要用户确认。"
+        "不要用它写资料库原文或系统目录。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "relative_path": {"type": "string",
+                              "description": "相对「学习档案」的路径，例如 代码/栈示例.cpp"},
+            "content": {"type": "string", "description": "文件内容，最多 20 万字"},
+        },
+        "required": ["relative_path", "content"],
+    },
+}
+
+RUN_CODE_SCHEMA = {
+    "name": "run_code",
+    "description": (
+        "在临时目录运行一段 C++ / C / Python 代码，带超时、内存和输出上限。"
+        "**默认禁网**：代码里出现网络 API / 网址会被直接拒绝。"
+        "用户说「跑一下 / 验证这段代码」时使用；只能读写自己的临时目录。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "language": {"type": "string", "enum": ["cpp", "c", "python"]},
+            "code": {"type": "string", "description": "完整源代码"},
+            "stdin": {"type": "string", "description": "可选的标准输入"},
+        },
+        "required": ["language", "code"],
+    },
+}
+
 WRITING_WRITE_SCHEMAS = [
     ADD_VOCAB_SCHEMA, DELETE_VOCAB_SCHEMA, RATE_REVIEW_SCHEMA,
     SAVE_TRAINING_ERROR_SCHEMA,

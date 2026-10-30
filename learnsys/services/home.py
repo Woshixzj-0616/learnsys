@@ -11,6 +11,7 @@ import datetime
 from learnsys import store
 from learnsys.context import clip_personal_state
 from learnsys.services import today as today_service
+from learnsys.services.life import items as life_items_service
 
 
 def _learning(conn, day: str) -> dict:
@@ -51,7 +52,9 @@ def _life(conn, day: str) -> dict:
     subscriptions = store.due_subscriptions(conn)
     events = [item for item in store.list_events(conn, module="life", limit=50)
               if str(item.get("ts") or "").startswith(day)]
-    reminders: list[str] = []
+    items = life_items_service.summary(conn, day)
+    # 顺序固定：待办最需要行动，其次订阅、卡片、生活事件。
+    reminders: list[str] = life_items_service.reminder_lines(conn, day, limit=2)
     for item in subscriptions:
         reminders.append(f"订阅：{item['topic']}")
     for item in events:
@@ -65,12 +68,16 @@ def _life(conn, day: str) -> dict:
     return {
         "href": "#/life",
         "cards": cards,
+        "items": items["items"],
         "subscriptions": subscriptions,
         "events": events,
         "subscription_count": len(subscriptions),
         "event_count": len(events),
         "card_count": len(cards),
         "unread_count": len([item for item in cards if not item.get("read")]),
+        "item_count": items["item_count"],
+        "overdue_count": items["overdue_count"],
+        "due_count": items["due_count"],
         "reminders": reminders,
     }
 

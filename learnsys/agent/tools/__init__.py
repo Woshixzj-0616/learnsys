@@ -9,14 +9,14 @@ from .execute import execute
 from .files import (STUDY_FILE_SUFFIXES, _study_target, run_code, write_study_file)
 from .learning_write import (add_vocab, delete_vocab, rate_review,
                              save_training_error)
-from .life_tools import life_cards
+from .life_tools import life_cards, life_items
 from .materials import read_material, save_material_note, search_materials
 from .records import ocr_image, read_attachment, search_records, today_summary
 from .schemas import (BROWSER_HISTORY_SCHEMA, BROWSER_STATUS_SCHEMA, CONFIRM_TOOLS,
                       DUE_REVIEWS_SCHEMA, FORGET_MEMORY_SCHEMA,
                       GET_CET6_CONTEXT_SCHEMA, GET_MASTERY_SCHEMA,
                       GET_TRAIN_SUMMARY_SCHEMA, LAUNCH_APP_SCHEMA,
-                      LIFE_CARDS_SCHEMA,
+                      LIFE_CARDS_SCHEMA, LIFE_ITEMS_SCHEMA,
                       LIST_RECORDINGS_SCHEMA, MAKE_PLAN_SCHEMA, OPEN_FILE_SCHEMA,
                       OPEN_URL_SCHEMA, RECENT_WRONG_ITEMS_SCHEMA, RUN_CODE_SCHEMA,
                       SAVE_MATERIAL_NOTE_SCHEMA, SAVE_MEMORY_SCHEMA,
@@ -35,7 +35,7 @@ __all__ = [
     "TOOL_LABELS", "label_for",
     "MAKE_PLAN_SCHEMA", "RECENT_WRONG_ITEMS_SCHEMA", "GET_CET6_CONTEXT_SCHEMA",
     "DUE_REVIEWS_SCHEMA", "GET_MASTERY_SCHEMA", "GET_TRAIN_SUMMARY_SCHEMA",
-    "LIFE_CARDS_SCHEMA", "LIST_RECORDINGS_SCHEMA",
+    "LIFE_CARDS_SCHEMA", "LIFE_ITEMS_SCHEMA", "LIST_RECORDINGS_SCHEMA",
     "OPEN_FILE_SCHEMA", "LAUNCH_APP_SCHEMA", "OPEN_URL_SCHEMA",
     "BROWSER_STATUS_SCHEMA", "BROWSER_HISTORY_SCHEMA",
     "SAVE_WRONGBOOK_SCHEMA", "SAVE_MEMORY_SCHEMA", "FORGET_MEMORY_SCHEMA",
@@ -47,5 +47,5 @@ __all__ = [
     "list_recordings", "write_study_file", "run_code",
     "add_vocab", "delete_vocab", "rate_review", "save_training_error",
     "open_file", "launch_app", "open_url", "browser_status", "browser_history",
-    "life_cards",
+    "life_cards", "life_items",
 ]

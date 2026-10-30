@@ -69,6 +69,16 @@ from .knowledge import (BKT_READY_SQL, add_attempt as add_knowledge_attempt,
 from .materials import (MATERIAL_KINDS, add_material, delete_material_row, get_material,
                         list_materials, material_counts, set_material_path,
                         set_material_status, touch_material, update_material)
+from .life_items import (ITEM_KINDS as LIFE_ITEM_KINDS,
+                         ITEM_STATUSES as LIFE_ITEM_STATUSES,
+                         add_item as add_life_item,
+                         delete_item as delete_life_item,
+                         due_items as due_life_items,
+                         get_item as get_life_item,
+                         item_counts as life_item_counts,
+                         list_items as list_life_items,
+                         set_status as set_life_item_status,
+                         update_item as update_life_item)
 from .memories import add_memory, delete_memory, list_memories, update_memory
 from .model_usage import add_usage as add_model_usage, day_by_model, day_totals, \
     recent as recent_model_usage
@@ -162,6 +172,9 @@ __all__ = [
     "list_subscriptions", "get_subscription", "upsert_subscription",
     "due_subscriptions", "mark_run", "delete_subscription", "update_subscription",
     "list_cards", "list_recent_cards", "get_card", "upsert_card", "mark_read",
+    "LIFE_ITEM_KINDS", "LIFE_ITEM_STATUSES", "add_life_item",
+    "delete_life_item", "due_life_items", "get_life_item", "life_item_counts",
+    "list_life_items", "set_life_item_status", "update_life_item",
     "recording_title", "delete_recording", "get_recording", "list_recordings",
     "recording_slides", "recording_totals", "set_recording_analysis",
     "set_recording_material",

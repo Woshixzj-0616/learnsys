@@ -78,6 +78,23 @@ class TestHomePayload(unittest.TestCase):
         self.assertEqual([item["title"] for item in data["life"]["events"]],
                          ["交水电费"])
 
+    def test_life_items_feed_daily_reminders_and_agent_state(self):
+        store.add_life_item(self.conn, title="交房租", due_date=self.day)
+        store.add_life_item(self.conn, title="昨天的事",
+                            due_date=(dt.date.today()
+                                      - dt.timedelta(days=1)).isoformat())
+        store.add_life_item(self.conn, title="不限期")
+        data = home.payload(self.conn, self.day)
+        self.assertEqual(data["life"]["item_count"], 3)
+        self.assertEqual(data["life"]["overdue_count"], 1)
+        self.assertEqual([item["title"] for item in data["life"]["items"]],
+                         ["昨天的事", "交房租"])
+        self.assertEqual(data["life"]["reminders"][0],
+                         "待办：昨天的事（逾期 1 天）")
+        state = home.agent_state(self.conn, self.day)
+        self.assertIn("生活：", state)
+        self.assertIn("待办：昨天的事", state)
+
     def test_recent_wrong_is_unmastered_and_capped_at_three(self):
         ids = []
         for index in range(5):

@@ -17,19 +17,22 @@ def _names(**kwargs):
 
 
 class LifeToolSchemaTest(unittest.TestCase):
-    def test_only_workbench_ask_surface_gets_life_cards(self):
-        self.assertIn("life_cards", _names(mode="explain", surface="ask"))
-        self.assertNotIn("life_cards", _names(mode="explain", surface="quickbar"))
-        self.assertNotIn("life_cards", _names(mode="explain", surface="cet6"))
-        self.assertNotIn("life_cards", _names(mode="explain", surface="video"))
-        self.assertNotIn("life_cards", _names(mode="quiz", surface="ask"))
-        self.assertNotIn("life_cards", _names(mode="quick", surface="ask"))
+    def test_only_workbench_ask_surface_gets_life_tools(self):
+        for name in ("life_cards", "life_items"):
+            self.assertIn(name, _names(mode="explain", surface="ask"))
+            self.assertNotIn(name, _names(mode="explain", surface="quickbar"))
+            self.assertNotIn(name, _names(mode="explain", surface="cet6"))
+            self.assertNotIn(name, _names(mode="explain", surface="video"))
+            self.assertNotIn(name, _names(mode="quiz", surface="ask"))
+            self.assertNotIn(name, _names(mode="quick", surface="ask"))
 
-    def test_tool_is_read_only(self):
-        self.assertNotIn("life_cards", tools.CONFIRM_TOOLS)
+    def test_tools_are_read_only(self):
+        for name in ("life_cards", "life_items"):
+            self.assertNotIn(name, tools.CONFIRM_TOOLS)
         self.assertEqual(tools.LIFE_CARDS_SCHEMA["name"], "life_cards")
+        self.assertEqual(tools.LIFE_ITEMS_SCHEMA["name"], "life_items")
         self.assertEqual(
-            tools.LIFE_CARDS_SCHEMA["input_schema"].get("required", []), [])
+            tools.LIFE_ITEMS_SCHEMA["input_schema"].get("required", []), [])
 
 
 class LifeToolExecuteTest(unittest.TestCase):
@@ -52,6 +55,17 @@ class LifeToolExecuteTest(unittest.TestCase):
         self.assertIn("AI 前沿", text)
         self.assertIn("2 条", text)
         self.assertEqual(summary, "读了生活卡片")
+
+    def test_reads_open_items(self):
+        conn = store.connect(self.db)
+        store.add_life_item(conn, title="交房租", due_date="2026-10-30")
+        store.add_life_item(conn, title="不限期")
+        conn.close()
+        text, summary, ok = tools.execute("life_items", {}, self.ctx)
+        self.assertTrue(ok)
+        self.assertIn("交房租", text)
+        self.assertIn("不限期", text)
+        self.assertEqual(summary, "读了生活事务")
 
     def test_empty_database_is_honest(self):
         empty = pathlib.Path(self.tmp.name) / "empty.db"

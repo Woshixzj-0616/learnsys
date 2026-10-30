@@ -105,8 +105,8 @@ class TodayLayoutTest(unittest.TestCase):
         self.assertIn("到期复习", DOMAINS_JS)
         self.assertIn("进行中", DOMAINS_JS)
         self.assertIn("待排队", DOMAINS_JS)
-        self.assertIn("今日卡片", DOMAINS_JS)
-        self.assertIn("未读", DOMAINS_JS)
+        self.assertIn("待办", DOMAINS_JS)
+        self.assertIn("卡片", DOMAINS_JS)
         self.assertIn("暂无", DOMAINS_JS)
         self.assertIn("暂无", QT_DOMAINS)
         self.assertNotIn('" ".join(', DOMAINS_JS,

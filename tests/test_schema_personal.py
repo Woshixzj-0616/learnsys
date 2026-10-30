@@ -11,7 +11,8 @@ from learnsys import store
 from learnsys.core import db as core_db
 
 
-PERSONAL_TABLES = ("profile_facts", "project_refs", "subscriptions", "daily_cards")
+PERSONAL_TABLES = ("profile_facts", "project_refs", "subscriptions",
+                   "daily_cards", "life_items")
 
 
 class TestSchemaPersonal(unittest.TestCase):
@@ -25,7 +26,7 @@ class TestSchemaPersonal(unittest.TestCase):
         self.assertEqual(
             conn.execute("PRAGMA user_version").fetchone()[0],
             core_db.SCHEMA_VERSION)
-        self.assertEqual(core_db.SCHEMA_VERSION, 14)
+        self.assertEqual(core_db.SCHEMA_VERSION, 15)
 
     def test_connect_twice_keeps_rows_and_does_not_rebuild(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -131,7 +132,7 @@ class TestSchemaPersonal(unittest.TestCase):
             conn = core_db.connect(path)
             try:
                 self.assertEqual(
-                    conn.execute("PRAGMA user_version").fetchone()[0], 14)
+                    conn.execute("PRAGMA user_version").fetchone()[0], 15)
                 row = conn.execute(
                     "SELECT question, answer, tags, code, language, "
                     "error_type, test_cases FROM wrong_items").fetchone()
@@ -152,6 +153,8 @@ class TestSchemaPersonal(unittest.TestCase):
                               "created_at", "updated_at"},
             "daily_cards": {"day", "domain", "title", "content_json",
                             "read_at", "created_at"},
+            "life_items": {"title", "kind", "due_date", "status", "note",
+                           "value", "done_at", "created_at", "updated_at"},
         }
         for table, columns in expected.items():
             actual = {row[1] for row in conn.execute(

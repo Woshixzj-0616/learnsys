@@ -1,4 +1,4 @@
-"""个人 AI 工作台的四张基础表：偏好 / 项目引用 / 订阅 / 每日卡片。
+"""个人 AI 工作台的基础表：偏好 / 项目引用 / 订阅 / 每日卡片 / 生活事务。
 
 只做加法：`CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`。
 拼进 `schema.SCHEMA` 末尾；生活事件仍写 `events(module='life')`，不另建平行表。
@@ -54,4 +54,19 @@ CREATE TABLE IF NOT EXISTS daily_cards (
     UNIQUE (day, domain, title)
 );
 CREATE INDEX IF NOT EXISTS idx_daily_cards_day ON daily_cards (day, domain);
+
+CREATE TABLE IF NOT EXISTS life_items (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    title      TEXT NOT NULL,
+    kind       TEXT NOT NULL DEFAULT 'todo',    -- todo / habit / note
+    due_date   TEXT NOT NULL DEFAULT '',        -- YYYY-MM-DD；空 = 不限期
+    status     TEXT NOT NULL DEFAULT 'open',    -- open / done / archived
+    note       TEXT NOT NULL DEFAULT '',
+    value      TEXT NOT NULL DEFAULT '',        -- 作息/精力的一行轻记录
+    done_at    TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_life_items_status
+    ON life_items (status, due_date);
 """
