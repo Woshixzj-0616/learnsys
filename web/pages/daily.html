@@ -1,0 +1,52 @@
+<div class="daily-page">
+  <section class="stage-hero daily-hero">
+    <div>
+      <p class="stage-eyebrow">每日积累 · DAILY</p>
+      <h2>两句好话、八个词、五个纠音点。</h2>
+      <p class="stage-sub">好句和热词来自六级题库；纠音来自你自己在精听里写下的
+        「没听出 / 听成」。当天生成后不变，第二天换一批。</p>
+      <div class="daily-meta">
+        <span class="pill" id="daily-date">正在读取…</span>
+        <span class="pill" id="daily-streak">连续 0 天</span>
+        <span class="muted" id="daily-progress">0 / 0</span>
+      </div>
+    </div>
+    <div class="daily-hero-actions">
+      <button class="btn btn-small" type="button" id="daily-readall">全部已读</button>
+      <button class="btn btn-small" type="button" id="daily-today" hidden>回到今天</button>
+      <a class="btn btn-small" href="#/cet6?tab=drill">去专项</a>
+    </div>
+    <div class="daily-bar"><i id="daily-bar-fill"></i></div>
+  </section>
+
+  <section class="daily-section">
+    <div class="daily-section-head">
+      <h2>写作好句</h2>
+      <span class="hint" id="daily-writing-count"></span>
+    </div>
+    <div class="daily-list" id="daily-writing"></div>
+  </section>
+
+  <section class="daily-section">
+    <div class="daily-section-head">
+      <h2>翻译重点词</h2>
+      <span class="hint" id="daily-translation-count"></span>
+    </div>
+    <ul class="daily-term-list" id="daily-translation"></ul>
+  </section>
+
+  <section class="daily-section">
+    <div class="daily-section-head">
+      <h2>每日纠音</h2>
+      <span class="hint" id="daily-pron-count"></span>
+    </div>
+    <ul class="daily-pron-list" id="daily-pron"></ul>
+  </section>
+
+  <section class="daily-section">
+    <details class="daily-archive" id="daily-archive">
+      <summary>往期积累</summary>
+      <div class="daily-history" id="daily-history"></div>
+    </details>
+  </section>
+</div>

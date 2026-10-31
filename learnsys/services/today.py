@@ -9,7 +9,7 @@ import datetime
 
 from learnsys import store
 from learnsys.knowledge import CATEGORY_NAMES
-from learnsys.services import day_plan
+from learnsys.services import daily_accum, day_plan
 from learnsys.services import knowledge as knowledge_service
 from learnsys.services import study as study_mod
 from learnsys.services import study_time, today_actions
@@ -65,6 +65,7 @@ def payload(conn, day: str = "") -> dict:
             conn, day, learning["due_items"],
             {item["paper_id"] for item in learning["cet6"] if item["paper_id"]}),
         "cet6": learning["cet6"],
+        "daily": daily_accum.today_summary(conn, day),
     }
 
 

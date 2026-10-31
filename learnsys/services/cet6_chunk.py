@@ -71,6 +71,11 @@ def _align(text: str, words: list[tuple[float, float, str]]) -> tuple[list[str],
     return tokens, times
 
 
+def align_tokens(text: str, words: list[tuple[float, float, str]]) -> tuple[list[str], list]:
+    """把原文词对齐到词级时间轴；意群切分与纠音共用这一份。"""
+    return _align(text, words)
+
+
 def _split_long(chunks: list[list[int]], times: list) -> list[list[int]]:
     result: list[list[int]] = []
     for start, stop in chunks:

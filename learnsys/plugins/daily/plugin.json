@@ -1,0 +1,15 @@
+{
+  "id": "daily",
+  "name": "每日积累",
+  "icon": "✎",
+  "type": "native-page",
+  "entry": "pages/daily.html",
+  "script": "js/pages/daily.js",
+  "order": 50,
+  "status": "ready",
+  "version": "2.51.0",
+  "category": "学习",
+  "home": true,
+  "tagline": "好句 + 热词 + 纠音，每天 15 条",
+  "description": "每天从写作题库、翻译术语表和你自己的精听笔记里取一小份：写作好句、翻译重点词、没听出或听错的地方，逐条过一遍。"
+}
