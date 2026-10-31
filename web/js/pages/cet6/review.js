@@ -5,7 +5,7 @@ import { escapeHtml, toast } from "../../ui.js";
 import { reviewKey } from "./review-keys.js";
 
 const RATING_LABELS = { 1: "忘了", 2: "模糊", 3: "记得", 4: "简单" };
-const SOURCE_LABELS = { writing: "写作", translation: "翻译", cet6_dictation: "听辨" };
+const SOURCE_LABELS = { writing: "写作", translation: "翻译", cet6_dictation: "听辨", cet6_chunk: "意群" };
 
 let panel = null;
 let ctx = null;

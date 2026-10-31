@@ -13,8 +13,9 @@ from learnsys import store
 from learnsys.services import cet6_drill
 from learnsys.services import train_submissions as service
 
-TRAIN_SOURCES = ("writing", "translation", "cet6_dictation")
-KIND_LABEL = {"writing": "写作", "translation": "翻译", "cet6_dictation": "听辨"}
+TRAIN_SOURCES = ("writing", "translation", "cet6_dictation", "cet6_chunk")
+KIND_LABEL = {"writing": "写作", "translation": "翻译",
+              "cet6_dictation": "听辨", "cet6_chunk": "意群"}
 
 
 def due_cards(conn, today=None) -> list[dict]:
@@ -38,7 +39,7 @@ def today_activity(conn, day: str) -> dict:
     counts = store.activity_counts(conn, day)
     counts["total"] = (counts["writing"] + counts["translation"]
                        + counts["sentence"] + counts["dictation"]
-                       + counts.get("exam", 0))
+                       + counts.get("exam", 0) + counts.get("chunk", 0))
     return counts
 
 
@@ -140,7 +141,7 @@ def list_errors(conn, kind: str = "", status: str = "all",
                                 str(row.get("ts") or "")))
     items = items[:max(1, min(int(limit or 200), 500))]
     for item in items:
-        if item.get("source") == "cet6_dictation":
+        if item.get("source") in ("cet6_dictation", "cet6_chunk"):
             item["audio_url"] = cet6_drill.audio_url_for_source(
                 item.get("source_id", ""))
     return {

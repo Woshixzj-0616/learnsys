@@ -17,6 +17,9 @@ from learnsys import config
 # (data.js 绝对路径, mtime_ns, size) -> 解析结果；试卷文件运行期不变。
 _CACHE: dict[tuple[str, int, int], dict] = {}
 _MAX_CACHE = 8
+# transcript.json 更大（约 350 KB），单独一份小缓存给词级时间轴。
+_TR_CACHE: dict[tuple[str, int, int], list[tuple[float, float, str]]] = {}
+_MAX_TR_CACHE = 4
 
 
 class PaperNotFound(LookupError):
@@ -114,6 +117,11 @@ def audio_url(paper_title: str, section: str, item: str, *,
     relative = _relative_path(entry, "content" if part != "questions" else "questions")
     if not relative:
         base = _fallback_item_dir(section, item)
+        section_dir, _, item_slug = base.partition("/")
+        candidates = sorted(
+            (paper_dir(paper_title) / section_dir).glob(f"[0-9][0-9]-{item_slug}"))
+        if candidates:
+            base = f"{section_dir}/{candidates[0].name}"
         relative = f"{base}/{'正文.mp3' if part != 'questions' else '题目.mp3'}"
     folder = pathlib.PurePosixPath(relative).parent
     if question is not None:
@@ -168,3 +176,83 @@ def item_audio(paper_title: str, section: str, item: str) -> dict:
 def has_audio(paper_title: str, section: str, item: str) -> bool:
     """正文音频真实存在才进队列；没有音频目录时调用方自行降级。"""
     return bool(audio_url(paper_title, section, item, part="content"))
+
+
+def load_transcript(paper_title: str) -> list[tuple[float, float, str]]:
+    """读取 `transcript.json` 的词级时间轴；没有文件返回空列表。
+
+    只保留 (start, end, word)，按时间排序。文件不存在不算错误 ——
+    强化刷题卷这类手工卷没有 transcript，意群训练直接跳过。
+    """
+    path = paper_dir(paper_title) / "transcript.json"
+    try:
+        stat = path.stat()
+    except OSError:
+        return []
+    key = (str(path), stat.st_mtime_ns, stat.st_size)
+    cached = _TR_CACHE.get(key)
+    if cached is not None:
+        return cached
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return []
+    words: list[tuple[float, float, str]] = []
+    for segment in (data or {}).get("segments") or []:
+        if not isinstance(segment, dict):
+            continue
+        for raw in segment.get("words") or []:
+            if not isinstance(raw, dict):
+                continue
+            text = str(raw.get("word") or "").strip()
+            if not text:
+                continue
+            try:
+                words.append((float(raw["start"]), float(raw["end"]), text))
+            except (KeyError, TypeError, ValueError):
+                continue
+    words.sort(key=lambda item: item[0])
+    if len(_TR_CACHE) >= _MAX_TR_CACHE:
+        _TR_CACHE.clear()
+    _TR_CACHE[key] = words
+    return words
+
+
+def sentence_entry(paper_title: str, section: str, item: str,
+                   sentence: int) -> dict | None:
+    """取某一句的 data.js 记录（原文、起止时间）；找不到返回 None。"""
+    try:
+        _, entry = find_item(paper_title, section, item)
+    except PaperNotFound:
+        return None
+    target = int(sentence or 0)
+    for position, raw in enumerate(entry.get("sentences") or [], start=1):
+        if not isinstance(raw, dict):
+            continue
+        try:
+            number = int(raw.get("i") or position)
+        except (TypeError, ValueError):
+            number = position
+        if number == target:
+            return raw
+    return None
+
+
+def sentence_words(paper_title: str, section: str, item: str,
+                   sentence: int) -> dict | None:
+    """某句的原文 + 落在它时间范围内的词级时间轴。"""
+    entry = sentence_entry(paper_title, section, item, sentence)
+    if entry is None:
+        return None
+    try:
+        start = float(entry.get("start"))
+        end = float(entry.get("end"))
+    except (TypeError, ValueError):
+        return None
+    text = str(entry.get("en") or "").strip()
+    if not text or end <= start:
+        return None
+    picked = [(w_start, w_end, word) for w_start, w_end, word
+              in load_transcript(paper_title)
+              if start - 0.08 <= (w_start + w_end) / 2 <= end + 0.08]
+    return {"start": start, "end": end, "text": text, "words": picked}

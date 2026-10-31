@@ -152,7 +152,7 @@ def reviewed_rows(conn: sqlite3.Connection, *, since: str = "") -> list[dict]:
 def activity_counts(conn: sqlite3.Connection, day: str) -> dict:
     """某天完成的训练量（按提交/听写记录算，不依赖事件表）。"""
     counts = {"writing": 0, "translation": 0, "sentence": 0, "dictation": 0,
-              "exam": 0, "minutes": 0.0}
+              "exam": 0, "chunk": 0, "minutes": 0.0}
     rows = conn.execute(
         "SELECT kind, mode, COUNT(*), COALESCE(SUM(duration_s), 0) "
         "FROM train_submissions WHERE status IN ('reviewed', 'failed') "
@@ -184,6 +184,16 @@ def activity_counts(conn: sqlite3.Connection, day: str) -> dict:
         counts["minutes"] += float(row[1] or 0) / 60.0 if row else 0.0
     except sqlite3.OperationalError:
         # 同上：旧库没有真题自评表。
+        pass
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(duration_s), 0) "
+            "FROM cet6_chunk_attempts WHERE substr(ts, 1, 10) = ?",
+            (str(day)[:10],)).fetchone()
+        counts["chunk"] = int(row[0] or 0) if row else 0
+        counts["minutes"] += float(row[1] or 0) / 60.0 if row else 0.0
+    except sqlite3.OperationalError:
+        # 同上：旧库没有意群训练表。
         pass
     counts["minutes"] = round(counts["minutes"], 1)
     return counts

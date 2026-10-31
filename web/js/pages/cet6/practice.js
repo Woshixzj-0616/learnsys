@@ -1,7 +1,7 @@
 // 专项页外壳：在「逐句听写」和「真题自评」之间切换，共用同一块面板。
 import { escapeHtml } from "../../ui.js";
 
-const MODES = { drill: "逐句听写", exam: "真题自评" };
+const MODES = { drill: "逐句听写", exam: "真题自评", chunk: "意群长句" };
 
 let host = null;
 let ctx = null;
@@ -54,6 +54,12 @@ async function mountMode(next) {
   body.innerHTML = "";
   if (next === "exam") {
     const page = await import("./exam.js");
+    if (mine !== token) return;
+    cleanup = await page.mount({ panel: body, ctx });
+    return;
+  }
+  if (next === "chunk") {
+    const page = await import("./chunk.js");
     if (mine !== token) return;
     cleanup = await page.mount({ panel: body, ctx });
     return;

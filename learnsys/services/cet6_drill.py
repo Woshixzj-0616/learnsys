@@ -108,7 +108,8 @@ def _blank_question(sentence: str, token: str) -> str:
     return f"听写：{sentence}"
 
 
-def _cards_for(conn, row: dict, diff: dict, answer: str) -> list[dict]:
+def _cards_for(conn, row: dict, diff: dict, answer: str,
+               source: str = "cet6_dictation") -> list[dict]:
     """漏听的内容词各建一张卡；同一句同一词只留一张。"""
     created: list[dict] = []
     seen: set[str] = set()
@@ -126,7 +127,7 @@ def _cards_for(conn, row: dict, diff: dict, answer: str) -> list[dict]:
             conn, question=question, answer=token,
             my_answer=str(answer or "")[:500], tags=tags,
             note=f"原句：{row['en']}\n你的听写：{str(answer or '')[:500] or '（空）'}",
-            source="cet6_dictation", source_id=source_id, auto=True)
+            source=source, source_id=source_id, auto=True)
         if is_new:
             created.append({"token": token, "question": question})
         if len(created) >= _MAX_CARDS:

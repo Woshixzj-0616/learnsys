@@ -19,6 +19,17 @@ function percent(value) {
 
 const EXAM_SECTIONS = { A: "A 长对话", B: "B 短文理解", C: "C 讲座/讲话" };
 
+function chunkCard(chunk) {
+  return `<section class="cet6-stat-card">
+    <div class="cet6-section-head"><h3>意群长句</h3></div>
+    ${statRow("完成", String(chunk?.sentences || 0), " 句")}
+    ${statRow("平均得分", percent(chunk?.avg_score))}
+    ${statRow("自动建卡", String(chunk?.cards_added || 0), " 张")}
+    <a class="btn btn-small" href="#/cet6?tab=drill&mode=chunk">去练长句</a>
+    <p class="hint">只统计 ≥12 词的长句；提交后按意群逐段回放。</p>
+  </section>`;
+}
+
 function examCard(exam) {
   const bySection = exam?.by_section || {};
   const rows = Object.entries(EXAM_SECTIONS).map(([letter, label]) => {
@@ -91,10 +102,11 @@ function errorHtml(rows) {
 async function render() {
   panel.innerHTML = '<div class="empty">正在统计训练数据…</div>';
   try {
-    const [stats, plan, exam] = await Promise.all([
+    const [stats, plan, exam, chunk] = await Promise.all([
       api.get("/api/cet6/train/stats?days=30"),
       api.get("/api/cet6/train/plan"),
       api.get("/api/cet6/exam/stats?days=30").catch(() => null),
+      api.get("/api/cet6/chunk/stats?days=30").catch(() => null),
     ]);
     const totals = stats.totals || {};
     const byKind = stats.by_kind || {};
@@ -144,6 +156,7 @@ async function render() {
           <p class="hint">只统计整段翻译；一句一译不计入信息点。</p>
         </section>
         ${examCard(exam)}
+        ${chunkCard(chunk)}
       </div>`;
     ctx.setSub(count ? `统计 · 近 30 天 ${count} 次训练` : "统计 · 还没有训练记录");
   } catch (error) {
