@@ -11,9 +11,9 @@ import collections
 import datetime as dt
 import difflib
 import re
-import urllib.parse
 
 from learnsys import config, store
+from learnsys.services import cet6_paper
 
 _WORD_RE = re.compile(r"[A-Za-z0-9]+(?:['’\-][A-Za-z0-9]+)*")
 _STOPWORDS = frozenset("""
@@ -137,25 +137,10 @@ def _cards_for(conn, row: dict, diff: dict, answer: str) -> list[dict]:
 
 
 def _audio_url(row: dict) -> str:
-    """把进度行还原成 `/cet6/试卷/.../句子/NN.mp3`；找不到就回空串。"""
-    try:
-        papers = config.cet6_dir() / "试卷"
-        paper_dir = papers / row["paper_title"]
-        section_dir = (row["section"].replace("Section ", "Section-")
-                       .replace(" ", "-").replace("/", "-"))
-        item_slug = row["item"].replace(" ", "-")
-        candidates = sorted((paper_dir / section_dir).glob(f"[0-9][0-9]-{item_slug}"))
-        if not candidates:
-            return ""
-        path = candidates[0] / "句子" / f"{int(row['sentence']):02d}.mp3"
-        if not path.exists():
-            return ""
-        relative = path.relative_to(papers)
-        quoted = "/".join(urllib.parse.quote(part, safe="")
-                          for part in relative.parts)
-        return f"/cet6/{urllib.parse.quote('试卷', safe='')}/{quoted}"
-    except (OSError, ValueError):
-        return ""
+    """把进度行还原成 `/cet6/试卷/.../句子/NN.mp3`；路径规则统一在 `cet6_paper`。"""
+    return cet6_paper.audio_url(
+        row["paper_title"], row["section"], row["item"],
+        sentence=int(row["sentence"]))
 
 
 def audio_url_for_source(source_id: str) -> str:

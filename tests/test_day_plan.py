@@ -107,6 +107,16 @@ class CheckTest(unittest.TestCase):
         self.assertTrue(state["checks"]["output"])
         self.assertEqual(state["counts"]["dictation"], 1)
 
+    def test_一次真题自评也算输出(self):
+        conn = _db()
+        conn.execute(
+            "CREATE TABLE cet6_exam_attempts (ts TEXT, duration_s INTEGER)")
+        conn.execute("INSERT INTO cet6_exam_attempts VALUES (?, 40)",
+                     (_at(9),))
+        state = day_plan.check(conn, DAY)
+        self.assertTrue(state["checks"]["output"])
+        self.assertEqual(state["counts"]["exam"], 1)
+
     def test_三个问题也算输出(self):
         conn = _db()
         for index in range(3):

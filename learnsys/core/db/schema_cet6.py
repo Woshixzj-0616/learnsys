@@ -1,7 +1,7 @@
-"""六级专项听写：只记“练了什么、错在哪”。
+"""六级练习：专项听写 + 真题自评。
 
-卡片的唯一来源仍是 `wrong_items`，复习仍是 `review_state`；
-这里不复制句子正文，也不另建一套复习状态。
+听写卡片的唯一来源仍是 `wrong_items`，复习仍是 `review_state`；
+真题自评只记分段与对错题号，题干/音频留在试卷 `data.js`，这里都不复制。
 """
 from __future__ import annotations
 
@@ -27,4 +27,21 @@ CREATE INDEX IF NOT EXISTS idx_cet6_drill_ts
     ON cet6_drill_attempts (ts);
 CREATE INDEX IF NOT EXISTS idx_cet6_drill_sentence
     ON cet6_drill_attempts (paper_id, section, item, sentence, ts);
+
+CREATE TABLE IF NOT EXISTS cet6_exam_attempts (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts             TEXT NOT NULL,
+    paper_id       TEXT NOT NULL,
+    paper_title    TEXT NOT NULL DEFAULT '',
+    section        TEXT NOT NULL DEFAULT '',
+    item           TEXT NOT NULL DEFAULT '',
+    question_count INTEGER NOT NULL DEFAULT 0,
+    correct_count  INTEGER NOT NULL DEFAULT 0,
+    wrong_json     TEXT NOT NULL DEFAULT '[]',
+    duration_s     INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_cet6_exam_ts
+    ON cet6_exam_attempts (ts);
+CREATE INDEX IF NOT EXISTS idx_cet6_exam_item
+    ON cet6_exam_attempts (paper_id, section, item, ts);
 """

@@ -13,6 +13,30 @@ function statRow(label, value, note = "") {
     <strong>${escapeHtml(value)}${note ? `<small>${escapeHtml(note)}</small>` : ""}</strong></div>`;
 }
 
+function percent(value) {
+  return `${Math.round(Number(value || 0) * 100)}%`;
+}
+
+const EXAM_SECTIONS = { A: "A 长对话", B: "B 短文理解", C: "C 讲座/讲话" };
+
+function examCard(exam) {
+  const bySection = exam?.by_section || {};
+  const rows = Object.entries(EXAM_SECTIONS).map(([letter, label]) => {
+    const row = bySection[letter];
+    if (!row || !row.attempts) return statRow(label, "—", " 还没练");
+    return statRow(label, percent(row.self_accuracy), ` ${row.attempts} 段`);
+  }).join("");
+  return `<section class="cet6-stat-card">
+    <div class="cet6-section-head"><h3>真题自评</h3></div>
+    ${statRow("完成", String(exam?.items || 0), " 段")}
+    ${statRow("题数", String(exam?.questions || 0), " 题")}
+    ${statRow("自评正确率", percent(exam?.self_accuracy))}
+    ${rows}
+    <a class="btn btn-small" href="#/cet6?tab=drill&mode=exam">去练真题</a>
+    <p class="hint">按段听完整真题后逐题自评；不是机器判分。</p>
+  </section>`;
+}
+
 function kindCard(kind, row) {
   const label = kind === "writing" ? "写作" : "翻译";
   const rows = [
@@ -67,9 +91,10 @@ function errorHtml(rows) {
 async function render() {
   panel.innerHTML = '<div class="empty">正在统计训练数据…</div>';
   try {
-    const [stats, plan] = await Promise.all([
+    const [stats, plan, exam] = await Promise.all([
       api.get("/api/cet6/train/stats?days=30"),
       api.get("/api/cet6/train/plan"),
+      api.get("/api/cet6/exam/stats?days=30").catch(() => null),
     ]);
     const totals = stats.totals || {};
     const byKind = stats.by_kind || {};
@@ -118,6 +143,7 @@ async function render() {
           ${statRow("应覆盖", String(info.total || 0), " 个")}
           <p class="hint">只统计整段翻译；一句一译不计入信息点。</p>
         </section>
+        ${examCard(exam)}
       </div>`;
     ctx.setSub(count ? `统计 · 近 30 天 ${count} 次训练` : "统计 · 还没有训练记录");
   } catch (error) {

@@ -103,7 +103,7 @@ def check(conn, day: str = "") -> dict:
     asks = _count(conn, "SELECT COUNT(*) FROM asks WHERE ts LIKE ?",
                   (_day_like(day),))
     output = (train["writing"] + train["translation"] + train["sentence"]
-              + train["dictation"] > 0
+              + train["dictation"] + train.get("exam", 0) > 0
               or reviewed > 0 or quizzes > 0 or asks >= ASK_OUTPUT_COUNT)
     checks = {
         "listen": listen >= LISTEN_SENTENCES,
@@ -123,6 +123,7 @@ def check(conn, day: str = "") -> dict:
             "translation": int(train["translation"]),
             "sentence": int(train["sentence"]),
             "dictation": int(train["dictation"]),
+            "exam": int(train.get("exam", 0)),
             "asks": asks,
             "reviews": reviewed,
             "quizzes": quizzes,
@@ -206,6 +207,14 @@ def build(conn, day: str = "", due: list | None = None) -> dict:
         elif counts["translation"] or counts["sentence"]:
             train_title, train_href = "翻译 · 今天已完成", "#/cet6?tab=translation"
             train_minutes = TRANSLATION_MINUTES
+        elif counts.get("dictation"):
+            train_title = f"专项听写 · 今天已完成 {counts['dictation']} 句"
+            train_href = "#/cet6?tab=drill"
+            train_minutes = max(5, min(30, round(counts["dictation"] * 2)))
+        elif counts.get("exam"):
+            train_title = f"真题自评 · 今天已完成 {counts['exam']} 段"
+            train_href = "#/cet6?tab=drill&mode=exam"
+            train_minutes = max(5, min(60, counts["exam"] * 10))
         elif counts["reviews"]:
             train_title = f"复习 · 今天已复习 {counts['reviews']} 张"
             train_href = "#/wrongbook"

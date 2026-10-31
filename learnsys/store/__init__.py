@@ -58,6 +58,8 @@ from .cet6 import (add_breakpoint_events, add_cet6_dualwrite_diffs,
 from .cet6_drill import (add_drill_attempt, drill_attempts,
                         drill_candidates, drill_coverage_candidates,
                         drill_sentence)
+from .cet6_exam import (add_exam_attempt, exam_attempts, exam_candidates,
+                       exam_item)
 from .conversations import (add_message, conversation_messages, create_conversation,
                             get_conversation, list_conversations,
                             set_conversation_summary, touch_conversation)
@@ -164,6 +166,7 @@ __all__ = [
     "cet6_progress_item", "cet6_progress_summary", "cet6_recent_events",
     "add_drill_attempt", "drill_attempts", "drill_candidates",
     "drill_coverage_candidates", "drill_sentence",
+    "add_exam_attempt", "exam_attempts", "exam_candidates", "exam_item",
     "cet6_progress_paper_rows", "add_cet6_dualwrite_run",
     "add_cet6_dualwrite_diffs", "upsert_cet6_progress",
     "add_breakpoint_events", "cet6_summary", "latest_progress_item",

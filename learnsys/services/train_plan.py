@@ -37,7 +37,8 @@ def _streak(days: set[str]) -> int:
 def today_activity(conn, day: str) -> dict:
     counts = store.activity_counts(conn, day)
     counts["total"] = (counts["writing"] + counts["translation"]
-                       + counts["sentence"] + counts["dictation"])
+                       + counts["sentence"] + counts["dictation"]
+                       + counts.get("exam", 0))
     return counts
 
 
