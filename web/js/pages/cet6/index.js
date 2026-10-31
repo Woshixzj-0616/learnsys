@@ -3,6 +3,7 @@ import { mountListening } from "./listening.js";
 
 const TABS = {
   listening: "精听",
+  drill: "专项",
   writing: "写作",
   translation: "翻译",
   review: "复习",
@@ -10,9 +11,10 @@ const TABS = {
 };
 const SUBTITLES = {
   listening: "原精听工作台：试卷、断点、回听与分析",
+  drill: "从你的笔记生成听写练习，漏听词自动进复习",
   writing: "题库、限时写作、批改与二稿",
   translation: "一句一译、整段限时、术语卡与逐句对照",
-  review: "写作/翻译的到期错误卡，按记忆曲线复习",
+  review: "听辨/写作/翻译的到期错误卡，按记忆曲线复习",
   stats: "档位趋势、错误画像与训练量",
 };
 
@@ -57,6 +59,12 @@ async function switchTab(tab, ctx) {
 
   if (tab === "listening") {
     cleanup = mountListening(panel, ctx.query);
+    return;
+  }
+  if (tab === "drill") {
+    const page = await import("./drill.js");
+    if (active !== "drill") return;
+    cleanup = await page.mount({ panel, ctx });
     return;
   }
   if (tab === "writing") {

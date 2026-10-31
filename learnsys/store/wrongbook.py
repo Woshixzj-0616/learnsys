@@ -15,7 +15,7 @@ from .review import _attach_review_states, _next_review, save_review_state
 # 唯一来源是 wrong_items；asks.starred 只是 v1 的历史快照，迁移后不再读写。
 
 WRONG_SOURCES = ("ask", "quiz", "cet6", "writing", "translation", "code",
-                 "manual")
+                 "cet6_dictation", "manual")
 
 _WRONG_COLUMNS = (
     "id, ts, source, source_id, question, answer, my_answer, tags, note, "

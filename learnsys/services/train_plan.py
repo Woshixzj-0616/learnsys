@@ -10,10 +10,11 @@ from __future__ import annotations
 import datetime
 
 from learnsys import store
+from learnsys.services import cet6_drill
 from learnsys.services import train_submissions as service
 
-TRAIN_SOURCES = ("writing", "translation")
-KIND_LABEL = {"writing": "写作", "translation": "翻译"}
+TRAIN_SOURCES = ("writing", "translation", "cet6_dictation")
+KIND_LABEL = {"writing": "写作", "translation": "翻译", "cet6_dictation": "听辨"}
 
 
 def due_cards(conn, today=None) -> list[dict]:
@@ -36,7 +37,7 @@ def _streak(days: set[str]) -> int:
 def today_activity(conn, day: str) -> dict:
     counts = store.activity_counts(conn, day)
     counts["total"] = (counts["writing"] + counts["translation"]
-                       + counts["sentence"])
+                       + counts["sentence"] + counts["dictation"])
     return counts
 
 
@@ -80,12 +81,15 @@ def _translation_task(conn) -> dict:
 
 def _task(conn, due: list[dict], today: dict) -> dict | None:
     if due:
-        writing = sum(1 for row in due if row.get("source") == "writing")
-        translation = len(due) - writing
+        counts = {source: sum(1 for row in due
+                              if row.get("source") == source)
+                  for source in TRAIN_SOURCES}
+        detail = " · ".join(f"{KIND_LABEL[source]} {counts[source]} 张"
+                            for source in TRAIN_SOURCES if counts[source])
         return {
             "kind": "review", "mode": "review", "prompt_id": "",
             "title": f"复习 {len(due)} 张到期错误卡",
-            "detail": f"写作 {writing} 张 · 翻译 {translation} 张",
+            "detail": detail,
             "href": "#/cet6?tab=review",
             "label": "去复习",
         }
@@ -134,6 +138,10 @@ def list_errors(conn, kind: str = "", status: str = "all",
     items.sort(key=lambda row: (str(row.get("next_review") or ""),
                                 str(row.get("ts") or "")))
     items = items[:max(1, min(int(limit or 200), 500))]
+    for item in items:
+        if item.get("source") == "cet6_dictation":
+            item["audio_url"] = cet6_drill.audio_url_for_source(
+                item.get("source_id", ""))
     return {
         "items": items,
         "count": len(items),

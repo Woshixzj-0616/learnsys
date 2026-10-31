@@ -55,6 +55,9 @@ from .cet6 import (add_breakpoint_events, add_cet6_dualwrite_diffs,
                    cet6_recent_events, cet6_summary, latest_progress_item,
                    load_import_items, progress_paper_title, save_import_items,
                    upsert_cet6_progress)
+from .cet6_drill import (add_drill_attempt, drill_attempts,
+                        drill_candidates, drill_coverage_candidates,
+                        drill_sentence)
 from .conversations import (add_message, conversation_messages, create_conversation,
                             get_conversation, list_conversations,
                             set_conversation_summary, touch_conversation)
@@ -159,6 +162,8 @@ __all__ = [
     "add_browser_event", "cleanup_browser_events", "clear_browser_events",
     "list_browser_events",
     "cet6_progress_item", "cet6_progress_summary", "cet6_recent_events",
+    "add_drill_attempt", "drill_attempts", "drill_candidates",
+    "drill_coverage_candidates", "drill_sentence",
     "cet6_progress_paper_rows", "add_cet6_dualwrite_run",
     "add_cet6_dualwrite_diffs", "upsert_cet6_progress",
     "add_breakpoint_events", "cet6_summary", "latest_progress_item",

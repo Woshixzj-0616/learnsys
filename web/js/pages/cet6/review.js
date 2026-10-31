@@ -5,7 +5,7 @@ import { escapeHtml, toast } from "../../ui.js";
 import { reviewKey } from "./review-keys.js";
 
 const RATING_LABELS = { 1: "忘了", 2: "模糊", 3: "记得", 4: "简单" };
-const SOURCE_LABELS = { writing: "写作", translation: "翻译" };
+const SOURCE_LABELS = { writing: "写作", translation: "翻译", cet6_dictation: "听辨" };
 
 let panel = null;
 let ctx = null;
@@ -15,6 +15,7 @@ let revealed = false;
 let typed = "";
 let busy = false;
 let stats = { done: 0, forgot: 0 };
+let reviewAudio = null;
 
 function current() {
   return items[index] || null;
@@ -47,7 +48,8 @@ function emptyHtml() {
     <h2>今天没有到期的错误卡</h2>
     <p>按记忆曲线，下一批会在到期后自动出现。</p>
     <div class="cet6-actions">
-      <a class="btn btn-primary" href="#/cet6?tab=writing">去写作</a>
+      <a class="btn btn-primary" href="#/cet6?tab=drill">去做听写</a>
+      <a class="btn" href="#/cet6?tab=writing">去写作</a>
       <a class="btn" href="#/cet6?tab=translation">去翻译</a>
       <a class="btn btn-small" href="#/wrongbook">全部错题</a>
     </div>
@@ -62,6 +64,7 @@ function doneHtml() {
     <p class="hint">忘了的卡会很快再出现；记得的会按记忆曲线拉长间隔。</p>
     <div class="cet6-actions">
       <button class="btn btn-primary" type="button" data-act="again">再查一遍到期</button>
+      <a class="btn" href="#/cet6?tab=drill">去做听写</a>
       <a class="btn" href="#/cet6?tab=writing">去写作</a>
       <a class="btn" href="#/cet6?tab=translation">去翻译</a>
     </div>
@@ -96,6 +99,9 @@ function cardHtml(item) {
     <div class="cet6-review-progress"><i style="width:${progress}%"></i></div>
     <article class="cet6-review-card">
       <p class="cet6-review-q">${escapeHtml(item.question || "")}</p>
+      ${item.audio_url ? `<div class="cet6-review-audio">
+        <button class="btn btn-small" type="button" data-act="play-audio">播放原句</button>
+        <span class="hint">先听再填；这句是听辨卡</span></div>` : ""}
       <div class="cet6-review-meta">
         ${item.tags ? `<span>${escapeHtml(item.tags)}</span>` : ""}
         ${item.next_review ? `<span>原定 ${escapeHtml(item.next_review)}</span>` : ""}
@@ -156,11 +162,21 @@ async function rate(rating, button) {
   }
 }
 
+function playAudio() {
+  const item = current();
+  if (!item?.audio_url) return;
+  if (reviewAudio) reviewAudio.pause();
+  reviewAudio = new Audio(item.audio_url);
+  reviewAudio.play().catch(() => toast("音频播放失败", "err"));
+}
+
 function onClick(event) {
   const target = event.target.closest("[data-act]");
   if (!target || !panel?.contains(target)) return;
   event.preventDefault();
-  if (target.dataset.act === "reveal") {
+  if (target.dataset.act === "play-audio") {
+    playAudio();
+  } else if (target.dataset.act === "reveal") {
     reveal();
   } else if (target.dataset.act === "rate") {
     rate(Number(target.dataset.rating || 3), target);
@@ -198,6 +214,10 @@ export async function mount(context) {
   return () => {
     panel?.removeEventListener("click", onClick);
     document.removeEventListener("keydown", onKey);
+    if (reviewAudio) {
+      reviewAudio.pause();
+      reviewAudio = null;
+    }
     panel = null;
     ctx = null;
     items = [];

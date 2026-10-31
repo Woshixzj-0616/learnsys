@@ -1,4 +1,4 @@
-/* 六级训练：四标签壳 + 写作页（题库/编辑器/批改）。 */
+/* 六级训练：六标签壳 + 专项听写/写作/翻译/复习/统计。 */
 .cet6-shell{display:flex;flex-direction:column;min-height:100%;gap:14px}
 .cet6-tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:8px}
 .cet6-tab{
@@ -339,3 +339,44 @@
   #cet6-text{min-height:320px}
   .cet6-frame{height:70vh}
 }
+
+/* 专项听写：句子听写 + 词级差异 */
+.cet6-drill{max-width:var(--measure)}
+.cet6-drill-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.cet6-drill-progress{height:4px;border-radius:2px;background:var(--bg-input);overflow:hidden;margin-bottom:14px}
+.cet6-drill-progress i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .2s}
+.cet6-drill-card{
+  border:1px solid var(--line);border-radius:var(--r-lg);background:var(--bg-raised);
+  padding:22px 24px;
+}
+.cet6-drill-audio{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.cet6-drill-plays{font-size:11.5px;color:var(--text-faint)}
+.cet6-drill-answer{display:block;margin-bottom:14px}
+.cet6-drill-answer>span{display:block;font-size:11.5px;color:var(--text-faint);margin-bottom:4px}
+.cet6-drill-answer textarea{
+  width:100%;box-sizing:border-box;resize:vertical;min-height:86px;
+  border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg-input);
+  color:var(--text);font:inherit;font-size:15px;line-height:1.7;padding:10px 12px;
+}
+.cet6-drill-answer textarea:focus{outline:none;border-color:var(--accent-line)}
+.cet6-drill-result{display:flex;flex-direction:column;gap:6px}
+.cet6-drill-score{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.cet6-drill-score strong{font-size:32px;line-height:1;color:var(--accent)}
+.cet6-drill-score span{font-size:12px;color:var(--text-faint)}
+.cet6-drill-label{margin:10px 0 4px;font-size:11.5px;letter-spacing:.04em;color:var(--text-faint)}
+.cet6-drill-sentence{
+  margin:0;font-size:18px;line-height:1.85;color:var(--text);
+}
+.cet6-drill-miss{
+  background:var(--danger-soft,rgba(208,92,92,.18));color:var(--danger,#d05c5c);
+  border-radius:3px;padding:0 2px;font-weight:600;
+}
+.cet6-drill-chips{display:flex;flex-wrap:wrap;gap:6px}
+.cet6-drill-cards ul{margin:0;padding-left:18px;color:var(--text-dim);font-size:13px;line-height:1.7}
+.cet6-drill-summary{
+  display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-top:16px;
+  font-size:11.5px;color:var(--text-faint);
+}
+.cet6-drill-summary strong{font-size:15px;color:var(--text);font-variant-numeric:tabular-nums}
+.cet6-drill-summary span+strong{margin-left:10px}
+.cet6-review-audio{display:flex;align-items:center;gap:10px;margin:-4px 0 14px}

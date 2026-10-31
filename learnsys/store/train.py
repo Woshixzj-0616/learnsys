@@ -150,8 +150,9 @@ def reviewed_rows(conn: sqlite3.Connection, *, since: str = "") -> list[dict]:
 
 
 def activity_counts(conn: sqlite3.Connection, day: str) -> dict:
-    """某天完成的训练量（按提交记录算，不依赖事件表）。"""
-    counts = {"writing": 0, "translation": 0, "sentence": 0, "minutes": 0.0}
+    """某天完成的训练量（按提交/听写记录算，不依赖事件表）。"""
+    counts = {"writing": 0, "translation": 0, "sentence": 0, "dictation": 0,
+              "minutes": 0.0}
     rows = conn.execute(
         "SELECT kind, mode, COUNT(*), COALESCE(SUM(duration_s), 0) "
         "FROM train_submissions WHERE status IN ('reviewed', 'failed') "
@@ -164,6 +165,16 @@ def activity_counts(conn: sqlite3.Connection, day: str) -> dict:
         elif kind in ("writing", "translation"):
             counts[kind] += count
             counts["minutes"] += float(seconds or 0) / 60.0
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(duration_s), 0) "
+            "FROM cet6_drill_attempts WHERE substr(ts, 1, 10) = ?",
+            (str(day)[:10],)).fetchone()
+        counts["dictation"] = int(row[0] or 0) if row else 0
+        counts["minutes"] += float(row[1] or 0) / 60.0 if row else 0.0
+    except sqlite3.OperationalError:
+        # 旧库/测试内存库还没有听写表；按 0 算，不影响其他训练量。
+        pass
     counts["minutes"] = round(counts["minutes"], 1)
     return counts
 

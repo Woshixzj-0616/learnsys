@@ -97,6 +97,16 @@ class CheckTest(unittest.TestCase):
         conn.execute("INSERT INTO events VALUES (?, 'quiz', 'quiz')", (_at(9),))
         self.assertTrue(day_plan.check(conn, DAY)["checks"]["output"])
 
+    def test_一次听写也算输出(self):
+        conn = _db()
+        conn.execute(
+            "CREATE TABLE cet6_drill_attempts (ts TEXT, duration_s INTEGER)")
+        conn.execute("INSERT INTO cet6_drill_attempts VALUES (?, 20)",
+                     (_at(9),))
+        state = day_plan.check(conn, DAY)
+        self.assertTrue(state["checks"]["output"])
+        self.assertEqual(state["counts"]["dictation"], 1)
+
     def test_三个问题也算输出(self):
         conn = _db()
         for index in range(3):

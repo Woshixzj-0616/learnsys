@@ -102,7 +102,8 @@ def check(conn, day: str = "") -> dict:
     listen = _listen_sentences(conn, day)
     asks = _count(conn, "SELECT COUNT(*) FROM asks WHERE ts LIKE ?",
                   (_day_like(day),))
-    output = (train["writing"] + train["translation"] + train["sentence"] > 0
+    output = (train["writing"] + train["translation"] + train["sentence"]
+              + train["dictation"] > 0
               or reviewed > 0 or quizzes > 0 or asks >= ASK_OUTPUT_COUNT)
     checks = {
         "listen": listen >= LISTEN_SENTENCES,
@@ -121,6 +122,7 @@ def check(conn, day: str = "") -> dict:
             "writing": int(train["writing"]),
             "translation": int(train["translation"]),
             "sentence": int(train["sentence"]),
+            "dictation": int(train["dictation"]),
             "asks": asks,
             "reviews": reviewed,
             "quizzes": quizzes,
