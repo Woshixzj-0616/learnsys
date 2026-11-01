@@ -138,12 +138,12 @@ def train_errors(kind: str = "", status: str = "all", limit: int = 200,
 
 
 @router.get("/api/cet6/train/submissions")
-def train_history(kind: str = "writing", limit: int = 50, offset: int = 0,
-                  _=Depends(require_token)):
+def train_history(kind: str = "writing", mode: str = "", limit: int = 50,
+                  offset: int = 0, _=Depends(require_token)):
     conn = _conn()
     try:
         return _call(lambda: service.history(
-            conn, kind, limit=limit, offset=offset))
+            conn, kind, mode=mode, limit=limit, offset=offset))
     finally:
         conn.close()
 

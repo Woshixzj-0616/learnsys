@@ -61,21 +61,23 @@ class TestBriefingStore(unittest.TestCase):
         self.assertEqual(store.read_all_briefing(self.conn, "2026-10-28"), 0)
 
     def test_recent_seen_and_recover(self):
-        briefing_id, _ = store.create_briefing_day(self.conn, "2026-10-28")
+        # 用「今天」建，避免写死日期在几天后掉出 days=3 的窗口（跨天误报）。
+        day = dt.date.today().strftime("%Y-%m-%d")
+        briefing_id, _ = store.create_briefing_day(self.conn, day)
         store.save_briefing_items(self.conn, briefing_id, [{
             "category": "ai", "title": "旧标题", "url": "https://e.com/x",
-            "url_key": "old", "source": "源", "published_at": "2026-10-28 10:00",
+            "url_key": "old", "source": "源", "published_at": f"{day} 10:00",
         }])
         seen = store.recent_briefing_seen(self.conn, days=3)
         self.assertEqual(seen[0]["url_key"], "old")
         self.assertEqual(store.recent_briefing_seen(
-            self.conn, days=3, before_day="2026-10-28"), [])
+            self.conn, days=3, before_day=day), [])
         self.conn.execute(
             "UPDATE briefings SET status='running', updated_at='2020-01-01 00:00:00' "
             "WHERE id=?", (briefing_id,))
         self.conn.commit()
         self.assertEqual(store.recover_stale_briefings(self.conn, minutes=10), 1)
-        self.assertEqual(store.get_briefing_day(self.conn, "2026-10-28")["status"],
+        self.assertEqual(store.get_briefing_day(self.conn, day)["status"],
                          "failed")
 
 

@@ -109,6 +109,26 @@ class SentenceServiceTest(unittest.TestCase):
 
             history = submissions.history(conn, "translation")
             self.assertEqual(history["count"], 0, "单句尝试不进整篇历史")
+            self.assertEqual(history["mode"], "whole")
+
+            sentence_history = submissions.history(
+                conn, "translation", mode="sentence")
+            self.assertEqual(sentence_history["count"], 1)
+            self.assertEqual(sentence_history["mode"], "sentence")
+            row = sentence_history["items"][0]
+            self.assertEqual(row["prompt_id"], "x001")
+            self.assertEqual(row["conclusion"], "有偏差")
+            self.assertEqual(row["skill"], content.sentence("x001")["skill"])
+            self.assertIn("city people", row["preview"])
+            self.assertIsNone(row["band"])
+
+            detail = submissions.detail(conn, row["id"])
+            self.assertEqual(detail["sentence"]["id"], "x001")
+            self.assertEqual(detail["sentence"]["zh"], content.sentence("x001")["zh"])
+            self.assertEqual(detail["review"]["conclusion"], "有偏差")
+            self.assertTrue(detail["review"]["reference"])
+            with self.assertRaises(ValueError):
+                submissions.history(conn, "translation", mode="timed")
 
             again = service.review_sentence(conn, "x001", TEXT)
             self.assertEqual(again["cards_added"], 0, "同一错误不重复收卡")
@@ -181,6 +201,20 @@ class SentenceRoutesTest(unittest.TestCase):
         wrong = self.client.get("/api/wrongbook", params={"source": "translation"},
                                 headers=AUTH).json()
         self.assertEqual(len(wrong["items"]), 1)
+
+        whole = self.client.get(
+            "/api/cet6/train/submissions",
+            params={"kind": "translation"}, headers=AUTH).json()
+        self.assertEqual(whole["count"], 0)
+        single = self.client.get(
+            "/api/cet6/train/submissions",
+            params={"kind": "translation", "mode": "sentence"}, headers=AUTH).json()
+        self.assertEqual(single["count"], 1)
+        self.assertEqual(single["items"][0]["conclusion"], "有偏差")
+        bad = self.client.get(
+            "/api/cet6/train/submissions",
+            params={"kind": "translation", "mode": "timed"}, headers=AUTH)
+        self.assertEqual(bad.status_code, 400)
 
         listed = self.client.get("/api/cet6/train/sentences",
                                  params={"limit": 200}, headers=AUTH).json()

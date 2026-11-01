@@ -12,12 +12,26 @@ function subnav(active) {
       data-act="view" data-view="${key}">${label}</button>`).join("")}</div>`;
 }
 
+const CONCLUSION_CLASS = {
+  "准确": "ok", "基本准确": "ok", "有偏差": "warn", "误译": "bad",
+};
+
 function historyRow(item) {
   return `<button class="cet6-history-row" type="button" data-act="open-sub" data-id="${item.id}">
     <span class="cet6-history-title">${escapeHtml(item.title || item.prompt_id)}</span>
     <span class="cet6-history-meta">${escapeHtml(MODE_LABEL[item.mode] || item.mode || "")} ·
       ${escapeHtml(statusLabel(item.status))} · ${escapeHtml(relative(item.updated_at))}</span>
     <span class="cet6-history-band${item.status === "reviewed" ? "" : " muted"}">${escapeHtml(String(item.band ?? "—"))}</span>
+  </button>`;
+}
+
+function sentenceHistoryRow(item) {
+  const klass = CONCLUSION_CLASS[item.conclusion] || "warn";
+  return `<button class="cet6-history-row" type="button" data-act="open-sentence-sub" data-id="${item.id}">
+    <span class="cet6-history-title">${escapeHtml(item.title || item.prompt_id)}</span>
+    <span class="cet6-history-meta">${escapeHtml(item.skill || "")} ·
+      ${escapeHtml(relative(item.updated_at))} · ${escapeHtml(item.preview || "")}</span>
+    <span class="cet6-history-conclusion ${klass}">${escapeHtml(item.conclusion || "已审核")}</span>
   </button>`;
 }
 
@@ -63,23 +77,24 @@ export function sentenceHintsHtml(sentence, hintLevel) {
   </div>`;
 }
 
-export function sentenceResultHtml(data) {
-  const review = data.review;
-  const classOf = {
-    "准确": "ok", "基本准确": "ok", "有偏差": "warn", "误译": "bad",
-  }[review.conclusion] || "warn";
+function sentenceHeadHtml(review, hint) {
+  const points = review.info_points || {};
+  const classOf = CONCLUSION_CLASS[review.conclusion] || "warn";
+  return `<div class="cet6-sentence-head">
+      <span class="cet6-sentence-conclusion ${classOf}">${escapeHtml(review.conclusion || "有偏差")}</span>
+      <span class="hint">信息点 ${points.covered ?? "—"} / ${points.total ?? "—"} · ${escapeHtml(hint)}</span>
+    </div>`;
+}
+
+function sentenceBodyHtml(review, cardsAdded = 0) {
   const points = review.info_points || {};
   const must = review.must_fix || [];
   const suggestions = review.suggestions || [];
-  return `<section class="cet6-sentence-result">
-    <div class="cet6-sentence-head">
-      <span class="cet6-sentence-conclusion ${classOf}">${escapeHtml(review.conclusion || "有偏差")}</span>
-      <span class="hint">信息点 ${points.covered ?? "—"} / ${points.total ?? "—"} · 用时 ${((data.ms || 0) / 1000).toFixed(1)} 秒</span>
-    </div>
+  return `
     ${(points.missing || []).length
       ? `<p class="cet6-missing">漏了：${points.missing.map(escapeHtml).join("、")}</p>` : ""}
     ${must.length ? `<div class="cet6-sentence-list">
-      <h4>必改 ${data.cards_added ? `（已自动进错题本 ${data.cards_added} 条）` : ""}</h4>
+      <h4>必改 ${cardsAdded ? `（已自动进错题本 ${cardsAdded} 条）` : ""}</h4>
       ${must.map((row) => `<div class="cet6-sentence-error">
         <p class="cet6-quote">${escapeHtml(row.quote)}</p>
         <p class="cet6-fix">改为：${escapeHtml(row.fix)}</p>
@@ -97,13 +112,43 @@ export function sentenceResultHtml(data) {
       ${(review.variants || []).length ? `<div><span>也可接受</span><p>${review.variants.map(escapeHtml).join("<br>")}</p></div>` : ""}
       ${review.minimal_fix ? `<div><span>最小改动版</span><p>${escapeHtml(review.minimal_fix)}</p></div>` : ""}
       ${review.idiomatic ? `<div><span>更地道版</span><p>${escapeHtml(review.idiomatic)}</p></div>` : ""}
-    </div>
+    </div>`;
+}
+
+export function sentenceResultHtml(data) {
+  const review = data.review;
+  const hint = `用时 ${((data.ms || 0) / 1000).toFixed(1)} 秒`;
+  return `<section class="cet6-sentence-result">
+    ${sentenceHeadHtml(review, hint)}${sentenceBodyHtml(review, data.cards_added)}
     <div class="cet6-actions">
       <button class="btn btn-primary" type="button" data-act="sentence-retry">再译一遍</button>
       <button class="btn" type="button" data-act="sentence-next-skill">换同技能新句</button>
       <button class="btn btn-small" type="button" data-act="sentence-next">下一句</button>
     </div>
   </section>`;
+}
+
+export function sentenceAttemptHtml(detail) {
+  const review = detail.review || {};
+  const item = detail.sentence || {};
+  const when = relative(detail.updated_at || detail.created_at || "");
+  return `${subnav("history")}
+    <article class="cet6-sentence-card">
+      <span class="cet6-kicker">${escapeHtml(item.skill || "")}${item.source_title ? ` · ${escapeHtml(item.source_title)}` : ""} · ${escapeHtml(when)}</span>
+      <p class="cet6-source-zh">${escapeHtml(item.zh || "")}</p>
+      <div class="cet6-sentence-past">
+        <span>你当时写的</span>
+        <p class="cet6-quote">${escapeHtml(detail.text || "")}</p>
+      </div>
+      <section class="cet6-sentence-result">
+        ${sentenceHeadHtml(review, `第 ${detail.id} 次提交`)}${sentenceBodyHtml(review)}
+        <div class="cet6-actions">
+          <button class="btn btn-primary" type="button" data-act="sentence-practice"
+            data-id="${escapeHtml(item.id || detail.prompt_id || "")}">再译这一句</button>
+          <button class="btn" type="button" data-act="view" data-view="history">回历史</button>
+        </div>
+      </section>
+    </article>`;
 }
 
 export function sentenceViewHtml({ sentence, skills, skill, attemptedCount,
@@ -184,10 +229,21 @@ function termRow(term) {
   </div>`;
 }
 
-export function historyHtml(rows) {
+export function historyHtml(rows, mode = "whole") {
+  const whole = mode !== "sentence";
+  const empty = whole
+    ? "还没有整篇翻译提交；单句练习在「一句一译」里。"
+    : "还没有一句一译记录；去「一句一译」写一句试试。";
   return `${subnav("history")}
-    ${rows.length ? `<div class="cet6-history">${rows.map(historyRow).join("")}</div>`
-      : '<p class="hint">还没有整篇翻译提交；单句练习在「一句一译」里。</p>'}`;
+    <div class="cet6-history-switch">
+      <button class="cet6-subtab${whole ? " active" : ""}" type="button"
+        data-act="history-mode" data-mode="whole">整篇翻译</button>
+      <button class="cet6-subtab${whole ? "" : " active"}" type="button"
+        data-act="history-mode" data-mode="sentence">一句一译</button>
+    </div>
+    ${rows.length
+      ? `<div class="cet6-history">${rows.map(whole ? historyRow : sentenceHistoryRow).join("")}</div>`
+      : `<p class="hint">${empty}</p>`}`;
 }
 
 export function progressHtml(id) {

@@ -9,8 +9,8 @@ import {
 } from "./translation-actions.js";
 import {
   failedHtml, historyHtml, homeHtml, libraryHtml, progressHtml,
-  promptViewHtml, sentenceHintsHtml, sentenceResultHtml, sentenceViewHtml,
-  termsHtml,
+  promptViewHtml, sentenceAttemptHtml, sentenceHintsHtml, sentenceResultHtml,
+  sentenceViewHtml, termsHtml,
 } from "./translation-views.js";
 
 const KIND = "translation";
@@ -21,7 +21,8 @@ let editor = null;
 let poller = null;
 let current = null;
 let promptsCache = null;
-let historyCache = null;
+let historyCache = {};  // {whole: [], sentence: []}
+let historyMode = "whole";
 let termsCache = null;
 let sentenceCache = null;
 let sentence = null;
@@ -46,7 +47,7 @@ function destroyEditor() {
 
 function invalidate() {
   promptsCache = null;
-  historyCache = null;
+  historyCache = {};
   sentenceCache = null;
 }
 
@@ -58,12 +59,14 @@ async function loadPrompts() {
   return promptsCache;
 }
 
-async function loadHistory() {
-  if (!historyCache) {
-    const data = await api.get("/api/cet6/train/submissions?kind=translation&limit=50");
-    historyCache = data.items || [];
+async function loadHistory(mode = "whole") {
+  if (!historyCache[mode]) {
+    const query = mode === "sentence" ? "&mode=sentence" : "";
+    const data = await api.get(
+      `/api/cet6/train/submissions?kind=translation&limit=50${query}`);
+    historyCache[mode] = data.items || [];
   }
-  return historyCache;
+  return historyCache[mode];
 }
 
 async function loadTerms(packId = "") {
@@ -99,7 +102,7 @@ async function renderHome() {
   panel.innerHTML = '<div class="empty">正在加载翻译训练…</div>';
   try {
     const [prompts, history, sentences] = await Promise.all([
-      loadPrompts(), loadHistory(), loadSentences()]);
+      loadPrompts(), loadHistory("whole"), loadSentences()]);
     const done = prompts.filter((row) => row.done > 0).length;
     const todayPrompt = prompts.find((row) => !row.done) || prompts[0];
     const todaySentence = pickSentence("");
@@ -115,7 +118,7 @@ async function renderHome() {
   }
 }
 
-async function renderSentence(skill = sentenceSkill) {
+async function renderSentence(skill = sentenceSkill, options = {}) {
   view = "sentence";
   destroyEditor();
   clearPoll();
@@ -123,7 +126,11 @@ async function renderSentence(skill = sentenceSkill) {
   try {
     await loadSentences();
     sentenceSkill = skill || "";
-    sentence = pickSentence(sentenceSkill);
+    // 从历史进来时锁定那一句，并把上次译文填回输入框。
+    const target = options.id
+      ? (sentenceCache.items || []).find((row) => row.id === options.id)
+      : null;
+    sentence = target || pickSentence(sentenceSkill);
     sentenceResult = null;
     hintLevel = 0;
     if (!sentence) {
@@ -135,6 +142,10 @@ async function renderSentence(skill = sentenceSkill) {
       attemptedCount: sentenceCache.attempted_count, hintLevel,
       resultHtml: sentenceResult ? sentenceResultHtml(sentenceResult) : "",
     });
+    if (options.prefill) {
+      const textarea = panel.querySelector("#cet6-sentence-text");
+      if (textarea) textarea.value = options.prefill;
+    }
     ctx.setSub(`翻译 · 一句一译 · ${sentence.skill || ""}`);
   } catch (error) {
     panel.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
@@ -319,17 +330,37 @@ async function editSubmission(id) {
   }
 }
 
-async function renderHistory() {
+async function renderHistory(mode = historyMode) {
   view = "history";
+  historyMode = mode === "sentence" ? "sentence" : "whole";
   destroyEditor();
   clearPoll();
   panel.innerHTML = '<div class="empty">正在加载历史…</div>';
   try {
-    const rows = await loadHistory();
-    panel.innerHTML = historyHtml(rows);
-    ctx.setSub(`翻译 · ${rows.length} 次整篇提交`);
+    const rows = await loadHistory(historyMode);
+    panel.innerHTML = historyHtml(rows, historyMode);
+    ctx.setSub(historyMode === "sentence"
+      ? `翻译 · 一句一译 ${rows.length} 次`
+      : `翻译 · ${rows.length} 次整篇提交`);
   } catch (error) {
     panel.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+async function openSentenceAttempt(id) {
+  destroyEditor();
+  clearPoll();
+  panel.innerHTML = '<div class="empty">正在打开这次提交…</div>';
+  try {
+    const detail = await api.get(`/api/cet6/train/submissions/${id}`);
+    if (!detail.sentence) throw new Error("这一条没有单句题目信息");
+    current = detail;
+    view = "sentence-attempt";
+    panel.innerHTML = sentenceAttemptHtml(detail);
+    ctx.setSub(`翻译 · 一句一译 · ${detail.sentence.skill || ""}`);
+  } catch (error) {
+    toast(error.message || "打开失败", "err");
+    renderHistory("sentence");
   }
 }
 
@@ -378,8 +409,14 @@ function onClick(event) {
     renderPrompt(target.dataset.id);
   } else if (act === "start-whole") {
     startWhole(target.dataset.id, target.dataset.mode || "practice");
+  } else if (act === "history-mode") {
+    renderHistory(target.dataset.mode);
   } else if (act === "open-sub") {
     openSubmission(Number(target.dataset.id));
+  } else if (act === "open-sentence-sub") {
+    openSentenceAttempt(Number(target.dataset.id));
+  } else if (act === "sentence-practice") {
+    renderSentence("", { id: target.dataset.id, prefill: current?.text || "" });
   } else if (act === "edit") {
     editSubmission(Number(target.dataset.id));
   } else if (act === "sentence-submit") {

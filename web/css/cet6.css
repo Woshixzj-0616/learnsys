@@ -76,6 +76,17 @@
 .cet6-history-meta{font-size:11.5px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cet6-history-band{text-align:right;font-weight:700;color:var(--accent)}
 .cet6-history-band.muted{color:var(--text-faint)}
+.cet6-history-switch{display:flex;gap:6px;margin:-6px 0 12px}
+.cet6-history-conclusion{
+  text-align:right;font-size:12px;font-weight:700;white-space:nowrap;
+  color:var(--text-dim);
+}
+.cet6-history-conclusion.ok{color:var(--ok)}
+.cet6-history-conclusion.warn{color:var(--warn)}
+.cet6-history-conclusion.bad{color:var(--err)}
+.cet6-sentence-past{margin:10px 0 4px}
+.cet6-sentence-past>span{font-size:11.5px;color:var(--text-faint)}
+.cet6-sentence-past .cet6-quote{background:var(--bg-input);display:block}
 
 .cet6-prompt-detail{
   border:1px solid var(--line);border-radius:var(--r-lg);background:var(--bg-raised);

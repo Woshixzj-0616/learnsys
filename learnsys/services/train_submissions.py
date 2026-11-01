@@ -315,6 +315,14 @@ def detail(conn, submission_id: int) -> dict:
         "review": review,
         "error": review.get("error", "") if row["status"] == "failed" else "",
     })
+    if row.get("mode") == "sentence":
+        # 单句题不在 writing/translation 题库里，中文原句单独回填，供历史详情展示。
+        item = content.sentence(row["prompt_id"]) or {}
+        out["sentence"] = {
+            "id": row["prompt_id"], "zh": item.get("zh", ""),
+            "skill": item.get("skill", ""),
+            "source_title": item.get("source_title", ""),
+        }
     if row["status"] == "reviewed":
         out["model_essay"] = pack.get("model_essay")
         out["upgrades"] = pack.get("upgrades")
@@ -337,12 +345,38 @@ def detail(conn, submission_id: int) -> dict:
     return out
 
 
-def history(conn, kind: str, *, limit: int = 50, offset: int = 0) -> dict:
+def history(conn, kind: str, *, mode: str = "", limit: int = 50,
+            offset: int = 0) -> dict:
+    """历史列表：默认整篇（排除单句）；`mode="sentence"` 只列一句一译。
+
+    单句没有档位，用批改里的 `conclusion`（准确/基本准确/有偏差/误译）当结果。
+    """
     kind = _check_kind(kind)
-    data = store.list_submissions(conn, kind=kind, exclude_mode="sentence",
-                                  limit=limit, offset=offset)
+    mode = str(mode or "").strip()
+    if mode not in ("", "sentence"):
+        raise ValueError("历史只分整篇与单句")
+    query = {"kind": kind, "limit": limit, "offset": offset}
+    if mode == "sentence":
+        query["mode"] = "sentence"
+    else:
+        query["exclude_mode"] = "sentence"
+    data = store.list_submissions(conn, **query)
     items = []
     for row in data["items"]:
+        if mode == "sentence":
+            item = content.sentence(row["prompt_id"]) or {}
+            review = _review_dict(row)
+            items.append({
+                "id": row["id"], "prompt_id": row["prompt_id"],
+                "title": item.get("zh") or row["prompt_id"],
+                "skill": item.get("skill", ""), "mode": row["mode"],
+                "status": row["status"], "band": None,
+                "conclusion": review.get("conclusion", ""),
+                "card_count": len(review.get("must_fix") or []),
+                "created_at": row["created_at"], "updated_at": row["updated_at"],
+                "preview": str(row.get("text") or "")[:160],
+            })
+            continue
         pack = content.pack(kind, row["prompt_id"]) or {}
         items.append({
             "id": row["id"], "prompt_id": row["prompt_id"],
@@ -354,7 +388,8 @@ def history(conn, kind: str, *, limit: int = 50, offset: int = 0) -> dict:
             "created_at": row["created_at"], "updated_at": row["updated_at"],
             "preview": str(row.get("text") or "")[:160],
         })
-    return {"kind": kind, "items": items, "count": data["count"]}
+    return {"kind": kind, "mode": mode or "whole", "items": items,
+            "count": data["count"]}
 
 
 def set_external_score(conn, submission_id: int, score: float | None) -> dict:
