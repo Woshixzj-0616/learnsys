@@ -5,6 +5,8 @@ import { createEditor } from "./editor.js";
 import { feedbackHtml } from "./feedback.js";
 import { MODE_LABEL, filterByField, statusLabel } from "./format.js";
 import { pollSubmission } from "./poll.js";
+import { clearContextProvider, setContextProvider } from "./ai.js";
+import { writingContext } from "./cet6-contexts.js";
 
 const KIND = "writing";
 
@@ -13,10 +15,16 @@ let ctx = null;
 let editor = null;
 let poller = null;
 let current = null;
+let currentPrompt = null;
 let promptsCache = null;
 let historyCache = null;
 let view = "home";
 let libFilter = "";
+
+// 给六级 AI 抽屉：草稿、当前题目或批改结果；模板在 cet6-contexts.js。
+export function context() {
+  return writingContext({ editor, current, currentPrompt, view, panel });
+}
 
 function clearPoll() {
   if (poller) {
@@ -161,6 +169,7 @@ async function renderPrompt(promptId) {
   panel.innerHTML = '<div class="empty">正在打开题目…</div>';
   try {
     const prompt = await api.get(`/api/cet6/train/prompts/${encodeURIComponent(promptId)}?kind=writing`);
+    currentPrompt = prompt;
     panel.innerHTML = `${subnav("library")}
       <article class="cet6-prompt-detail">
         <span class="cet6-kicker">${escapeHtml(prompt.type || "")} · ${prompt.minutes || 30} 分钟 ·
@@ -203,6 +212,7 @@ function renderEditor(submission, prompt, options = {}) {
   destroyEditor();
   clearPoll();
   current = submission;
+  currentPrompt = prompt;
   panel.innerHTML = "";
   editor = createEditor({
     submission, prompt,
@@ -440,17 +450,20 @@ function onClick(event) {
   }
 }
 
-export async function mount(context) {
-  panel = context.panel;
-  ctx = context.ctx;
+export async function mount(options) {
+  panel = options.panel;
+  ctx = options.ctx;
   panel.addEventListener("click", onClick);
+  setContextProvider(context);
   await renderHome();
   return () => {
     panel?.removeEventListener("click", onClick);
+    clearContextProvider();
     clearPoll();
     destroyEditor();
     panel = null;
     ctx = null;
     current = null;
+    currentPrompt = null;
   };
 }

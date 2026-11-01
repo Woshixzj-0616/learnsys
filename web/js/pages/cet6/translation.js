@@ -12,6 +12,8 @@ import {
   promptViewHtml, sentenceAttemptHtml, sentenceHintsHtml, sentenceResultHtml,
   sentenceViewHtml, termsHtml,
 } from "./translation-views.js";
+import { clearContextProvider, setContextProvider } from "./ai.js";
+import { translationContext } from "./cet6-contexts.js";
 
 const KIND = "translation";
 
@@ -30,6 +32,11 @@ let sentenceResult = null;
 let sentenceSkill = "";
 let hintLevel = 0;
 let view = "home";
+
+// 给六级 AI 抽屉：一句一译的当前句/批改结论，或整段批改结果；模板在 cet6-contexts.js。
+export function context() {
+  return translationContext({ view, current, sentence, sentenceResult, panel });
+}
 
 function clearPoll() {
   if (poller) {
@@ -467,21 +474,25 @@ function renderSentenceHints() {
   if (second) second.disabled = hintLevel < 1;
 }
 
-export async function mount(context) {
-  panel = context.panel;
-  ctx = context.ctx;
+export async function mount(options) {
+  panel = options.panel;
+  ctx = options.ctx;
   panel.addEventListener("click", onClick);
   panel.addEventListener("input", onInput);
   panel.addEventListener("change", onChange);
+  setContextProvider(context);
   await renderHome();
   return () => {
     panel?.removeEventListener("click", onClick);
     panel?.removeEventListener("input", onInput);
     panel?.removeEventListener("change", onChange);
+    clearContextProvider();
     clearPoll();
     destroyEditor();
     panel = null;
     ctx = null;
     current = null;
+    sentence = null;
+    sentenceResult = null;
   };
 }

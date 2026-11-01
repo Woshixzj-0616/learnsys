@@ -4,9 +4,48 @@ import { escapeHtml } from "../../ui.js";
 import {
   bandText, formatMinutes, overallBand, trendBar,
 } from "./stats-format.js";
+import { clearContextProvider, setContextProvider } from "./ai.js";
 
 let panel = null;
 let ctx = null;
+let last = null;
+
+// 给六级 AI 抽屉：这一屏统计的摘要，问「我最大的问题在哪」时能直接答。
+export function context() {
+  if (!last) {
+    return {
+      object_type: "cet6_stats",
+      object_id: "",
+      title: "六级统计 · 还没加载出来",
+      surrounding: {},
+      learning_state: {},
+    };
+  }
+  const { stats, plan, exam, chunk, count, average } = last;
+  const byKind = stats.by_kind || {};
+  return {
+    object_type: "cet6_stats",
+    object_id: `days-${stats.range?.days || 30}`,
+    title: `六级统计 · 近 ${stats.range?.days || 30} 天 · ${count} 次训练`,
+    surrounding: {},
+    learning_state: {
+      平均档位: average ?? "—",
+      写作: `${byKind.writing?.submissions || 0} 篇 · 平均 ${byKind.writing?.avg_band ?? "—"} 档`,
+      翻译: `${byKind.translation?.submissions || 0} 篇 · 一句一译 ${stats.totals?.sentences || 0} 次`,
+      严重错误: stats.totals?.serious || 0,
+      错误画像: (stats.error_types || []).slice(0, 6)
+        .map((row) => `${row.type || "未分类"} ${row.count || 0}`).join("、"),
+      真题自评: exam
+        ? `${exam.items || 0} 段 · ${exam.self_accuracy == null ? "—" : percent(exam.self_accuracy)}`
+        : "无",
+      意群长句: chunk
+        ? `${chunk.sentences || 0} 句 · 平均 ${chunk.avg_score == null ? "—" : percent(chunk.avg_score)}`
+        : "无",
+      连续训练: `${plan.streak || 0} 天`,
+      到期错卡: plan.due?.total || 0,
+    },
+  };
+}
 
 function statRow(label, value, note = "") {
   return `<div class="cet6-stat"><span>${escapeHtml(label)}</span>
@@ -114,6 +153,7 @@ async function render() {
     const count = (Number(totals.submissions) || 0) + (Number(totals.sentences) || 0);
     const due = plan.due || {};
     const info = stats.info_points || {};
+    last = { stats, plan, exam, chunk, count, average };
 
     panel.innerHTML = `
       <div class="cet6-hero">
@@ -160,13 +200,21 @@ async function render() {
       </div>`;
     ctx.setSub(count ? `统计 · 近 30 天 ${count} 次训练` : "统计 · 还没有训练记录");
   } catch (error) {
+    last = null;
     panel.innerHTML = `<div class="empty"><strong>统计没加载出来</strong>
       ${escapeHtml(error.message || "")}</div>`;
   }
 }
 
-export async function mount(context) {
-  panel = context.panel;
-  ctx = context.ctx;
+export async function mount(options) {
+  panel = options.panel;
+  ctx = options.ctx;
+  setContextProvider(context);
   await render();
+  return () => {
+    clearContextProvider();
+    panel = null;
+    ctx = null;
+    last = null;
+  };
 }

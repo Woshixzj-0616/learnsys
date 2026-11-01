@@ -1,0 +1,176 @@
+/* 六级训练通用 AI 助手：右下角圆圈 + 右侧抽屉（对话 / 历史）。
+ * 颜色全部取 tokens.css，三种气质（晨雾 / 墨夜 / 纸感）自动跟随。 */
+
+.cet6-ai-fab{
+  position:fixed;right:24px;bottom:24px;z-index:85;
+  width:54px;height:54px;border-radius:50%;padding:0;
+  font:inherit;font-size:15px;font-weight:800;letter-spacing:.02em;
+  color:#fff;background:linear-gradient(145deg,var(--accent),var(--accent-strong));
+  border:1px solid var(--accent-strong);
+  box-shadow:0 10px 26px rgba(0,0,0,.22);
+  touch-action:none;cursor:grab;user-select:none;
+}
+.cet6-ai-fab:hover{filter:brightness(1.06)}
+.cet6-ai-fab:active{cursor:grabbing}
+.cet6-ai-fab.on{background:linear-gradient(145deg,var(--accent-strong),var(--accent));
+  box-shadow:0 0 0 4px var(--accent-soft),0 10px 26px rgba(0,0,0,.22)}
+.cet6-ai-fab[hidden]{display:none}
+
+.cet6-ai-sel{
+  position:fixed;z-index:86;height:28px;padding:0 11px;
+  border:1px solid var(--accent-line);border-radius:999px;
+  background:var(--surface);color:var(--accent);font:inherit;font-size:12px;
+  font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.14);
+  transform:translateX(-50%);
+}
+.cet6-ai-sel:hover{background:var(--accent-soft)}
+.cet6-ai-sel[hidden]{display:none}
+
+.cet6-ai-dock{
+  position:fixed;right:16px;top:76px;bottom:88px;z-index:80;
+  width:min(400px,calc(100vw - 32px));
+  display:flex;flex-direction:column;gap:9px;
+  padding:12px 14px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+  box-shadow:0 18px 50px rgba(0,0,0,.20);
+}
+.cet6-ai-dock[hidden]{display:none}
+
+.cet6-ai-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:none}
+.cet6-ai-title{display:flex;align-items:center;gap:8px;min-width:0}
+.cet6-ai-title b{font-size:15px;color:var(--text)}
+.cet6-ai-model{
+  font-size:10.5px;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:999px;padding:1px 7px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.cet6-ai-head-actions{display:flex;gap:6px;flex:none}
+.cet6-ai-head-actions button{
+  height:26px;padding:0 9px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:transparent;color:var(--text-dim);font:inherit;font-size:12px;cursor:pointer;
+}
+.cet6-ai-head-actions button:hover{color:var(--text);border-color:var(--line-strong)}
+
+.cet6-ai-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);padding-bottom:7px;flex:none}
+.cet6-ai-tabs button{
+  border:0;border-radius:var(--r-sm);background:transparent;padding:4px 12px;
+  color:var(--text-dim);font:inherit;font-size:13px;cursor:pointer;
+}
+.cet6-ai-tabs button.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+
+.cet6-ai-view{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
+.cet6-ai-view[hidden]{display:none}
+
+.cet6-ai-ctx{
+  flex:none;margin:0;padding:6px 9px;border-radius:var(--r-sm);
+  background:var(--bg-sunken);color:var(--text-dim);
+  font-size:11.5px;line-height:1.55;overflow-wrap:anywhere;
+}
+
+.cet6-ai-messages{
+  flex:1;min-height:0;overflow:auto;
+  background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--r-md);
+  padding:8px 10px;
+}
+.cet6-ai-status{margin:0;padding:10px 4px;color:var(--text-faint);font-size:12.5px}
+
+.cet6-ai-welcome{font-size:13px;line-height:1.7;color:var(--text);padding:6px 2px}
+.cet6-ai-welcome b{color:var(--accent)}
+.cet6-ai-welcome p{margin:6px 0}
+
+.cet6-ai-msg{display:flex;margin:8px 0}
+.cet6-ai-msg.user{justify-content:flex-end}
+.cet6-ai-bubble{
+  max-width:88%;padding:8px 11px;border-radius:10px;
+  font-size:13px;line-height:1.65;overflow-wrap:anywhere;
+}
+.cet6-ai-msg.user .cet6-ai-bubble{
+  background:var(--accent);border:1px solid var(--accent);color:#fff;white-space:pre-wrap;
+}
+.cet6-ai-msg.assistant .cet6-ai-bubble{
+  background:var(--surface-2);border:1px solid var(--line);color:var(--text);
+}
+.cet6-ai-msg.error .cet6-ai-bubble{
+  background:var(--danger-soft);border:1px solid var(--danger);color:var(--danger);
+}
+.cet6-ai-text.err{color:var(--danger)}
+.cet6-ai-text p{margin:0 0 7px}
+.cet6-ai-text p:last-child{margin-bottom:0}
+.cet6-ai-text ul,.cet6-ai-text ol{margin:4px 0 7px;padding-left:20px}
+.cet6-ai-text code{
+  padding:1px 4px;border-radius:4px;background:var(--bg-sunken);
+  font-size:12px;
+}
+.cet6-ai-text pre{
+  margin:6px 0;padding:9px 10px;overflow:auto;
+  border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg-sunken);
+}
+.cet6-ai-text pre code{padding:0;background:transparent}
+.cet6-ai-text table{border-collapse:collapse;margin:6px 0;font-size:12px}
+.cet6-ai-text th,.cet6-ai-text td{border:1px solid var(--line);padding:4px 7px}
+
+.cet6-ai-think{margin:0 0 7px;font-size:12px;color:var(--text-dim)}
+.cet6-ai-think summary{cursor:pointer;color:var(--text-faint)}
+.cet6-ai-think-body{margin-top:5px;line-height:1.6;white-space:pre-wrap}
+.cet6-ai-tools{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 7px}
+.cet6-ai-tools span{
+  padding:1px 6px;border:1px solid var(--line);border-radius:999px;
+  color:var(--text-faint);font-size:10.5px;
+}
+
+.cet6-ai-suggest{display:flex;flex-wrap:wrap;gap:6px;flex:none}
+.cet6-ai-suggest button{
+  padding:3px 9px;border:1px solid var(--accent-line);border-radius:999px;
+  background:var(--accent-soft);color:var(--accent);font:inherit;font-size:11.5px;cursor:pointer;
+}
+.cet6-ai-suggest button:hover{filter:brightness(.98)}
+.cet6-ai-suggest:empty{display:none}
+
+.cet6-ai-input{display:flex;gap:6px;align-items:flex-end;flex:none}
+.cet6-ai-input textarea{
+  flex:1;min-height:52px;max-height:150px;resize:vertical;
+  padding:7px 9px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--bg-input);color:var(--text);font:inherit;font-size:13px;line-height:1.5;
+}
+.cet6-ai-input textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent-line)}
+.cet6-ai-send,.cet6-ai-stop{
+  height:32px;padding:0 13px;border-radius:var(--r-sm);
+  font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;flex:none;
+}
+.cet6-ai-send{
+  border:1px solid var(--accent);background:var(--accent);color:#fff;
+}
+.cet6-ai-stop{
+  border:1px solid var(--danger);background:var(--danger-soft);color:var(--danger);
+}
+.cet6-ai-send[hidden],.cet6-ai-stop[hidden]{display:none}
+
+.cet6-ai-history-search{
+  flex:none;width:100%;padding:6px 10px;
+  border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--bg-input);color:var(--text);font:inherit;font-size:13px;
+}
+.cet6-ai-history-search:focus{outline:2px solid var(--accent-soft);border-color:var(--accent-line)}
+.cet6-ai-history{
+  flex:1;min-height:0;overflow:auto;
+  border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg-raised);
+}
+.cet6-ai-history-item{
+  display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;
+  padding:9px 11px;border:0;border-bottom:1px solid var(--line);
+  background:transparent;color:var(--text);font:inherit;cursor:pointer;
+}
+.cet6-ai-history-item:last-child{border-bottom:0}
+.cet6-ai-history-item:hover,.cet6-ai-history-item.on{background:var(--accent-soft)}
+.cet6-ai-history-item .t{font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.cet6-ai-history-item .m{font-size:11px;color:var(--text-faint)}
+
+/* 抽屉打开时给正文让出右侧空间，别把「提交审核」这类按钮压在下面。 */
+@media (min-width:900px){
+  .view.cet6-ai-open{padding-right:432px}
+}
+
+@media (max-width:760px){
+  .cet6-ai-fab{right:14px;bottom:18px;width:50px;height:50px}
+  .cet6-ai-dock{right:8px;left:8px;top:8px;bottom:76px;width:auto}
+}

@@ -1,5 +1,6 @@
 // 专项页外壳：在「逐句听写」和「真题自评」之间切换，共用同一块面板。
 import { escapeHtml } from "../../ui.js";
+import { clearContextProvider, setContextProvider } from "./ai.js";
 
 const MODES = { drill: "逐句听写", exam: "真题自评", chunk: "意群长句" };
 
@@ -52,21 +53,25 @@ async function mountMode(next) {
   const body = host?.querySelector("#cet6-practice-body");
   if (!body) return;
   body.innerHTML = "";
+  clearContextProvider();
   if (next === "exam") {
     const page = await import("./exam.js");
     if (mine !== token) return;
     cleanup = await page.mount({ panel: body, ctx });
+    setContextProvider(page.context);
     return;
   }
   if (next === "chunk") {
     const page = await import("./chunk.js");
     if (mine !== token) return;
     cleanup = await page.mount({ panel: body, ctx });
+    setContextProvider(page.context);
     return;
   }
   const page = await import("./drill.js");
   if (mine !== token) return;
   cleanup = await page.mount({ panel: body, ctx });
+  setContextProvider(page.context);
 }
 
 function onClick(event) {
@@ -100,6 +105,7 @@ export async function mount(context) {
   await mountMode(mode);
   return () => {
     token += 1;
+    clearContextProvider();
     host?.removeEventListener("click", onClick);
     if (cleanup) {
       try { cleanup(); } catch { /* 忽略 */ }

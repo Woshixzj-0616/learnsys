@@ -20,6 +20,31 @@ function current() {
   return items[index] || null;
 }
 
+// 给六级 AI 抽屉：当前长句、你的听写、意群切分。
+export function context() {
+  const item = current();
+  if (!item) return null;
+  const missed = (result?.missed || []).map((row) => row.token).join("、");
+  return {
+    object_type: "cet6_chunk",
+    object_id: keyOf(item),
+    title: `六级意群长句 · ${item.paper_title || item.paper_id} / ${item.section} / `
+      + `${item.item} · 第 ${index + 1} 句（${item.word_count || 0} 词）`,
+    surrounding: {
+      原句: result?.expected || item.en || "",
+      你的听写: result?.answer || answer || "（还没写）",
+      意群切分: (result?.chunks || []).map((row) => row.text).join(" / "),
+    },
+    learning_state: {
+      模式: "意群长句",
+      进度: `${index + 1}/${items.length}`,
+      得分: result ? percent(result.score) : "未提交",
+      漏听词: missed || "无",
+      多写: (result?.extra || []).join("、") || "无",
+    },
+  };
+}
+
 function keyOf(item) {
   return `${item.paper_id}|${item.section}|${item.item}|${item.sentence}`;
 }

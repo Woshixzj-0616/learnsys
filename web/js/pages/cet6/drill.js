@@ -21,6 +21,31 @@ function current() {
   return items[index] || null;
 }
 
+// 给六级 AI 抽屉：当前这一句、你的听写、漏听词。
+export function context() {
+  const item = current();
+  if (!item) return null;
+  const missed = (result?.missed || []).map((row) => row.token).join("、");
+  return {
+    object_type: "cet6_dictation",
+    object_id: sentenceKey(item),
+    title: `六级专项听写 · ${item.paper_title || item.paper_id} / ${item.section} / `
+      + `${item.item} · 第 ${index + 1} 句`,
+    surrounding: {
+      原句: result?.expected || item.en || "",
+      你的听写: result?.answer || answer || "（还没写）",
+    },
+    learning_state: {
+      模式: "逐句听写",
+      进度: `${index + 1}/${items.length}`,
+      得分: result ? percent(result.score) : "未提交",
+      漏听词: missed || "无",
+      多写: (result?.extra || []).join("、") || "无",
+      播放遍数: plays,
+    },
+  };
+}
+
 function sentenceKey(item) {
   return `${item.paper_id}|${item.section}|${item.item}|${item.sentence}`;
 }

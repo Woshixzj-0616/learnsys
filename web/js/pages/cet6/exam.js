@@ -21,6 +21,27 @@ function current() {
   return items[index] || null;
 }
 
+// 给六级 AI 抽屉：这一段的题干、你逐题的自评、提交结果。
+export function context() {
+  const item = current();
+  if (!item) return null;
+  const marked = Object.entries(marks).map(([number, value]) =>
+    `${number}${value === "right" ? "✓" : "✗"}`).join(" ");
+  return {
+    object_type: "cet6_exam",
+    object_id: `${item.paper_id}|${item.section}|${item.item}`,
+    title: `六级真题自评 · ${item.paper_title} / ${sectionLabel(item)}`,
+    surrounding: {
+      题干: (item.questions || []).map((q) => `${q.number}. ${q.en}`).join("\n"),
+    },
+    learning_state: {
+      进度: `${index + 1}/${items.length}`,
+      已自评: marked || "还没有",
+      提交结果: result ? `对 ${result.correct_count} / ${result.question_count} 题` : "未提交",
+    },
+  };
+}
+
 function percent(value) {
   return `${Math.round(Number(value || 0) * 100)}%`;
 }

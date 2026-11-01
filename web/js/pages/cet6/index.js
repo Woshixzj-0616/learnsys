@@ -1,4 +1,7 @@
 // 六级训练壳：精听 iframe 保原样，写作/翻译/统计是原生页。
+import {
+  clearContextProvider, mount as mountAI, setEnabled, setPage,
+} from "./ai.js";
 import { mountListening } from "./listening.js";
 
 const TABS = {
@@ -22,6 +25,7 @@ let root = null;
 let panel = null;
 let cleanup = null;
 let active = "";
+let cleanupAI = null;
 
 function markTabs(tab) {
   for (const button of root?.querySelectorAll(".cet6-tab") || []) {
@@ -56,6 +60,10 @@ async function switchTab(tab, ctx) {
   ctx.setSub(SUBTITLES[tab]);
   ctx.setActions("");
   panel.innerHTML = "";
+  // 精听 iframe 里自带 AI；其余标签共用外层抽屉。切换页面时先清掉上一页的上下文。
+  clearContextProvider();
+  setPage(tab);
+  setEnabled(tab !== "listening");
 
   if (tab === "listening") {
     cleanup = mountListening(panel, ctx.query);
@@ -96,6 +104,7 @@ async function switchTab(tab, ctx) {
 export async function mount(ctx) {
   root = ctx.root;
   panel = root.querySelector("#cet6-panel");
+  cleanupAI = mountAI(root);
   const requested = ctx.query.get("tab");
   const initial = requested && TABS[requested] ? requested : "listening";
   for (const button of root.querySelectorAll(".cet6-tab")) {
@@ -110,6 +119,10 @@ export function unmount() {
   if (cleanup) {
     try { cleanup(); } catch { /* 忽略 */ }
     cleanup = null;
+  }
+  if (cleanupAI) {
+    try { cleanupAI(); } catch { /* 忽略 */ }
+    cleanupAI = null;
   }
   active = "";
   root = null;

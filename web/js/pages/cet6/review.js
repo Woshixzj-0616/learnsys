@@ -3,6 +3,7 @@ import { api } from "../../api.js";
 import { renderInto } from "../../markdown.js";
 import { escapeHtml, toast } from "../../ui.js";
 import { reviewKey } from "./review-keys.js";
+import { clearContextProvider, setContextProvider } from "./ai.js";
 
 const RATING_LABELS = { 1: "忘了", 2: "模糊", 3: "记得", 4: "简单" };
 const SOURCE_LABELS = { writing: "写作", translation: "翻译", cet6_dictation: "听辨", cet6_chunk: "意群" };
@@ -19,6 +20,39 @@ let reviewAudio = null;
 
 function current() {
   return items[index] || null;
+}
+
+// 给六级 AI 抽屉：当前这张卡的正反面、你这次的答案和当时的答案。
+export function context() {
+  const item = current();
+  if (!item) {
+    return {
+      object_type: "cet6_review",
+      object_id: "",
+      title: "六级到期复习 · 今天没有到期卡",
+      surrounding: {},
+      learning_state: { 已完成: stats.done },
+    };
+  }
+  const typing = panel?.querySelector("#cet6-review-answer")?.value ?? typed;
+  return {
+    object_type: "cet6_review_card",
+    object_id: String(item.id || ""),
+    title: `六级到期复习 · ${sourceLabel(item)} · 第 ${index + 1}/${items.length} 张`,
+    surrounding: {
+      卡片正面: item.question || "",
+      参考: revealed ? item.answer || "" : "",
+      我这次的答案: typing || "",
+      我当时的答案: item.my_answer || "",
+      笔记: item.note || "",
+      标签: item.tags || "",
+    },
+    learning_state: {
+      是否已看答案: revealed ? "是" : "否",
+      已完成: stats.done,
+      忘了或模糊: stats.forgot,
+    },
+  };
 }
 
 function sourceLabel(item) {
@@ -204,16 +238,18 @@ function onKey(event) {
   }
 }
 
-export async function mount(context) {
-  panel = context.panel;
-  ctx = context.ctx;
+export async function mount(options) {
+  panel = options.panel;
+  ctx = options.ctx;
   ctx.setActions('<a class="btn btn-small" href="#/wrongbook">全部错题</a>');
   panel.addEventListener("click", onClick);
   document.addEventListener("keydown", onKey);
+  setContextProvider(context);
   await load();
   return () => {
     panel?.removeEventListener("click", onClick);
     document.removeEventListener("keydown", onKey);
+    clearContextProvider();
     if (reviewAudio) {
       reviewAudio.pause();
       reviewAudio = null;
