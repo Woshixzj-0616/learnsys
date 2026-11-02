@@ -12,9 +12,22 @@ class TrainContentTest(unittest.TestCase):
         counts = validate.counts()
         self.assertEqual(counts["writing"], 24)
         self.assertEqual(counts["translation"], 24)
+        self.assertEqual(counts["writing_patterns"], 48)
+        self.assertEqual(counts["translation_phrases"], 64)
         self.assertEqual(counts["extra_sentences"], 120)
         self.assertEqual(counts["derived_sentences"], 192)
         self.assertEqual(counts["sentences"], 312)
+
+    def test_daily_libraries_are_usable(self):
+        for item in content.writing_patterns():
+            self.assertIn("...", item["pattern"])
+            self.assertTrue(item["example"])
+            self.assertTrue(item["example_zh"])
+            self.assertTrue(item["zh"])
+        for item in content.translation_phrases():
+            self.assertTrue(item["zh"])
+            self.assertTrue(item["en"])
+            self.assertTrue(item["theme"])
 
     def test_structure_has_no_errors(self):
         errors = validate.check_library()

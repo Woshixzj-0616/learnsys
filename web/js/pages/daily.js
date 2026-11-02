@@ -1,4 +1,4 @@
-// 每日积累：写作好句 + 翻译重点词 + 从精听笔记解析出的纠音点。
+// 每日积累：写作句型 + 翻译短语 + 从精听笔记解析出的纠音点。
 import { api } from "../api.js";
 import { escapeHtml, toast } from "../ui.js";
 
@@ -20,9 +20,41 @@ function findPron(id) {
     .find((item) => Number(item.id) === Number(id)) || null;
 }
 
+function highlight(text, target) {
+  const raw = String(text || "");
+  const needle = String(target || "").trim();
+  if (!needle) return escapeHtml(raw);
+  const index = raw.toLowerCase().indexOf(needle.toLowerCase());
+  if (index < 0) return escapeHtml(raw);
+  return escapeHtml(raw.slice(0, index))
+    + `<mark>${escapeHtml(raw.slice(index, index + needle.length))}</mark>`
+    + escapeHtml(raw.slice(index + needle.length));
+}
+
 function writingHtml(item) {
   const payload = item.payload || {};
   const done = item.status !== "new";
+  const button = `<button class="btn btn-small" type="button" data-act="read" data-id="${item.id}"
+      ${done ? "disabled" : ""}>${done ? "✓ 已积累" : "已积累"}</button>`;
+  if (payload.pattern) {
+    const note = payload.note ? `<p class="hint">${escapeHtml(payload.note)}</p>` : "";
+    return `<article class="daily-card daily-writing daily-pattern ${done ? "done" : ""}">
+      <div class="daily-card-head">
+        <p class="eyebrow">${escapeHtml(payload.group || "写作句型")}</p>
+        <span class="daily-status">${done ? "已积累" : "未读"}</span>
+      </div>
+      <p class="daily-pattern-en">${escapeHtml(payload.pattern)}</p>
+      <p class="daily-pattern-zh">${escapeHtml(payload.zh || "")}</p>
+      <div class="daily-example">
+        <span class="daily-example-tag">例句</span>
+        <p class="daily-example-en">${escapeHtml(payload.example || "")}</p>
+        <p class="daily-example-zh">${escapeHtml(payload.example_zh || "")}</p>
+      </div>
+      ${note}
+      ${button}
+    </article>`;
+  }
+  // 往期历史仍可能是 2.51 的「好句 / 弱版」结构，原样显示。
   return `<article class="daily-card daily-writing ${done ? "done" : ""}">
     <div class="daily-card-head">
       <p class="eyebrow">${escapeHtml(payload.context || "写作好句")}</p>
@@ -34,8 +66,7 @@ function writingHtml(item) {
       <p>${escapeHtml(payload.weak || "")}</p>
     </details>
     <p class="daily-why">${escapeHtml(payload.why || "")}</p>
-    <button class="btn btn-small" type="button" data-act="read" data-id="${item.id}"
-      ${done ? "disabled" : ""}>${done ? "✓ 已积累" : "已积累"}</button>
+    ${button}
   </article>`;
 }
 
@@ -44,9 +75,12 @@ function termHtml(item) {
   const done = item.status !== "new";
   const note = payload.note
     ? `<small>${escapeHtml(payload.note)}</small>` : "";
+  const tag = payload.tag
+    ? `<span class="daily-term-tag">${escapeHtml(payload.tag)}</span>` : "";
   return `<li class="daily-term ${done ? "done" : ""}">
     <div class="daily-term-main">
       <b class="daily-zh">${escapeHtml(payload.zh || "")}</b>
+      ${tag}
       <span class="daily-arrow">→</span>
       <span class="daily-en">${escapeHtml(payload.en || "")}</span>
       ${note}
@@ -73,6 +107,8 @@ function pronHtml(item) {
   const sentenceButton = payload.sentence_audio
     ? `<button class="btn btn-small" type="button" data-act="play-sentence"
         data-id="${item.id}">▶ 整句</button>` : "";
+  const hint = audio.url ? ""
+    : `<p class="daily-pron-hint">这句没有逐词时间轴，先听整句，跟着原句找回目标词。</p>`;
   const mastered = item.status === "mastered";
   return `<li class="daily-pron ${item.status}">
     <div class="daily-pron-head">
@@ -81,7 +117,8 @@ function pronHtml(item) {
       <span class="daily-kind">${escapeHtml(payload.kind_label || "没听出")}</span>
     </div>
     ${note}
-    <p class="daily-context">${escapeHtml(payload.sentence || "")}</p>
+    <p class="daily-context">${highlight(payload.sentence || "", payload.target)}</p>
+    ${hint}
     <div class="daily-pron-actions">
       ${wordButton}${sentenceButton}
       <button class="btn btn-small" type="button" data-act="master"
@@ -117,8 +154,8 @@ function render() {
   const writing = data.items?.writing || [];
   const terms = data.items?.translation || [];
   const pron = data.items?.pron || [];
-  root.querySelector("#daily-writing-count").textContent = `${writing.length} 句`;
-  root.querySelector("#daily-translation-count").textContent = `${terms.length} 个`;
+  root.querySelector("#daily-writing-count").textContent = `${writing.length} 个句型`;
+  root.querySelector("#daily-translation-count").textContent = `${terms.length} 条`;
   root.querySelector("#daily-pron-count").textContent = `${pron.length} 条`;
   root.querySelector("#daily-writing").innerHTML =
     writing.map(writingHtml).join("") || '<p class="hint">今天没有好句。</p>';
@@ -262,7 +299,7 @@ export async function mount(context) {
   root = context.root;
   ctx = context;
   state = { day: todayText(), data: null, audio: null, playing: "", history: false };
-  ctx.setSub("写作好句 + 翻译热词 + 你自己的纠音点，每天一小份");
+  ctx.setSub("写作句型 + 翻译短语 + 你自己的纠音点，每天一小份");
   root.addEventListener("click", onClick);
   root.querySelector("#daily-today")?.addEventListener("click", () => {
     load(todayText());

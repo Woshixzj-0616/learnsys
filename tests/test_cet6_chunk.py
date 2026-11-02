@@ -92,7 +92,7 @@ class ChunkServiceTest(unittest.TestCase):
         data = cet6_paper.sentence_words(
             PAPER, "Section A 长对话", "Conversation 1", 1)
         chunks = cet6_chunk.build_chunks(
-            data["text"], data["words"], data["start"], data["end"])
+            data["text"], data["words"], data["clip_start"], data["end"])
         self.assertGreaterEqual(len(chunks), 2)
         self.assertLessEqual(len(chunks), 5)
         self.assertTrue(chunks[0]["text"].endswith("classroom,"))
@@ -104,7 +104,7 @@ class ChunkServiceTest(unittest.TestCase):
             PAPER, "Section A 长对话", "Conversation 1", 2)
         self.assertEqual(
             cet6_chunk.build_chunks(data["text"], data["words"],
-                                    data["start"], data["end"]), [])
+                                    data["clip_start"], data["end"]), [])
 
     def test_queue_only_returns_long_sentences(self):
         data = cet6_chunk.queue(self.conn, limit=8)

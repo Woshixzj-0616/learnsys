@@ -10,7 +10,11 @@ WRITING_COUNT = 24
 TRANSLATION_COUNT = 24
 MIN_DERIVED_SENTENCES = 192
 MIN_EXTRA_SENTENCES = 120
+MIN_PATTERNS = 40
+MIN_PHRASES = 50
 _ID = re.compile(r"^(w|t)\d{2}$")
+_PATTERN_ID = re.compile(r"^p\d{2}$")
+_PHRASE_ID = re.compile(r"^ph\d{2}$")
 _XID = re.compile(r"^x\d{3}$")
 _IPID = re.compile(r"^ip\d+$")
 
@@ -208,6 +212,29 @@ def _extra(item: dict, errors: list[str]) -> None:
         _texts(item.get("variants"), "variants", 0, 3, errors, where)
 
 
+def _pattern(item: dict, errors: list[str]) -> None:
+    where = f"句型 {item.get('id') or '?'}"
+    ident = str(item.get("id") or "")
+    if not _PATTERN_ID.match(ident):
+        errors.append(f"{where}：id 必须形如 p01")
+    for key in ("group", "pattern", "zh", "example", "example_zh"):
+        if not str(item.get(key) or "").strip():
+            errors.append(f"{where}：缺 {key}")
+    pattern = str(item.get("pattern") or "")
+    if "..." not in pattern and "…" not in pattern:
+        errors.append(f"{where}：pattern 要用 ... 标出可替换位置")
+
+
+def _phrase(item: dict, errors: list[str]) -> None:
+    where = f"短语 {item.get('id') or '?'}"
+    ident = str(item.get("id") or "")
+    if not _PHRASE_ID.match(ident):
+        errors.append(f"{where}：id 必须形如 ph01")
+    for key in ("zh", "en", "theme"):
+        if not str(item.get(key) or "").strip():
+            errors.append(f"{where}：缺 {key}")
+
+
 def check_library(lib: dict | None = None,
                   dir_path: pathlib.Path | str | None = None) -> list[str]:
     lib = lib or content.library(dir_path)
@@ -228,6 +255,24 @@ def check_library(lib: dict | None = None,
         seen.add(ident)
     for item in translation:
         _translation(item, errors)
+        ident = str(item.get("id") or "")
+        if ident in seen:
+            errors.append(f"id 重复：{ident}")
+        seen.add(ident)
+    patterns = lib.get("writing_patterns") or []
+    phrases = lib.get("translation_phrases") or []
+    if len(patterns) < MIN_PATTERNS:
+        errors.append(f"写作句型需要 ≥{MIN_PATTERNS} 条，实际 {len(patterns)}")
+    for item in patterns:
+        _pattern(item, errors)
+        ident = str(item.get("id") or "")
+        if ident in seen:
+            errors.append(f"id 重复：{ident}")
+        seen.add(ident)
+    if len(phrases) < MIN_PHRASES:
+        errors.append(f"翻译短语需要 ≥{MIN_PHRASES} 条，实际 {len(phrases)}")
+    for item in phrases:
+        _phrase(item, errors)
         ident = str(item.get("id") or "")
         if ident in seen:
             errors.append(f"id 重复：{ident}")
@@ -259,6 +304,8 @@ def counts(lib: dict | None = None, dir_path=None) -> dict:
     return {
         "writing": len(lib["writing"]),
         "translation": len(lib["translation"]),
+        "writing_patterns": len(lib.get("writing_patterns") or []),
+        "translation_phrases": len(lib.get("translation_phrases") or []),
         "extra_sentences": len(lib["extra_sentences"]),
         "derived_sentences": len(derived),
         "sentences": len(lib["extra_sentences"]) + len(derived),

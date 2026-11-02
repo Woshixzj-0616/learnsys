@@ -9,6 +9,7 @@ from unittest import mock
 
 from learnsys import config, store
 from learnsys.services import daily_accum
+from learnsys.train import content as train_content
 
 PAPER = "卷一"
 SECTION = "Section A 长对话"
@@ -68,8 +69,32 @@ class DailyAccumTest(unittest.TestCase):
     def test_writing_rotates_next_day(self):
         today = daily_accum._writing_payloads("2026-10-31")
         tomorrow = daily_accum._writing_payloads("2026-11-01")
-        self.assertNotEqual([row["payload"]["en"] for row in today],
-                            [row["payload"]["en"] for row in tomorrow])
+        self.assertNotEqual([row["payload"]["pattern"] for row in today],
+                            [row["payload"]["pattern"] for row in tomorrow])
+
+    def test_writing_payload_is_pattern_with_example(self):
+        rows = daily_accum._writing_payloads("2026-10-31")
+        self.assertEqual(len(rows), 2)
+        for row in rows:
+            payload = row["payload"]
+            self.assertTrue(payload["pattern"].strip())
+            self.assertTrue(payload["zh"].strip())
+            self.assertTrue(payload["example"].strip())
+            self.assertTrue(payload["example_zh"].strip())
+            self.assertNotIn("en", payload)
+
+    def test_translation_mixes_phrases_and_themes(self):
+        rows = daily_accum._translation_payloads("2026-11-02")
+        self.assertEqual(len(rows), 8)
+        tags = [row["payload"]["tag"] for row in rows]
+        self.assertEqual(tags.count("高频短语"), 4)
+        self.assertEqual(tags.count("主题词"), 4)
+        # 4 个主题词必须来自不同篇目，不能又变成一天一个主题。
+        theme_ids = [row["payload"]["source_id"].split(":")[0]
+                     for row in rows if row["payload"]["tag"] == "主题词"]
+        self.assertEqual(len(set(theme_ids)), 4)
+        self.assertIn("红包", [row["zh"] for row in
+                               train_content.translation_phrases()])
 
     def test_mark_and_streak(self):
         data = daily_accum.list_day(self.conn)

@@ -1,0 +1,454 @@
+{
+  "version": 1,
+  "kind": "translation_phrases",
+  "items": [
+    {
+      "id": "ph01",
+      "zh": "一带一路",
+      "en": "the Belt and Road Initiative (BRI)",
+      "note": "官方译法；简称可写 the Belt and Road，首次出现用全称。",
+      "theme": "时政经济"
+    },
+    {
+      "id": "ph02",
+      "zh": "红包",
+      "en": "red envelopes",
+      "note": "也可说 lucky money；发红包 give / send red envelopes。",
+      "theme": "传统习俗"
+    },
+    {
+      "id": "ph03",
+      "zh": "高铁",
+      "en": "high-speed rail",
+      "note": "也可 high-speed railway；比 high-speed train 更常用于交通系统。",
+      "theme": "交通"
+    },
+    {
+      "id": "ph04",
+      "zh": "移动支付",
+      "en": "mobile payment",
+      "note": "动词用 pay by mobile phone；泛指多种方式时可用 mobile payments。",
+      "theme": "科技"
+    },
+    {
+      "id": "ph05",
+      "zh": "共享单车",
+      "en": "shared bikes",
+      "note": "也可说 bike-sharing 或 shared bicycles，指服务时常用 bike-sharing。",
+      "theme": "科技"
+    },
+    {
+      "id": "ph06",
+      "zh": "扫码支付",
+      "en": "scan-to-pay",
+      "note": "动作表达为 scan a QR code to pay。",
+      "theme": "科技"
+    },
+    {
+      "id": "ph07",
+      "zh": "二维码",
+      "en": "QR code",
+      "note": "全称 quick response code；复数 QR codes。",
+      "theme": "科技"
+    },
+    {
+      "id": "ph08",
+      "zh": "电子商务",
+      "en": "e-commerce",
+      "note": "不要写成 ecommerce 或 electronic commerce（后者可但少见）。",
+      "theme": "经济"
+    },
+    {
+      "id": "ph09",
+      "zh": "直播带货",
+      "en": "livestreaming e-commerce",
+      "note": "也可说 live-streaming sales；主播 livestreamer。",
+      "theme": "经济"
+    },
+    {
+      "id": "ph10",
+      "zh": "跨境电商",
+      "en": "cross-border e-commerce",
+      "note": "border 用连字符，cross-border 作定语。",
+      "theme": "经济"
+    },
+    {
+      "id": "ph11",
+      "zh": "快递",
+      "en": "express delivery",
+      "note": "快递员 delivery courier；包裹 package。",
+      "theme": "生活"
+    },
+    {
+      "id": "ph12",
+      "zh": "外卖",
+      "en": "food delivery",
+      "note": "外卖员 delivery rider；点外卖 order food delivery。",
+      "theme": "生活"
+    },
+    {
+      "id": "ph13",
+      "zh": "人工智能",
+      "en": "artificial intelligence (AI)",
+      "note": "首次出现写全称并括注 AI。",
+      "theme": "科技"
+    },
+    {
+      "id": "ph14",
+      "zh": "大数据",
+      "en": "big data",
+      "note": "不可数，不加 a；作定语时 big-data 可连字符。",
+      "theme": "科技"
+    },
+    {
+      "id": "ph15",
+      "zh": "云计算",
+      "en": "cloud computing",
+      "note": "不可数；云服务 cloud services。",
+      "theme": "科技"
+    },
+    {
+      "id": "ph16",
+      "zh": "自动驾驶",
+      "en": "autonomous driving",
+      "note": "也可 self-driving；自动驾驶汽车 autonomous vehicles。",
+      "theme": "科技"
+    },
+    {
+      "id": "ph17",
+      "zh": "5G网络",
+      "en": "5G networks",
+      "note": "5G 作定语时不加连字符；建设 5G 网络 build 5G networks。",
+      "theme": "科技"
+    },
+    {
+      "id": "ph18",
+      "zh": "数字人民币",
+      "en": "digital RMB (e-CNY)",
+      "note": "官方英文名 e-CNY；RMB 是人民币缩写。",
+      "theme": "经济"
+    },
+    {
+      "id": "ph19",
+      "zh": "智慧城市",
+      "en": "smart city",
+      "note": "复数 smart cities；智慧交通 smart transport。",
+      "theme": "科技"
+    },
+    {
+      "id": "ph20",
+      "zh": "新能源汽车",
+      "en": "new energy vehicles (NEVs)",
+      "note": "首次出现可括注 NEVs；电动车 electric vehicles (EVs)。",
+      "theme": "科技"
+    },
+    {
+      "id": "ph21",
+      "zh": "充电桩",
+      "en": "charging piles",
+      "note": "也可说 charging stations；pile 是桩。",
+      "theme": "科技"
+    },
+    {
+      "id": "ph22",
+      "zh": "碳中和",
+      "en": "carbon neutrality",
+      "note": "实现碳中和 achieve carbon neutrality；不要写成 carbon neutralization。",
+      "theme": "生态"
+    },
+    {
+      "id": "ph23",
+      "zh": "碳达峰",
+      "en": "carbon peak",
+      "note": "动词表达 reach peak carbon emissions。",
+      "theme": "生态"
+    },
+    {
+      "id": "ph24",
+      "zh": "双碳目标",
+      "en": "the dual carbon goals",
+      "note": "指碳达峰与碳中和两个目标。",
+      "theme": "生态"
+    },
+    {
+      "id": "ph25",
+      "zh": "节能减排",
+      "en": "energy conservation and emission reduction",
+      "note": "两个名词并列，conservation 不写成 saving 更正式。",
+      "theme": "生态"
+    },
+    {
+      "id": "ph26",
+      "zh": "可再生能源",
+      "en": "renewable energy",
+      "note": "不可数；发展可再生能源 develop renewable energy。",
+      "theme": "生态"
+    },
+    {
+      "id": "ph27",
+      "zh": "绿色发展",
+      "en": "green development",
+      "note": "绿色低碳发展 green and low-carbon development。",
+      "theme": "生态"
+    },
+    {
+      "id": "ph28",
+      "zh": "可持续发展",
+      "en": "sustainable development",
+      "note": "形容词 sustainable，不要写成 sustained。",
+      "theme": "生态"
+    },
+    {
+      "id": "ph29",
+      "zh": "生态文明",
+      "en": "ecological civilization",
+      "note": "生态 ecological，环保 environmental，注意区分。",
+      "theme": "生态"
+    },
+    {
+      "id": "ph30",
+      "zh": "垃圾分类",
+      "en": "waste sorting",
+      "note": "也可 garbage classification；分类垃圾桶 sorted bins。",
+      "theme": "生态"
+    },
+    {
+      "id": "ph31",
+      "zh": "绿水青山就是金山银山",
+      "en": "lucid waters and lush mountains are invaluable assets",
+      "note": "官方译法，整句背诵；也可意译为 green mountains and clear waters are as valuable as gold。",
+      "theme": "生态"
+    },
+    {
+      "id": "ph32",
+      "zh": "乡村振兴",
+      "en": "rural revitalization",
+      "note": "英式拼写 revitalisation；乡村振兴战略 the rural revitalization strategy。",
+      "theme": "社会"
+    },
+    {
+      "id": "ph33",
+      "zh": "脱贫攻坚",
+      "en": "poverty alleviation",
+      "note": "精准扶贫 targeted poverty alleviation；消除贫困 eliminate poverty。",
+      "theme": "社会"
+    },
+    {
+      "id": "ph34",
+      "zh": "共同富裕",
+      "en": "common prosperity",
+      "note": "prosperity 是名词；促进共同富裕 promote common prosperity。",
+      "theme": "社会"
+    },
+    {
+      "id": "ph35",
+      "zh": "城乡差距",
+      "en": "the urban-rural gap",
+      "note": "缩小差距 narrow the gap；urban 与 rural 并列用连字符。",
+      "theme": "社会"
+    },
+    {
+      "id": "ph36",
+      "zh": "城镇化",
+      "en": "urbanization",
+      "note": "英式拼写 urbanisation；城镇化进程 the process of urbanization。",
+      "theme": "社会"
+    },
+    {
+      "id": "ph37",
+      "zh": "人口老龄化",
+      "en": "population aging",
+      "note": "英式拼写 ageing；老龄化社会 an aging society。",
+      "theme": "社会"
+    },
+    {
+      "id": "ph38",
+      "zh": "粤港澳大湾区",
+      "en": "the Guangdong-Hong Kong-Macao Greater Bay Area",
+      "note": "官方译法，三个地名之间用连字符。",
+      "theme": "区域发展"
+    },
+    {
+      "id": "ph39",
+      "zh": "改革开放",
+      "en": "reform and opening-up",
+      "note": "固定译法，opening-up 有连字符。",
+      "theme": "时政经济"
+    },
+    {
+      "id": "ph40",
+      "zh": "人类命运共同体",
+      "en": "a community with a shared future for mankind",
+      "note": "官方译法，整句记忆。",
+      "theme": "时政经济"
+    },
+    {
+      "id": "ph41",
+      "zh": "自由贸易区",
+      "en": "free trade zone",
+      "note": "缩写 FTZ；自由贸易试验区 pilot free trade zone。",
+      "theme": "经济"
+    },
+    {
+      "id": "ph42",
+      "zh": "基础设施建设",
+      "en": "infrastructure construction",
+      "note": "基础设施 infrastructure，不可数。",
+      "theme": "经济"
+    },
+    {
+      "id": "ph43",
+      "zh": "义务教育",
+      "en": "compulsory education",
+      "note": "九年义务教育 nine-year compulsory education。",
+      "theme": "教育"
+    },
+    {
+      "id": "ph44",
+      "zh": "社会保障",
+      "en": "social security",
+      "note": "社会保障体系 the social security system。",
+      "theme": "社会"
+    },
+    {
+      "id": "ph45",
+      "zh": "在线教育",
+      "en": "online education",
+      "note": "也可 e-learning；线上课程 online courses。",
+      "theme": "教育"
+    },
+    {
+      "id": "ph46",
+      "zh": "远程医疗",
+      "en": "telemedicine",
+      "note": "也可 remote medical care；远程问诊 online consultation。",
+      "theme": "医疗"
+    },
+    {
+      "id": "ph47",
+      "zh": "春运",
+      "en": "the Spring Festival travel rush",
+      "note": "也可 Spring Festival travel season；强调客流高峰用 rush。",
+      "theme": "交通"
+    },
+    {
+      "id": "ph48",
+      "zh": "非物质文化遗产",
+      "en": "intangible cultural heritage",
+      "note": "缩写 ICH；物质文化遗产 tangible cultural heritage。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph49",
+      "zh": "二十四节气",
+      "en": "the 24 solar terms",
+      "note": "官方译法；solar terms 用复数。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph50",
+      "zh": "四大发明",
+      "en": "the Four Great Inventions",
+      "note": "指造纸术、印刷术、火药、指南针。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph51",
+      "zh": "丝绸之路",
+      "en": "the Silk Road",
+      "note": "定冠词 the 不能省；海上丝绸之路 the Maritime Silk Road。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph52",
+      "zh": "儒家思想",
+      "en": "Confucianism",
+      "note": "孔子 Confucius；儒家 the Confucian school。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph53",
+      "zh": "孝道",
+      "en": "filial piety",
+      "note": "固定搭配；孝顺的 filial。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph54",
+      "zh": "科举制度",
+      "en": "the imperial examination system",
+      "note": "也可 the civil service examination system（现代公务员考试易混）。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph55",
+      "zh": "兵马俑",
+      "en": "the Terracotta Warriors",
+      "note": "也可 Terracotta Army；首字母大写。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph56",
+      "zh": "莫高窟",
+      "en": "the Mogao Caves",
+      "note": "也可 the Mogao Grottoes；敦煌莫高窟 the Mogao Caves in Dunhuang。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph57",
+      "zh": "故宫",
+      "en": "the Palace Museum",
+      "note": "也可 the Forbidden City；作博物馆时用 the Palace Museum。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph58",
+      "zh": "大运河",
+      "en": "the Grand Canal",
+      "note": "京杭大运河 the Beijing-Hangzhou Grand Canal。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph59",
+      "zh": "中医药",
+      "en": "traditional Chinese medicine (TCM)",
+      "note": "首次出现写全称并括注 TCM。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph60",
+      "zh": "针灸",
+      "en": "acupuncture",
+      "note": "不可数；针灸疗法 acupuncture therapy。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph61",
+      "zh": "剪纸",
+      "en": "paper-cutting",
+      "note": "也可 paper cutting；剪纸艺术 the art of paper-cutting。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph62",
+      "zh": "太极拳",
+      "en": "Tai Chi",
+      "note": "也可 Tai Chi Chuan；打太极 practise Tai Chi。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph63",
+      "zh": "文化自信",
+      "en": "cultural confidence",
+      "note": "增强文化自信 strengthen cultural confidence。",
+      "theme": "文化"
+    },
+    {
+      "id": "ph64",
+      "zh": "讲好中国故事",
+      "en": "tell China's story well",
+      "note": "也可 share China's stories；官方常用 tell China's story well。",
+      "theme": "文化"
+    }
+  ]
+}

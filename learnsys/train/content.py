@@ -56,6 +56,8 @@ def _load_dir(raw_dir: str) -> dict:
     writing = _read(base / "writing.json")["items"]
     translation = _read(base / "translation.json")["items"]
     extra = _read(base / "sentences.json")["items"]
+    patterns = _read(base / "patterns.json")["items"]
+    phrases = _read(base / "phrases.json")["items"]
     for item in writing:
         lead = str(item.get("lead_sentence") or "").strip()
         if lead and not str(item.get("prompt_en") or "").strip():
@@ -69,6 +71,8 @@ def _load_dir(raw_dir: str) -> dict:
         "writing": writing,
         "translation": translation,
         "extra_sentences": extra,
+        "writing_patterns": patterns,
+        "translation_phrases": phrases,
         "version": hashlib.sha1(
             "|".join(item["content_version"]
                      for item in writing + translation).encode("utf-8")
@@ -90,6 +94,16 @@ def translation_items(dir_path=None) -> list[dict]:
 
 def extra_sentences(dir_path=None) -> list[dict]:
     return library(dir_path)["extra_sentences"]
+
+
+def writing_patterns(dir_path=None) -> list[dict]:
+    """每日积累的写作句型库：句型 + 用途 + 例句，和作文题解耦。"""
+    return library(dir_path)["writing_patterns"]
+
+
+def translation_phrases(dir_path=None) -> list[dict]:
+    """六级翻译高频短语库（红包、一带一路、碳中和等）。"""
+    return library(dir_path)["translation_phrases"]
 
 
 def pack(kind: str, prompt_id: str, dir_path=None) -> dict | None:

@@ -139,6 +139,16 @@ def add_accum(conn: sqlite3.Connection, *, day: str, kind: str,
     return int(row[0]) if row else 0
 
 
+def delete_accum_kind(conn: sqlite3.Connection, day: str, kind: str) -> int:
+    """删掉某天某一类条目；只给「当天内容升级后重新生成」用。"""
+    with _LOCK:
+        cur = conn.execute(
+            "DELETE FROM cet6_accum_items WHERE day = ? AND kind = ?",
+            (str(day or "")[:10], str(kind or "")))
+        conn.commit()
+        return int(cur.rowcount or 0)
+
+
 def _accum_dict(row) -> dict:
     try:
         payload = json.loads(row[4] or "{}")

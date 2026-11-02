@@ -1,7 +1,8 @@
-"""每日积累：写作好句 + 翻译重点词 + 你自己的纠音点。
+"""每日积累：写作句型 + 翻译短语 + 你自己的纠音点。
 
 - 当天第一次打开时生成，生成后当天冻结；
-- 写作/翻译只从题库取，不调模型；
+- 写作取 `patterns.json`（句型 + 用途 + 例句），翻译取 `phrases.json`
+  的高频短语 + 跨篇目主题词，都不调模型；
 - 纠音从 `cet6_progress.note` 解析，规则在 `services.cet6_pron`；
 - 条目存进 `cet6_accum_items`，状态只影响进度与后续筛选。
 """
@@ -14,13 +15,20 @@ from learnsys.services import cet6_pron
 from learnsys.train import content as train_content
 
 KINDS = ("writing", "translation", "pron")
-KIND_LABELS = {"writing": "写作好句", "translation": "翻译重点词",
+KIND_LABELS = {"writing": "写作句型", "translation": "翻译短语",
                "pron": "每日纠音"}
 STATUSES = ("new", "read", "mastered")
 WRITING_PER_DAY = 2
 TERMS_PER_DAY = 8
+PHRASE_PER_DAY = 4          # 高频短语；剩下 4 个来自不同篇目的主题词
 PRON_PER_DAY = 5
+PLAYABLE_PRON_PER_DAY = 4   # 优先放能逐词播放的；留 1 条只给整句的
 PRON_GAP_DAYS = 3
+# 高频短语从 2026-11-02 上线日起按 4 条/天轮换，首日从库头开始，
+# 让红包、一带一路这些第一批就能看到；换短语库时改这个基准。
+PHRASE_EPOCH = dt.date(2026, 11, 2)
+# 内容结构变了就升这个号：当天已生成的写作/翻译会重新生成，往期历史不动。
+ACCUM_VERSION = 3
 
 
 def _today() -> str:
@@ -31,75 +39,140 @@ def _ordinal(day: str) -> int:
     return dt.date.fromisoformat(str(day)[:10]).toordinal()
 
 
-def _upgrades() -> list[tuple[dict, int, dict]]:
-    rows: list[tuple[dict, int, dict]] = []
-    for item in train_content.library()["writing"]:
-        for index, upgrade in enumerate(item.get("upgrades") or []):
-            if not isinstance(upgrade, dict):
-                continue
-            if not str(upgrade.get("high") or "").strip():
-                continue
-            rows.append((item, index, upgrade))
-    return rows
-
-
 def _writing_payloads(day: str) -> list[dict]:
-    rows = _upgrades()
+    """写作积累只取句型库：句型 + 中文用途 + 例句 + 译文。"""
+    rows = train_content.writing_patterns()
     if not rows:
         return []
     size = len(rows)
-    starts = [_ordinal(day) % size, (_ordinal(day) + size // 2) % size]
-    if starts[1] == starts[0]:
-        starts[1] = (starts[1] + 1) % size
+    start = _ordinal(day) % size
+    positions = [start]
+    if size > 1:
+        positions.append((start + 1) % size)
     result: list[dict] = []
-    for position in starts:
-        item, index, upgrade = rows[position]
+    for position in positions[:WRITING_PER_DAY]:
+        item = rows[position]
         result.append({
-            "ref_key": f"writing:{item.get('id')}:{index}",
+            "ref_key": f"pattern:{item.get('id')}",
             "payload": {
-                "en": str(upgrade.get("high") or "").strip(),
-                "weak": str(upgrade.get("low") or "").strip(),
-                "why": str(upgrade.get("why") or "").strip(),
-                "context": f"{item.get('title') or '写作'} · {item.get('type') or ''}",
-                "source_id": f"{item.get('id')}#{index}",
+                "pattern": str(item.get("pattern") or "").strip(),
+                "zh": str(item.get("zh") or "").strip(),
+                "group": str(item.get("group") or "").strip(),
+                "example": str(item.get("example") or "").strip(),
+                "example_zh": str(item.get("example_zh") or "").strip(),
+                "note": str(item.get("note") or "").strip(),
+                "source_id": str(item.get("id") or ""),
+                "v": ACCUM_VERSION,
             },
         })
     return result
 
 
+def _theme_term_groups() -> list[tuple[dict, list[dict]]]:
+    """按篇目分组，一天从不同篇目各取一个词，避免整天只考一个主题。"""
+    groups: list[tuple[dict, list[dict]]] = []
+    seen: set[str] = set()
+    for item in train_content.library()["translation"]:
+        terms = []
+        for term in item.get("terms") or []:
+            if not isinstance(term, dict):
+                continue
+            zh = str(term.get("zh") or "").strip()
+            if not zh or zh in seen:
+                continue
+            seen.add(zh)
+            terms.append(term)
+        if terms:
+            groups.append((item, terms))
+    return groups
+
+
 def _translation_payloads(day: str) -> list[dict]:
-    items = train_content.library()["translation"]
-    if not items:
-        return []
-    item = items[_ordinal(day) % len(items)]
-    terms = [term for term in item.get("terms") or [] if isinstance(term, dict)]
-    if not terms:
-        return []
-    size = min(TERMS_PER_DAY, len(terms))
-    start = (_ordinal(day) * TERMS_PER_DAY) % len(terms)
     result: list[dict] = []
-    for offset in range(size):
-        term = terms[(start + offset) % len(terms)]
-        result.append({
-            "ref_key": f"term:{item.get('id')}:{term.get('zh') or ''}",
-            "payload": {
-                "zh": str(term.get("zh") or "").strip(),
-                "en": str(term.get("en") or "").strip(),
-                "note": str(term.get("note") or "").strip(),
-                "theme": str(item.get("theme") or "").strip(),
-                "source_id": f"{item.get('id')}:{term.get('zh') or ''}",
-            },
-        })
+    chosen: set[str] = set()
+    ordinal = _ordinal(day)
+
+    phrases = [row for row in train_content.translation_phrases()
+               if isinstance(row, dict) and str(row.get("zh") or "").strip()]
+    if phrases:
+        size = len(phrases)
+        start = ((ordinal - PHRASE_EPOCH.toordinal()) * PHRASE_PER_DAY) % size
+        for offset in range(min(PHRASE_PER_DAY, size)):
+            phrase = phrases[(start + offset) % size]
+            zh = str(phrase.get("zh") or "").strip()
+            if zh in chosen:
+                continue
+            chosen.add(zh)
+            result.append({
+                "ref_key": f"phrase:{phrase.get('id')}",
+                "payload": {
+                    "zh": zh,
+                    "en": str(phrase.get("en") or "").strip(),
+                    "note": str(phrase.get("note") or "").strip(),
+                    "theme": str(phrase.get("theme") or "").strip(),
+                    "tag": "高频短语",
+                    "source_id": str(phrase.get("id") or ""),
+                    "v": ACCUM_VERSION,
+                },
+            })
+
+    groups = _theme_term_groups()
+    need = max(0, TERMS_PER_DAY - len(result))
+    if groups and need:
+        size = len(groups)
+        start = ordinal % size
+        for offset in range(size):
+            if need <= 0:
+                break
+            item, terms = groups[(start + offset) % size]
+            for pick in range(len(terms)):
+                term = terms[(ordinal + offset + pick) % len(terms)]
+                zh = str(term.get("zh") or "").strip()
+                if not zh or zh in chosen:
+                    continue
+                chosen.add(zh)
+                result.append({
+                    "ref_key": f"term:{item.get('id')}:{zh}",
+                    "payload": {
+                        "zh": zh,
+                        "en": str(term.get("en") or "").strip(),
+                        "note": str(term.get("note") or "").strip(),
+                        "theme": str(item.get("theme") or "").strip(),
+                        "tag": "主题词",
+                        "source_id": f"{item.get('id')}:{zh}",
+                        "v": ACCUM_VERSION,
+                    },
+                })
+                need -= 1
+                break
     return result
 
 
 def _pron_payloads(conn, day: str) -> list[dict]:
     cet6_pron.ensure_pool(conn)
     since = (dt.date.fromisoformat(day) - dt.timedelta(days=PRON_GAP_DAYS)).isoformat()
-    candidates = store.pron_candidates(conn, since=since, limit=PRON_PER_DAY)
-    result: list[dict] = []
+    candidates = store.pron_candidates(
+        conn, since=since, limit=PRON_PER_DAY * 6)
+    playable: list[dict] = []
+    others: list[dict] = []
     for item in candidates:
+        segment = cet6_pron.audio_segment(
+            item["paper_title"], item["section"], item["item"],
+            item["sentence"], item["target"])
+        (playable if segment else others).append(item)
+    picked = playable[:PLAYABLE_PRON_PER_DAY]
+    picked += others[:max(0, PRON_PER_DAY - len(picked))]
+    used = {int(item["id"]) for item in picked}
+    for item in playable + others:
+        if len(picked) >= PRON_PER_DAY:
+            break
+        if int(item["id"]) not in used:
+            picked.append(item)
+            used.add(int(item["id"]))
+    result: list[dict] = []
+    for item in picked:
         payload = cet6_pron.payload(conn, item)
+        payload["v"] = ACCUM_VERSION
         result.append({
             "ref_key": f"pron:{item['id']}",
             "payload": payload,
@@ -108,11 +181,24 @@ def _pron_payloads(conn, day: str) -> list[dict]:
     return result
 
 
+def _stale(items: list[dict], kind: str) -> bool:
+    return any(str(item["payload"].get("v") or "") != str(ACCUM_VERSION)
+               for item in items if item["kind"] == kind)
+
+
 def ensure_day(conn, day: str | None = None) -> None:
-    """只生成今天，且每类只补缺失的部分；历史日期不补。"""
+    """只生成今天，且每类只补缺失的部分；历史日期不补。
+
+    写作/翻译的结构由 `ACCUM_VERSION` 控制：旧结构的当天条目会被删掉重生成，
+    这样升级后当天就能看到新卡片；往期历史保持原样。
+    """
     day = str(day or _today())[:10]
     if day != _today():
         return
+    existing = store.accum_items(conn, day)
+    for kind in ("writing", "translation"):
+        if _stale(existing, kind):
+            store.delete_accum_kind(conn, day, kind)
     existing = store.accum_items(conn, day)
     kinds = {item["kind"] for item in existing}
     if "writing" not in kinds:
@@ -180,6 +266,14 @@ def list_day(conn, day: str | None = None) -> dict:
     for item in store.accum_items(conn, day):
         if item["kind"] in items:
             items[item["kind"]].append(item)
+    # 纠音音频按当前试卷重新算一次：历史条目也不会带着旧的错误偏移播放。
+    for item in items["pron"]:
+        pron_id = int(item["payload"].get("pron_id") or 0)
+        row = store.pron_item(conn, pron_id) if pron_id else None
+        if row is not None:
+            fresh = cet6_pron.payload(conn, row)
+            fresh["v"] = item["payload"].get("v", ACCUM_VERSION)
+            item["payload"] = fresh
     return {**summary(conn, day), "items": items}
 
 

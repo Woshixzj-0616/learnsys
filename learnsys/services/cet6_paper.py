@@ -21,6 +21,10 @@ _MAX_CACHE = 8
 _TR_CACHE: dict[tuple[str, int, int], list[tuple[float, float, str]]] = {}
 _MAX_TR_CACHE = 4
 
+# 切句工具（cet6_tool/split_listening.py）每句音频都从「句首 - 0.2 秒」开始切。
+# 所有按句播放的偏移都必须相对这个起点，唯一落点在本文件。
+SENTENCE_LEAD_S = 0.2
+
 
 class PaperNotFound(LookupError):
     """试卷目录、data.js 或指定段落不存在。"""
@@ -255,4 +259,7 @@ def sentence_words(paper_title: str, section: str, item: str,
     picked = [(w_start, w_end, word) for w_start, w_end, word
               in load_transcript(paper_title)
               if start - 0.08 <= (w_start + w_end) / 2 <= end + 0.08]
-    return {"start": start, "end": end, "text": text, "words": picked}
+    clip_start = max(0.0, start - SENTENCE_LEAD_S)
+    return {"start": start, "end": end, "clip_start": clip_start,
+            "clip_duration": max(0.0, end - clip_start),
+            "text": text, "words": picked}

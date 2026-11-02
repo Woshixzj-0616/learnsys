@@ -101,8 +101,12 @@ def _split_long(chunks: list[list[int]], times: list) -> list[list[int]]:
 
 
 def build_chunks(text: str, words: list[tuple[float, float, str]],
-                 sentence_start: float, sentence_end: float) -> list[dict]:
-    """把一句切成语群；返回 `{text, start, end, words}`，时间相对句子音频。"""
+                 clip_start: float, clip_end: float) -> list[dict]:
+    """把一句切成语群；返回 `{text, start, end, words}`，时间相对句子音频。
+
+    `clip_start` 是句子 mp3 的真实起点（句首 - 0.2 秒），不是 data.js 的句首；
+    少了这 0.2 秒，回放会整体提前并吞掉上一块尾巴。
+    """
     tokens, times = _align(text, words)
     if len(tokens) < _MIN_WORDS or not times:
         return []
@@ -164,15 +168,15 @@ def build_chunks(text: str, words: list[tuple[float, float, str]],
     if len(chunks) < 2:
         return []
 
-    duration = max(0.0, float(sentence_end) - float(sentence_start))
+    duration = max(0.0, float(clip_end) - float(clip_start))
     result: list[dict] = []
     for start, stop in chunks:
         first = times[start]
         last = times[stop - 1]
         if first is None or last is None:
             return []
-        begin = max(0.0, float(first[0]) - float(sentence_start) - 0.02)
-        finish = min(duration, float(last[1]) - float(sentence_start) + 0.02)
+        begin = max(0.0, float(first[0]) - float(clip_start) - 0.02)
+        finish = min(duration, float(last[1]) - float(clip_start) + 0.02)
         if finish <= begin:
             return []
         result.append({
@@ -195,7 +199,7 @@ def _chunks_for_row(row: dict) -> list[dict]:
     if not data:
         return []
     return build_chunks(data["text"], data["words"],
-                        data["start"], data["end"])
+                        data["clip_start"], data["end"])
 
 
 def queue(conn, limit: int = 8) -> dict:

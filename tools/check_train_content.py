@@ -20,6 +20,8 @@ from learnsys.train import content, validate            # noqa: E402
 LABELS = (
     ("writing", "写作内容包"),
     ("translation", "翻译内容包"),
+    ("writing_patterns", "写作句型"),
+    ("translation_phrases", "翻译短语"),
     ("extra_sentences", "技能专项句"),
     ("derived_sentences", "篇目派生句"),
     ("sentences", "一句一译总数"),

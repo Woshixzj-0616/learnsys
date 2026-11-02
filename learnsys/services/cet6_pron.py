@@ -169,11 +169,19 @@ def audio_segment(paper_title: str, section: str, item: str, sentence: int,
     url = cet6_paper.audio_url(paper_title, section, item, sentence=sentence)
     if not url:
         return {}
-    duration = max(0.0, float(data["end"]) - float(data["start"]))
+    # 句子 mp3 从 `句首 - 0.2 秒` 开始，偏移必须减 clip_start 而不是 data["start"]，
+    # 否则整段提前 0.2 秒播放，短词只剩前一个词的尾巴。
+    clip_start = float(data.get("clip_start", data["start"]))
+    duration = float(data.get("clip_duration",
+                              float(data["end"]) - float(data["start"])))
+    begin = max(0.0, first[0] - clip_start - 0.05)
+    finish = min(duration, last[1] - clip_start + 0.12)
+    if finish <= begin:
+        return {}
     return {
         "url": url,
-        "start": round(max(0.0, first[0] - data["start"] - 0.02), 3),
-        "end": round(min(duration, last[1] - data["start"] + 0.02), 3),
+        "start": round(begin, 3),
+        "end": round(finish, 3),
         "corrected": corrected,
     }
 

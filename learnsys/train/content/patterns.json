@@ -1,0 +1,438 @@
+{
+  "version": 1,
+  "kind": "writing_patterns",
+  "items": [
+    {
+      "id": "p01",
+      "group": "开头",
+      "pattern": "In recent years, ... has become a topic of heated debate.",
+      "zh": "开头引出热议话题",
+      "example": "In recent years, whether college students should take part-time jobs has become a topic of heated debate.",
+      "example_zh": "近年来，大学生是否应该做兼职已成为热议话题。",
+      "note": "has become 前用名词或 whether / wh- 从句作主语。"
+    },
+    {
+      "id": "p02",
+      "group": "开头",
+      "pattern": "While some people argue that ..., others hold the view that ...",
+      "zh": "开头呈现两派观点",
+      "example": "While some people argue that online courses are as effective as classroom teaching, others hold the view that face-to-face interaction is irreplaceable.",
+      "example_zh": "有人认为网课和课堂教学一样有效，另一些人则认为面对面互动不可替代。",
+      "note": "两派观点都要写成完整从句，注意主谓一致。"
+    },
+    {
+      "id": "p03",
+      "group": "开头",
+      "pattern": "Nowadays, the issue of ... has aroused widespread concern.",
+      "zh": "开头点出现象引发关注",
+      "example": "Nowadays, the issue of food waste on campus has aroused widespread concern.",
+      "example_zh": "如今，校园食物浪费问题已引起广泛关注。",
+      "note": "of 后接名词短语；concern 前可用 public / great 修饰。"
+    },
+    {
+      "id": "p04",
+      "group": "开头",
+      "pattern": "It is widely believed that ..., yet the fact remains that ...",
+      "zh": "开头先立常见看法再转折",
+      "example": "It is widely believed that technology makes communication easier, yet the fact remains that many young people feel lonelier than ever.",
+      "example_zh": "人们普遍认为科技让沟通更容易，但事实是许多年轻人比以往更孤独。",
+      "note": "yet 后接与前半句形成反差的完整从句。"
+    },
+    {
+      "id": "p05",
+      "group": "开头",
+      "pattern": "There is an old saying that ..., which indicates that ...",
+      "zh": "开头引用俗语并点题",
+      "example": "There is an old saying that where there is a will, there is a way, which indicates that perseverance is the key to success.",
+      "example_zh": "俗话说，有志者事竟成，这说明毅力是成功的关键。",
+      "note": "which 指代整句俗语，后面的 indicates 用第三人称单数。"
+    },
+    {
+      "id": "p06",
+      "group": "开头",
+      "pattern": "From my perspective, ... is both beneficial and necessary, provided that ...",
+      "zh": "开头亮明有条件的立场",
+      "example": "From my perspective, taking a part-time job is both beneficial and necessary, provided that it does not interfere with academic study.",
+      "example_zh": "在我看来，做兼职既有益也必要，前提是不影响学业。",
+      "note": "provided that = on condition that，引出让步条件。"
+    },
+    {
+      "id": "p07",
+      "group": "开头",
+      "pattern": "As is shown in the chart, ... has experienced a dramatic change in recent years.",
+      "zh": "图表作文开头描述变化",
+      "example": "As is shown in the chart, the number of online shoppers has experienced a dramatic change in recent years.",
+      "example_zh": "如图所示，网购人数近年来发生了显著变化。",
+      "note": "As is shown 是固定被动结构；change 前可换 sharp / steady。"
+    },
+    {
+      "id": "p08",
+      "group": "开头",
+      "pattern": "It is not uncommon to see that ... in our daily life.",
+      "zh": "开头描述普遍现象",
+      "example": "It is not uncommon to see that people scan QR codes to pay even for a bottle of water in our daily life.",
+      "example_zh": "日常生活中，人们连买一瓶水都扫码支付，这并不少见。",
+      "note": "双重否定 not uncommon 等于 very common，语气更委婉。"
+    },
+    {
+      "id": "p09",
+      "group": "原因与举例",
+      "pattern": "The primary reason for this is that ... . Moreover, ... also plays a crucial role.",
+      "zh": "主体段给出主因并补充次因",
+      "example": "The primary reason for this is that part-time jobs offer students first-hand experience. Moreover, a suitable job also plays a crucial role in developing time-management skills.",
+      "example_zh": "主要原因是兼职给学生提供第一手经验。此外，合适的工作对培养时间管理能力也至关重要。",
+      "note": "两个分句分开写，Moreover 后接完整句。"
+    },
+    {
+      "id": "p10",
+      "group": "原因与举例",
+      "pattern": "One major reason for this phenomenon is ... . As a result, ...",
+      "zh": "主体段写因果链",
+      "example": "One major reason for this phenomenon is the sharp rise in housing prices. As a result, many young people choose to live with their parents.",
+      "example_zh": "这一现象的一个主要原因是房价大幅上涨。因此，许多年轻人选择和父母同住。",
+      "note": "As a result 后接结果，不要再用 because 重复因果。"
+    },
+    {
+      "id": "p11",
+      "group": "原因与举例",
+      "pattern": "Another contributing factor is ... . Statistics show that ...",
+      "zh": "主体段补充因素并用数据支撑",
+      "example": "Another contributing factor is the popularity of smartphones. Statistics show that the average user checks the phone more than eighty times a day.",
+      "example_zh": "另一个促成因素是智能手机的普及。数据显示，普通用户每天查看手机超过八十次。",
+      "note": "Statistics show that 后接完整句；数据要合理，不要编造来源。"
+    },
+    {
+      "id": "p12",
+      "group": "原因与举例",
+      "pattern": "A case in point is that ... . This clearly illustrates ...",
+      "zh": "主体段举例并回扣论点",
+      "example": "A case in point is that many students learn to communicate with customers through part-time work. This clearly illustrates the practical value of such experience.",
+      "example_zh": "一个典型例子是，许多学生通过兼职学会与顾客沟通。这清楚说明了这类经验的实用价值。",
+      "note": "A case in point is that 后接完整句，不要只接名词。"
+    },
+    {
+      "id": "p13",
+      "group": "原因与举例",
+      "pattern": "Take ... for example; it demonstrates that ...",
+      "zh": "主体段简洁举例",
+      "example": "Take shared bikes for example; it demonstrates that a small technical change can reshape urban traffic.",
+      "example_zh": "以共享单车为例，它说明一个小技术变化就能重塑城市交通。",
+      "note": "句子较长时用分号连接，避免逗号拼接。"
+    },
+    {
+      "id": "p14",
+      "group": "原因与举例",
+      "pattern": "Nothing is more important than ... when it comes to ...",
+      "zh": "强调某因素在特定领域的重要性",
+      "example": "Nothing is more important than critical thinking when it comes to evaluating online information.",
+      "example_zh": "在评估网络信息时，没有什么比批判性思维更重要。",
+      "note": "when it comes to 后接名词或动名词。"
+    },
+    {
+      "id": "p15",
+      "group": "原因与举例",
+      "pattern": "It is ... that makes ... possible.",
+      "zh": "强调句点出关键因素",
+      "example": "It is constant practice that makes fluent writing possible.",
+      "example_zh": "正是持续练习让流畅写作成为可能。",
+      "note": "强调人时可用 who；强调其他成分用 that。"
+    },
+    {
+      "id": "p16",
+      "group": "原因与举例",
+      "pattern": "What matters most is not ... but ...",
+      "zh": "用主语从句对比两个重点",
+      "example": "What matters most is not how much time we spend, but how we use it.",
+      "example_zh": "最重要的不是我们花多少时间，而是我们如何使用时间。",
+      "note": "not ... but ... 前后结构要平行。"
+    },
+    {
+      "id": "p17",
+      "group": "对比与让步",
+      "pattern": "Compared with ..., ... has its own advantages.",
+      "zh": "对比两种做法或事物",
+      "example": "Compared with traditional shopping, online shopping has its own advantages such as lower prices and greater convenience.",
+      "example_zh": "与传统购物相比，网购有价格更低、更方便等自身优势。",
+      "note": "Compared with 后接名词；主句主语要与比较对象对应。"
+    },
+    {
+      "id": "p18",
+      "group": "对比与让步",
+      "pattern": "Admittedly, ... . Nevertheless, ...",
+      "zh": "让步后转折，增强辩证性",
+      "example": "Admittedly, part-time jobs may take up some study time. Nevertheless, they teach students lessons that no textbook can offer.",
+      "example_zh": "诚然，兼职可能占用一些学习时间。然而，它能教给学生课本无法提供的东西。",
+      "note": "Admittedly 放句首；Nevertheless 后用完整句。"
+    },
+    {
+      "id": "p19",
+      "group": "对比与让步",
+      "pattern": "Although it is widely believed that ..., the fact remains that ...",
+      "zh": "承认普遍看法后指出事实",
+      "example": "Although it is widely believed that money brings happiness, the fact remains that close relationships matter far more.",
+      "example_zh": "虽然人们普遍认为金钱带来幸福，但事实是亲密关系重要得多。",
+      "note": "Although 引导的从句里不能再用 but。"
+    },
+    {
+      "id": "p20",
+      "group": "对比与让步",
+      "pattern": "Despite the common misconception that ..., ...",
+      "zh": "驳斥常见误解",
+      "example": "Despite the common misconception that only geniuses can write well, ordinary students can improve through imitation and practice.",
+      "example_zh": "尽管人们常误以为只有天才才写得好，普通学生也能通过模仿和练习提高。",
+      "note": "Despite 是介词，后接名词短语；that 从句是 misconception 的同位语。"
+    },
+    {
+      "id": "p21",
+      "group": "对比与让步",
+      "pattern": "Everything has two sides, and ... is no exception.",
+      "zh": "引出利弊两面",
+      "example": "Everything has two sides, and artificial intelligence is no exception.",
+      "example_zh": "凡事都有两面，人工智能也不例外。",
+      "note": "紧接着用 On the one hand / On the other hand 展开。"
+    },
+    {
+      "id": "p22",
+      "group": "对比与让步",
+      "pattern": "On the one hand, ...; on the other hand, ...",
+      "zh": "并列展开利弊或两方面",
+      "example": "On the one hand, mobile payment saves time; on the other hand, it may weaken our awareness of spending.",
+      "example_zh": "一方面，移动支付节省时间；另一方面，它可能削弱我们的消费意识。",
+      "note": "两个分句用分号连接，前后词性尽量对称。"
+    },
+    {
+      "id": "p23",
+      "group": "对比与让步",
+      "pattern": "However, we have to look at the other side of the coin, that is, ...",
+      "zh": "转折后补充另一面",
+      "example": "However, we have to look at the other side of the coin, that is, the privacy risks behind big data.",
+      "example_zh": "然而，我们必须看到硬币的另一面，也就是大数据背后的隐私风险。",
+      "note": "that is 后接名词短语或完整句，用于解释前者。"
+    },
+    {
+      "id": "p24",
+      "group": "对比与让步",
+      "pattern": "... is not so much ... as ...",
+      "zh": "纠正对某事物的理解",
+      "example": "Success is not so much a matter of talent as a matter of perseverance.",
+      "example_zh": "成功与其说是天赋问题，不如说是毅力问题。",
+      "note": "not so much A as B 表示“与其说 A 不如说 B”，A、B 结构要对称。"
+    },
+    {
+      "id": "p25",
+      "group": "建议与措施",
+      "pattern": "To address this issue, ... should take effective measures.",
+      "zh": "建议段开头总起",
+      "example": "To address this issue, schools and families should take effective measures.",
+      "example_zh": "为解决这一问题，学校和家庭都应采取有效措施。",
+      "note": "measures 用复数；by 引出被动句的实施主体。"
+    },
+    {
+      "id": "p26",
+      "group": "建议与措施",
+      "pattern": "It is advisable that we should ..., and only in this way can we ...",
+      "zh": "提出建议并倒装强调结果",
+      "example": "It is advisable that we should set a daily time limit for phone use, and only in this way can we regain control of our attention.",
+      "example_zh": "我们最好给每天的手机使用设定时限，只有这样我们才能重新掌控注意力。",
+      "note": "advisable 后的 that 从句用 should + 动词原形；only in this way 后倒装。"
+    },
+    {
+      "id": "p27",
+      "group": "建议与措施",
+      "pattern": "Universities could ... so as to ...",
+      "zh": "提出学校层面的具体措施",
+      "example": "Universities could offer career guidance so as to help students choose suitable part-time jobs.",
+      "example_zh": "大学可以提供职业指导，以帮助学生选择合适的兼职。",
+      "note": "so as to 后接动词原形，表示目的。"
+    },
+    {
+      "id": "p28",
+      "group": "建议与措施",
+      "pattern": "The government is expected to ... in order that ...",
+      "zh": "提出政府层面的措施",
+      "example": "The government is expected to increase funding for rural schools in order that every child can receive a fair education.",
+      "example_zh": "政府应增加对农村学校的投入，以便每个孩子都能接受公平教育。",
+      "note": "in order that 后接完整从句，常用 can / could / may。"
+    },
+    {
+      "id": "p29",
+      "group": "建议与措施",
+      "pattern": "It is high time that we ...",
+      "zh": "呼吁立即行动",
+      "example": "It is high time that we took concrete action to reduce food waste.",
+      "example_zh": "我们早就该采取具体行动减少食物浪费了。",
+      "note": "It is high time that 后接过去式（虚拟语气），不是原形。"
+    },
+    {
+      "id": "p30",
+      "group": "建议与措施",
+      "pattern": "More attention should be paid to ...",
+      "zh": "建议关注某问题",
+      "example": "More attention should be paid to the mental health of college students.",
+      "example_zh": "应更加关注大学生的心理健康。",
+      "note": "pay attention to 的被动形式；to 是介词，后接名词或动名词。"
+    },
+    {
+      "id": "p31",
+      "group": "建议与措施",
+      "pattern": "Instead of ..., we should ...",
+      "zh": "用替代方案提出建议",
+      "example": "Instead of blaming technology, we should learn to use it wisely.",
+      "example_zh": "与其责怪科技，我们不如学会明智地使用它。",
+      "note": "Instead of 后接名词或动名词，与主句动作形成对照。"
+    },
+    {
+      "id": "p32",
+      "group": "建议与措施",
+      "pattern": "Both individuals and society should make joint efforts to ...",
+      "zh": "呼吁多方共同努力",
+      "example": "Both individuals and society should make joint efforts to build a low-carbon lifestyle.",
+      "example_zh": "个人和社会应共同努力，建设低碳生活方式。",
+      "note": "joint efforts 是固定搭配；to 后接动词原形。"
+    },
+    {
+      "id": "p33",
+      "group": "结尾",
+      "pattern": "To conclude, ... . It is essential that we ...",
+      "zh": "结尾总结并提出要求",
+      "example": "To conclude, part-time work is a double-edged sword. It is essential that we weigh its benefits against its costs.",
+      "example_zh": "总之，兼职是一把双刃剑。我们必须权衡其利弊。",
+      "note": "It is essential that 后接 should + 原形，should 可省略。"
+    },
+    {
+      "id": "p34",
+      "group": "结尾",
+      "pattern": "From what has been discussed above, we may safely draw the conclusion that ...",
+      "zh": "结尾经典总结",
+      "example": "From what has been discussed above, we may safely draw the conclusion that technology is a tool rather than a master.",
+      "example_zh": "综上所述，我们可以有把握地得出结论：科技是工具而非主人。",
+      "note": "that 后接完整从句；safely 表示“有把握地”。"
+    },
+    {
+      "id": "p35",
+      "group": "结尾",
+      "pattern": "Taking all these factors into account, we may reach the conclusion that ...",
+      "zh": "综合因素后下结论",
+      "example": "Taking all these factors into account, we may reach the conclusion that moderate phone use does more good than harm.",
+      "example_zh": "综合考虑这些因素，我们可以得出结论：适度使用手机利大于弊。",
+      "note": "Taking ... into account 是分词状语，逻辑主语须与主句一致。"
+    },
+    {
+      "id": "p36",
+      "group": "结尾",
+      "pattern": "All things considered, ...",
+      "zh": "结尾简练收束",
+      "example": "All things considered, studying abroad is worth the investment for students who are ready for independence.",
+      "example_zh": "综合考虑，对准备好独立的学生来说，出国留学值得投入。",
+      "note": "独立分词结构，后面直接接主句。"
+    },
+    {
+      "id": "p37",
+      "group": "结尾",
+      "pattern": "Looking ahead, ... will continue to ... . It is our responsibility to ...",
+      "zh": "展望未来并升华责任",
+      "example": "Looking ahead, artificial intelligence will continue to reshape the job market. It is our responsibility to prepare for these changes.",
+      "example_zh": "展望未来，人工智能将继续重塑就业市场。为这些变化做好准备是我们的责任。",
+      "note": "Looking ahead 是分词状语；responsibility 后常用 to do。"
+    },
+    {
+      "id": "p38",
+      "group": "结尾",
+      "pattern": "With these efforts, it is reasonable to believe that ...",
+      "zh": "表达合理预期",
+      "example": "With these efforts, it is reasonable to believe that campus food waste will drop steadily.",
+      "example_zh": "有了这些努力，我们有理由相信校园食物浪费会稳步下降。",
+      "note": "it 是形式主语，真正主语是 that 从句。"
+    },
+    {
+      "id": "p39",
+      "group": "结尾",
+      "pattern": "In short, ... is neither ... nor ...; it is ...",
+      "zh": "结尾给出更准确的定性",
+      "example": "In short, a part-time job is neither a shortcut to success nor a waste of time; it is a tool whose value depends on how we use it.",
+      "example_zh": "简言之，兼职既不是成功的捷径，也不是浪费时间；它是一种工具，价值取决于我们如何使用。",
+      "note": "neither ... nor ... 连接的两个成分要平行。"
+    },
+    {
+      "id": "p40",
+      "group": "结尾",
+      "pattern": "Only when ... can we ...",
+      "zh": "用倒装强调条件",
+      "example": "Only when we understand the causes of waste can we change our habits effectively.",
+      "example_zh": "只有当我们理解浪费的成因，才能有效改变习惯。",
+      "note": "Only + 状语从句置于句首，主句部分倒装。"
+    },
+    {
+      "id": "p41",
+      "group": "高级结构",
+      "pattern": "It is ... that ...",
+      "zh": "强调句，突出核心信息",
+      "example": "It is lifelong learning that enables people to stay competitive in a changing job market.",
+      "example_zh": "正是终身学习让人们在变化的就业市场中保持竞争力。",
+      "note": "去掉 It is ... that 后句子仍完整，才是强调句。"
+    },
+    {
+      "id": "p42",
+      "group": "高级结构",
+      "pattern": "Only by ... can we ...",
+      "zh": "倒装强调唯一途径",
+      "example": "Only by working together can we solve the environmental problems facing us.",
+      "example_zh": "只有共同努力，我们才能解决面临的环境问题。",
+      "note": "Only by + 动名词置于句首，主句倒装。"
+    },
+    {
+      "id": "p43",
+      "group": "高级结构",
+      "pattern": "Not only does ..., but it also ...",
+      "zh": "倒装递进，强调双重作用",
+      "example": "Not only does reading broaden our horizons, but it also improves our language sense.",
+      "example_zh": "阅读不仅拓宽我们的视野，还提升我们的语感。",
+      "note": "Not only 置于句首时，前一分句用助动词倒装。"
+    },
+    {
+      "id": "p44",
+      "group": "高级结构",
+      "pattern": "Never before has ...",
+      "zh": "倒装强调前所未有的程度",
+      "example": "Never before has online shopping exerted such a profound impact on people's consumption habits.",
+      "example_zh": "网购从未像现在这样深刻影响人们的消费习惯。",
+      "note": "Never before 置句首，助动词 has 提前。"
+    },
+    {
+      "id": "p45",
+      "group": "高级结构",
+      "pattern": "So ... is ... that ...",
+      "zh": "so...that 倒装，强调程度",
+      "example": "So crucial is effective communication that it often determines the success of teamwork.",
+      "example_zh": "有效沟通如此关键，以至于常常决定团队合作的成败。",
+      "note": "So + 形容词置于句首，主句倒装，that 后接结果从句。"
+    },
+    {
+      "id": "p46",
+      "group": "高级结构",
+      "pattern": "Faced with ..., we should ...",
+      "zh": "分词状语开头，简洁交代情境",
+      "example": "Faced with a complicated topic, we should first clarify our position before writing.",
+      "example_zh": "面对复杂话题时，我们应在动笔前先明确立场。",
+      "note": "Faced with 的逻辑主语必须与主句主语一致。"
+    },
+    {
+      "id": "p47",
+      "group": "高级结构",
+      "pattern": "Having ..., ...",
+      "zh": "完成分词表示先后",
+      "example": "Having tasted various traditional dishes, students gain a deeper insight into local culture.",
+      "example_zh": "品尝过各种传统美食后，学生对当地文化有了更深理解。",
+      "note": "Having done 表示动作先于主句发生。"
+    },
+    {
+      "id": "p48",
+      "group": "高级结构",
+      "pattern": "Were it not for ..., ...",
+      "zh": "虚拟倒装，表达假设",
+      "example": "Were it not for the support of my teachers, I could not have overcome those difficulties.",
+      "example_zh": "要不是老师们的支持，我无法克服那些困难。",
+      "note": "Were it not for = If it were not for；主句用 would / could + have done。"
+    }
+  ]
+}

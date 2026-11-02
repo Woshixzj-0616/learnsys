@@ -10,7 +10,7 @@ import urllib.parse
 from unittest import mock
 
 from learnsys import config, store
-from learnsys.services import cet6_pron
+from learnsys.services import cet6_paper, cet6_pron
 
 PAPER = "卷一"
 SECTION = "Section A 长对话"
@@ -113,6 +113,15 @@ class PronAudioTest(unittest.TestCase):
             urllib.parse.unquote(segment["url"]).endswith("/句子/01.mp3"))
         self.assertGreaterEqual(segment["start"], 0.0)
         self.assertLess(segment["start"], segment["end"])
+
+    def test_audio_segment_accounts_for_sentence_clip_lead(self):
+        """句子 mp3 从「句首 - 0.2 秒」开始，偏移必须减去 clip_start。"""
+        data = cet6_paper.sentence_words(PAPER, SECTION, ITEM, 1)
+        self.assertAlmostEqual(data["clip_start"], 9.8, places=3)
+        segment = cet6_pron.audio_segment(
+            PAPER, SECTION, ITEM, 1, "combat")
+        self.assertAlmostEqual(segment["start"], 1.20, places=2)
+        self.assertAlmostEqual(segment["end"], 1.77, places=2)
 
     def test_audio_segment_fixes_typo(self):
         segment = cet6_pron.audio_segment(

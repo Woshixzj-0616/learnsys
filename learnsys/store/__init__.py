@@ -62,10 +62,10 @@ from .cet6_chunk import (add_chunk_attempt, chunk_attempts, chunk_candidates)
 from .cet6_exam import (add_exam_attempt, exam_attempts, exam_candidates,
                        exam_item)
 from .daily_accum import (accum_counts, accum_days, accum_item,
-                          accum_items, add_accum, mark_pron_used,
-                          note_rows, pron_candidates, pron_item, pron_upsert,
-                          set_accum_status, set_all_accum_status,
-                          set_pron_status)
+                          accum_items, add_accum, delete_accum_kind,
+                          mark_pron_used, note_rows, pron_candidates,
+                          pron_item, pron_upsert, set_accum_status,
+                          set_all_accum_status, set_pron_status)
 from .conversations import (add_message, conversation_messages, create_conversation,
                             get_conversation, list_conversations,
                             set_conversation_summary, touch_conversation)
@@ -175,7 +175,8 @@ __all__ = [
     "add_exam_attempt", "exam_attempts", "exam_candidates", "exam_item",
     "add_chunk_attempt", "chunk_attempts", "chunk_candidates",
     "accum_counts", "accum_days", "accum_item", "accum_items", "add_accum",
-    "mark_pron_used", "note_rows", "pron_candidates", "pron_item",
+    "delete_accum_kind", "mark_pron_used", "note_rows", "pron_candidates",
+    "pron_item",
     "pron_upsert", "set_accum_status", "set_all_accum_status",
     "set_pron_status",
     "cet6_progress_paper_rows", "add_cet6_dualwrite_run",
