@@ -1,4 +1,4 @@
-// @requires: 00-core.js, 10-storage.js, 20-paper.js, 30-audio.js, 40-render.js, 50-actions.js, 60-insights.js, 70-vocab.js, 75-search.js, 80-shortcuts.js
+// @requires: 00-core.js, 10-storage.js, 12-theme.js, 20-paper.js, 30-audio.js, 40-render.js, 50-actions.js, 60-insights.js, 70-vocab.js, 75-search.js, 80-shortcuts.js
 // 启动层：只定义 WB.boot(ctx)，由 99-launcher.js 在试卷加载完成后调用。
 (function(WB){
   "use strict";
@@ -30,6 +30,7 @@
 
   function boot(ctx){
     if(WB.session.booted) return;
+    WB.theme.init();
     if(!ctx || !ctx.paper){
       window.showLaunchError("未能加载试卷数据。请确认 试卷\\试卷索引.js 和对应试卷的 data.js 存在。");
       return;

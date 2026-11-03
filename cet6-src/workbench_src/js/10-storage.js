@@ -6,6 +6,7 @@
   const KEYS = {
     statePrefix: "listening_splitter_v1_",
     rate: "listening_workbench_rate_v1",
+    theme: "listening_workbench_theme_v1",
     vocab: "listening_workbench_vocab_v1",
     history: "listening_workbench_history_v1",
     last: "listening_workbench_last_paper_v1",
@@ -113,6 +114,19 @@
     try{ localStorage.setItem(KEYS.rate, String(r)); }catch(e){}
   }
 
+  // 主题默认深色（负责人 2026-11-03 拍板）；只认 light/dark 两个值。
+  function loadTheme(){
+    try{
+      const t = localStorage.getItem(KEYS.theme);
+      return (t === "light" || t === "dark") ? t : "dark";
+    }catch(e){ return "dark"; }
+  }
+
+  function saveTheme(t){
+    if(t !== "light" && t !== "dark") return;
+    try{ localStorage.setItem(KEYS.theme, t); }catch(e){}
+  }
+
   function loadVocab(){
     try{
       const a = JSON.parse(localStorage.getItem(KEYS.vocab) || "[]");
@@ -218,6 +232,8 @@
     paperDoneCount: paperDoneCount,
     loadRate: loadRate,
     saveRate: saveRate,
+    loadTheme: loadTheme,
+    saveTheme: saveTheme,
     loadVocab: loadVocab,
     saveVocab: saveVocab,
     loadAi: loadAi,

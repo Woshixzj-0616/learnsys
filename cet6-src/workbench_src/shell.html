@@ -3,7 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#12171a">
 <title>听力精听工作台</title>
+<script>
+// 首屏先定主题再上样式，避免深色用户看到一闪而过的浅色。
+(function(){
+  var theme = "dark";
+  try {
+    var saved = localStorage.getItem("listening_workbench_theme_v1");
+    if(saved === "light" || saved === "dark") theme = saved;
+  }catch(e){}
+  document.documentElement.setAttribute("data-theme", theme);
+})();
+</script>
 <style>
 {{WB_CSS}}
 </style>
@@ -17,7 +29,13 @@
         <h1 id="paperTitle">听力精听工作台</h1>
         <p class="topbar-sub" id="paperMeta">正在读取试卷索引……</p>
       </div>
-      <button id="recentBtn" type="button" class="topbar-recent" aria-expanded="false" title="最近听过的试卷">最近</button>
+      <div class="topbar-actions">
+        <div class="theme-switch" role="group" aria-label="深浅色主题">
+          <button type="button" data-theme-set="light" aria-pressed="false">浅色</button>
+          <button type="button" data-theme-set="dark" aria-pressed="true">深色</button>
+        </div>
+        <button id="recentBtn" type="button" class="topbar-recent" aria-expanded="false" title="最近听过的试卷">最近</button>
+      </div>
     </div>
 
     <div class="paper-picker">

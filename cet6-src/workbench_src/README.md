@@ -20,6 +20,7 @@ workbench_src\
    ├─ 04-mode.js               HTTP/file/只读模式、写入口守卫、只读横幅
    ├─ 05-bridge.js             旧 file:// ↔ 学习后台的迁移桥（退休后只读）
    ├─ 10-storage.js            所有 localStorage 键、状态读写、历史/最近、导出入
+   ├─ 12-theme.js              浅色 / 深色切换与持久化（首屏由 shell.html 内联脚本先定）
    ├─ 20-paper.js              试卷模型、当前段/题型、句范围、学习状态（含 A-B）
    ├─ 25-ranges.js             整段/整篇区间与上下文载荷（纯函数）
    ├─ 30-audio.js              音频状态机：range、循环/连播、A-B、边界定时器
@@ -62,6 +63,7 @@ core → storage → paper → audio → render → actions → insights / vocab
 | `listening_workbench_history_v1` | 最近听过的试卷 |
 | `listening_workbench_last_paper_v1` | 上次打开的试卷 |
 | `listening_workbench_rate_v1` | 倍速 |
+| `listening_workbench_theme_v1` | 主题：`light` / `dark`，没有值时默认 `dark` |
 
 `ab[itemId][sentenceIndex] = {a, b}`；B 只有在 `b > a + 0.2` 时生效，否则按整句播放并提示。
 
