@@ -10,7 +10,8 @@ import pathlib
 import threading
 from collections.abc import Iterator
 
-from learnsys.agent import budget, debug_intent, memory, prompts, router, tools, vision
+from learnsys.agent import (budget, debug_intent, evidence_gate, intent, memory,
+                            prompts, router, tools, vision)
 from learnsys.llm.config import AgentConfig, load_config
 from learnsys.agent.events import AgentEvent
 from learnsys.llm.provider_anthropic import ProviderError
@@ -81,7 +82,9 @@ def _default_provider():
     return provider_anthropic
 
 
-def _plan_config(cfg: AgentConfig, request: AgentRequest) -> tuple[AgentConfig, bool, router.RouteDecision]:
+def _plan_config(cfg: AgentConfig, request: AgentRequest,
+                 ops_intent: intent.OpsIntent | None = None,
+                 ) -> tuple[AgentConfig, bool, router.RouteDecision]:
     """定这一轮的模型 / 思考 / 提示词档，并把决策原样带出来写流水。
 
     规则全部在 `agent/router.py`（单一落点）：手动速度档 > 手动 routes > 自动路由。
@@ -90,7 +93,8 @@ def _plan_config(cfg: AgentConfig, request: AgentRequest) -> tuple[AgentConfig, 
         cfg, mode=request.mode, message=request.message, context=request.context,
         attachment_text=request.attachment_text,
         history_len=len(request.history or []),
-        has_image=bool(request.image_path or request.extra_images))
+        has_image=bool(request.image_path or request.extra_images),
+        ops=ops_intent)
     return router.apply(cfg, decision), decision.concise, decision
 
 
@@ -120,17 +124,24 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
         return None
 
     # 代码调试只在「能跑代码」的入口生效（工作台问答页、非测验、非 system_override）。
-    intent = debug_intent.detect(request.message)
+    debug = debug_intent.detect(request.message)
     code_debug = bool(
-        intent["code_debug"] and request.use_tools and not request.system_override
+        debug["code_debug"] and request.use_tools and not request.system_override
         and request.surface == "ask" and request.mode != "quiz")
     if code_debug:
         # 立刻给界面一句具体状态：用户不用盯着「思考中」猜在干什么。
         yield AgentEvent("activity",
                          text="代码调试：先编译运行验证，再回答（通常 10–30 秒）")
 
+    # 排错 / 配置识别只在 ops_mode=on 时改变回答；shadow 只让路由 trace 记录。
+    ops_intent = intent.detect_ops(request.message, context=request.context,
+                                   attachment_text=request.attachment_text)
+    ops_active = bool(
+        ops_intent.ops and request.use_tools and not request.system_override
+        and (cfg.ops_mode or "shadow").lower() == "on")
+
     provider = provider or _default_provider()
-    cfg, concise, decision = _plan_config(cfg, request)
+    cfg, concise, decision = _plan_config(cfg, request, ops_intent)
     forced_debug = False
     if code_debug and (cfg.speed or "").lower() == "balanced" and decision.tier != "manual":
         # 实测：不思考 + 强制运行会反复构造错输入、8 次超时；代码调试必须开思考。
@@ -143,12 +154,24 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
                 decision, thinking=True, concise=False,
                 reason=(decision.reason or "") + "；代码调试强制思考")
     cfg_holder = [cfg]
-    if (cfg.auto_route or "off").lower() in ("shadow", "on"):
+    ops_mode = (cfg.ops_mode or "shadow").lower()
+    gate_mode = (cfg.ops_gate or "shadow").lower()
+    # 用原始意图算 gate：ops_mode=shadow 时也能记录「本来会怎么判」，但不改变行为。
+    gate = evidence_gate.decide(request.message, request.attachment_text, None,
+                                ops=ops_intent.ops, ops_gate=gate_mode)
+    gate_apply = bool(gate_mode == "on" and ops_active)
+    if ((cfg.auto_route or "off").lower() in ("shadow", "on")
+            or (ops_intent.ops and ops_mode != "off")):
         route_data = decision.trace()
         route_data["auto"] = cfg.auto_route
         if forced_debug:
             route_data["forced"] = "code_debug"
         yield AgentEvent("route", data=route_data)
+    if ops_intent.ops and gate_mode in ("shadow", "on"):
+        # shadow 只记录会怎么判；on 时 needed=True 表示已经注入前置取证提示。
+        yield AgentEvent("gate", data={
+            "needed": gate.needed, "kind": gate.kind, "round": 0,
+            "applied": bool(gate_apply and gate.needed)})
 
     profile = _read_profile(cfg)
     memory_text = memory.render_for_prompt(cfg.data_root)
@@ -175,9 +198,14 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
                                       summary=request.history_summary,
                                       code_debug=code_debug,
                                       concise=concise,
-                                      personal_state=request.personal_state))
+                                      personal_state=request.personal_state,
+                                      ops=ops_active))
     tool_schemas = tools.schemas_for(request.mode, use_tools=request.use_tools,
                                      surface=request.surface)
+    if gate_apply:
+        # 取证轮只留只读工具；用户已经给了原文时不裁剪（不必强制联网）。
+        tool_schemas = evidence_gate.filter_schemas(
+            tool_schemas, keep=("run_code",) if code_debug else ())
     messages = _history_messages(request.history, image_text)
     current_text = prompts.build_user_text(
         request.message,
@@ -188,6 +216,8 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
         attachment_name=request.attachment_name,
         attachment_text=request.attachment_text,
     )
+    if gate_apply and gate.needed:
+        current_text += "\n\n" + evidence_gate.nudge_text()
     messages.append({"role": "user", "content": [{"type": "text", "text": current_text}]})
 
     return _Turn(
@@ -202,6 +232,7 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
         image_paths=image_paths,
         used_vision=used_vision,
         code_debug=code_debug,
+        ops=ops_active,
     )
 
 
@@ -224,6 +255,32 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
                 turn, abort=abort, response_sink=response_sink,
                 max_steps=max_steps, confirm=confirm)):
             return
+        current_gate = (turn.cfg_holder[0].ops_gate or "shadow").lower()
+        if current_gate == "on" and turn.ops and turn.state.gate_rounds < 1:
+            decision_gate = evidence_gate.decide(
+                turn.request.message, turn.request.attachment_text,
+                turn.state.evidence, ops=True, ops_gate=current_gate)
+            if decision_gate.needed:
+                turn.state.gate_rounds = 1
+                turn.messages.append({"role": "assistant", "content": [
+                    {"type": "text", "text": turn.state.text}]})
+                turn.messages.append({"role": "user", "content": [
+                    {"type": "text", "text": evidence_gate.nudge_text()}]})
+                turn.state.text = ""
+                if not (yield from _run_tool_loop(
+                        turn, abort=abort, response_sink=response_sink,
+                        max_steps=2, confirm=confirm)):
+                    return
+                yield AgentEvent("gate", data={"needed": True,
+                                               "kind": "tools_missing",
+                                               "round": 1, "applied": True})
+                decision_gate = evidence_gate.decide(
+                    turn.request.message, turn.request.attachment_text,
+                    turn.state.evidence, ops=True, ops_gate=current_gate)
+                if decision_gate.needed:
+                    turn.state.text += evidence_gate.note_text()
+                yield AgentEvent("rewrite", data={
+                    "text": turn.state.text, "reason": "补取证后重答"})
         yield from _retry_thinking_only(turn, abort=abort,
                                         response_sink=response_sink)
         yield from _finish(turn, abort=abort)

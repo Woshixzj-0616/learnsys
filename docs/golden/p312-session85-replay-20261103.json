@@ -1,0 +1,267 @@
+{
+  "checks": {
+    "提到 sites-enabled/default_server/默认站点/nginx -T": true,
+    "出现禁词「不能写 IP」": false,
+    "声称 nginx -t 会报错": false
+  },
+  "rows": [
+    {
+      "question": "为什么我nginx设置两个server一个是80一个是8080，给的html不一样，但是在本机浏览器看是一个html",
+      "conversation_id": 110,
+      "run_id": "b8e4b6d4c5474daca3911d378a0e246c",
+      "text": "最可能的情况是：**8080 上回复你的根本不是你以为的那个 server 块**——要么这份配置没真正生效，要么 8080 被另一个进程或另一个 default_server 占着。浏览器缓存排第三。\n\n按可能性排序：\n\n**1. 配置没被加载（最常见）**\n\n`nginx -t` 只查语法，**不证明你这个文件被 include 进去了**。常见问题：文件写在 `sites-available/` 却没软链到 `sites-enabled/`；`nginx.conf` 只 include `conf.d/*.conf` 而你文件后缀不是 `.conf`；改完配置只跑了 `-t` 没 `reload`。\n\n验证（需要你运行）：\n\n```\nnginx -T | grep -n \"listen\"\n```\n\n`-T` 打印的是**最终生效配置**。如果在里面搜不到 `listen 8080`，原因就确定了。\n\n**2. 8080 被别的进程占了**\n\n```\nss -lntp | grep -E ':(80|8080)'\n```\n\n看 8080 后面的进程名和 PID。如果那不是你 reload 的那个 nginx master（比如是 docker-proxy、另一个 nginx 实例、node、python），浏览器看到的自然是别人给的 HTML。\n\n**3. 落到 default_server 了**\n\n同一端口上多个 server 时，匹配顺序是：先按 `listen` 端口分组 → 再用 Host 匹配 `server_name` → 匹配不到就用该端口的 default_server。如果 `conf.d/` 里还留着默认站点，里面有 `listen 8080 default_server`，而你的第二个 server `server_name` 又不是 `localhost`，那 `localhost:8080` 就会落到默认站点上——如果两个 server 只差 `server_name`、root 一样，看起来就是同一个页面。（匹配顺序这一步是凭记忆，未验证，但不影响排查方向。）\n\n**4. 两个 server 的 root 其实指向同一处**\n\n检查两个块里的 `root` / `alias` / `index`，以及有没有共用的 `include` 片段把 `root` 覆盖了——同一文件里写在后面的会生效。\n\n**5. 浏览器缓存 / 重定向**\n\n用 curl 把「服务端」和「浏览器」分开：\n\n```\ncurl -s -I http://localhost/\ncurl -s  http://localhost:8080/ | head -20\n```\n\ncurl 不吃缓存。如果 curl 下两个地址内容不同、浏览器里相同，就是缓存或重定向（80 那个 server 里有 `return 301` / `rewrite` 指到另一边）；反之问题在配置本身。\n\n**需要你贴给我这些**（一次给全，我直接定位）：\n\n- 系统 + `nginx -v` 版本\n- 两个 server 块的完整原文（含 `listen`、`server_name`、`root`、`location`）\n- `nginx -T | grep -n \"listen\"` 的输出\n- `ss -lntp | grep -E ':(80|8080)'` 的输出\n- 上面两条 curl 的响应头和正文开头\n\n顺带一句易错点：改完配置用 `nginx -s reload` 而不是只 `systemctl restart`——如果你的 nginx 不是 systemd 起的那个，restart 反而会失败或启动另一份配置。",
+      "error": "",
+      "first_ms": 868,
+      "total_ms": 15346,
+      "route": {
+        "tier": "deep",
+        "model": "deepseek-flash",
+        "thinking": true,
+        "reason": "排错/配置：端口、80/8080",
+        "ops": {
+          "ops": true,
+          "kind": "config",
+          "signals": [
+            "端口",
+            "80/8080"
+          ],
+          "confidence": 0.55,
+          "needs_evidence": true,
+          "recommended": {
+            "tier": "deep",
+            "thinking": true,
+            "concise": false,
+            "model": "deepseek-flash"
+          }
+        },
+        "auto": "shadow"
+      },
+      "gates": [
+        {
+          "needed": false,
+          "kind": "none",
+          "round": 0,
+          "applied": false
+        }
+      ],
+      "tools": []
+    },
+    {
+      "question": "80和8080都是nginx的",
+      "conversation_id": 110,
+      "run_id": "cadf76529b844c97980bd6e0deb7c1ae",
+      "text": "这么说，「另一个进程占用 8080」这条原因基本可以排除；但「都是 nginx」不等于「同一个 nginx、同一份配置」，还要查两个分支：**8080 的请求被转发到了同一份 80 的配置上**，或者 **8080 是第二个 nginx 实例（另一份 prefix 或另一份 nginx.conf）**。\n\n**先做一次区分判断：对比响应头**\n\n```\ncurl -sI http://localhost/ ; echo ---; curl -sI http://localhost:8080/\ncurl -s http://localhost/ | md5sum; curl -s http://localhost:8080/ | md5sum\n```\n\n- `Server:` 头和版本号不同 → 两个实例（或两个版本）\n- `ETag` / `Last-Modified` / `Content-Length` 完全一致，md5 也一致 → 内容确实是同一份，问题在服务端路由，不在浏览器缓存\n- 只有浏览器里一样、curl 不一样 → 缓存或 301，去查 80 那个 server 块里的 `return` / `rewrite`\n\n**分支 A：8080 被转发到了 80**\n\n浏览器访问 `localhost:8080`，但请求在到达 nginx 之前就被改了目标端口，实际打到的是 80 的站点，所以内容自然一样。`ss` 里看到的 nginx 是真的，只是它收的是已经变成 80 的请求。查：\n\n```\niptables -t nat -S | grep -E '8080|80'\ndocker ps --format '{{.Names}}\\t{{.Ports}}'\n```\n\n`docker run -p 8080:80` 或 NAT/DNAT 规则都会造成这个现象（凭记忆，未验证，但和你描述完全吻合）。\n\n**分支 B：是两个 nginx 实例**\n\n```\nps -eo pid,ppid,cmd | grep -i nginx | grep -v grep\n```\n\n看有几个 `nginx: master process`，以及它们各自的 `-c`（配置文件路径）和 `-p`（prefix）。如果有两个 master，你 reload 的可能是 `systemctl` 管的那个，而 8080 归另一个（比如 `/usr/local/nginx` 编译安装的、或某个容器里的）——你改的文件根本没被它读。\n\n**分支 C：是同一个 nginx，但你的 8080 server 块没进去**\n\n```\nnginx -T | grep -nE 'listen|server_name|root ' \n```\n\n`-T` 是最终生效配置（含 include 展开）。三种结果：\n\n- 搜不到 `listen 8080` → 文件没被 include 或没 reload，配置管理问题\n- 搜到了，且 `root` 与 80 那个不同 → 配置生效了但请求没落到它。这时看它的 `server_name`：`localhost:8080` 的 Host 是 `localhost:8080`（带端口的 Host 只按 `localhost` 匹配），如果它写的是别的域名、又不在该端口当 `default_server`，而 8080 上还有别的 server 块，就会落到那个默认块\n- 搜到了 `listen 8080` 但出现在另一个文件路径下 → 说明有两份配置在抢，`nginx -T` 输出的每个块上方都有 `# configuration file ...` 注释，能直接看出是哪个文件提供的\n\n**还需你确认的**：`ps` 那条输出、`nginx -T | grep -n listen` 那几行、两个 `curl -I` 的响应头。这三样给全，我就能确定是哪一支、是否真的需要改配置。",
+      "error": "",
+      "first_ms": 760,
+      "total_ms": 14358,
+      "route": {
+        "tier": "deep",
+        "model": "deepseek-flash",
+        "thinking": true,
+        "reason": "排错/配置：端口对比",
+        "ops": {
+          "ops": true,
+          "kind": "config",
+          "signals": [
+            "端口对比"
+          ],
+          "confidence": 0.55,
+          "needs_evidence": true,
+          "recommended": {
+            "tier": "deep",
+            "thinking": true,
+            "concise": false,
+            "model": "deepseek-flash"
+          }
+        },
+        "auto": "shadow"
+      },
+      "gates": [
+        {
+          "needed": false,
+          "kind": "none",
+          "round": 0,
+          "applied": false
+        }
+      ],
+      "tools": []
+    },
+    {
+      "question": "有没可能我输入浏览器默认是去8080",
+      "conversation_id": 110,
+      "run_id": "6affa5eaf39e4057a01c2780b726c5e6",
+      "text": "不太可能——不带端口时，浏览器不会走 8080。\n\n**证据**：HTTP 默认端口是 80、HTTPS 是 443，URL 里的端口「当服务器使用 HTTP 协议的标准端口（80 / 443）时通常省略；否则必须写出来」[2] https://developer.mozilla.org/en-US/docs/Learn_web_development/Howto/Web_mechanics/What_is_a_URL（打开日期：本轮）。这是 URL 规范层面的默认值，浏览器不提供「把默认端口改成 8080」的选项。\n\n**但有三种现象会让你觉得「它默认去了 8080」**：\n\n1. **地址栏自动补全**。你在地址栏敲 `localhost`，下拉列表第一条是历史里的 `localhost:8080`（或某个书签），按回车选中的是那一条。地址栏里显示的才是真实 URL——先看它有没有 `:8080`。\n2. **上次的重定向**。80 的 server 块里有 `return 301 http://localhost:8080/` 或 `rewrite`，浏览器自动跳过去了。这种情况地址栏会变成 `localhost:8080`，且 F12 → Network 里第一条是 301/302。\n3. **HSTS / 强制跳转 HTTPS**。这个只影响协议和 443，不会变成 8080，但如果 443 那个 server 又跳回 8080，效果一样。\n\n**一句话验证**（不掺缓存和补全）：\n\n```\ncurl -v http://localhost/ 2>&1 | grep -E 'Trying|Connected|HTTP/|^< Location'\n```\n\n`Trying 127.0.0.1:80` 就说明请求确实打到 80，没走 8080；`Trying ...:8080` 才是你怀疑的情况。同时浏览器里按 F12 → Network，看 `localhost/` 这一条的 Request URL 和 Status，有没有 301/302。\n\n所以这条更可能是个假象——真要定位，还是要 `nginx -T | grep -n listen` 的输出，加上浏览器 Network 里那条请求的完整 URL 和状态码。",
+      "error": "",
+      "first_ms": 867,
+      "total_ms": 14428,
+      "route": {
+        "tier": "deep",
+        "model": "deepseek-flash",
+        "thinking": true,
+        "reason": "排错/配置：端口、8080",
+        "ops": {
+          "ops": true,
+          "kind": "config",
+          "signals": [
+            "端口",
+            "8080"
+          ],
+          "confidence": 0.55,
+          "needs_evidence": true,
+          "recommended": {
+            "tier": "deep",
+            "thinking": true,
+            "concise": false,
+            "model": "deepseek-flash"
+          }
+        },
+        "auto": "shadow"
+      },
+      "gates": [
+        {
+          "needed": true,
+          "kind": "tools_missing",
+          "round": 0,
+          "applied": true
+        }
+      ],
+      "tools": [
+        "web_search",
+        "fetch_url"
+      ]
+    },
+    {
+      "question": "但是我改了8080的html他生效了，改80的html没用",
+      "conversation_id": 110,
+      "run_id": "971d6e89d9be4f18aeb854547428bbe1",
+      "text": "这种现象反推出一个关键结论：**80 端口返回的内容来自 8080 那个目录**，所以你改 8080 的文件，80 也跟着变；而你改的那个“80 的 html”根本没有被任何 server 读取。\n\n（先确认一个歧义：你说“改 8080 生效了”，是指访问 `localhost:8080` 变了，还是访问 `localhost` 也一起变了？下面按“两个都变”来排查；如果只有 8080 变，结论不同，见最后。）\n\n静态文件改动本身**不需要 reload**（`open_file_cache` 默认是关的；凭记忆，未验证），所以这不是配置没重载的问题。别在 reload 上花时间。\n\n按可能性排序：\n\n**1. 两个 server 的 `root` 写成了同一个路径（最高频）**\n\n复制粘贴配置时忘了改 `root`，或者 80 的块里留了一句共用的 `include`，把 `root` 覆盖了。同一文件里后写的生效，`include` 展开后位置也按展开处算。\n\n**2. 80 的 server 块不是被选中的那个**\n\n80 端口上还有默认站点（`sites-enabled/default` 或 `conf.d/` 里的默认 server）声明了 `listen 80 default_server`，而你的块 `server_name` 不匹配 `localhost`，请求落到默认块。默认块的 `root` 如果被你之前实验改成了 8080 那个目录，就正好是现在的现象。\n\n**3. 80 在转发**\n\n`proxy_pass http://127.0.0.1:8080;` 或 `return 301 http://localhost:8080/`。地址栏不会变（proxy 情况），内容全来自 8080。\n\n**决定性实验（两个命令，代价很低）**\n\n在 8080 的 index.html 里加一行 `<!--MARK8080-->`，然后：\n\n```\ncurl -s http://localhost/      | grep -c MARK8080\ncurl -s http://localhost:8080/ | grep -c MARK8080\n```\n\n两个都是 `1` → 80 拿的就是 8080 那份文件，落到原因 1 或 3，接着看下面。\n\n```\nnginx -T | grep -nE 'listen|server_name|root|index|proxy_pass|return|rewrite'\nnginx -T | grep -c 'listen 8080'    # 看你的配置到底在不在最终配置里\n```\n\n`-T` 是展开 include 后的最终配置，每个块上方有 `# configuration file ...` 注释，能直接看出某个 `root` 来自哪个文件。对比两个块的 `root` 是否字面相同。\n\n再补一条直接对文件的比较：\n\n```\ncurl -s http://localhost/ | md5sum\nmd5sum /你改的那个80的index.html的完整路径\n```\n\n不一致 → 你改的文件确实没被读，去 `ls -l` 看该目录下到底有哪几个 index 候选文件（Ubuntu 默认站点常用 `index.nginx-debian.html`，如果 `index` 指令顺序把它排在前面，你改 `index.html` 也不会被返回）。\n\n**还需要你给的**（一次给全）：\n\n- 两个 server 块的原文，`root` / `server_name` / `listen` / `location` 全要\n- 你改的两个 html 的完整路径\n- `nginx -T | grep -nE 'listen|root'` 的输出\n- 上面两条 curl 的 md5\n\n**如果你说的“生效”只是 `localhost:8080` 变了、`localhost` 没变**，那就是另一回事：两个 server 都正常，只是 80 的 `root` 指向另一个目录，而你改错了文件，或者 80 目录里的 index 文件名和你的不一样。",
+      "error": "",
+      "first_ms": 578,
+      "total_ms": 22177,
+      "route": {
+        "tier": "deep",
+        "model": "deepseek-flash",
+        "thinking": true,
+        "reason": "排错/配置：端口、80/8080",
+        "ops": {
+          "ops": true,
+          "kind": "config",
+          "signals": [
+            "端口",
+            "80/8080"
+          ],
+          "confidence": 0.55,
+          "needs_evidence": true,
+          "recommended": {
+            "tier": "deep",
+            "thinking": true,
+            "concise": false,
+            "model": "deepseek-flash"
+          }
+        },
+        "auto": "shadow"
+      },
+      "gates": [
+        {
+          "needed": false,
+          "kind": "none",
+          "round": 0,
+          "applied": false
+        }
+      ],
+      "tools": []
+    }
+  ],
+  "summary": "用户在排查 nginx 配置：server_name 写 0.0.0.0 语法合法、nginx -t 不报错，但不会匹配所有域名，只匹配 Host 恰为 0.0.0.0 的请求；监听所有网卡应用 listen 0.0.0.0:80 或 listen 80，兜底用 default_server 或 server_name _。已核实官方文档规则：先按 listen 的 IP:端口分组，再按 Host 匹配 server_name，不匹配或无 Host 时交给该端口 default server（默认是该端口第一个 server 块）。用户现象是改 8080 的 html 生效、改 80 无效，尚未确认是哪个 server 块在处理 80 的请求。下一步可写最小 server 块分别用 IP 和域名访问，并用 nginx -T 查看 80 端口的 server 顺序确认 default ser",
+  "summary_checks": {
+    "摘要已生成": true,
+    "摘要含绝对结论": false,
+    "摘要含未验证标记": false
+  },
+  "summary_rows": [
+    {
+      "question": "nginx 的 server_name 写 0.0.0.0 合法吗？会让 nginx -t 报错吗？",
+      "conversation_id": 111,
+      "run_id": "1ae0ada4fc4f49c281989df28dbff939",
+      "text": "`server_name 0.0.0.0;` 语法上合法，`nginx -t` 不会报错。但它也**没有**「匹配所有地址、所有域名」的效果。一种可能的解释是：`server_name` 匹配的是 HTTP 请求头里的 `Host`，不参与 socket 监听地址的解析。要验证这一点，可以写一个只含 `server_name 0.0.0.0;` 的 server 块，分别用 IP 和域名访问，看是否命中它。nginx 在检查时，会把它当成一个普通字面名字；只有请求头恰好是 `Host: 0.0.0.0` 时，才会命中这个 server 块。实际用 IP 访问、用域名访问，都不会命中它。\n\n正确的写法分别是：\n\n- **想监听所有网卡**：这是 `listen` 指令的作用。写 `listen 80;` 或 `listen 0.0.0.0:80;`；默认值本来就是 `0.0.0.0`。\n- **想当默认 server（匹配不上任何 `server_name` 时兜底）**：写 `listen 80 default_server;`。\n- **常用「哑名字」写法**：`server_name _;`。`_` 也是普通名字，只是现实中不会有请求带这个 `Host`，所以看起来像兜底。\n- **想匹配不带 `Host` 的请求**：`server_name \"\";`。\n\n容易出错的地方：`nginx -t` 只检查语法，不检查语义。`server_name` 写错内容时，它照样能通过；要通过 `nginx -T` 查看最终生效的配置，再用 `curl -H \"Host: xxx\"` 验证命中哪个 server，才能确认。\n\n以上内容根据我的记忆整理，未经联网核实，未验证。需要我查 `server_name` 的合法取值和匹配顺序吗？",
+      "error": "",
+      "first_ms": 442,
+      "total_ms": 9493,
+      "route": {
+        "tier": "deep",
+        "model": "deepseek-flash",
+        "thinking": true,
+        "reason": "排错/配置：server_name",
+        "ops": {
+          "ops": true,
+          "kind": "config",
+          "signals": [
+            "server_name"
+          ],
+          "confidence": 0.6,
+          "needs_evidence": true,
+          "recommended": {
+            "tier": "deep",
+            "thinking": true,
+            "concise": false,
+            "model": "deepseek-flash"
+          }
+        },
+        "auto": "shadow"
+      },
+      "gates": [
+        {
+          "needed": false,
+          "kind": "none",
+          "round": 0,
+          "applied": false
+        }
+      ],
+      "tools": []
+    },
+    {
+      "question": "我改了 8080 的 html 生效，改 80 的没用，是不是 80 被默认站点接管了？",
+      "conversation_id": 111,
+      "run_id": "208003dbcdc24f0fbe5fe9f5f31f6c5c",
+      "text": "不一定是「被默认站点接管」，这个说法需要更精确：**80 上到底是哪个 server 块在处理请求，取决于「listen 的分组 + Host 匹配 + 该端口的 default server」；8080 生效只证明 nginx 在运行、你的改动确实被加载过，不能证明 80 的请求走到了你改的那个块。**\n\n## 已核实的规则\n\n官方文档原文（已验证）：nginx 首先决定哪个 server 处理请求，先按请求的 IP 和端口去匹配 `listen`，然后在匹配到的 server 块里用 `Host` 请求头匹配 `server_name`；「如果值不匹配任何 server name，或请求根本没有这个头，nginx 会把请求交给该端口的 default server」，并且明确写了「default server 是 listen 端口的属性，不是 server name 的属性」，默认就是配置里（对该端口而言）第一个 server。\n来源：How nginx processes a request https://nginx.org/en/docs/http/request_processing.html （本次会话打开）\n\n按这个规则，「默认站点接管了 80」只在两种情况下成立：(a) 你访问时 `Host` 和 80 上所有 `server_name` 都不匹配；(b) 你改的那个 server 块根本没进最终加载的配置。\n\n## 候选原因（按可能性排序）\n\n1. **有别的块在 80 上当了 default server**，比如发行版自带的 `sites-enabled/default` 或 `conf.d/default.conf`，或者你的块顺序在后面而 Host 又不匹配。\n   验证：`nginx -T | grep -nE \"listen|server_name|root\"`，看 80 上有几个 server、谁带 `default_server`、先后顺序。\n2. **你改的文件没被 include**（改了 `sites-available` 没软链到 `sites-enabled`，或文件不在 include 路径里）。\n   验证：还是 `nginx -T`，它是最终生效的完整配置；而 `nginx -t` 只查语法，两者都要看。\n3. **80 那个块的 `root` 指向另一个目录**，你改的 `index.html` 根本不是它用的那份；或者它的 `index` 实际命中的是 `index.php`/`index.htm`。\n   验证：从 `nginx -T` 里找到该块的 `root`，`ls -l <root>/index.html`。\n4. **访问方式导致 Host 不匹配**：用 IP 直接访问时 `Host` 是 IP，不匹配域名类 `server_name`，自然落到 default server。\n   验证：`curl -sI -H \"Host: 你的域名\" http://127.0.0.1/` 和 `curl -sI http://127.0.0.1/` 对比。\n\n## 最快的定位手段\n\n在 80 那个 server 块里临时加一行 `add_header X-Server $server_name;`，`nginx -t && nginx -s reload`，然后 `curl -sI http://<地址>/` 看响应头里是谁应答的。想让它直接接管 80，就在它 `listen 80 default_server;`（注意同一端口只能有一个 `default_server`，多了 `nginx -t` 会报 duplicate default server）。\n\n## 需要你提供的\n\n`nginx -V`、`nginx -T` 的输出（可脱敏），80 和 8080 两个 server 块的完整原文，以及你访问用的完整 URL 加 `curl -i` 的结果。有这些才能从候选原因收敛到具体一条。",
+      "error": "",
+      "first_ms": 548,
+      "total_ms": 35205,
+      "route": {
+        "tier": "deep",
+        "model": "deepseek-flash",
+        "thinking": true,
+        "reason": "排错/配置：端口、80/8080",
+        "ops": {
+          "ops": true,
+          "kind": "config",
+          "signals": [
+            "端口",
+            "80/8080"
+          ],
+          "confidence": 0.55,
+          "needs_evidence": true,
+          "recommended": {
+            "tier": "deep",
+            "thinking": true,
+            "concise": false,
+            "model": "deepseek-flash"
+          }
+        },
+        "auto": "shadow"
+      },
+      "gates": [
+        {
+          "needed": true,
+          "kind": "tools_missing",
+          "round": 0,
+          "applied": true
+        }
+      ],
+      "tools": [
+        "web_search",
+        "fetch_url"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "conversation_id": 89,
+  "run_id": "42afb316dd614a3596cd4b8533b658ee",
+  "text": "**最可能的原因：80 端口的请求根本没进你写的那个 `listen 80` 块，因为 `server_name 0.0.0.0` 永远匹配不上，请求被转给了 80 端口的默认 server，而那个默认 server 的 root 恰好也是 `/var/www/html`。**\n\n## 机制\n\nnginx 选 server 分两步：先按 IP:端口 分组，再用请求的 `Host` 头去匹配组内各块的 `server_name`；**匹配不到就交给该端口的 default server**[1]。\n\n- `server_name` 匹配的是 **Host 头里的主机名字符串**，不是监听地址。`0.0.0.0` 不带 `*`，会被当作精确主机名处理，等于是要求浏览器发 `Host: 0.0.0.0`。你访问 `127.0.0.1`、`localhost` 或域名时，都不可能等于这个串。（这是按 server_name 匹配规则推断，未逐字核对官方文档）\n- 所以两个块虽然写了 `listen 80` / `listen 8080`，`server_name` 这一行实际上是空的，两个端口的请求都落到各自的 default server。\n- 8080 端口上只有这一个块，它就是 8080 的 default，root 是 `/var/www/html` → 改了生效。\n- 80 端口上除了你这个块，`/etc/nginx/sites-enabled/*` 里通常还有发行版自带的默认站点（`listen 80 default_server`，root 也是 `/var/www/html`，Ubuntu 系典型配置）。它被显式标了默认，于是 80 的请求被它接走 → 你改 `/usr/local/www/tm/public` 当然没反应。\n- 两个端口最后都读 `/var/www/html` 下的文件，所以看到同一个页面；你改这个目录，两边同时变——这正好是「80 块没生效」的反证。\n\n## 验证（需要你在机器上跑）\n\n```bash\nnginx -T 2>/dev/null | grep -nE 'listen|server_name|root|include'   # 看最终生效配置，nginx -t 只查语法\nls -l /etc/nginx/sites-enabled/                                      # 注意是不是符号链接、有没有 default\nls -l /var/www/html /usr/local/www/tm/public                         # 确认两边是不是同一批文件\nss -tlnp | grep -E ':80|:8080'                                       # 确认 80 是这个 nginx 在听，不是别的东西\n```\n\n对照 `nginx -T` 里 `listen 80` 出现的顺序：哪种顺序标了 `default_server`，或者没有标注时谁排第一，谁就是实际接管者。\n\n## 修复\n\n```nginx\nserver{\n    listen 80 default_server;   # 明确抢回 80 的默认地位\n    server_name _;              # catch-all，匹配任意 Host\n    root /usr/local/www/tm/public;\n    ...\n}\n```\n\n- `server_name _;` 是惯用的「不挑 Host」写法，比留着 `0.0.0.0` 清楚。\n- **同一个端口的 `default_server` 只能有一个**：如果 sites-enabled 里的默认站点已经声明了 `listen 80 default_server`，`nginx -t` 会报 `a duplicate default server`。处理办法是二选一：删掉/禁用默认站点（`rm /etc/nginx/sites-enabled/default`），或者先停掉它再重新加载。\n- 改完 `nginx -t && systemctl reload nginx`（只有 reload 才算加载配置）。\n\n## 还有两点要一并处理\n\n1. 修好之后，`try_files ... /index.php?$args` 会把请求交给 `/index.php`，但你 80 的 server 里**没有任何处理 PHP 的 location**（没 `fastcgi_pass`），结果是 404 或把 index.php 当静态文件下发。缺这段就得补，否则页面还是出不来。\n2. `root` 写在 `server` 块里是全局继承，8080 那个块把 `root` 塞进了 `location /` 内——能用，但把 `root` 放外层更不容易踩坑。\n\n来源：How nginx processes a request https://nginx.org/en/docs/http/request_processing.html（本次打开）",
+  "error": "",
+  "first_ms": 890,
+  "total_ms": 37794,
+  "route": {
+    "tier": "deep",
+    "model": "deepseek-flash",
+    "thinking": true,
+    "reason": "排错/配置：server 块、listen、server_name",
+    "ops": {
+      "ops": true,
+      "kind": "config",
+      "signals": [
+        "server 块",
+        "listen",
+        "server_name"
+      ],
+      "confidence": 0.8,
+      "needs_evidence": true,
+      "recommended": {
+        "tier": "deep",
+        "thinking": true,
+        "concise": false,
+        "model": "deepseek-flash"
+      }
+    },
+    "auto": "shadow"
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "checks": {
+    "提到 sites-enabled/default_server/默认站点/nginx -T": true,
+    "出现禁词「不能写 IP」": false,
+    "声称 nginx -t 会报错": false
+  },
+  "rows": [
+    {
+      "question": "为什么我nginx设置两个server一个是80一个是8080，给的html不一样，但是在本机浏览器看是一个html",
+      "conversation_id": 87,
+      "run_id": "168be517e1c3436492adaf41a873e5f9",
+      "text": "先用一条命令定位问题：分别在终端请求两个端口，比较返回内容。\n\n```bash\ncurl -s http://127.0.0.1/ | head -5\ncurl -s http://127.0.0.1:8080/ | head -5\n```\n\n- 如果两个端口用 curl 请求到的内容**不同**，而浏览器看到的是同一个，那么问题就出在浏览器侧（URL 没带端口、缓存、跳转）。\n- 如果两个端口用 curl 请求到的内容**相同**，那么问题就出在 nginx 侧（配置没有生效，或者两个 server 块实际落在同一个端口或同一个 root）。\n\n## 候选原因（按可能性排序）\n\n**1. 两个 server 块实际都监听在 80。** 这是最常见的情况：`listen 8080` 漏写、写成 `listen 80;`，或者 8080 那个块位于没有被 include 的文件里。此时 nginx 的匹配规则是：先根据 listen 端口分组，再用 Host 匹配 server_name；匹配不到就用该端口的 default_server。两个块都在 80 上时，第二个块永远不会被选中，而且 `nginx -t` 不会报错，因为它只检查语法。\n验证：`nginx -T | grep -n \"listen\\|server_name\\|root\"`（`-T` 输出最终合并后的配置，`-t` 看不到这个问题）。\n\n**2. 浏览器访问的 URL 没带端口。** 只输入 `localhost` 或 IP 就是 80；从收藏夹或历史记录点进的旧链接也会指向 80。\n验证：看地址栏里实际显示的是 `localhost:8080` 还是 `localhost`。\n\n**3. 缓存。** 8080 的响应被浏览器强缓存，或者 304 复用。\n验证：`curl -I http://127.0.0.1:8080/` 看 `Content-Length` / `Last-Modified`；浏览器里 Ctrl+Shift+R 强制刷新，或开无痕窗口。\n\n**4. 8080 被别的进程占着。** nginx 起不来但你在看旧实例。\n验证：`ss -ltnp | grep 8080`，再看 `error.log` 有没有 `bind() to 0.0.0.0:8080 failed`。\n\n**5. 改了配置没 reload，或改的不是生效的那份。** 在 Docker / 多份 conf / sites-enabled 软链接的场景里很常见。\n验证：`nginx -T` 的输出来源路径和你编辑的文件是不是同一个。\n\n**6. 两个 server 的 root 指向同一目录**，或者目录里 index.html 内容相同。这一条只能解释「内容一样」，无法解释「端口一样」。\n验证：`nginx -T` 里两个 `root` 行对比。\n\n## 需要你补充的信息（一次给全就能定论）\n\n1. 系统与 nginx 版本（`nginx -v`）；\n2. 两个 server 块的**完整原文**（含 listen、server_name、root、index）；\n3. 你在浏览器里输入的**完整 URL**；\n4. 上面那两条 `curl` 的输出前几行；\n5. `nginx -T | grep -n listen` 的结果。\n\n第 1 条和第 3 条基本能覆盖九成情况，先看这个。\n\n（以上原因来自通用经验，未在你的机器上验证；命令输出要看实际情况。）",
+      "error": "",
+      "first_ms": 607,
+      "total_ms": 13194,
+      "route": {
+        "tier": "deep",
+        "model": "deepseek-flash",
+        "thinking": true,
+        "reason": "排错/配置：端口、80/8080",
+        "ops": {
+          "ops": true,
+          "kind": "config",
+          "signals": [
+            "端口",
+            "80/8080"
+          ],
+          "confidence": 0.55,
+          "needs_evidence": true,
+          "recommended": {
+            "tier": "deep",
+            "thinking": true,
+            "concise": false,
+            "model": "deepseek-flash"
+          }
+        },
+        "auto": "shadow"
+      }
+    },
+    {
+      "question": "80和8080都是nginx的",
+      "conversation_id": 87,
+      "run_id": "e4e792b767364cb384a9fda24e81a856",
+      "text": "“两个端口都是 nginx”只排除了「端口被别的进程占用」，还剩三个方向。\n\n先用下面两条命令确认返回内容到底是什么：\n\n```bash\nfor p in 80 8080; do echo \"== $p ==\"; curl -s http://127.0.0.1:$p/ | md5sum; done\nnginx -T 2>/dev/null | grep -nE \"listen|server_name|root|index|return|rewrite\"\n```\n\n**如果两个 md5 相同**，问题在 nginx 的配置里：两个 server 的 `root` 实际指向同一目录，或者 `try_files`、`alias` 或 `location` 内的 `root` 把 server 级的写法覆盖掉了。看第二条命令里两个 `root` 行的路径是否一致。\n\n**如果两个 md5 不同**，nginx 这边没错，问题出在浏览器：地址栏里没有带 `:8080`、浏览器缓存，或者 8080 那个块里有 `return 301` 跳回 80。`grep` 结果里出现 `return` 或 `rewrite` 时，基本就是这一种。\n\n还有一种情况，`nginx -T` 的 `listen` 行里可能只有一个是 `listen 80 default_server`，另一个 `listen 8080` 却写在**没有生效的 conf 文件**里。但你说两个端口都在监听，所以这种可能性较低；不过也可能是 nginx 里有两份配置，你编辑的只是其中一份。\n\n## 需要补充的两条输出结果\n\n- 上面两个 `md5sum` 的值；\n- `nginx -T` 的 `listen` / `root` 行（配置原文更好，把敏感信息打码即可）。\n\n有这两条就能定论，不用再猜。\n\n（以上为通用经验推断，未在你的机器上验证；`nginx -T` 通常需要管理员权限运行。）",
+      "error": "",
+      "first_ms": 619,
+      "total_ms": 8677,
+      "route": {
+        "tier": "deep",
+        "model": "deepseek-flash",
+        "thinking": true,
+        "reason": "排错/配置：端口对比",
+        "ops": {
+          "ops": true,
+          "kind": "config",
+          "signals": [
+            "端口对比"
+          ],
+          "confidence": 0.55,
+          "needs_evidence": true,
+          "recommended": {
+            "tier": "deep",
+            "thinking": true,
+            "concise": false,
+            "model": "deepseek-flash"
+          }
+        },
+        "auto": "shadow"
+      }
+    },
+    {
+      "question": "有没可能我输入浏览器默认是去8080",
+      "conversation_id": 87,
+      "run_id": "607f73caf74d486a8e58d68416bea66f",
+      "text": "浏览器本身不会默认去 8080：HTTP 的默认端口是 80，HTTPS 是 443；不带端口时，它只会去 80。但**地址栏自动补全**确实会把你送到 8080，这很常见。\n\n机制是：你在地址栏输入 `localhost` 或 `127.0.0.1` 时，Chrome、Edge 会在输入过程中从访问历史里匹配，并把下拉建议的第一条填成 `localhost:8080/`；按回车后实际访问的就是 8080，而不是 80。此时地址栏里确实能看到 `:8080`，但那一小段很容易被忽略。\n\n## 快速验证\n\n1. 打开**无痕窗口**（无痕窗口没有历史记录，也没有补全），手动完整输入 `http://127.0.0.1/`，注意结尾的斜杠和协议都要写全。如果这时看到的是 80 该有的页面，就是补全造成的。\n2. 或者打开 DevTools 的 Network 面板，刷新页面，看第一条文档请求的完整 URL。这里显示 `127.0.0.1:8080` 还是 `127.0.0.1` 是硬证据，比看地址栏更可靠。\n\n## 其他也能弄出同样现象的\n\n- **书签、桌面快捷方式**保存的是带端口的 URL。\n- **hosts 或本地代理**（比如某些抓包、代理工具会把 `localhost:80` 转发到 8080）。\n- **扩展**改了请求目标。\n- 你说的“本机浏览器”如果指的是手机或另一个设备，那看到的就是另一台机器上的端口。\n\n先做第 1 条：无痕窗口访问 80 和 8080，看内容是否如你预期不同。如果无痕窗口下两个端口的内容已经不同，那答案就是地址栏补全，nginx 配置没问题。\n\n（以上为通用经验推断，未在你的机器上验证；DevTools 里的实际请求 URL 才是定论。）",
+      "error": "",
+      "first_ms": 1155,
+      "total_ms": 7440,
+      "route": {
+        "tier": "deep",
+        "model": "deepseek-flash",
+        "thinking": true,
+        "reason": "排错/配置：端口、8080",
+        "ops": {
+          "ops": true,
+          "kind": "config",
+          "signals": [
+            "端口",
+            "8080"
+          ],
+          "confidence": 0.55,
+          "needs_evidence": true,
+          "recommended": {
+            "tier": "deep",
+            "thinking": true,
+            "concise": false,
+            "model": "deepseek-flash"
+          }
+        },
+        "auto": "shadow"
+      }
+    },
+    {
+      "question": "但是我改了8080的html他生效了，改80的html没用",
+      "conversation_id": 87,
+      "run_id": "4eacaa1183fa4da394576fa4956d131c",
+      "text": "这基本可以确认：你的浏览器一直在访问 8080，根本没去过 80。因为改哪个端口，页面就变哪个，说明渲染页面的那个 server 就是 8080；80 的改动“没感觉”，是因为它没有被请求到。\n\n## 用一条命令判定\n\n```bash\ncurl -s http://127.0.0.1/ | head -3          # 80\ncurl -s http://127.0.0.1:8080/ | head -3     # 8080\n```\n\n再对一下你改的那个文件本身：\n\n```bash\nmd5sum /你改的80目录/index.html\n```\n\n- 如果 `curl` 请求 80 得到的是**改后的内容**，说明 nginx 没问题、80 也没有写错，只是浏览器没去 80。到这里就能定论，问题出在浏览器侧：地址栏补全、书签、快捷方式或扩展。\n- 如果 `curl` 请求 80 得到的还是**改前的内容**，说明 80 对应的文件不是你改的那个：80 那个 server 的 `root` 指向了别的目录（比如 `/etc/nginx/html`、`/usr/share/nginx/html`），或者被同端口上别的 server 块接管了。\n\n## 直接把 80 该有的页面拉出来确认\n\n```bash\ncurl -sI http://127.0.0.1/ | grep -iE \"server|location|content-length\"\ncurl -sI http://127.0.0.1:8080/ | grep -iE \"server|location|content-length\"\n```\n\n80 返回 301 或 302，并且 `Location` 指向别处 → 有 `return` 或 `rewrite` 在跳转。\n80 返回的 `Content-Length` 和你改的文件大小对不上 → `root` 指错了。\n\n## 浏览器侧也顺手确认\n\n在无痕窗口打开 `http://127.0.0.1/`（协议和结尾斜杠都写全），或者开 DevTools 的 Network 面板，查看第一条文档请求的完整 URL。如果那里显示 `127.0.0.1:8080`，就与上面的判断完全吻合。\n\n（以上为通用经验推断，未在你的机器上验证；`nginx -T | grep root` 能看到 80 那个 server 实际用的目录，是最省事的交叉验证。）",
+      "error": "",
+      "first_ms": 1207,
+      "total_ms": 7555,
+      "route": {
+        "tier": "deep",
+        "model": "deepseek-flash",
+        "thinking": true,
+        "reason": "排错/配置：端口、80/8080",
+        "ops": {
+          "ops": true,
+          "kind": "config",
+          "signals": [
+            "端口",
+            "80/8080"
+          ],
+          "confidence": 0.55,
+          "needs_evidence": true,
+          "recommended": {
+            "tier": "deep",
+            "thinking": true,
+            "concise": false,
+            "model": "deepseek-flash"
+          }
+        },
+        "auto": "shadow"
+      }
+    }
+  ]
+}

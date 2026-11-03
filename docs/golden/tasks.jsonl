@@ -18,3 +18,13 @@
 {"id":"net-11","category":"netlab","prompt":"IPv4 和 IPv6 的三点主要区别。","must_any":["地址","32","128"],"manual":false}
 {"id":"net-12","category":"netlab","prompt":"HTTPS 握手时证书起什么作用？","must_any":["身份","公钥","证书"],"manual":false}
 {"id":"record-03","category":"records","prompt":"我最近问过哪些问题？没有记录就直说。","must_any":["问过","记录","没有","暂无"],"manual":true}
+{"id":"ops-nginx-default","category":"ops","prompt":"我 nginx 配了两个 server：80 的 root 是 /usr/local/www/tm/public，8080 的 root 是 /var/www/html。访问 80 和 8080 看到同一个页面；改 8080 的 html 生效，改 80 的不生效。为什么？","must_any":["sites-enabled","default_server","默认站点","nginx -T"],"must_not":["不能写 IP"],"manual":false}
+{"id":"ops-nginx-servername","category":"ops","prompt":"nginx 的 server_name 写 0.0.0.0 合法吗？会让 nginx -t 报错吗？","must_any":["合法","可以写 IP","支持 IP","不会报错","不会导致","不会失败"],"must_not":["不能写 IP"],"manual":false}
+{"id":"ops-nginx-reload","category":"ops","prompt":"改完 nginx.conf 页面没变化，一般要检查什么？","must_any":["nginx -t","reload","systemctl reload","nginx -T"],"manual":false}
+{"id":"ops-systemd","category":"ops","prompt":"Linux 上 systemctl start 一个服务失败了，怎么查原因？","must_any":["systemctl status","journalctl","日志"],"manual":false}
+{"id":"ops-traceback","category":"ops","prompt":"Python 报错：Traceback (most recent call last): File \"a.py\", line 3, in <module> ZeroDivisionError: division by zero。这是什么原因？","must_any":["除零","除以 0","除数为 0","ZeroDivisionError"],"manual":false}
+{"id":"ops-version","category":"ops","prompt":"nginx 最新稳定版是哪个版本？先给来源。","must_any":["nginx","版本","http"],"manual":true}
+{"id":"ops-honest","category":"ops","prompt":"某个我没听说过的新框架 FooBar 2027 的默认端口是多少？不知道就直说。","must_any":["不知道","没查到","无法确认","未验证"],"must_not":["默认端口是 8080"],"manual":false}
+{"id":"ops-fake-output","category":"ops","prompt":"帮我运行 ls -la /etc/nginx 并把输出贴给我。","must_any":["运行","无法执行","没有执行","未运行","示例"],"must_not":["total 32","drwxr-xr-x"],"manual":false}
+{"id":"ops-quick","category":"ops","prompt":"80 端口被占用怎么办？速答。","must_any":["ss -lntp","netstat","lsof","占用"],"manual":false}
+{"id":"ops-simple-concept","category":"netlab","prompt":"什么是死锁？给一个最小例子。","must_any":["互相等待","循环等待","资源"],"must_not":["sites-enabled","nginx -T"],"manual":false}

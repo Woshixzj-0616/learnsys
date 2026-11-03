@@ -206,6 +206,7 @@ def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
         model_calls = 0
         tool_count = 0
         error_count = 0
+        retry_count = 0          # 断流续写次数；本单不落新字段，需要时从 trace 统计
         stop_reason = ""
         check_ok = None
         routed_model = ""
@@ -332,6 +333,8 @@ def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
                     routed_model = str(data.get("model") or "") or routed_model
                 elif event.kind == "check":
                     check_ok = bool(data.get("ok"))
+                elif event.kind == "activity" and data.get("retry"):
+                    retry_count += 1
                 elif event.kind == "tool_end":
                     if data.get("ok") is False:
                         error_count += 1

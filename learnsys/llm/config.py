@@ -177,6 +177,16 @@ class AgentConfig:
     # True = 视觉复用主模型的 key/base/model（用户只填了一处）。
     vision_uses_agent: bool = False
 
+    # 排错 / 配置题：off 忽略；shadow 只记录；on 强制思考 + 取证提示词 + 断言审核。
+    ops_mode: str = "shadow"
+    claim_audit: bool = True
+    # 取证门控：off 忽略；shadow 只记录；on 强制先调只读取证工具（最多补一轮）。
+    ops_gate: str = "shadow"
+    # 会话摘要防污染：未验证候选不许写成「根因是/已解决」。
+    summary_guard: bool = True
+    # 流式读超时（秒）：首 token 与流中停顿共用同一个 socket 读超时。
+    stream_timeout: float = 30.0
+
     def model_for(self, task: str, default: str = "") -> str:
         """按任务取模型；没配置就返回 default（调用方再退 fast_model / model）。"""
         value = (self.routes or {}).get(str(task or ""))
@@ -213,6 +223,11 @@ class AgentConfig:
             "daily_call_limit": self.daily_call_limit,
             "routes": dict(self.routes or {}),
             "vision_model": self.vision_model if self.vision_ready else "",
+            "ops_mode": self.ops_mode,
+            "claim_audit": self.claim_audit,
+            "ops_gate": self.ops_gate,
+            "summary_guard": self.summary_guard,
+            "stream_timeout": self.stream_timeout,
         }
 
 
@@ -258,6 +273,16 @@ def load_config() -> AgentConfig:
         if str(value or "").strip()
     }
 
+    ops_mode = str(agent.get("ops_mode") or "shadow").strip().lower()
+    if ops_mode not in ("off", "shadow", "on"):
+        ops_mode = "shadow"
+    claim_audit = _as_bool(agent.get("claim_audit"), True)
+    ops_gate = str(agent.get("ops_gate") or "shadow").strip().lower()
+    if ops_gate not in ("off", "shadow", "on"):
+        ops_gate = "shadow"
+    summary_guard = _as_bool(agent.get("summary_guard"), True)
+    stream_timeout = max(10.0, min(_as_float(agent.get("stream_timeout"), 30.0), 180.0))
+
     vision_base, vision_key, vision_model, vision_style, vision_uses_agent = (
         _vision_settings(vision, base=base, token=token, model=model, fast=fast))
     return AgentConfig(
@@ -285,4 +310,9 @@ def load_config() -> AgentConfig:
         daily_cost_limit=_as_limit(agent.get("daily_cost_limit")),
         daily_call_limit=int(_as_limit(agent.get("daily_call_limit"))),
         routes=routes,
+        ops_mode=ops_mode,
+        claim_audit=claim_audit,
+        ops_gate=ops_gate,
+        summary_guard=summary_guard,
+        stream_timeout=stream_timeout,
     )

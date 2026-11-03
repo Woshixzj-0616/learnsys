@@ -33,6 +33,11 @@ MIN_MEMORY_CHARS = 6
 _RUNNING: set[int] = set()
 _LOCK = threading.Lock()
 
+# 摘要防污染：没有分级标记的绝对结论，补一个「未验证」提示（只追加，不改写原句）。
+ABSOLUTE_WORDS = ("根因是", "根因就是", "一定是", "已解决", "已确认", "已分析出根因")
+UNVERIFIED_WORDS = ("候选", "未验证", "待确认", "需要你确认")
+GUARD_MARK = "（部分排错结论未验证）"
+
 SYSTEM = """你是「学习工作台」的会话整理器。读「已有会话摘要」和「最近对话」，只输出一个 JSON 对象：
 {"summary": "不超过 200 字的中文摘要", "memories": [{"content": "一条长期规矩", "kind": "preference"}]}
 
@@ -40,6 +45,9 @@ SYSTEM = """你是「学习工作台」的会话整理器。读「已有会话�
 - 写清用户在学什么、卡在哪、已经解决了什么、下一步可以做什么；
 - **必须把旧摘要和最近对话合并成一份新摘要**：旧摘要里仍然有效的信息保留，
   已经过时、被推翻或被用户纠正的内容删掉；不能只写最近几轮而丢掉更早的内容；
+- 排错 / 配置类结论必须分级：用户确认过的现象、工具查到的原文写事实；
+  凭记忆或社区经验的候选写「候选：…（未验证）」；
+- 不许把未验证的候选写成「根因是 / 根因就是 / 已解决 / 已确认 / 已分析出根因」；
 - 只陈述对话里真实出现的内容，不编造；没有实质内容就给空串。
 
 记忆要求：
@@ -136,6 +144,17 @@ def _parse(text: str) -> dict:
     return {"summary": summary, "memories": memories if isinstance(memories, list) else []}
 
 
+def _sanitize_summary(text: str) -> str:
+    """未验证的候选不许写成「根因是 / 已解决」：只追加标记，不做二次模型调用。"""
+    value = " ".join(str(text or "").split())
+    if not value:
+        return value
+    if any(word in value for word in ABSOLUTE_WORDS) and not any(
+            word in value for word in UNVERIFIED_WORDS):
+        return value + GUARD_MARK
+    return value
+
+
 def _generate(conn, conversation_id: int, data_root) -> dict:
     transcript = _transcript(conn, conversation_id)
     if not transcript:
@@ -169,7 +188,11 @@ def _generate(conn, conversation_id: int, data_root) -> dict:
     if result is not None and getattr(result, "usage", None):
         agent_usage.record(data_root, source="post_turn", model=fast.model,
                            usage=result.usage, cfg=fast)
-    return _parse(text)
+    payload = _parse(text)
+    summary = payload.get("summary") or ""
+    if summary and getattr(cfg, "summary_guard", True):
+        payload["summary"] = _sanitize_summary(summary)
+    return payload
 
 
 def run_once(conversation_id: int, data_root) -> dict:

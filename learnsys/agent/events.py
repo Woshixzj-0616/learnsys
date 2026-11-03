@@ -10,6 +10,7 @@
 - tool_start 开始查本地记录 / 读文档（data.goal = 计划步骤标题，data.step = 步骤序号）
 - tool_end   工具返回（data.preview 摘要，data.ok 是否成功，data.denied 写入被拒）
 - confirm    写操作等待用户确认（data.request_id / tool / summary）
+- gate       取证门控（data.needed / kind / round / applied；shadow 时 applied=false）
 - check      自检结果（data.ok / data.issues / data.checked；重写后再发一次）
 - rewrite    自检后重写的完整答案（data.text 替换当前正文，不是追加）
 - done       本轮完成（data.text 是完整正文）

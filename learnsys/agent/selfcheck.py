@@ -22,6 +22,7 @@ ANSWER_STAMP_RE = re.compile(
     r"\[(?:问答|课堂转写|屏幕文字)?\s*(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\]")
 CLAIM_RE = re.compile(
     r"(资料|记录|错题本)[^。！？\n]{0,10}(说|提到|显示|写着|有|记载|表明|指出|说法)")
+URL_RE = re.compile(r"https?://[^\s<>\"'（）()【】\[\]，。；、一-鿿]+")
 
 REWRITE_SYSTEM = """你是学习工作台的校对员。用户会给你一份草稿、以及本轮工具实际返回的证据。
 你的任务：只修正草稿里**无法由证据支持**的引用和说法，其余内容、结构、语气尽量保持原样。
@@ -91,6 +92,19 @@ class Evidence:
                 self.wrong_ids.add(int(match.group(1)))
         for match in STAMP_RE.finditer(text):
             self.stamps.add(match.group(1))
+
+    def urls(self) -> set[str]:
+        """本轮证据里出现过的 http(s) 链接（claims.audit 用同一份台账）。"""
+        found: set[str] = set()
+        for item in self.results:
+            for match in URL_RE.finditer(str(item.get("content") or "")):
+                found.add(match.group(0).rstrip(".,;:!?'\"。，；：、"))
+        return found
+
+    def has_tool(self, name: str) -> bool:
+        """本轮是否调用过某个工具（按 evidence.results 的 name）。"""
+        return any(str(item.get("name") or "") == str(name or "")
+                   for item in self.results)
 
     def digest(self, limit: int = 7000) -> str:
         """给重写模型看的证据摘要（截断，不把整库塞进去）。"""

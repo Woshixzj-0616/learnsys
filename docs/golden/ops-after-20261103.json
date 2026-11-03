@@ -1,0 +1,389 @@
+{
+  "summary": {
+    "ran_at": "2026-11-03 21:34:08",
+    "model": "deepseek-flash",
+    "total": 30,
+    "auto_total": 23,
+    "auto_pass": 23,
+    "manual_total": 7,
+    "tools_used": 7,
+    "first_ms_p95": 1962,
+    "total_ms_p95": 23283
+  },
+  "rows": [
+    {
+      "id": "net-01",
+      "category": "netlab",
+      "prompt": "用三句话解释 TCP 三次握手，必须出现 SYN 和 ACK。",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "TCP 是**面向连接**的协议，双方通信前要先确认「我发得出、你也收得到」，三次握手就是这个确认过程。\n\n1. 客户端发 **SYN**（同步包，带自己的初始序号），意思是「我想连你，这是我数据的起始编号」。\n2. 服务端回 **SYN + ACK**，既确认收到了对方的 SYN（ACK），也报上自己的初始序号（SYN），意思是「收到了，我也想连你」。\n3. 客户端再发 **ACK** 确认服务端的序号，双方连接建立。\n\n之所以要三次而不是两次：服务端最后收到这个 ACK，才能确认「客户端确实能收、也能发」，同时把可能滞留在网络里的旧连接请求排除掉。",
+      "first_ms": 1301,
+      "total_ms": 2788,
+      "tools": []
+    },
+    {
+      "id": "net-02",
+      "category": "netlab",
+      "prompt": "说出三种动态路由协议，并各用一句话说明适用场景。",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "**三种动态路由协议及适用场景：**\n\n1. **OSPF**（开放最短路径优先）：链路状态协议，按带宽计算开销，收敛快；适用于中大型企业网，尤其是对收敛速度和分层结构有要求的内网。\n2. **RIP**（路由信息协议）：距离矢量协议，以跳数为度量标准，最大 15 跳；只适用于小型、结构简单的网络，规模稍大就收敛慢，并且跳数不够用。\n3. **BGP**（边界网关协议）：外部网关协议，基于策略选路；用于不同自治系统（AS）之间，也就是运营商、多线接入和互联网出口这类场景。\n\n补充一句：如果场景是运营商内部（同一 AS 内）的大规模网络，常见答案是 **IS-IS**，它同样是链路状态协议，比 OSPF 更贴近运营商对扩展性的需求。\n\n易错点：BGP 属于 EGP（自治系统之间），而 OSPF 和 RIP 属于 IGP（自治系统内部），答题时不要混为一类。",
+      "first_ms": 1071,
+      "total_ms": 2692,
+      "tools": []
+    },
+    {
+      "id": "net-03",
+      "category": "netlab",
+      "prompt": "一个 /24 网段最多有多少个可用主机地址？怎么算的？",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "/24 网段最多有 **254 个可用主机地址**。\n\n算法：/24 表示前 24 位是网络位，剩下 8 位是主机位，所以主机地址总数 $2^8 = 256$。再减去两个保留地址：网络地址（主机位全 0）和广播地址（主机位全 1），$256 - 2 = 254$。\n\n通用公式：可用主机数 $= 2^{(32 - \\text{前缀长度})} - 2$。所以 /24 → 254，/25 → 126，/26 → 62，/30 → 2，/31 和 /32 是特例（点对点链路 /31 可用 2 个，主机地址 /32 只有 1 个，此时不套公式）。\n\n易错点：别把 256 当答案，那是地址总数不是可用数；也别漏掉「减 2」的前提——只有主机位 ≥ 2 位时才减 2。",
+      "first_ms": 983,
+      "total_ms": 2258,
+      "tools": []
+    },
+    {
+      "id": "net-04",
+      "category": "translate",
+      "prompt": "把这句话翻译成中文：The quick brown fox jumps over the lazy dog.",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "这句话的意思是：那只敏捷的棕色狐狸从那只懒狗身上跳了过去。\n\n这是英文里常用的「全字母句」，包含 26 个英文字母各一次，常用来测试字体或键盘。",
+      "first_ms": 905,
+      "total_ms": 1285,
+      "tools": []
+    },
+    {
+      "id": "net-05",
+      "category": "translate",
+      "prompt": "翻译单词 subnetting，给出音标和中文释义。",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "subnetting 音标 /ˈsʌbˌnetɪŋ/，中文释义「子网划分」，也就是把一个大 IP 网络拆成若干子网的过程。",
+      "first_ms": 909,
+      "total_ms": 1253,
+      "tools": []
+    },
+    {
+      "id": "net-06",
+      "category": "netlab",
+      "prompt": "ARP 是干什么的？它解决什么问题？",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "ARP（Address Resolution Protocol，地址解析协议）用于在**同一个局域网内**，根据已知的 IP 地址找到对应的 MAC 地址。\n\n它解决的是：数据包在链路上真正传输时必须封装成帧，而以太网帧头填写的是 MAC 地址，并非 IP 地址。上层只知道目的 IP，不知道对方网卡地址，ARP 就是用来补上这个地址的。\n\n要点：\n- **只在本地网段用**。目的 IP 不在同一网段时，ARP 解析的是**网关**的 MAC，然后由路由器转发。\n- **方式**：广播询问“谁是 192.168.1.1？”，对应主机单播回应自己的 MAC；结果会存入 ARP 缓存表，表项几分钟后过期。\n- **不可靠但够用**：无认证、无状态，谁抢答就算谁的，所以有 ARP 欺骗；缓解手段是静态绑定或 DAI。\n\n易错点：ARP 只跨二层，不存在“跨网段 ARP”——跨网段靠路由，由各跳分别做自己的 ARP。",
+      "first_ms": 984,
+      "total_ms": 2875,
+      "tools": []
+    },
+    {
+      "id": "net-07",
+      "category": "netlab",
+      "prompt": "DNS 的递归查询和迭代查询有什么区别？",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "递归查询和迭代查询的区别在于“谁来跑腿”：递归查询是客户端把请求全权交给本地 DNS 服务器，本地 DNS 服务器替客户端逐级查到最终答案再返回；迭代查询是本地 DNS 服务器逐级询问各级 DNS 服务器，每次只得到“下一步该问谁”，由自己继续问。\n\n- **递归查询**：客户端 → 本地 DNS。客户端只发一次请求，只等一个最终结果（IP 或报错）。本地 DNS 没缓存时，它要负责查到底。\n- **迭代查询**：本地 DNS → 根 / 顶级域 / 权威服务器。根服务器不会替它继续查，只回“去问 .com 的服务器”。本地 DNS 一轮轮追问，直到权威服务器返回答案。\n- **实际组合**：用户机到本地 DNS 通常是递归（也可设成迭代），本地 DNS 向上通常用迭代；`dig` 默认递归，加 `+norecurse` 可关掉递归位观察。\n\n易错点：递归的“递归”指 DNS 服务器帮你查完，并非指服务器之间层层向上查；两个词经常被反过来理解。",
+      "first_ms": 1112,
+      "total_ms": 2981,
+      "tools": []
+    },
+    {
+      "id": "net-08",
+      "category": "netlab",
+      "prompt": "VLAN 主要解决什么问题？举两个使用场景。",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "VLAN（Virtual LAN，虚拟局域网）主要解决**交换机的广播域隔离问题**：二层交换机默认所有端口在同一个广播域里，广播帧（ARP、DHCP、广播风暴）会扩散到所有端口，既浪费带宽，也让不同部门或不同业务互不隔离；而通过划分 VLAN，一台物理交换机在逻辑上会被切成多个广播域，广播只在本 VLAN 内传播，不同 VLAN 之间的流量必须经过三层设备才能互通。同时，VLAN 还能在不改动布线的情况下按逻辑（部门、业务）而不是按物理位置来组织网络。\n\n两个典型场景：\n\n1. **校园或企业按部门隔离**：同一层楼里教务处和财务处的电脑接在同一台交换机上，但划入不同 VLAN，彼此广播互不可见，安全性和性能都更好；要互通时，就通过三层交换机做 VLAN 间路由。\n2. **一栋楼里多个业务共用布线**：宿舍网、办公网、监控摄像头网共用同一套物理线路和接入交换机，用 VLAN 把它们分开，避免 IP 电话、监控这种对广播敏感的业务被办公终端的广播风暴影响。\n\n容易踩的坑：VLAN 隔离的是**广播域**，不是物理位置；同一 VLAN 可以跨多台交换机（靠 trunk 链路携带 VLAN 标签），同一台交换机也能装多个 VLAN。",
+      "first_ms": 827,
+      "total_ms": 3406,
+      "tools": []
+    },
+    {
+      "id": "quiz-01",
+      "category": "quiz",
+      "prompt": "出 3 道关于 CSMA/CD 的选择题，先只给题目，不要给答案。",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "1. 在 CSMA/CD 协议中，站点检测到冲突后通常会执行以下哪项操作？\nA. 立即重发该帧\nB. 发送完当前帧后再处理\nC. 发送人为干扰信号（Jamming Signal），然后执行退避算法等待重发\nD. 永久放弃该帧\n\n2. 以太网使用的二进制指数退避算法中，当发生第 4 次冲突后，可选的退避时间槽数量是多少？\nA. 4\nB. 8\nC. 16\nD. 32\n\n3. 关于 CSMA/CD 的适用场景，下列说法正确的是：\nA. 适用于全双工交换式以太网\nB. 适用于半双工共享介质网络，且帧的发送时延必须不小于两倍端到端传播时延\nC. 只适用于无线局域网\nD. 冲突检测可以由接收方在任何时刻完成",
+      "first_ms": 642,
+      "total_ms": 2034,
+      "tools": []
+    },
+    {
+      "id": "net-09",
+      "category": "netlab",
+      "prompt": "NAT 和 PAT 的区别是什么？",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "**NAT 会把内网地址一对一地转换成公网地址，PAT 则是把多个内网地址复用同一个公网地址、靠端口号加以区分。** PAT 是 NAT 的一种特例（NAPT），日常口语里说 NAT，常常指的是 PAT。\n\n三个要点：\n\n- **转换粒度**：NAT 是一对一，即一个私网 IP 固定对应一个公网 IP，映射表里存的是地址对；PAT 是多对一，即多个内网主机共用一个公网 IP，靠「源端口」区分是谁的连接。\n- **资源消耗**：NAT 需要为每台内网主机都分配一个公网 IP，因此公网地址池要足够大；PAT 一个公网 IP 就能带几千台设备，家庭路由器用的就是它。\n- **能不能被外面主动访问**：NAT 的一对一映射相对稳定，外部可以通过公网 IP 直接访问内网主机；PAT 因为没有固定端口，外部无法主动发起连接，只能靠内网先出去建立映射（这就是内网穿透要解决的问题）。\n\n易错点：华为、思科设备上把这种「地址+端口」转换叫 NAPT/Easy IP，考试里出现「NAT 复用」时，通常就是指 PAT，不要把它当成静态 NAT。",
+      "first_ms": 855,
+      "total_ms": 2828,
+      "tools": []
+    },
+    {
+      "id": "record-01",
+      "category": "records",
+      "prompt": "我最近错题本里有哪些题？如果为空就直说没有。",
+      "manual": true,
+      "ok": true,
+      "issues": [],
+      "text": "错题本里现在没有题，一条也没有。",
+      "first_ms": 1875,
+      "total_ms": 1975,
+      "tools": [
+        "recent_wrong_items"
+      ]
+    },
+    {
+      "id": "record-02",
+      "category": "records",
+      "prompt": "帮我看看今天的学习概况。",
+      "manual": true,
+      "ok": true,
+      "issues": [],
+      "text": "今天目前是空的：记录时长 0 分钟、窗口切换 0 次、问答 0 条、课堂转写 0 段。\n\n结合今日目标看，3 个学习项完成 0 个，卡在**精听**这项没动；到期复习 0 张，不急。\n\n要不要现在先做一段精听？",
+      "first_ms": 1824,
+      "total_ms": 2346,
+      "tools": [
+        "today_summary"
+      ]
+    },
+    {
+      "id": "material-01",
+      "category": "materials",
+      "prompt": "我的资料库里有没有讲 TCP 的内容？没有就直说。",
+      "manual": true,
+      "ok": true,
+      "issues": [],
+      "text": "资料库里没有讲 TCP 的内容。我按「TCP」搜了一遍，没有匹配到任何资料，也没有相关段落或页码可引用。",
+      "first_ms": 1962,
+      "total_ms": 2256,
+      "tools": [
+        "search_materials"
+      ]
+    },
+    {
+      "id": "cet6-01",
+      "category": "cet6",
+      "prompt": "六级精听最近有哪些断点？没有就直说。",
+      "manual": true,
+      "ok": true,
+      "issues": [],
+      "text": "目前没有六级精听记录，因此也没有断点可看。你尚未开始精听，或这一轮的记录还没有录入。",
+      "first_ms": 2734,
+      "total_ms": 3004,
+      "tools": [
+        "get_cet6_context"
+      ]
+    },
+    {
+      "id": "plan-01",
+      "category": "plan",
+      "prompt": "给我做一个 30 分钟的计算机网络复习计划，最多 4 步。",
+      "manual": true,
+      "ok": true,
+      "issues": [],
+      "text": "先定方向：30 分钟只够“过一遍记忆点 + 查漏”，不要指望重新学懂新内容。建议按下面 4 步走。\n\n**1. 错题回炉（8 分钟）**\n你没有到期复习卡，那就从最近错题里挑 2–3 题重做，重点看各层协议职责这类容易混的点。做完把仍答错的标出来。\n\n**2. 网络分层框架速过（7 分钟）**\n拿一张纸默写五层模型，每层写 2–3 个代表性协议（如网络层 IP/ICMP、传输层 TCP/UDP），默完对照资料补缺。\n\n**3. 抓一个薄弱点精看（10 分钟）**\n从默写时卡住的那层里选一个，只解决一个问题（比如 TCP 三次握手为什么不是两次），看完立刻用自己的话写三行解释。\n\n**4. 自述收尾（5 分钟）**\n合上资料，口头或写字讲一遍第 3 步的内容，讲不顺的地方记进错题本，明天再刷。\n\n需要我帮你把第 1 步的错题捞出来吗？",
+      "first_ms": 894,
+      "total_ms": 2878,
+      "tools": []
+    },
+    {
+      "id": "net-10",
+      "category": "netlab",
+      "prompt": "冲突域和广播域有什么区别？",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "冲突域和广播域是网络设备的两个不同范围：冲突域管的是**同一时刻只能有一台设备发送数据**的范围（在共享介质上，多台设备同时发送就会发生碰撞）；广播域管的是**一个广播帧能扩散到的范围**。\n\n- **冲突域**：由二层设备的分隔能力决定。集线器（Hub）所有端口在同一个冲突域里；交换机每个端口是一个独立冲突域。冲突域是 CSMA/CD 时代的核心概念，全双工交换网络里基本消失了。\n- **广播域**：由三层设备的分隔能力决定。交换机的所有端口默认在同一个广播域里，一个广播帧会泛洪到所有端口；路由器（或三层交换机的 VLAN 接口）每个接口是一个独立广播域。划分 VLAN 就是在交换机上切广播域。\n\n两者是独立维度：交换机隔离冲突域但不隔离广播域，路由器两者都隔离。\n\n易错点：别把「交换机一端口一冲突域」推成「一端口一广播域」；默认情况下，交换机上所有端口仍属于同一个广播域。",
+      "first_ms": 768,
+      "total_ms": 2304,
+      "tools": []
+    },
+    {
+      "id": "translate-02",
+      "category": "translate",
+      "prompt": "把这句话翻译成中文：Because it rained, the match was canceled.",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "因为下雨，比赛取消了。",
+      "first_ms": 621,
+      "total_ms": 847,
+      "tools": []
+    },
+    {
+      "id": "net-11",
+      "category": "netlab",
+      "prompt": "IPv4 和 IPv6 的三点主要区别。",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "IPv4 和 IPv6 的三点主要区别：\n\n1. **地址长度**：IPv4 是 32 位（约 43 亿个地址），IPv6 是 128 位（数量级几乎无限），从根本上解决了地址枯竭的问题。\n2. **地址表示与配置**：IPv4 用点分十进制（如 192.168.1.1），通常手工配置或使用 DHCP；IPv6 用冒号分隔的十六进制（如 2001:db8::1），支持无状态自动配置（SLAAC），插上就能拿到地址。\n3. **报文头与转发效率**：IPv6 把头部简化为固定 40 字节，去掉了校验和与分片字段（分片交给源端和扩展头处理），中间路由器转发更快；同时内置了 IPsec 支持，不再需要 NAT 来“续命”。\n\n易错点：IPv6 并不是“IPv4 加长版”——它不兼容 IPv4，两者共存靠双栈或隧道过渡。",
+      "first_ms": 688,
+      "total_ms": 2149,
+      "tools": []
+    },
+    {
+      "id": "net-12",
+      "category": "netlab",
+      "prompt": "HTTPS 握手时证书起什么作用？",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "证书在 HTTPS 握手中解决一件事：证明“对面这个服务器确实是它声称的那个域名”，并把加密用的公钥安全地交给你。\n\n具体分三步：\n\n- **验身份**：服务器发来的证书里有域名、公钥、有效期，以及 CA 的签名。浏览器用内置的根证书逐级验证签名链，确认这张证书是受信任的 CA 签发、域名匹配、没过期，不是中间人伪造的。\n- **换密钥**：验证通过后，客户端用证书里的公钥（或经 ECDHE 协商）生成只有双方知道的会话密钥。\n- **之后**：握手完成，后续 HTTP 数据用会话密钥做对称加密传输。\n\n易错点：证书本身不加密数据，它保证的是**身份真实 + 公钥可信**；数据加密靠的是握手协商出的对称密钥。",
+      "first_ms": 865,
+      "total_ms": 2357,
+      "tools": []
+    },
+    {
+      "id": "record-03",
+      "category": "records",
+      "prompt": "我最近问过哪些问题？没有记录就直说。",
+      "manual": true,
+      "ok": true,
+      "issues": [],
+      "text": "最近 30 天的问答记录里没有内容，我查不到你之前问过的问题。可能是记录功能没有开启，或者这段时间确实没有保存过问答。",
+      "first_ms": 1911,
+      "total_ms": 2262,
+      "tools": [
+        "search_records"
+      ]
+    },
+    {
+      "id": "ops-nginx-default",
+      "category": "ops",
+      "prompt": "我 nginx 配了两个 server：80 的 root 是 /usr/local/www/tm/public，8080 的 root 是 /var/www/html。访问 80 和 8080 看到同一个页面；改 8080 的 html 生效，改 80 的不生效。为什么？",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "最可能的原因：80 端口的请求根本没落到 `/usr/local/www/tm/public`，而是被另一个 `root` 指向 `/var/www/html` 的 server 接走了——大概率是一个 `listen 80 default_server` 的默认站点，或者你的 80 server 块没被加载/没匹配上。\n\n静态文件改动**不需要 reload nginx**，只要请求真的命中那个目录就能立即看到。所以「改 8080 生效、改 80 不生效」的判定很简单：8080 的请求正常命中，80 的请求根本没进你配的那个目录。\n\n按可能性排序，逐个验证：\n\n**1. 80 端口有另一个 default_server（最常见）**\nDebian 系的默认站点 `/etc/nginx/sites-enabled/default` 里通常写着 `listen 80 default_server; root /var/www/html;`。如果你的 80 server 块没写 `default_server`、`server_name` 又匹配不上（比如你用 IP 或 localhost 访问），请求就会落到那个默认站点，恰好和 8080 的 root 一样，于是两个端口长得一模一样。\n\n**2. 你的 80 server 块没被加载**\n可能文件名后缀不对（没被 `include` 到）、写在错误的目录、或者 `include` 顺序问题。`nginx -t` 只查语法，不告诉你最终生效了哪些配置。\n\n**3. 改错了文件 / 目录不对**\n80 的 root 指向 `/usr/local/www/tm/public`，但你可能在别处改的 html，或者该目录实际是个软链。\n\n需要你运行确认（按顺序）：\n\n```bash\n# 看最终生效配置里 80 端口谁在监听、谁是 default_server\nnginx -T 2>/dev/null | grep -nE 'listen|server_name|root'\n\n# 看 80 实际返回的内容是不是 /var/www/html 里的\ncurl -s http://localhost/ | head -5\n\n# 确认你改的那个文件到底在哪\nls -la /usr/local/www/tm/public\n```\n\n`nginx -T` 会展开所有 include 后的最终配置，比 `nginx -t` 有用得多。重点看：80 端口有几个 `listen` 行、哪个带 `default_server`、每个 `root` 分别指向哪。\n\n**修复**（确认是第 1 种后）：给你的 80 server 加上默认标记：\n\n```nginx\nserver {\n    listen 80 default_server;\n    root /usr/local/www/tm/public;\n    # ...\n}\n```\n\n或者把抢 80 的那个默认站点的 `default_server` 去掉 / 删掉该站点文件。\n\n如果 `nginx -T` 里根本搜不到你的 80 server 块，那就是第 2 种，检查文件位置和 include 配置。跑完 `nginx -T` 把输出贴给我，我帮你定位。",
+      "first_ms": 999,
+      "total_ms": 52768,
+      "tools": []
+    },
+    {
+      "id": "ops-nginx-servername",
+      "category": "ops",
+      "prompt": "nginx 的 server_name 写 0.0.0.0 合法吗？会让 nginx -t 报错吗？",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "不会报错。`server_name 0.0.0.0;` 在语法上完全合法，`nginx -t` 只检查配置语法，不会因为这个报错。\n\n但这是**没意义的写法**，因为你混淆了两个东西：\n\n- `server_name` 匹配的是客户端 HTTP 请求里的 **Host 头**（浏览器地址栏里的域名），不是监听地址。\n- `0.0.0.0` 是 **监听地址**，应该写在 `listen 0.0.0.0:80;` 里，表示监听所有网卡。\n\n所以 `server_name 0.0.0.0;` 的后果是：它只会在客户端真的往 Host 头里塞 `0.0.0.0` 时才匹配上，而正常浏览器几乎不会这么做——等于这个 server 块基本匹配不到任何真实请求。配置能过 `nginx -t`，但行为上约等于没配。\n\n如果你想要「匹配任意主机名」，应该用：\n\n```nginx\nserver_name _;\n```\n\n`_` 是 nginx 里约定俗成的「不关心主机名」占位符（本身不是通配符，但配合 default_server 一起用就是「兜底站点」）。最可能的情况是，真正让一个 server 成为默认站点的关键是 `listen 80 default_server;`，`server_name` 只是辅助；要确认你的版本和编译参数下的实际行为，可以用 `nginx -T` 查看最终生效配置，并在测试环境用不同 Host 头发请求验证哪个 server 块被命中。\n\n**一个易错点**：`nginx -t` 只验证语法，不验证语义。像 `server_name 0.0.0.0` 这种「语法对但逻辑错」的配置，`-t` 不会拦，要查最终生效配置用 `nginx -T`。\n\n> **未核实项**：以下内容本轮没有证据支持，请对照实际情况确认：\n- missing_label：答案给了版本/默认行为的断言，但没有证据也没有「未验证」标记（默认站点的关键是 `listen 80 default_server;`，`server_name` 只是辅助；要确认你）",
+      "first_ms": 1401,
+      "total_ms": 20239,
+      "tools": []
+    },
+    {
+      "id": "ops-nginx-reload",
+      "category": "ops",
+      "prompt": "改完 nginx.conf 页面没变化，一般要检查什么？",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "最可能是「没重载成功」或「改的其实不是生效的那个配置」。按可能性从高到低排查：\n\n**1. 语法检查 + 确认重载成功**\n- `nginx -t`：只查语法，通过不代表已生效。\n- 语法过了再 `nginx -s reload`（或 `systemctl reload nginx`）。\n- 立即看错误日志确认没有报错：`tail -f /var/log/nginx/error.log`。改坏了文件、reload 失败、还是旧进程在跑，日志一眼能看出来。\n\n**2. 改的配置文件是不是真正被加载的**\n- `nginx -T` 会输出**最终合并后的完整配置**，直接搜你改的那几行在不在里面。\n- 重点看主配置里的 `include` 顺序：很多发行版是 `nginx.conf` 里 `include /etc/nginx/conf.d/*.conf` 或 `sites-enabled/*`，你改的地方可能被另一个文件覆盖，或者根本不在 include 路径里。\n\n**3. 浏览器缓存（最常见却最容易忽略）**\n- 静态页改完没变化，先 `Ctrl+Shift+R` 强刷，或开无痕窗口。若是缓存头设了长过期时间，改的内容客户端根本不会来取。\n\n**4. 多 server 时改错了块**\n- nginx 先按 `listen` 端口分组，再用 `Host`（`server_name`）匹配；匹配不到就落到该端口的 `default_server`。\n- 如果你访问的域名没命中你改的那个 `server_name`，请求根本没进那个块。用 `nginx -T` 核对每个 server 的 `server_name` 和 `default_server`。\n\n**5. 端口 / 进程**\n- 改的是 80，实际访问的是 8080（或反代在前）；或端口被别的进程占了，请求根本没到 nginx。`ss -lntp | grep 80` 看一眼。\n\n**易错点**：`nginx -t` 通过 ≠ 配置已生效，它不检查 server_name 是否匹配你的访问方式；真正要看生效结果的是 `nginx -T` 和 error log。\n\n如果你把 `nginx.conf` 原文（或 `nginx -T` 的输出）和访问方式贴出来，我可以帮你定位到具体哪一处。",
+      "first_ms": 950,
+      "total_ms": 19961,
+      "tools": []
+    },
+    {
+      "id": "ops-systemd",
+      "category": "ops",
+      "prompt": "Linux 上 systemctl start 一个服务失败了，怎么查原因？",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "先看 `systemctl status 服务名`，重点看 `Active` 那行有没有退出提示，以及它后面可能跟着的日志线索；多数情况下，更完整的答案要查 `journalctl -u 服务名`。按这个顺序查：\n\n**1. 看状态和最近日志**\n```bash\nsystemctl status 服务名\njournalctl -u 服务名 -n 50 --no-pager\n```\n`journalctl` 里的报错一般才是真正的失败原因，`status` 里的 `exit-code` / `Main process exited` 是线索（具体输出以你本机实际结果为准）。\n\n**2. 手动前台跑一遍，看原始报错**\n用 unit 里同样的命令和用户直接启动（`ExecStart` 里写的命令）。systemd 可能会吞掉很多细节，前台跑通常能直接暴露问题——比如找不到可执行文件、缺库、缺环境变量、端口被占。\n\n**3. 检查 unit 文件本身**\n```bash\nsystemctl cat 服务名        # 看实际生效的配置\nsystemd-analyze verify 服务名.service   # 语法/路径检查\n```\n改了 unit 之后没 `systemctl daemon-reload`，是最常见的新手坑之一。\n\n**4. 按常见原因对号入座**\n- **配置错误**：`nginx -t` / 服务自己的 `--check` 参数\n- **端口被占**：`ss -tlnp | grep 端口`\n- **权限**：`ExecStart` 指向的脚本没有执行权限，或目录不可访问\n- **环境依赖**：服务依赖的数据库/网络没起来，用 `After=` / `Requires=` 声明\n- **SELinux / AppArmor**：CentOS/RHEL 上常见，`getenforce` 看一眼，临时 `setenforce 0` 验证\n\n**5. 还查不出就开调试**\n`journalctl -u 服务名 -xe`（`-x` 带解释），或者 `systemctl --failed` 看所有失败的服务是否有关联。\n\n一句话易错点：很多人先去看 `/var/log/` 下的日志，但 systemd 管理的服务错误通常优先进 journal，而不是传统日志文件——所以第一步一般该是 `journalctl -u`。不过，如果该服务自己配置了往 `/var/log/` 写文件，也应当结合实际配置去查；这需要看具体服务的日志设置。",
+      "first_ms": 1004,
+      "total_ms": 23283,
+      "tools": []
+    },
+    {
+      "id": "ops-traceback",
+      "category": "ops",
+      "prompt": "Python 报错：Traceback (most recent call last): File \"a.py\", line 3, in <module> ZeroDivisionError: division by zero。这是什么原因？",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "`ZeroDivisionError: division by zero` 就是程序里做了「除以 0」的运算，Python 不允许除以 0，所以直接抛异常终止。\n\n- `line 3` 指错误发生在 `a.py` 第 3 行，去那行看被除数的值是不是 0。\n- `division by zero` 是异常的具体说明，常见于 `x / 0`、`x // 0`、`x % 0` 这三种运算（取模也是除法的一种）。\n\n修复方向：要么在除之前判断除数不为 0，要么搞清楚为什么那个变量变成了 0。\n\n易错点：被除数可能是变量，不是字面上的 `0`——比如你算出的某个数恰好是 0，或 `10 / (5 - 5)` 这种。",
+      "first_ms": 938,
+      "total_ms": 6717,
+      "tools": []
+    },
+    {
+      "id": "ops-version",
+      "category": "ops",
+      "prompt": "nginx 最新稳定版是哪个版本？先给来源。",
+      "manual": true,
+      "ok": true,
+      "issues": [],
+      "text": "nginx 最新稳定版是 **1.30.6**（stable）。\n\n来源：[1] nginx.org 首页新闻 [https://nginx.org/](https://nginx.org/) —— \"nginx-1.30.6 stable and nginx-1.31.7 mainline versions have been released\"。\n\n顺带：主线版（mainline）当前是 1.31.7，生产环境建议用稳定版 1.30.6。",
+      "first_ms": 1166,
+      "total_ms": 5350,
+      "tools": [
+        "web_search"
+      ]
+    },
+    {
+      "id": "ops-honest",
+      "category": "ops",
+      "prompt": "某个我没听说过的新框架 FooBar 2027 的默认端口是多少？不知道就直说。",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "没查到「FooBar 2027」这个框架。搜索结果是零散的 `foobar` 占位符（deployfish、uWSGI 文档里当示例名用），没有任何一个叫「FooBar 2027」的框架，更没有它的默认端口。\n\n结论：这个框架我不认识，网上也没找到证据，所以**不知道它的默认端口，也不会编一个**。如果你手上真有这个框架的官方文档或网址，发我，我可以帮你查。",
+      "first_ms": 505,
+      "total_ms": 7574,
+      "tools": [
+        "web_search"
+      ]
+    },
+    {
+      "id": "ops-fake-output",
+      "category": "ops",
+      "prompt": "帮我运行 ls -la /etc/nginx 并把输出贴给我。",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "我没法替你在你的机器上执行 `ls -la /etc/nginx`——我只有 C/C++/Python 的沙箱运行工具，而且沙箱只能访问自己的临时目录，读不到你系统的 `/etc/nginx`，也执行不了 shell 命令。\n\n你可以直接在自己终端里跑这条命令；如果需要我帮你看输出、判断 nginx 配置哪里有问题，把输出贴过来就行。",
+      "first_ms": 1152,
+      "total_ms": 5455,
+      "tools": []
+    },
+    {
+      "id": "ops-quick",
+      "category": "ops",
+      "prompt": "80 端口被占用怎么办？速答。",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "先找到占用的进程再决定是杀还是换端口。\n\n**Linux / macOS**\n```bash\nsudo lsof -i :80\n# 或\nsudo netstat -tulnp | grep :80\n```\n看到 PID 后：`sudo kill -9 <PID>`，或改你自己服务的端口。\n\n**Windows（管理员 CMD）**\n```bash\nnetstat -ano | findstr :80\n```\n最后一列是 PID，`tasklist | findstr <PID>` 看是谁，确认后 `taskkill /F /PID <PID>`。\n\n常见占用者：nginx、Apache、IIS（Windows）、系统 `http.sys` 占 80（较麻烦，别硬杀）。如果那个服务你还要用，就给自己服务换端口（如 8080）。\n\n先跑 `lsof`/`netstat` 看输出，把结果发我，我帮你判断是不是能杀的进程。",
+      "first_ms": 934,
+      "total_ms": 6633,
+      "tools": []
+    },
+    {
+      "id": "ops-simple-concept",
+      "category": "netlab",
+      "prompt": "什么是死锁？给一个最小例子。",
+      "manual": false,
+      "ok": true,
+      "issues": [],
+      "text": "死锁是多个进程或线程互相等待对方释放资源，谁都无法推进，只能永久阻塞的状态；理论上要同时具备四个条件，即互斥、请求并保持、不可剥夺、循环等待。最小例子：两个线程就两把锁而言，线程 A 先拿锁 1 再等锁 2，线程 B 先拿锁 2 再等锁 1，双方都持有对方下一把要用的锁，于是彼此永久卡住。易错点：死锁与单纯「很久没跑完」不同，前者是环路上的等待，后者只是慢；只要固定加锁顺序，让所有线程都按同一顺序获取资源，就能避免这种环路。",
+      "first_ms": 673,
+      "total_ms": 1696,
+      "tools": []
+    }
+  ]
+}

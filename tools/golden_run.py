@@ -2,6 +2,7 @@
 
 用法：
     python tools/golden_run.py --out docs/golden/结果-20261022.json
+    python tools/golden_run.py --base http://127.0.0.1:8766   # 隔离库
     python tools/golden_run.py --limit 5                # 先跑 5 条试水
     python tools/golden_run.py --compare 旧.json 新.json # 对比两份结果
 
@@ -47,23 +48,45 @@ def judge(task: dict, answer: str) -> list[str]:
     return issues
 
 
-def _health() -> dict:
-    with urllib.request.urlopen(f"{BASE}/api/health", timeout=5) as response:
+def _health(base: str = BASE) -> dict:
+    with urllib.request.urlopen(f"{base}/api/health", timeout=5) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
-def ask(prompt: str, token: str, timeout: float = 120.0) -> dict:
+def deny_confirm(event: dict, token: str, base: str = BASE) -> None:
+    """重放是无人值守的：模型提出写操作时自动拒绝，避免干等 120 秒确认超时。"""
+    data = event.get("data") or {}
+    run_id = str(data.get("run_id") or "")
+    request_id = str(data.get("request_id") or "")
+    if not run_id or not request_id:
+        return
+    body = json.dumps({"run_id": run_id, "request_id": request_id,
+                       "approve": False}).encode("utf-8")
+    request = urllib.request.Request(
+        f"{base}/api/agent/confirm", data=body, method="POST",
+        headers={"Content-Type": "application/json",
+                 "X-Learnsys-Token": token})
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            response.read()
+    except Exception:
+        pass
+
+
+def ask(prompt: str, token: str, timeout: float = 120.0,
+        base: str = BASE) -> dict:
     body = json.dumps({
         "message": prompt, "module": "golden", "internal": True,
         "mode": "explain",
     }).encode("utf-8")
     request = urllib.request.Request(
-        f"{BASE}/api/agent/chat", data=body, method="POST",
+        f"{base}/api/agent/chat", data=body, method="POST",
         headers={"Content-Type": "application/json",
                  "X-Learnsys-Token": token})
     started = time.monotonic()
     first_ms = 0
     text = ""
+    tools: list[str] = []
     with urllib.request.urlopen(request, timeout=timeout) as response:
         for raw in response:
             line = raw.decode("utf-8", errors="replace").strip()
@@ -78,22 +101,28 @@ def ask(prompt: str, token: str, timeout: float = 120.0) -> dict:
                 first_ms = int((time.monotonic() - started) * 1000)
             if kind == "text":
                 text += event.get("text") or ""
+            elif kind == "tool_start":
+                tools.append(str((event.get("data") or {}).get("name") or ""))
+            elif kind == "confirm":
+                deny_confirm(event, token, base)
             elif kind == "done":
                 text = (event.get("data") or {}).get("text") or text
             elif kind == "error":
                 text = event.get("text") or "（模型报错）"
     return {"text": text.strip(), "first_ms": first_ms,
-            "total_ms": int((time.monotonic() - started) * 1000)}
+            "total_ms": int((time.monotonic() - started) * 1000),
+            "tools": tools}
 
 
-def run(tasks: list[dict], out: pathlib.Path, limit: int = 0) -> int:
-    health = _health()
+def run(tasks: list[dict], out: pathlib.Path, limit: int = 0,
+        base: str = BASE) -> int:
+    health = _health(base)
     token = health["token"]
     picked = tasks[:limit] if limit else tasks
     rows = []
     for index, task in enumerate(picked, 1):
         print(f"[{index}/{len(picked)}] {task['id']}", flush=True)
-        result = ask(task["prompt"], token)
+        result = ask(task["prompt"], token, base=base)
         issues = judge(task, result["text"])
         ok = not issues
         rows.append({
@@ -112,6 +141,7 @@ def run(tasks: list[dict], out: pathlib.Path, limit: int = 0) -> int:
         "auto_total": len(auto),
         "auto_pass": sum(1 for row in auto if row["ok"]),
         "manual_total": len(rows) - len(auto),
+        "tools_used": sum(len(row.get("tools") or []) for row in rows),
         "first_ms_p95": _p95([row["first_ms"] for row in rows]),
         "total_ms_p95": _p95([row["total_ms"] for row in rows]),
     }
@@ -158,13 +188,15 @@ def main() -> int:
     parser.add_argument("--tasks", type=pathlib.Path, default=DEFAULT_TASKS)
     parser.add_argument("--out", type=pathlib.Path, default=None)
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--base", default=BASE,
+                        help="服务地址；测试环境用 http://127.0.0.1:8766")
     parser.add_argument("--compare", nargs=2, type=pathlib.Path, default=None)
     args = parser.parse_args()
     if args.compare:
         return compare(*args.compare)
     out = args.out or (ROOT / "docs" / "golden"
                        / f"结果-{time.strftime('%Y%m%d-%H%M%S')}.json")
-    return run(load_tasks(args.tasks), out, limit=args.limit)
+    return run(load_tasks(args.tasks), out, limit=args.limit, base=args.base)
 
 
 if __name__ == "__main__":

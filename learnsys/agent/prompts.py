@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 from learnsys import knowledge
+from learnsys.agent import prompt_ops
 from learnsys.context import clip_personal_state
 
 BASE_SYSTEM = """你是「学习工作台」里的学习导师，不是客服，也不是只会附和的聊天机器人。
@@ -221,16 +222,20 @@ def mode_label(mode: str) -> str:
 def build_system(mode: str = "explain", has_image: bool = False,
                  profile: str = "", *, memories: str = "", summary: str = "",
                  code_debug: bool = False, concise: bool = True,
-                 personal_state: str = "") -> str:
+                 personal_state: str = "", ops: bool = False) -> str:
     """拼系统提示词：基础口径 + 长度档 + 模式 + 篇幅示例 + 会话摘要 + 学习档案 + 个人状态 + 长期记忆。
 
     `concise` 现在表示「自适应标准档」（True）还是「深入档」（False），不是「短 vs 长」。
     `summary` 是更早对话的压缩；`personal_state` 由路由层生成、本轮自动带入；
     `memories` 放在最后：它是用户亲口强调的跨会话规矩，必须压过默认风格。
+    `ops` 只在 ops_mode=on 且识别为排错/配置题时为 True：注入「先取证」规则。
     """
     parts = [BASE_SYSTEM, CONCISE_ADDITION if concise else DEEP_ADDITION]
     if code_debug:
         parts.append(CODE_DEBUG_RULE)
+    if ops:
+        parts.append(prompt_ops.OPS_QUICK_RULE if mode == "quick"
+                     else prompt_ops.OPS_DEBUG_RULE)
     addition = MODE_ADDITIONS.get(mode, "")
     if addition:
         parts.append(addition.strip())

@@ -192,8 +192,14 @@ def stream_messages(cfg: AgentConfig, system: str, messages: list,
                     tools: list | None = None, *,
                     abort: threading.Event | None = None,
                     response_sink: list | None = None,
-                    timeout: float = 90.0) -> Iterator[ProviderEvent]:
-    """流式跑一轮，边出字边 yield。工具调用在最后的 done 里一次性给出。"""
+                    timeout: float | None = None) -> Iterator[ProviderEvent]:
+    """流式跑一轮，边出字边 yield。工具调用在最后的 done 里一次性给出。
+
+    `timeout` 是 socket 读超时：首 token 与流中停顿共用一个值（不另设第二套计时），
+    默认取 `cfg.stream_timeout`（30 秒），不再硬编码 90 秒。
+    """
+    timeout = float(timeout if timeout is not None
+                    else getattr(cfg, "stream_timeout", 30.0))
     if abort is not None and abort.is_set():
         yield ProviderEvent("done", result=ProviderResult(stop_reason="aborted"))
         return
