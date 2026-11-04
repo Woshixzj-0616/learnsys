@@ -13,7 +13,8 @@ from .agent_approvals import (STATUSES as AGENT_APPROVAL_STATUSES,
                               get_approval as get_agent_approval,
                               list_approvals as list_agent_approvals,
                               pending_approvals as pending_agent_approvals)
-from .agent_runs import add_agent_run, get_agent_run, list_agent_runs, route_stats
+from .agent_runs import (add_agent_run, get_agent_run, list_agent_runs,
+                         recent_memory_injections, route_stats)
 from .agent_tasks import (STATUSES as AGENT_TASK_STATUSES,
                           add_event as add_agent_task_event,
                           add_queued as add_agent_queued_task,
@@ -103,7 +104,8 @@ from .life_items import (ITEM_KINDS as LIFE_ITEM_KINDS,
                          list_items as list_life_items,
                          set_status as set_life_item_status,
                          update_item as update_life_item)
-from .memories import add_memory, delete_memory, list_memories, update_memory
+from .memories import (add_memory, delete_memory, get_memory, list_memories,
+                       mark_used, promote_memory, update_memory)
 from .model_usage import add_usage as add_model_usage, day_by_model, day_totals, \
     recent as recent_model_usage
 from .personal import (CADENCES as PERSONAL_CADENCES,
@@ -149,7 +151,8 @@ from .wrongbook import (WRONG_SOURCES, add_wrong_item, delete_wrong_item,
 
 __all__ = [
     "SCHEMA", "connect", "now", "stamp",
-    "add_agent_run", "get_agent_run", "list_agent_runs", "route_stats",
+    "add_agent_run", "get_agent_run", "list_agent_runs",
+    "recent_memory_injections", "route_stats",
     "AGENT_TASK_STATUSES", "add_agent_task_event", "add_agent_task",
     "add_agent_queued_task", "claim_agent_task", "cancel_agent_queued_task",
     "cascade_agent_skipped", "agent_tasks_count_running", "agent_tasks_queued",
@@ -196,7 +199,8 @@ __all__ = [
     "MATERIAL_KINDS", "add_material", "delete_material_row", "get_material",
     "list_materials", "material_counts", "set_material_path",
     "set_material_status", "touch_material", "update_material",
-    "add_memory", "delete_memory", "list_memories", "update_memory",
+    "add_memory", "delete_memory", "get_memory", "list_memories",
+    "mark_used", "promote_memory", "update_memory",
     "PERSONAL_FACT_KINDS", "PERSONAL_FACT_STATUSES", "PERSONAL_PROJECT_STATUSES",
     "PERSONAL_SUBSCRIPTION_KINDS", "PERSONAL_CADENCES", "PERSONAL_CARD_DOMAINS",
     "list_facts", "get_fact", "upsert_fact", "archive_fact",

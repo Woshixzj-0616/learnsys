@@ -8,12 +8,13 @@ from .schema_agents import AGENT_SCHEMA
 from .schema_briefing import BRIEFING_SCHEMA
 from .schema_cet6 import CET6_DRILL_SCHEMA
 from .schema_daily import DAILY_SCHEMA
+from .schema_memory import MEMORY_SCHEMA
 from .schema_personal import PERSONAL_SCHEMA
 
 # 统一库结构版本。改了 `SCHEMA` 或 `_migrate_columns` 就 +1：
 # `connect()` 只在版本不一致时跑建表/补列；类目这类“只加行”的数据种子
 # 由 `knowledge.SEED_VERSION` + `meta.knowledge_seed_version` 单独判断。
-SCHEMA_VERSION = 20
+SCHEMA_VERSION = 21
 
 
 SCHEMA = """
@@ -372,17 +373,28 @@ CREATE TABLE IF NOT EXISTS review_state (
 );
 CREATE INDEX IF NOT EXISTS idx_review_due ON review_state (due);
 CREATE TABLE IF NOT EXISTS agent_memories (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    content    TEXT NOT NULL,
-    kind       TEXT NOT NULL DEFAULT 'preference',
-    status     TEXT NOT NULL DEFAULT 'active',
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    content         TEXT NOT NULL,
+    kind            TEXT NOT NULL DEFAULT 'preference',
+    status          TEXT NOT NULL DEFAULT 'active',
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL,
+    content_key     TEXT NOT NULL DEFAULT '',
+    scope           TEXT NOT NULL DEFAULT 'global',
+    evidence        TEXT NOT NULL DEFAULT '',
+    confidence      REAL NOT NULL DEFAULT 0.5,
+    source          TEXT NOT NULL DEFAULT 'user',
+    source_ref      TEXT NOT NULL DEFAULT '',
+    pinned          INTEGER NOT NULL DEFAULT 0,
+    use_count       INTEGER NOT NULL DEFAULT 0,
+    last_used_at    TEXT NOT NULL DEFAULT '',
+    batch_id        INTEGER NOT NULL DEFAULT 0,
+    archived_reason TEXT NOT NULL DEFAULT ''
 );
-CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_content
-    ON agent_memories (content) WHERE status = 'active';
 CREATE INDEX IF NOT EXISTS idx_memory_status
     ON agent_memories (status, updated_at DESC);
+-- content_key / scope / candidate 索引由 migrate_memory 在建好列之后创建：
+-- 老库 executescript 时还没有这些列，不能放在这里。
 CREATE TABLE IF NOT EXISTS agent_runs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     run_id          TEXT NOT NULL UNIQUE,
@@ -472,7 +484,7 @@ CREATE INDEX IF NOT EXISTS idx_train_prompt
     ON train_submissions (prompt_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_train_parent
     ON train_submissions (parent_id);
-""" + AGENT_SCHEMA + BRIEFING_SCHEMA + PERSONAL_SCHEMA + CET6_DRILL_SCHEMA + DAILY_SCHEMA
+""" + AGENT_SCHEMA + BRIEFING_SCHEMA + PERSONAL_SCHEMA + CET6_DRILL_SCHEMA + DAILY_SCHEMA + MEMORY_SCHEMA
 
 FTS_SCHEMA = """
 CREATE VIRTUAL TABLE IF NOT EXISTS search_idx USING fts5(

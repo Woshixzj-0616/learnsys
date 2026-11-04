@@ -44,6 +44,29 @@ def add_agent_run(conn: sqlite3.Connection, *, run_id: str,
     return str(run_id)
 
 
+def recent_memory_injections(conn: sqlite3.Connection, limit: int = 10) -> list[dict]:
+    """最近几次运行注入过哪些记忆：只读 trace，不存记忆正文。"""
+    with _LOCK:
+        rows = conn.execute(
+            "SELECT run_id, started_at, trace_json FROM agent_runs "
+            "ORDER BY id DESC LIMIT ?", (max(1, int(limit)) * 3,)).fetchall()
+    out: list[dict] = []
+    for run_id, started_at, raw in rows:
+        try:
+            trace = json.loads(raw or "[]")
+        except (json.JSONDecodeError, TypeError):
+            continue
+        for item in trace if isinstance(trace, list) else []:
+            if isinstance(item, dict) and item.get("kind") == "memory":
+                data = item.get("data")
+                out.append({"run_id": run_id, "started_at": started_at,
+                            **(data if isinstance(data, dict) else {})})
+                break
+        if len(out) >= max(1, int(limit)):
+            break
+    return out
+
+
 def _agent_run_dict(row) -> dict:
     def _json(raw, fallback):
         try:

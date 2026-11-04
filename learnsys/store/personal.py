@@ -18,8 +18,6 @@ SUBSCRIPTION_KINDS = ("news", "word", "price", "stock", "custom")
 CADENCES = ("daily", "weekly")
 CARD_DOMAINS = ("learn", "work", "life")
 
-_FACT_COLUMNS = ("id, kind, content, evidence, confidence, status, "
-                 "created_at, updated_at")
 _PROJECT_COLUMNS = ("id, name, repo_path, handoff_path, status, next_step, "
                     "risk, updated_at")
 _SUBSCRIPTION_COLUMNS = ("id, topic, kind, cadence, at_time, sources_json, "
@@ -33,15 +31,6 @@ def _json(raw, fallback):
     except Exception:
         return fallback
     return value if isinstance(value, type(fallback)) else fallback
-
-
-def _fact_dict(row) -> dict:
-    return {
-        "id": int(row[0]), "kind": row[1] or "preference",
-        "content": row[2] or "", "evidence": row[3] or "",
-        "confidence": float(row[4] or 0), "status": row[5] or "active",
-        "created_at": row[6] or "", "updated_at": row[7] or "",
-    }
 
 
 def _project_dict(row) -> dict:
@@ -75,30 +64,37 @@ def _card_dict(row) -> dict:
 
 
 # ---------------------------------------------------------------- profile_facts
+# 兼容层：profile_facts 已并入 agent_memories（唯一真源）。
+# 这里保留旧函数名和签名，内部只调 store/memories.py，不再写第二张表。
+
+_FACT_VIEW_KINDS = ("preference", "goal", "constraint", "identity", "rule")
+
+
+def _as_fact(item: dict | None) -> dict | None:
+    if not item:
+        return None
+    return {key: item.get(key, "") for key in
+            ("id", "kind", "content", "evidence", "confidence",
+             "status", "created_at", "updated_at")}
+
 
 def list_facts(conn: sqlite3.Connection, *, kind: str = "",
                status: str = "active", limit: int = 200) -> list[dict]:
-    sql = f"SELECT {_FACT_COLUMNS} FROM profile_facts WHERE 1 = 1"
-    args: list = []
-    if kind:
-        sql += " AND kind = ?"
-        args.append(str(kind))
-    if status:
-        sql += " AND status = ?"
-        args.append(str(status))
-    sql += " ORDER BY updated_at DESC, id DESC LIMIT ?"
-    args.append(max(1, min(int(limit or 200), 1000)))
-    with _LOCK:
-        rows = conn.execute(sql, args).fetchall()
-    return [_fact_dict(row) for row in rows]
+    from . import memories as memory_store
+    kinds = (str(kind),) if kind else _FACT_VIEW_KINDS
+    items = memory_store.list_memories(
+        conn, limit=limit, status=status, kinds=kinds)
+    items.sort(key=lambda item: (item.get("updated_at") or "",
+                                 int(item.get("id") or 0)), reverse=True)
+    return [_as_fact(item) for item in items]
 
 
 def get_fact(conn: sqlite3.Connection, fact_id: int) -> dict | None:
-    with _LOCK:
-        row = conn.execute(
-            f"SELECT {_FACT_COLUMNS} FROM profile_facts WHERE id = ?",
-            (int(fact_id),)).fetchone()
-    return _fact_dict(row) if row else None
+    from . import memories as memory_store
+    item = memory_store.get_memory(conn, int(fact_id))
+    if item and item.get("kind") not in _FACT_VIEW_KINDS:
+        return None
+    return _as_fact(item)
 
 
 def upsert_fact(conn: sqlite3.Connection, *, content: str,
@@ -106,37 +102,27 @@ def upsert_fact(conn: sqlite3.Connection, *, content: str,
                 evidence: str = "", confidence: float = 0.5,
                 status: str = "active") -> dict | None:
     """按 id 更新；`fact_id=0` 时新增一条。"""
+    from . import memories as memory_store
     content = str(content or "").strip()
     if not content:
         raise ValueError("偏好内容不能为空")
-    stamp = now()
-    values = (str(kind or "preference"), content, str(evidence or ""),
-              float(confidence), str(status or "active"), stamp)
-    with _LOCK:
-        if fact_id:
-            cur = conn.execute(
-                "UPDATE profile_facts SET kind = ?, content = ?, evidence = ?, "
-                "confidence = ?, status = ?, updated_at = ? WHERE id = ?",
-                (*values, int(fact_id)))
-            conn.commit()
-            new_id = int(fact_id) if cur.rowcount else 0
-        else:
-            cur = conn.execute(
-                "INSERT INTO profile_facts "
-                "(kind, content, evidence, confidence, status, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)", (*values, stamp))
-            conn.commit()
-            new_id = int(cur.lastrowid or 0)
-    return get_fact(conn, new_id) if new_id else None
+    if fact_id:
+        ok = memory_store.update_memory(
+            conn, int(fact_id), content, kind=str(kind or "preference"),
+            evidence=evidence, confidence=float(confidence),
+            status=str(status or "active"))
+        return get_fact(conn, int(fact_id)) if ok else None
+    memory_id, _created = memory_store.add_memory(
+        conn, content, str(kind or "preference"), evidence=evidence,
+        confidence=float(confidence), source="profile_api",
+        status=str(status or "active"))
+    return get_fact(conn, memory_id) if memory_id else None
 
 
 def archive_fact(conn: sqlite3.Connection, fact_id: int) -> dict | None:
-    with _LOCK:
-        cur = conn.execute(
-            "UPDATE profile_facts SET status = 'archived', updated_at = ? "
-            "WHERE id = ?", (now(), int(fact_id)))
-        conn.commit()
-    return get_fact(conn, fact_id) if cur.rowcount else None
+    from . import memories as memory_store
+    ok = memory_store.delete_memory(conn, int(fact_id), reason="profile_api_archive")
+    return get_fact(conn, int(fact_id)) if ok else None
 
 
 # ----------------------------------------------------------------- project_refs

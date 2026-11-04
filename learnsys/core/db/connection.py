@@ -72,6 +72,7 @@ def connect(path=None) -> sqlite3.Connection:
     # 延迟导入：migrate 也要用 connect，顶层导入会绕成环
     from .fts import _ensure_fts
     from .migrate import _import_legacy_starred, _migrate_columns
+    from .migrate_memory import migrate_memory
 
     target = pathlib.Path(path) if path else config.db_path()
     if str(target) != ":memory:":
@@ -95,6 +96,7 @@ def connect(path=None) -> sqlite3.Connection:
     try:
         conn.executescript(SCHEMA)
         _migrate_columns(conn)
+        migrate_memory(conn)
         _ensure_fts(conn)
         _import_legacy_starred(conn)
         _seed_knowledge(conn)

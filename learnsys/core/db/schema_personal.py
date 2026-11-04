@@ -6,18 +6,7 @@
 from __future__ import annotations
 
 PERSONAL_SCHEMA = """
-CREATE TABLE IF NOT EXISTS profile_facts (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    kind        TEXT NOT NULL DEFAULT 'preference', -- preference / goal / constraint
-    content     TEXT NOT NULL,
-    evidence    TEXT NOT NULL DEFAULT '',           -- 出处：会话/日期/用户原话
-    confidence  REAL NOT NULL DEFAULT 0.5,
-    status      TEXT NOT NULL DEFAULT 'active',     -- active / archived
-    created_at  TEXT NOT NULL,
-    updated_at  TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_profile_kind ON profile_facts (kind, status);
-
+-- profile_facts 已并入 agent_memories；这里不再建表，兼容视图见 schema_memory.py。
 CREATE TABLE IF NOT EXISTS project_refs (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     name         TEXT NOT NULL UNIQUE,
