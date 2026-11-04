@@ -41,6 +41,32 @@ class VocabStoreTest(unittest.TestCase):
         item, _ = store.add_vocab(self.conn, word="rent", meaning="租用")
         self.assertEqual(item["meaning"], "租金")
 
+    def test_chinese_headword_swaps_to_english(self):
+        item, created = store.add_vocab(
+            self.conn, word="春联", meaning="spring couplets",
+            context="couplet 指对联")
+        self.assertTrue(created)
+        self.assertEqual(item["word"], "spring couplets")
+        self.assertEqual(item["meaning"], "春联")
+        self.assertEqual(item["normalized"], "spring couplets")
+
+    def test_cross_orientation_dedupes(self):
+        first, _ = store.add_vocab(
+            self.conn, word="春联", meaning="spring couplets")
+        second, created = store.add_vocab(
+            self.conn, word="spring couplets", meaning="春联")
+        self.assertFalse(created)
+        self.assertEqual(second["id"], first["id"])
+        self.assertEqual(
+            self.conn.execute("SELECT count(*) FROM vocab_items").fetchone()[0], 1)
+
+    def test_swap_keeps_note_with_meaning(self):
+        item, _ = store.add_vocab(
+            self.conn, word="年货",
+            meaning="festival goods｜也可说 New Year goods")
+        self.assertEqual(item["word"], "festival goods")
+        self.assertEqual(item["meaning"], "年货｜也可说 New Year goods")
+
     def test_list_search_and_count(self):
         store.add_vocab(self.conn, word="rent", meaning="租金", paper_title="卷三")
         store.add_vocab(self.conn, word="deposit", meaning="押金", paper_title="卷三")

@@ -210,6 +210,10 @@ class TrainSubmissionTest(unittest.TestCase):
         try:
             vocab = store.list_vocab(conn, query="Spring Festival")
             self.assertEqual(vocab["count"], 1)
+            item = vocab["items"][0]
+            self.assertEqual(item["word"], "the Spring Festival")
+            self.assertEqual(item["meaning"], "专有名词需要冠词")
+            self.assertIn("Spring Festival → the Spring Festival", item["context"])
             wrong = store.wrong_items(conn, source="translation")
             self.assertEqual(len(wrong), 1)
         finally:

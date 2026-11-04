@@ -96,6 +96,13 @@ class SentenceServiceTest(unittest.TestCase):
             self.assertEqual(review["errors_dropped"], 1)
             self.assertEqual(len(review["cards"]), 1)
             self.assertEqual(data["cards_added"], 1)
+            self.assertEqual(data["vocab_added"], 1)
+            vocab = store.list_vocab(conn)["items"]
+            self.assertEqual(len(vocab), 1)
+            self.assertEqual(vocab[0]["word"], "the urban population")
+            self.assertEqual(vocab[0]["meaning"], "用词不准")
+            self.assertIn("一句一译", vocab[0]["context"])
+            self.assertIn("city people", vocab[0]["context"])
 
             attempted = store.sentence_attempted(conn)
             self.assertIn("x001", attempted)

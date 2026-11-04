@@ -70,6 +70,31 @@ def get_sentence(conn, sentence_id: str) -> dict:
     return row
 
 
+MAX_VOCAB_TERM = 120
+
+
+def _store_vocab(conn, item: dict, review: dict) -> int:
+    """一句一译的必改项也进生词本：正确英文 + 中文原因 + 原文/我的写法。"""
+    added = 0
+    source_zh = str(item.get("zh") or "").strip()
+    for row in review.get("must_fix") or []:
+        quote = str(row.get("quote") or "").strip()
+        fix = str(row.get("fix") or "").strip()
+        why = str(row.get("why") or "").strip()
+        if not fix or fix == quote or len(fix) > MAX_VOCAB_TERM:
+            continue
+        context = f"一句一译：{source_zh}" if source_zh else "一句一译"
+        if quote:
+            context += f" ｜ 我当时写：{quote}"
+        _, created = store.add_vocab(
+            conn, word=fix, meaning=why or "一句一译必改",
+            context=context, paper_id=item.get("id") or "",
+            paper_title=item.get("source_title") or "一句一译",
+            source="sentence")
+        added += 1 if created else 0
+    return added
+
+
 def _store_cards(conn, sentence_id: str, review: dict) -> int:
     added = 0
     for card in review.get("cards") or []:
@@ -110,6 +135,7 @@ def review_sentence(conn, sentence_id: str, text: str,
         band_json=json.dumps(review, ensure_ascii=False),
         error_count=len(must_fix), serious_count=len(must_fix))
     cards_added = _store_cards(conn, sentence_id, review)
+    vocab_added = _store_vocab(conn, item, review)
     store.add_event(
         conn, "train", "sentence",
         title=f"一句一译 · {item.get('skill') or '翻译'}",
@@ -120,6 +146,7 @@ def review_sentence(conn, sentence_id: str, text: str,
         "review": review,
         "attempt_id": sub_id,
         "cards_added": cards_added,
+        "vocab_added": vocab_added,
         "model": data.get("model", ""),
         "ms": data.get("ms", 0),
     }

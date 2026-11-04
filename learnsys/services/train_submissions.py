@@ -246,14 +246,19 @@ def _store_cards(conn, row: dict, review: dict) -> dict:
             auto=bool(card.get("auto", True)))
         added += 1 if created else 0
     terms = 0
+    # 术语卡记的是「学生写错 → 正确英文」，不是中英对照。
+    # 词头取正确英文、释义取中文 why，避免把英文-英文写进生词本；
+    # 同一句被多次批改时按正确英文去重。
     for card in review.get("term_cards") or []:
-        word = str(card.get("front") or "").strip()
-        if not word:
+        quote = str(card.get("front") or card.get("quote") or "").strip()
+        fix = str(card.get("back") or card.get("fix") or "").strip()
+        why = str(card.get("note") or card.get("why") or "").strip()
+        if not fix or fix == quote:
             continue
         _, created = store.add_vocab(
-            conn, word=word, meaning=card.get("back", ""),
-            context=card.get("note", ""), paper_id=row["prompt_id"],
-            source="translation")
+            conn, word=fix, meaning=why or "术语改译",
+            context=f"改译：{quote} → {fix}" if quote else "",
+            paper_id=row["prompt_id"], source="translation")
         terms += 1 if created else 0
     return {"wrong_added": added, "terms_added": terms}
 

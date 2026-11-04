@@ -86,15 +86,19 @@ function sentenceHeadHtml(review, hint) {
     </div>`;
 }
 
-function sentenceBodyHtml(review, cardsAdded = 0) {
+function sentenceBodyHtml(review, cardsAdded = 0, vocabAdded = 0) {
   const points = review.info_points || {};
   const must = review.must_fix || [];
   const suggestions = review.suggestions || [];
+  const recorded = [
+    cardsAdded ? `错题本 +${cardsAdded}` : "",
+    vocabAdded ? `生词本 +${vocabAdded}` : "",
+  ].filter(Boolean).join(" · ");
   return `
     ${(points.missing || []).length
       ? `<p class="cet6-missing">漏了：${points.missing.map(escapeHtml).join("、")}</p>` : ""}
     ${must.length ? `<div class="cet6-sentence-list">
-      <h4>必改 ${cardsAdded ? `（已自动进错题本 ${cardsAdded} 条）` : ""}</h4>
+      <h4>必改 ${recorded ? `（已自动记录：${recorded}）` : ""}</h4>
       ${must.map((row) => `<div class="cet6-sentence-error">
         <p class="cet6-quote">${escapeHtml(row.quote)}</p>
         <p class="cet6-fix">改为：${escapeHtml(row.fix)}</p>
@@ -119,7 +123,7 @@ export function sentenceResultHtml(data) {
   const review = data.review;
   const hint = `用时 ${((data.ms || 0) / 1000).toFixed(1)} 秒`;
   return `<section class="cet6-sentence-result">
-    ${sentenceHeadHtml(review, hint)}${sentenceBodyHtml(review, data.cards_added)}
+    ${sentenceHeadHtml(review, hint)}${sentenceBodyHtml(review, data.cards_added, data.vocab_added)}
     <div class="cet6-actions">
       <button class="btn btn-primary" type="button" data-act="sentence-retry">再译一遍</button>
       <button class="btn" type="button" data-act="sentence-next-skill">换同技能新句</button>

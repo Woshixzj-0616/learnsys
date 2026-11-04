@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 import sqlite3
 
 from ._base import _LOCK, now
@@ -30,6 +31,27 @@ def _normalize_word(word: str) -> str:
     return " ".join(str(word or "").strip().lower().split())
 
 
+_CJK_RE = re.compile("[一-鿿]")
+_NOTE_SPLIT = re.compile(r"[｜|]")
+
+
+def normalize_pair(word: str, meaning: str) -> tuple[str, str]:
+    """生词本统一「英文词头 + 中文释义」；中文词头 + 英文释义时交换。
+
+    只交换「中文词头 + 英文释义」这一种明确方向；两者同语言时保持原样。
+    英文释义后面的「｜备注」跟着释义走，不会混进词头。
+    """
+    word = str(word or "").strip()
+    meaning = str(meaning or "").strip()
+    parts = _NOTE_SPLIT.split(meaning, maxsplit=1)
+    head = parts[0].strip()
+    note = parts[1].strip() if len(parts) > 1 else ""
+    if (_CJK_RE.search(word) and head and not _CJK_RE.search(head)
+            and len(head) <= 200):
+        return head, word + (f"｜{note}" if note else "")
+    return word, meaning
+
+
 def _clip(value, cap: int) -> str:
     return str(value or "").strip()[:cap]
 
@@ -40,8 +62,11 @@ def add_vocab(conn: sqlite3.Connection, *, word: str, meaning: str = "",
               source: str = "cet6") -> tuple[dict, bool]:
     """加一个生词；同词（忽略大小写/空白）已存在时只补空字段。
 
+    词头统一为英文、释义为中文；中文词头 + 英文释义时会自动交换，
+    这样翻译页/每日积累/精听工作台从两个方向加同一个词也只会落一条。
     返回 `(item, created)`；不覆盖已有释义——用户手填的内容优先。
     """
+    word, meaning = normalize_pair(word, meaning)
     word = _clip(word, 200)
     if not word:
         raise ValueError("单词不能为空")
@@ -106,6 +131,23 @@ def add_vocab(conn: sqlite3.Connection, *, word: str, meaning: str = "",
     return item, created
 
 
+def reorient_vocab(conn: sqlite3.Connection, item_id: int, *,
+                   word: str, meaning: str) -> dict | None:
+    """一次性迁移：原地改词头/释义，保留 id、复习状态与复习日志。"""
+    word, meaning = normalize_pair(word, meaning)
+    word = _clip(word, 200)
+    if not word:
+        raise ValueError("单词不能为空")
+    normalized = _normalize_word(word)
+    with _LOCK:
+        conn.execute(
+            "UPDATE vocab_items SET word = ?, normalized = ?, meaning = ?, "
+            "updated_at = ? WHERE id = ?",
+            (word, normalized, _clip(meaning, 1000), now(), int(item_id)))
+        conn.commit()
+    return get_vocab(conn, int(item_id))
+
+
 def list_vocab(conn: sqlite3.Connection, *, query: str = "", limit: int = 200,
                offset: int = 0, status: str = "active") -> dict:
     where = "status = ?"
@@ -159,7 +201,7 @@ def get_vocab(conn: sqlite3.Connection, item_id: int) -> dict | None:
 
 def update_vocab(conn: sqlite3.Connection, item_id: int, **fields) -> dict | None:
     allowed = {}
-    for key in ("meaning", "phonetic", "status"):
+    for key in ("meaning", "phonetic", "context", "status"):
         if key not in fields:
             continue
         value = fields[key]
@@ -169,8 +211,10 @@ def update_vocab(conn: sqlite3.Connection, item_id: int, **fields) -> dict | Non
             if value not in ("active", "archived"):
                 raise ValueError("状态只能是 active 或 archived")
             allowed[key] = value
+        elif key == "phonetic":
+            allowed[key] = _clip(value, 100)
         else:
-            allowed[key] = _clip(value, 1000 if key == "meaning" else 100)
+            allowed[key] = _clip(value, 1000)
     if not allowed:
         return get_vocab(conn, item_id)
     allowed["updated_at"] = now()

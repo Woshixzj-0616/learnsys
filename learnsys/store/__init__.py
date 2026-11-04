@@ -140,7 +140,7 @@ from .study import (add_frame_text, add_transcript, add_window_event,
                     session_stats, session_summary, session_title, session_windows,
                     start_session, window_titles)
 from .vocab import (add_vocab, delete_vocab, export_vocab, get_vocab, import_vocab,
-                    list_vocab, update_vocab)
+                    list_vocab, normalize_pair, reorient_vocab, update_vocab)
 from .wrongbook import (WRONG_SOURCES, add_wrong_item, delete_wrong_item,
                         due_starred, get_wrong_item, recent_wrong_items,
                         set_wrong_mastered, toggle_ask_wrong, toggle_star,
@@ -229,7 +229,7 @@ __all__ = [
     "session_summary", "session_title", "session_windows", "start_session",
     "window_titles",
     "add_vocab", "delete_vocab", "export_vocab", "get_vocab", "import_vocab",
-    "list_vocab", "update_vocab",
+    "list_vocab", "normalize_pair", "reorient_vocab", "update_vocab",
     "WRONG_SOURCES", "add_wrong_item", "delete_wrong_item", "due_starred",
     "get_wrong_item", "recent_wrong_items", "set_wrong_mastered",
     "toggle_ask_wrong", "toggle_star",

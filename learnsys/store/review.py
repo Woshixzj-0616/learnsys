@@ -213,13 +213,20 @@ def review_stats(conn: sqlite3.Connection, today=None, item_type: str = "") -> d
     type_args = [item_type] if filtered else []
     join_filter = " AND r.item_type = ?" if filtered else ""
     join_args = [item_type] if filtered else []
+    # 统计与复习队列同口径：已归档生词、已掌握错题不算进总数/新词。
+    valid = ("(r.item_type <> 'wrong' OR (w.id IS NOT NULL AND w.mastered = 0)) "
+             "AND (r.item_type <> 'vocab' OR (v.id IS NOT NULL AND v.status = 'active'))")
+    base = ("FROM review_state r "
+            "LEFT JOIN wrong_items w ON r.item_type = 'wrong' AND w.id = r.item_id "
+            "LEFT JOIN vocab_items v ON r.item_type = 'vocab' AND v.id = r.item_id "
+            "WHERE " + valid)
     with _LOCK:
         total = conn.execute(
-            "SELECT count(*) FROM review_state WHERE 1=1" + type_sql,
-            type_args).fetchone()[0]
+            "SELECT count(*) " + base + join_filter,
+            join_args).fetchone()[0]
         new = conn.execute(
-            "SELECT count(*) FROM review_state WHERE state = 'new'" + type_sql,
-            type_args).fetchone()[0]
+            "SELECT count(*) " + base + " AND r.state = 'new'" + join_filter,
+            join_args).fetchone()[0]
         reviewed = conn.execute(
             "SELECT count(*) FROM review_log WHERE substr(ts, 1, 10) = ?" + type_sql,
             [day, *type_args]).fetchone()[0]
