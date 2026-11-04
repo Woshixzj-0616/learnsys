@@ -12,7 +12,7 @@ import difflib
 import re
 
 from learnsys import store
-from learnsys.services import cet6_chunk, cet6_paper
+from learnsys.services.cet6 import chunk as cet6_chunk, paper as cet6_paper
 
 _TRIGGER_RE = re.compile(
     r"(没有听出来|没听出来|没有听出|没听出|没有听清|没听清|听不明白|没听懂|"

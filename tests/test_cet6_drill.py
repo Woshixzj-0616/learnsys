@@ -8,7 +8,7 @@ import unittest
 from unittest import mock
 
 from learnsys import store
-from learnsys.services import cet6_drill
+from learnsys.services.cet6 import drill as cet6_drill
 
 
 def seed(conn):

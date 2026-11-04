@@ -11,7 +11,7 @@ from __future__ import annotations
 import datetime as dt
 
 from learnsys import store
-from learnsys.services import cet6_pron
+from learnsys.services.cet6 import pron as cet6_pron
 from learnsys.train import content as train_content
 
 KINDS = ("writing", "translation", "pron")

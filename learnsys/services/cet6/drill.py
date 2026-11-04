@@ -13,7 +13,7 @@ import difflib
 import re
 
 from learnsys import config, store
-from learnsys.services import cet6_paper
+from learnsys.services.cet6 import paper as cet6_paper
 
 _WORD_RE = re.compile(r"[A-Za-z0-9]+(?:['’\-][A-Za-z0-9]+)*")
 _STOPWORDS = frozenset("""

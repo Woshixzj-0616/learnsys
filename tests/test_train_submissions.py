@@ -11,7 +11,7 @@ from unittest import mock
 
 from learnsys import store
 from learnsys.agent.events import AgentEvent
-from learnsys.services import train_review, train_submissions as service
+from learnsys.services.train import review as train_review, submissions as service
 from learnsys.train import content
 
 WRITING = ("I think part-time jobs are good because students can learn many "

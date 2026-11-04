@@ -14,7 +14,7 @@ import datetime as dt
 import re
 
 from learnsys import config, store
-from learnsys.services import cet6_drill, cet6_paper
+from learnsys.services.cet6 import drill as cet6_drill, paper as cet6_paper
 
 _MIN_WORDS = 12
 _MIN_CHUNK = 3

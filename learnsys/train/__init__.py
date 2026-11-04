@@ -7,7 +7,7 @@
 - `prompts`  三类批改提示词
 - `review`   模型输出校验：quote 过滤、档位钳制、多次取中位
 
-模型调用与任务队列在 `services.train_review`。
+模型调用与任务队列在 `services.train.review`（业务层子包 `services/train/`）。
 """
 from __future__ import annotations
 

@@ -6,9 +6,9 @@ from pydantic import BaseModel, Field
 
 from learnsys import store
 from learnsys.server.security import require_token
-from learnsys.services import train_plan, train_stats
-from learnsys.services import train_sentences as sentence_service
-from learnsys.services import train_submissions as service
+from learnsys.services.train import plan as train_plan, stats as train_stats
+from learnsys.services.train import sentences as sentence_service
+from learnsys.services.train import submissions as service
 
 router = APIRouter()
 

@@ -13,8 +13,8 @@ from fastapi.testclient import TestClient
 from learnsys import store
 from learnsys.agent.events import AgentEvent
 from learnsys.server.app import create_app
-from learnsys.services import train_review, train_sentences as service
-from learnsys.services import train_submissions as submissions
+from learnsys.services.train import review as train_review, sentences as service
+from learnsys.services.train import submissions
 from learnsys.train import content
 
 TOKEN = "test-token"

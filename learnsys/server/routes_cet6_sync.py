@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 
 from learnsys import store
 from learnsys.server.cet6_models import Cet6PaperSync
-from learnsys.services import cet6_sync
+from learnsys.services.cet6 import sync as cet6_sync
 
 router = APIRouter()
 

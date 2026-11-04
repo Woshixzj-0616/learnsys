@@ -4,7 +4,8 @@ from __future__ import annotations
 import datetime
 
 from learnsys import store
-from learnsys.services import knowledge, train_plan, train_stats
+from learnsys.services import knowledge
+from learnsys.services.train import plan as train_plan, stats as train_stats
 from .context import ToolContext, _one_line, _stamp
 
 

@@ -12,7 +12,7 @@ import hashlib
 import json
 
 from learnsys import store
-from learnsys.services import train_review
+from learnsys.services.train import review as train_review
 from learnsys.train import content, rubric
 
 MAX_TEXT = 2000

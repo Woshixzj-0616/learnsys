@@ -10,7 +10,7 @@ import urllib.parse
 from unittest import mock
 
 from learnsys import config, store
-from learnsys.services import cet6_chunk, cet6_paper
+from learnsys.services.cet6 import chunk as cet6_chunk, paper as cet6_paper
 
 PAPER = "卷一"
 SENTENCE = ("When I teach in the classroom, we often talk about success "

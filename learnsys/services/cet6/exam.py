@@ -12,7 +12,7 @@ import datetime as dt
 import re
 
 from learnsys import config, store
-from learnsys.services import cet6_paper
+from learnsys.services.cet6 import paper as cet6_paper
 
 _MAX_LIMIT = 5
 _SECTION_RE = re.compile(r"Section\s+([A-C])")

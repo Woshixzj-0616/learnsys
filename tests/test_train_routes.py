@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 from learnsys import store
 from learnsys.agent.events import AgentEvent
 from learnsys.server.app import create_app
-from learnsys.services import train_review
+from learnsys.services.train import review as train_review
 
 TOKEN = "test-token"
 AUTH = {"X-Learnsys-Token": TOKEN}

@@ -10,8 +10,8 @@ from __future__ import annotations
 import datetime
 
 from learnsys import store
-from learnsys.services import cet6_drill
-from learnsys.services import train_submissions as service
+from learnsys.services.cet6 import drill as cet6_drill
+from learnsys.services.train import submissions as service
 
 TRAIN_SOURCES = ("writing", "translation", "cet6_dictation", "cet6_chunk")
 KIND_LABEL = {"writing": "写作", "translation": "翻译",

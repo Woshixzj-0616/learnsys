@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from learnsys import store
 from learnsys.server.app import create_app
-from learnsys.services import cet6_drill
+from learnsys.services.cet6 import drill as cet6_drill
 
 TOKEN = "test-token"
 AUTH = {"X-Learnsys-Token": TOKEN}

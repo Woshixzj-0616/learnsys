@@ -20,7 +20,7 @@ import sqlite3
 from urllib.parse import quote
 
 from learnsys import store
-from learnsys.services import train_plan
+from learnsys.services.train import plan as train_plan
 
 TASK_TOTAL = 3
 PASS_TASKS = 2      # 两件算达标，第三件（复盘）是加分项

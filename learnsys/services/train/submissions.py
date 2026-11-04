@@ -8,7 +8,8 @@ from __future__ import annotations
 import json
 
 from learnsys import store
-from learnsys.services import results, train_review
+from learnsys.services import results
+from learnsys.services.train import review as train_review
 from learnsys.train import content, rubric
 
 KINDS = ("writing", "translation")

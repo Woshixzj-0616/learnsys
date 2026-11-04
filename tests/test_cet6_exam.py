@@ -10,7 +10,7 @@ import urllib.parse
 from unittest import mock
 
 from learnsys import config, store
-from learnsys.services import cet6_exam, cet6_paper
+from learnsys.services.cet6 import exam as cet6_exam, paper as cet6_paper
 
 PAPER = "卷一"
 

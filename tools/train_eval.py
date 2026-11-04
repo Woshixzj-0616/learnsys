@@ -103,7 +103,7 @@ def main() -> int:
     try:
         from learnsys.agent import cost
         from learnsys.llm.config import load_config
-        from learnsys.services import train_review
+        from learnsys.services.train import review as train_review
 
         cfg = load_config()
         if not cfg.ready:

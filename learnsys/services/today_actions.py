@@ -9,7 +9,7 @@ import datetime
 from urllib.parse import quote
 
 from learnsys.services import knowledge as knowledge_service
-from learnsys.services import train_plan
+from learnsys.services.train import plan as train_plan
 from learnsys.store import stats
 
 

@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from learnsys import store
 from learnsys.server.security import require_token
-from learnsys.services import cet6_exam as service
+from learnsys.services.cet6 import exam as service
 
 router = APIRouter()
 
