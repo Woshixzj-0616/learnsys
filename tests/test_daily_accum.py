@@ -8,7 +8,7 @@ import unittest
 from unittest import mock
 
 from learnsys import config, store
-from learnsys.services import daily_accum
+from learnsys.services.cet6 import daily_accum
 from learnsys.train import content as train_content
 
 PAPER = "卷一"
