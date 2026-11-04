@@ -45,8 +45,10 @@
 
   function loopStatText(st){
     const loops = Number(st && st.loops) || 0;
-    if(!loops) return "";
-    return "已循环 " + loops + " 次 · 共播放 " + (Number(st.plays) || 0) + " 次";
+    const plays = Number(st && st.plays) || 0;
+    if(!loops && plays < 2) return "";
+    if(!loops) return "共播放 " + plays + " 次";
+    return "已回听 " + loops + " 次 · 共播放 " + plays + " 次";
   }
 
   // 结构补句用独立 i（如 1001）避免和旧句号冲突；display 只负责界面显示。

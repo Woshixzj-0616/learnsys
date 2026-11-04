@@ -13,6 +13,7 @@
 
   function notifyTick(){
     if(audio){
+      trackPosition();
       updateFollow();
       updatePlayerUI();
     }
@@ -57,6 +58,41 @@
     notifyLoop(i, st);
   }
 
+  // ---- 回听统计：只认播放头行为，不认控件来源 ----
+  // 自动回绕在 checkBoundary 里记；这里负责手动拉回句首、键盘回退、
+  // 全局进度条回拉等所有「自己把播放头拖回去重听」的操作。
+  // 一次拖动会连续触发多次 seek：记一次后把最大位置复位到句首，
+  // 后续事件自然不会再触发，不需要额外的防抖计时器。
+  const REWIND_NEAR = 0.12;   // 进入句首 12% 以内算「回到开头」
+  const REWIND_HEARD = 0.20;  // 回拉前至少听过 20% 才算一次回听
+  const track = {i:null, maxT:0};
+
+  function trackReset(i, t){
+    track.i = (i == null || i < 0) ? null : i;
+    track.maxT = Number(t) || 0;
+  }
+
+  function trackPosition(){
+    if(!audio) return;
+    const i = S().activeSentence;
+    if(i < 0){ track.i = null; return; }
+    const win = resolveWindow(i);
+    if(!win){ track.i = null; return; }
+    const t = Number(audio.currentTime) || 0;
+    // 播放头已经离开本句窗口：不把跨句跳转算成回听。
+    if(t < win.start - 1.0 || t > win.end + 1.0){ track.i = null; return; }
+    if(track.i !== i){ trackReset(i, t); return; }
+    const len = Math.max(0.5, win.end - win.start);
+    const nearStart = t <= win.start + Math.max(0.6, len * REWIND_NEAR);
+    const heardEnough = track.maxT >= win.start + Math.max(1.0, len * REWIND_HEARD);
+    if(nearStart && heardEnough){
+      trackReset(i, t);
+      bumpLoops(i);
+      return;
+    }
+    if(t > track.maxT) track.maxT = t;
+  }
+
   // ---- 整段/整篇播放跟随：按时间找当前句 ----
   function timeline(){
     if(!timelineCache){
@@ -82,6 +118,7 @@
   function releaseRange(){
     stopBoundaryTimer();
     S().activeSentence = -1;
+    trackReset(null, 0);
     S().rangeStart = 0;
     S().rangeEnd = 0;
     S().repeatLeft = 0;
@@ -182,9 +219,14 @@
     const dur = Number(audio.duration);
     if(!isFinite(dur) || dur <= 0) return;
     const t = U.clamp(Number(frac) || 0, 0, 1) * dur;
-    // 全局进度条是整轨控制：单句窗口一律让路；整段窗口只在跳出去时让路。
-    if(S().activeSentence >= 0 ||
-       (S().rangeEnd > S().rangeStart && (t < S().rangeStart || t > S().rangeEnd))){
+    // 全局进度条是整轨控制：拖出当前窗口才让路。
+    // 拖回本句内部（例如听一半拉回句首重听）必须保留单句窗口，
+    // 否则这次重播不归属任何句子，回听次数也记不上。
+    if(S().activeSentence >= 0){
+      const win = resolveWindow(S().activeSentence);
+      if(!win || t < win.start - 0.05 || t > win.end + 0.05) releaseRange();
+    }else if(S().rangeEnd > S().rangeStart &&
+             (t < S().rangeStart || t > S().rangeEnd)){
       releaseRange();
     }
     audio.currentTime = t;
@@ -264,6 +306,8 @@
       }
     }
     notifyWindow();
+    // 新一轮播放：从这里重新累计「听过的最大位置」。
+    trackReset(S().activeSentence, S().rangeStart);
 
     const go = function(){
       audio.currentTime = S().rangeStart;
@@ -281,17 +325,18 @@
     const ab = S().ab;
     const boundary = ab ? ab.b : S().rangeEnd;
     if(audio.currentTime >= boundary){
-      if(ab){
-        audio.currentTime = ab.a;
-        safePlay();
-        bumpLoops(S().activeSentence);
-      }else if(S().activeLoopCfg.on){
-        audio.currentTime = S().rangeStart;
-        safePlay();
-        bumpLoops(S().activeSentence);
-      }else if(S().repeatLeft > 0){
+      let wrappedTo = null;
+      if(ab) wrappedTo = ab.a;
+      else if(S().activeLoopCfg.on) wrappedTo = S().rangeStart;
+      else if(S().repeatLeft > 0){
         S().repeatLeft -= 1;
-        audio.currentTime = S().rangeStart;
+        wrappedTo = S().rangeStart;
+      }
+      if(wrappedTo != null){
+        audio.currentTime = wrappedTo;
+        // 自动回绕已经由 bumpLoops 记一次；复位跟踪器，
+        // 避免 notifyTick 里的手动回听判定再记第二次。
+        trackReset(S().activeSentence, wrappedTo);
         safePlay();
         bumpLoops(S().activeSentence);
       }else{
@@ -384,6 +429,7 @@
     audio.pause();
     stopBoundaryTimer();
     audio.currentTime = win.start;
+    trackReset(i, win.start);
     document.querySelectorAll(".card").forEach(function(c){
       c.classList.toggle("active", c.dataset.i === String(i));
     });
@@ -418,6 +464,7 @@
     audio.pause();
     stopBoundaryTimer();
     S().activeSentence = -1;
+    trackReset(null, 0);
     S().rangeEnd = 0;
     S().ab = null;
     S().followActive = false;
@@ -459,6 +506,7 @@
     audio.pause();
     stopBoundaryTimer();
     S().activeSentence = -1;
+    trackReset(null, 0);
     S().rangeEnd = 0;
     S().followActive = false;
     S().followPaused = false;
@@ -494,6 +542,7 @@
         c.classList.toggle("playing", c.dataset.i === String(i));
       });
       audio.currentTime = win.start;
+      trackReset(i, win.start);
       const st = WB.paper.bumpLoopStat(i, "plays");
       notifyLoop(i, st);
       safePlay();

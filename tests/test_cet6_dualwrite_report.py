@@ -6,6 +6,7 @@ import datetime as dt
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 from learnsys import store
 from tools import cet6_dualwrite_report as report_tool
@@ -42,6 +43,12 @@ class ReportTest(unittest.TestCase):
         return report_tool.collect(db_path=self.db, start=dt.date(2026, 10, 21),
                                    end=dt.date(2026, 11, 4),
                                    today=dt.date(2026, 11, 4), **kw)
+
+    def run_relaxed(self, *, today="2026-11-04", **kw):
+        return report_tool.collect(
+            db_path=self.db, start=dt.date(2026, 10, 21),
+            end=dt.date(2026, 11, 4), today=dt.date.fromisoformat(today),
+            policy="relaxed", **kw)
 
     def test_thirteen_days_is_not_enough(self):
         for day in day_range("2026-10-23", "2026-11-04"):
@@ -111,6 +118,47 @@ class ReportTest(unittest.TestCase):
         data = self.run_report()
         self.assertEqual(data["streak_start"], "2026-10-27")
         self.assertFalse(data["eligible"])
+
+    def test_relaxed_thresholds_met_but_before_judge_date(self):
+        for day in day_range("2026-10-31", "2026-11-04"):
+            self.add(day)
+        data = self.run_relaxed()
+        self.assertTrue(data["thresholds_met"])
+        self.assertFalse(data["due"])
+        self.assertFalse(data["eligible"])
+        self.assertEqual(data["earliest_eligible"], "2026-11-09")
+        text = report_tool.render(data)
+        self.assertIn("门槛已满足", text)
+        self.assertIn("还差 5 天", text)
+        self.assertNotIn("不足 14 天", text)
+
+    def test_relaxed_eligible_on_judge_date(self):
+        for day in day_range("2026-10-31", "2026-11-04"):
+            self.add(day)
+        data = self.run_relaxed(today="2026-11-09")
+        self.assertTrue(data["thresholds_met"])
+        self.assertTrue(data["due"])
+        self.assertTrue(data["eligible"])
+        self.assertIn("可以按计划退休", report_tool.render(data))
+
+    def test_relaxed_thresholds_not_met_on_judge_date(self):
+        for day in ("2026-11-03", "2026-11-04"):
+            self.add(day)
+        data = self.run_relaxed(today="2026-11-09")
+        self.assertFalse(data["thresholds_met"])
+        self.assertFalse(data["eligible"])
+        text = report_tool.render(data)
+        self.assertIn("判定日已到", text)
+        self.assertIn("不能退休", text)
+
+    def test_cli_end_defaults_to_today(self):
+        fake = {"eligible": False}
+        with mock.patch.object(report_tool, "collect", return_value=fake) as collect:
+            code = report_tool.main(["--db", str(self.db), "--today", "2026-11-04", "--json"])
+        self.assertEqual(code, 2)
+        kwargs = collect.call_args.kwargs
+        self.assertEqual(kwargs["end"], dt.date(2026, 11, 4))
+        self.assertEqual(kwargs["policy"], "relaxed")
 
 
 if __name__ == "__main__":

@@ -101,6 +101,7 @@ function setup() {
   WB.session.currentSi = 0;
   WB.session.currentIi = 0;
   WB.session.playRate = 1;
+  const bumps = [];
   WB.paper = {
     currentSection() { return sec; },
     currentItem() { return item; },
@@ -116,7 +117,10 @@ function setup() {
     },
     resolveAB() { return { a: null, b: null, mode: null }; },
     loopCfgFor() { return { on: false, times: 1 }; },
-    bumpLoopStat() { return { plays: 1, loops: 0 }; },
+    bumpLoopStat(i, key) {
+      bumps.push([i, key]);
+      return { plays: 1, loops: 1 };
+    },
   };
   WB.audio.init();
   WB.audio.onTick = () => {};
@@ -124,7 +128,7 @@ function setup() {
   WB.audio.onLoopStat = () => {};
 
   return {
-    WB, audio, cards,
+    WB, audio, cards, bumps,
     S: WB.session,
     timers,
     tick() { for (const fn of [...timers.values()]) fn(); },
@@ -208,4 +212,62 @@ test("整段播放中把全局进度条拖出区间：不立即暂停", () => {
   assert.equal(timers.size, 0);
   tick();
   assert.equal(audio.paused, false);
+});
+
+function loopCount(bumps, i) {
+  return bumps.filter(([idx, key]) => idx === i && key === "loops").length;
+}
+
+test("单句听到一半把小滑块拖回句首：记一次回听，单句窗口保留", () => {
+  const { WB, audio, S, bumps } = setup();
+  WB.audio.playSentence(2);
+  audio.currentTime = 17;            // 已经听过一句的一半
+  audio.fire("timeupdate");
+
+  WB.audio.seekFraction(2, 0);       // 拖回句首
+  assert.equal(loopCount(bumps, 2), 1);
+  assert.equal(S.activeSentence, 2, "不能丢掉单句窗口");
+});
+
+test("一次拖动连续触发 input：只记一次回听", () => {
+  const { WB, audio, bumps } = setup();
+  WB.audio.playSentence(2);
+  audio.currentTime = 17;
+  audio.fire("timeupdate");
+
+  for (let v = 500; v >= 0; v -= 100) WB.audio.seekFraction(2, v);
+  assert.equal(loopCount(bumps, 2), 1, "拖动的中间事件不能重复计数");
+});
+
+test("句内小幅回拉（没回到句首）：不算回听", () => {
+  const { WB, audio, bumps } = setup();
+  WB.audio.playSentence(2);
+  audio.currentTime = 18;
+  audio.fire("timeupdate");
+
+  WB.audio.seekFraction(2, 300);     // 从 80% 回拉到 30%
+  assert.equal(loopCount(bumps, 2), 0);
+});
+
+test("全局进度条拖回当前句内部：保留单句，不退出", () => {
+  const { WB } = setup();
+  WB.audio.playSentence(2);
+  const start = WB.session.rangeStart;
+  const end = WB.session.rangeEnd;
+
+  WB.audio.seekToFraction((start + (end - start) * 0.5) / 100);
+  assert.equal(WB.session.activeSentence, 2);
+  assert.equal(WB.session.rangeStart, start);
+  assert.equal(WB.session.rangeEnd, end);
+});
+
+test("自动循环回绕只记一次，不和回听判定重复", () => {
+  const { WB, audio, S, bumps, tick } = setup();
+  WB.paper.loopCfgFor = () => ({ on: true, times: 1 });
+  WB.audio.playSentence(2);
+  const before = loopCount(bumps, 2);
+
+  audio.currentTime = S.rangeEnd;
+  tick();
+  assert.equal(loopCount(bumps, 2) - before, 1);
 });

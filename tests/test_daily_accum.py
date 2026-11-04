@@ -66,11 +66,33 @@ class DailyAccumTest(unittest.TestCase):
                          [item["id"] for item in second["items"]["writing"]])
         self.assertEqual(first["total"], second["total"])
 
-    def test_writing_rotates_next_day(self):
-        today = daily_accum._writing_payloads("2026-10-31")
-        tomorrow = daily_accum._writing_payloads("2026-11-01")
-        self.assertNotEqual([row["payload"]["pattern"] for row in today],
-                            [row["payload"]["pattern"] for row in tomorrow])
+    def _writing_keys(self, day):
+        return {row["ref_key"] for row in daily_accum._writing_payloads(day)}
+
+    def test_writing_rotates_without_overlap(self):
+        days = [f"2026-11-{number:02d}" for number in range(1, 13)]
+        for before, after in zip(days, days[1:]):
+            self.assertFalse(self._writing_keys(before) & self._writing_keys(after),
+                             f"{before} 和 {after} 的写作句型重复")
+
+    def test_writing_covers_all_patterns_in_one_cycle(self):
+        days = [f"2026-11-{number:02d}" for number in range(1, 25)]
+        keys = [self._writing_keys(day) for day in days]
+        self.assertEqual(len(set().union(*keys)), 48)
+        for before, after in zip(keys, keys[1:]):
+            self.assertFalse(before & after)
+
+    def test_theme_terms_rotate_without_overlap(self):
+        def theme_keys(day):
+            return {row["ref_key"] for row in daily_accum._translation_payloads(day)
+                    if row["payload"]["tag"] == "主题词"}
+
+        days = ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05"]
+        for day in days:
+            self.assertEqual(len(theme_keys(day)), 4)
+        for before, after in zip(days, days[1:]):
+            self.assertFalse(theme_keys(before) & theme_keys(after),
+                             f"{before} 和 {after} 的主题词重复")
 
     def test_writing_payload_is_pattern_with_example(self):
         rows = daily_accum._writing_payloads("2026-10-31")

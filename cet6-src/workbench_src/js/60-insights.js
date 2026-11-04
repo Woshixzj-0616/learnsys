@@ -41,7 +41,7 @@
       const st = stats[s.i] || {};
       const loops = Number(st.loops) || 0;
       const plays = Number(st.plays) || 0;
-      if(tags.length || note || loops > 0){
+      if(tags.length || note || loops > 0 || plays >= 2){
         rows.push({
           sentence: s.i, en: s.en, tags: tags, note: note,
           start: s.start, loops: loops, plays: plays
@@ -71,7 +71,7 @@
           const st = stats[s.i] || {};
           const loops = Number(st.loops) || 0;
           const plays = Number(st.plays) || 0;
-          if(tags.length || note || loops > 0){
+          if(tags.length || note || loops > 0 || plays >= 2){
             rows.push({
               sentence: s.i, en: s.en, tags: tags, note: note, start: s.start,
               loops: loops, plays: plays,
@@ -463,9 +463,9 @@
       : "暂无";
     const parts = [];
     parts.push('<p class="meta">本卷进度 ' + done + " / " + total + " 句 · 今日 " + todayDone +
-      " 句 · 待校对 " + reviewN + " 句 · 笔记 " + noteN + " 条 · 循环回绕 " + loopTotal + " 次</p>");
+      " 句 · 待校对 " + reviewN + " 句 · 笔记 " + noteN + " 条 · 回听 " + loopTotal + " 次</p>");
     parts.push("<p><b>断点分布：</b>" + U.escapeHtml(tagHtml) + "</p>");
-    parts.push("<table><thead><tr><th>Section / 题型</th><th>已完成</th><th>待校对</th><th>循环</th></tr></thead><tbody>");
+    parts.push("<table><thead><tr><th>Section / 题型</th><th>已完成</th><th>待校对</th><th>回听</th></tr></thead><tbody>");
     rows.forEach(function(r){
       parts.push("<tr><td>" + U.escapeHtml(r.sec) + " / " + U.escapeHtml(r.item) +
         '</td><td class="n">' + r.done + " / " + r.total +

@@ -67,6 +67,11 @@ core → storage → paper → audio → render → actions → insights / vocab
 
 `ab[itemId][sentenceIndex] = {a, b}`；B 只有在 `b > a + 0.2` 时生效，否则按整句播放并提示。
 
+`loopStats[itemId][sentenceIndex] = {loops, plays}`：`loops` 是**回听次数**，
+包含自动循环 / 连播 / A-B 回绕，以及手动把播放头拖回句首（`30-audio.js` 的
+`trackPosition` 按播放头判定，不按控件来源）；`plays` 是开始播放的遍数，
+每记一次回听同时 +1。
+
 ## 构建与部署
 
 ```bat

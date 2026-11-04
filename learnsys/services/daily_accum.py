@@ -27,8 +27,11 @@ PRON_GAP_DAYS = 3
 # 高频短语从 2026-11-02 上线日起按 4 条/天轮换，首日从库头开始，
 # 让红包、一带一路这些第一批就能看到；换短语库时改这个基准。
 PHRASE_EPOCH = dt.date(2026, 11, 2)
-# 内容结构变了就升这个号：当天已生成的写作/翻译会重新生成，往期历史不动。
-ACCUM_VERSION = 3
+# 写作句型从 2026-11-04 起按 2 条/天轮换，首日从库头开始。
+# 旧实现每天只平移 1 条，今天的第一条正好是昨天的第二条，相邻两天必重复。
+WRITING_EPOCH = dt.date(2026, 11, 4)
+# 内容结构 / 轮换口径变了就升这个号：当天已生成的写作/翻译会重新生成，往期历史不动。
+ACCUM_VERSION = 4
 
 
 def _today() -> str:
@@ -39,13 +42,18 @@ def _ordinal(day: str) -> int:
     return dt.date.fromisoformat(str(day)[:10]).toordinal()
 
 
+def _daily_start(day: str, per_day: int, size: int, epoch: dt.date) -> int:
+    """每天按 per_day 条平移；相邻两天的窗口不重叠。"""
+    return ((_ordinal(day) - epoch.toordinal()) * int(per_day)) % size
+
+
 def _writing_payloads(day: str) -> list[dict]:
     """写作积累只取句型库：句型 + 中文用途 + 例句 + 译文。"""
     rows = train_content.writing_patterns()
     if not rows:
         return []
     size = len(rows)
-    start = _ordinal(day) % size
+    start = _daily_start(day, WRITING_PER_DAY, size, WRITING_EPOCH)
     positions = [start]
     if size > 1:
         positions.append((start + 1) % size)
@@ -96,7 +104,7 @@ def _translation_payloads(day: str) -> list[dict]:
                if isinstance(row, dict) and str(row.get("zh") or "").strip()]
     if phrases:
         size = len(phrases)
-        start = ((ordinal - PHRASE_EPOCH.toordinal()) * PHRASE_PER_DAY) % size
+        start = _daily_start(day, PHRASE_PER_DAY, size, PHRASE_EPOCH)
         for offset in range(min(PHRASE_PER_DAY, size)):
             phrase = phrases[(start + offset) % size]
             zh = str(phrase.get("zh") or "").strip()
@@ -126,7 +134,9 @@ def _translation_payloads(day: str) -> list[dict]:
                 break
             item, terms = groups[(start + offset) % size]
             for pick in range(len(terms)):
-                term = terms[(ordinal + offset + pick) % len(terms)]
+                # 只跟日期走，不再加 offset：offset 每天减 1 会和日期的 +1
+                # 互相抵消，导致同一组主题词在相邻两天挑到同一个词。
+                term = terms[(ordinal + pick) % len(terms)]
                 zh = str(term.get("zh") or "").strip()
                 if not zh or zh in chosen:
                     continue

@@ -26,6 +26,14 @@ from learnsys import config                                  # noqa: E402
 
 CLEAN_STATUSES = {"ok", "ok_minor"}
 
+# 2026-10-27 拍板的放宽口径：证据 5 天 / 干净 3 天 / 连续干净 1 天，
+# 判定日 2026-11-09。严格口径（原施工单）仍是连续 14 天无差异。
+RELAXED_MIN_EVIDENCE = 5
+RELAXED_MIN_CLEAN = 3
+RELAXED_MIN_STREAK = 1
+RELAXED_JUDGE_DATE = dt.date(2026, 11, 9)
+POLICIES = ("relaxed", "strict")
+
 
 def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
     return conn.execute(
@@ -71,8 +79,16 @@ def _day_clean(runs: list[dict], strict_plays: bool) -> bool:
 
 def collect(*, db_path: pathlib.Path, start: dt.date, end: dt.date,
             required_days: int = 14, today: dt.date | None = None,
-            strict_plays: bool = False) -> dict:
-    """返回报告所需全部数字；缺库/缺表时抛 RuntimeError。"""
+            strict_plays: bool = False, policy: str = "strict",
+            min_evidence: int = RELAXED_MIN_EVIDENCE,
+            min_clean: int = RELAXED_MIN_CLEAN,
+            min_streak: int = RELAXED_MIN_STREAK,
+            judge_date: dt.date | None = None) -> dict:
+    """返回报告所需全部数字；缺库/缺表时抛 RuntimeError。
+
+    `policy="strict"` 是原施工单的「连续 14 天无差异」；
+    `policy="relaxed"` 是 2026-10-27 拍板的 5/3/1 口径，另加判定日。
+    """
     if not db_path.exists():
         raise RuntimeError(f"数据库不存在：{db_path}")
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
@@ -144,7 +160,32 @@ def collect(*, db_path: pathlib.Path, start: dt.date, end: dt.date,
             earliest = streak_start + dt.timedelta(days=required_days - 1)
 
     clean_days = sum(1 for d in daily if d["clean"])
-    eligible = bool(streak >= required_days and available_days >= required_days)
+    judge_date = judge_date or RELAXED_JUDGE_DATE
+    thresholds = [
+        {"key": "evidence", "label": "证据天数", "need": min_evidence,
+         "actual": len(observed)},
+        {"key": "clean", "label": "干净天数", "need": min_clean,
+         "actual": clean_days},
+        {"key": "streak", "label": "连续干净", "need": min_streak,
+         "actual": streak},
+    ]
+    for row in thresholds:
+        row["ok"] = row["actual"] >= row["need"]
+    thresholds_met = all(row["ok"] for row in thresholds)
+    if policy == "relaxed":
+        due = today >= judge_date
+        eligible = bool(thresholds_met and due)
+        if not due:
+            earliest = judge_date
+        elif thresholds_met:
+            earliest = today
+        else:
+            earliest = None
+        days_to_judge = max(0, (judge_date - today).days)
+    else:
+        due = True
+        eligible = bool(streak >= required_days and available_days >= required_days)
+        days_to_judge = 0
     return {
         "db": str(db_path),
         "start": start.isoformat(),
@@ -152,6 +193,12 @@ def collect(*, db_path: pathlib.Path, start: dt.date, end: dt.date,
         "today": today.isoformat(),
         "horizon": horizon.isoformat(),
         "required_days": required_days,
+        "policy": policy,
+        "thresholds": thresholds,
+        "thresholds_met": thresholds_met,
+        "judge_date": judge_date.isoformat(),
+        "due": due,
+        "days_to_judge": days_to_judge,
         "first_evidence": first_evidence.isoformat() if first_evidence else None,
         "available_days": available_days,
         "observed_days": len(observed),
@@ -168,15 +215,23 @@ def collect(*, db_path: pathlib.Path, start: dt.date, end: dt.date,
 
 
 def render(report: dict) -> str:
+    if report.get("policy") == "relaxed":
+        need = " / ".join(f"{row['label']}≥{row['need']}" for row in report["thresholds"])
+        policy_line = f"政策：放宽口径（{need}；判定日 {report['judge_date']}）"
+    else:
+        policy_line = f"政策：严格口径（连续 {report['required_days']} 天无差异）"
     lines = ["六级双写退休报告（只读）",
              f"数据库：{report['db']}",
-             f"窗口：{report['start']} → {report['end']}（要求连续 {report['required_days']} 天）"]
+             policy_line,
+             f"窗口：{report['start']} → {report['end']}"]
     if report["first_evidence"]:
+        short = ""
+        if (report.get("policy") != "relaxed"
+                and report["available_days"] < report["required_days"]):
+            short = "  ← 不足 {0} 天".format(report["required_days"])
         lines.append(f"证据起点：{report['first_evidence']}")
         lines.append(f"可用证据窗口：{report['first_evidence']} → {report['horizon']}"
-                     f" = {report['available_days']} 天"
-                     + ("  ← 不足 {0} 天".format(report["required_days"])
-                        if report["available_days"] < report["required_days"] else ""))
+                     f" = {report['available_days']} 天{short}")
     else:
         lines.append("证据起点：无（还没有任何整卷审计记录）")
     lines.append(f"已观测 {report['observed_days']} 天；干净 {report['clean_days']} 天；"
@@ -185,8 +240,27 @@ def render(report: dict) -> str:
         lines.append(f"当前连续干净：{report['streak']} 天（起 {report['streak_start']}）")
     else:
         lines.append("当前连续干净：0 天")
+    if report.get("policy") == "relaxed":
+        for row in report["thresholds"]:
+            lines.append(f"{row['label']}：{row['actual']} / 需要 {row['need']} "
+                         + ("满足" if row["ok"] else "不足"))
+        if report["due"]:
+            lines.append(f"判定日：{report['judge_date']}（已到）")
+        else:
+            lines.append(f"判定日：{report['judge_date']}（今天 {report['today']}，"
+                         f"还差 {report['days_to_judge']} 天）")
     lines.append(f"最早可能判定日：{report['earliest_eligible'] or '无法判断'}")
-    if report["eligible"]:
+    if report.get("policy") == "relaxed":
+        missing = [row["label"] for row in report["thresholds"] if not row["ok"]]
+        if report["eligible"]:
+            lines.append("结论：满足放宽判据，可以按计划退休。")
+        elif not report["due"] and report["thresholds_met"]:
+            lines.append(f"结论：门槛已满足，但未到判定日（还差 {report['days_to_judge']} 天）。")
+        elif not report["due"]:
+            lines.append(f"结论：未到判定日，且门槛未满足（缺：{'、'.join(missing)}）。")
+        else:
+            lines.append(f"结论：判定日已到，但门槛未满足（缺：{'、'.join(missing)}），不能退休。")
+    elif report["eligible"]:
         lines.append("结论：满足判据，可以按计划退休。")
     elif report["available_days"] < report["required_days"]:
         lines.append("结论：证据天数不足，不能按原计划切换。")
@@ -213,22 +287,35 @@ def render(report: dict) -> str:
     return "\n".join(lines)
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="六级双写退休报告（只读）")
     parser.add_argument("--db", default=str(config.db_path()))
     parser.add_argument("--start", default="2026-10-21")
-    parser.add_argument("--end", default="2026-11-04")
-    parser.add_argument("--days", type=int, default=14, dest="required_days")
+    parser.add_argument("--end", default="",
+                        help="结束日期（YYYY-MM-DD）；留空 = 今天（或 --today）")
+    parser.add_argument("--days", type=int, default=14, dest="required_days",
+                        help="严格口径要求的连续干净天数（默认 14）")
+    parser.add_argument("--policy", choices=POLICIES, default="relaxed",
+                        help="relaxed = 2026-10-27 拍板的 5/3/1 放宽口径（默认）；"
+                             "strict = 原施工单连续 N 天")
+    parser.add_argument("--judge-date", default=RELAXED_JUDGE_DATE.isoformat(),
+                        help="放宽口径的判定日（默认 2026-11-09）")
     parser.add_argument("--today", default="", help="测试用：固定今天（YYYY-MM-DD）")
     parser.add_argument("--strict-plays", action="store_true", help="仅 plays 的差异也阻断")
     parser.add_argument("--json", action="store_true")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    today = _date(args.today) if args.today else dt.date.today()
+    end = _date(args.end) if args.end else today
     try:
         report = collect(
-            db_path=pathlib.Path(args.db), start=_date(args.start), end=_date(args.end),
-            required_days=args.required_days,
-            today=_date(args.today) if args.today else None,
-            strict_plays=args.strict_plays)
+            db_path=pathlib.Path(args.db), start=_date(args.start), end=end,
+            required_days=args.required_days, today=today,
+            strict_plays=args.strict_plays, policy=args.policy,
+            judge_date=_date(args.judge_date))
     except RuntimeError as exc:
         print(f"无法生成报告：{exc}")
         return 1
