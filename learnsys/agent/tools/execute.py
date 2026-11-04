@@ -7,6 +7,7 @@ from .files import run_code, write_study_file
 from .learning_write import (add_vocab, delete_vocab, rate_review,
                              save_training_error)
 from .life_tools import art_works, life_cards, life_items
+from .archive_search import search_dialog_archive
 from .materials import read_material, save_material_note, search_materials
 from .records import ocr_image, read_attachment, search_records, today_summary
 from .study_tools import (due_reviews, forget_memory, get_cet6_context,
@@ -84,6 +85,11 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
             text = ocr_image(str(args.get("path") or ""), ctx=ctx)
             ok = not text.startswith(("这个路径不在", "图片不存在", "OCR 没成功"))
             return text, "对截图做了 OCR", ok
+        if name == "search_dialog_archive":
+            text = search_dialog_archive(str(args.get("query") or ""),
+                                         int(args.get("limit") or 8), ctx=ctx)
+            ok = not text.startswith(("还没有封存", "对话总汇里没有找到"))
+            return text, "查了历史对话", ok
         if name == "search_materials":
             text = search_materials(str(args.get("query") or ""),
                                     int(args.get("limit") or 5), ctx=ctx)

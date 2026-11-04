@@ -5,6 +5,23 @@ from learnsys import knowledge
 from learnsys.agent import sandbox
 
 
+SEARCH_DIALOG_ARCHIVE_SCHEMA = {
+    "name": "search_dialog_archive",
+    "description": (
+        "搜索**历史对话原文**（Codex / Claude / DeepSeek 等封存的对话总汇）。"
+        "长期记忆里没有的旧细节、原话、项目历史用它查；只读，不改任何东西。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "关键词，中文即可；多个词用空格分开"},
+            "limit": {"type": "integer", "description": "最多返回几条，默认 8"},
+        },
+        "required": ["query"],
+    },
+}
+
+
 TOOL_SCHEMAS = [
     {
         "name": "search_records",
@@ -90,6 +107,7 @@ TOOL_SCHEMAS = [
             "required": ["material_id"],
         },
     },
+    SEARCH_DIALOG_ARCHIVE_SCHEMA,
 ]
 
 
@@ -365,6 +383,7 @@ TOOL_LABELS = {
     "list_recordings": "查录像",
     "get_cet6_context": "看六级进度",
     "search_materials": "查资料",
+    "search_dialog_archive": "查历史对话",
     "read_material": "读资料正文",
     "read_attachment": "读挂载文档",
     "ocr_image": "识别图片文字",

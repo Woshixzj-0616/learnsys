@@ -26,7 +26,8 @@ from learnsys.server import (routes_agent, routes_agents, routes_briefing,
                              routes_browser, routes_cet6, routes_cet6_chunk,
                              routes_cet6_drill, routes_cet6_exam, routes_code,
                              routes_daily, routes_data, routes_knowledge,
-                             routes_materials, routes_memory, routes_recordings,
+                             routes_materials, routes_memory,
+                             routes_memory_archive, routes_recordings,
                              routes_results, routes_review, routes_services,
                              routes_settings, routes_train, routes_ui,
                              routes_upload, routes_vocab, routes_web, runtime)
@@ -112,6 +113,7 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
     app.include_router(routes_web.router)
     app.include_router(routes_settings.router)
     app.include_router(routes_memory.router)
+    app.include_router(routes_memory_archive.router)
     app.include_router(routes_upload.router)
     app.include_router(routes_ui.router)
     app.include_router(routes_browser.router)

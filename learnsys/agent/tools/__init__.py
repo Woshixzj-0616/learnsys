@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from .context import ToolContext, _one_line, _safe_path, _stamp
+from .archive_search import search_dialog_archive
 from .execute import execute
 from .files import (STUDY_FILE_SUFFIXES, _study_target, run_code, write_study_file)
 from .learning_write import (add_vocab, delete_vocab, rate_review,
@@ -43,6 +44,7 @@ __all__ = [
     "SAVE_WRONGBOOK_SCHEMA", "SAVE_MEMORY_SCHEMA", "FORGET_MEMORY_SCHEMA",
     "SAVE_MATERIAL_NOTE_SCHEMA", "WRITE_STUDY_FILE_SCHEMA", "RUN_CODE_SCHEMA",
     "search_records", "today_summary", "read_attachment", "ocr_image",
+    "search_dialog_archive",
     "search_materials", "read_material", "save_material_note",
     "save_wrongbook", "get_cet6_context", "save_memory", "forget_memory",
     "recent_wrong_items", "due_reviews", "get_mastery", "get_train_summary",
