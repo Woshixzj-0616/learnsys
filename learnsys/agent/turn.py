@@ -68,6 +68,7 @@ class _RunState:
     tool_seen: set[tuple] = field(default_factory=set)      # (工具名, 参数) 去重
     tool_attempts: dict[str, int] = field(default_factory=dict)
     gate_rounds: int = 0                                    # 取证补轮次数（最多 1）
+    memory: dict = field(default_factory=dict)              # 本轮注入的记忆审计
 
 
 @dataclass

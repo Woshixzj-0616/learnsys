@@ -28,16 +28,6 @@ from learnsys.agent.turn import (
 MAX_TOOL_STEPS = 8
 
 
-def _read_profile(cfg: AgentConfig) -> str:
-    """学习档案是可选的：没有就是空串，不让它拦住问答。"""
-    try:
-        if cfg.profile_path.exists():
-            return cfg.profile_path.read_text(encoding="utf-8", errors="replace")[:2000]
-    except Exception:
-        pass
-    return ""
-
-
 def _history_messages(history: list[tuple[str, str]] | None,
                       image_text: str) -> list[dict]:
     """把「问/答」对变成 Anthropic 消息；图和它的转述只挂第一轮。
@@ -173,8 +163,26 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
             "needed": gate.needed, "kind": gate.kind, "round": 0,
             "applied": bool(gate_apply and gate.needed)})
 
-    profile = _read_profile(cfg)
-    memory_text = memory.render_for_prompt(cfg.data_root)
+    scope_hints: list[str] = []
+    if request.surface == "cet6":
+        scope_hints.append("exam:cet6")
+    if request.material_id:
+        scope_hints.append(f"course:{request.material_id}")
+    context_text = "\n".join(
+        text for text in (request.context, request.history_summary) if text)
+    selection = memory.select_for_prompt(
+        cfg.data_root, query=request.message, context=context_text,
+        scope_hints=scope_hints)
+    profile = memory.render_profile_for_prompt(cfg.data_root)
+    memory_text = memory.render_selection(selection) or memory.EMPTY_MEMORY_TEXT
+    memory_audit = {
+        "ids": selection.get("ids") or [],
+        "chars": selection.get("chars") or 0,
+        "budget": selection.get("budget") or {},
+        "scopes": selection.get("scopes") or [],
+        "suppressed": selection.get("suppressed") or [],
+        "profile_chars": len(profile),
+    }
     image_paths = ([request.image_path] if request.image_path else []) + list(
         request.extra_images or [])
     image_text = ""
@@ -220,6 +228,8 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
         current_text += "\n\n" + evidence_gate.nudge_text()
     messages.append({"role": "user", "content": [{"type": "text", "text": current_text}]})
 
+    state = _RunState()
+    state.memory = memory_audit
     return _Turn(
         request=request,
         provider=provider,
@@ -227,7 +237,7 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
         system=system,
         tool_schemas=tool_schemas,
         messages=messages,
-        state=_RunState(),
+        state=state,
         ctx=_tool_context(request, cfg, code_debug),
         image_paths=image_paths,
         used_vision=used_vision,

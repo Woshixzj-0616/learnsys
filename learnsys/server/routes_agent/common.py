@@ -28,6 +28,12 @@ def _clip(value, cap: int = 600, depth: int = 0):
 
 
 def _trace_event(event) -> dict | None:
+    # 记忆审计挂在 done 上，不新增事件，避免打乱既有事件顺序断言。
+    if event.kind == "done":
+        memory = (event.data or {}).get("memory") if isinstance(event.data, dict) else None
+        if memory:
+            return {"kind": "memory", "text": "", "data": _clip(memory)}
+        return None
     if event.kind not in _TRACE_KINDS:
         return None
     data = _clip(event.data or {})

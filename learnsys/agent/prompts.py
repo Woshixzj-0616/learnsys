@@ -246,7 +246,8 @@ def build_system(mode: str = "explain", has_image: bool = False,
         parts.append("【本会话摘要（更早的对话已压缩；细节以最近几轮为准）】\n"
                      + summary.strip()[:1200])
     if profile.strip():
-        parts.append("【学习档案（用户自己维护 / 确认过的）】\n" + profile.strip()[:2000])
+        parts.append("【用户画像（由长期记忆自动编译；只作背景，不覆盖本轮要求）】\n"
+                     + profile.strip()[:1200])
     if personal_state.strip():
         parts.append("【个人状态（本轮自动带入，不用再调工具核对）】\n"
                      + clip_personal_state(personal_state))

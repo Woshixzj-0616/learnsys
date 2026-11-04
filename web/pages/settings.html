@@ -86,8 +86,34 @@
     <div class="memory-add">
       <input class="input" id="memory-input" maxlength="500"
              placeholder="例如：回答和思考一律用中文">
+      <select class="input" id="memory-kind">
+        <option value="preference">偏好</option>
+        <option value="rule">规矩</option>
+        <option value="identity">身份</option>
+        <option value="goal">目标</option>
+        <option value="constraint">约束</option>
+        <option value="project">项目</option>
+      </select>
+      <input class="input" id="memory-scope" value="global"
+             placeholder="global / exam:cet6 / course:… / project:…">
       <button class="btn" type="button" id="memory-add">记下来</button>
     </div>
+    <h3>候选记忆</h3>
+    <p class="hint">从日记、想法和对话里自动抽出的候选；确认后才会每轮带上。</p>
+    <div id="memory-candidates" class="memory-list"><div class="hint">正在读候选…</div></div>
+    <h3>画像</h3>
+    <p class="hint">由身份 / 目标 / 约束类记忆自动编译成只读文件，手改会被覆盖。</p>
+    <div class="memory-add">
+      <button class="btn" type="button" id="memory-compile">重新编译画像</button>
+      <span class="hint" id="memory-profile-status"></span>
+    </div>
+    <h3>历史对话检索</h3>
+    <p class="hint">在封存的对话总汇里查原文；只读，不会把旧对话塞进长期记忆。</p>
+    <div class="memory-add">
+      <input class="input" id="archive-query" placeholder="关键词，例如：六级 精听">
+      <button class="btn" type="button" id="archive-search">搜索</button>
+    </div>
+    <div id="archive-results" class="memory-list"></div>
   </section>
 
   <section class="settings-section">
