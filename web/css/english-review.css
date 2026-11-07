@@ -1,0 +1,92 @@
+/* 英语复习：句子 / 单词短语两个 tab，卡片先答后看 */
+.er-tabs { display: flex; gap: 8px; margin-top: 14px; }
+.er-tab {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+}
+.er-tab b { color: var(--mark); margin-left: 4px; }
+.er-tab.active {
+  border-color: var(--mark);
+  background: var(--mark-soft);
+  color: var(--text);
+}
+.er-panel .panel-body { padding: 20px; }
+.er-card {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-raised);
+}
+.er-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.er-source {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--mark-soft);
+  color: var(--mark);
+}
+.er-label {
+  margin: 14px 0 6px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.er-prompt {
+  font-size: 18px;
+  line-height: 1.7;
+}
+.er-typed {
+  width: 100%;
+  min-height: 96px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+.er-reveal { margin: 14px 0; }
+.er-answer {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+.er-block { margin-bottom: 14px; }
+.er-ref { line-height: 1.7; }
+.er-mine {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  line-height: 1.6;
+}
+.er-note {
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--mark);
+  background: var(--mark-soft);
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.er-word { font-size: 30px; font-weight: 600; letter-spacing: .01em; }
+.er-context { margin-top: 8px; color: var(--muted); line-height: 1.6; }
+.er-meaning { font-size: 18px; line-height: 1.7; margin-bottom: 16px; }
+.er-ratings { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }

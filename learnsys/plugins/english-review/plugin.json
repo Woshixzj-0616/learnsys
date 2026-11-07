@@ -1,0 +1,15 @@
+{
+  "id": "english-review",
+  "name": "英语复习",
+  "icon": "↻",
+  "type": "native-page",
+  "entry": "pages/english-review.html",
+  "script": "js/pages/english-review.js",
+  "order": 64,
+  "status": "ready",
+  "version": "0.1.0",
+  "category": "回顾",
+  "home": true,
+  "tagline": "句子 / 单词短语，先答后看",
+  "description": "句子来自写作与翻译批改，单词短语来自精听、翻译和每日积累；先自己答或译，再看参考，按 FSRS 排期。"
+}

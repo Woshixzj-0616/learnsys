@@ -10,6 +10,7 @@ import datetime
 from learnsys import store
 from learnsys.knowledge import CATEGORY_NAMES
 from learnsys.services import day_plan
+from learnsys.services import review as review_service
 from learnsys.services.cet6 import daily_accum
 from learnsys.services import knowledge as knowledge_service
 from learnsys.services import study as study_mod
@@ -26,10 +27,13 @@ def learning_summary(conn, day: str = "") -> dict:
     day = day or datetime.date.today().isoformat()
     due = store.wrong_due_items(conn, day)
     recent_wrong = store.recent_wrong_items(conn, limit=3)
+    english_due = review_service.due_counts(conn, day)
     return {
         "date": day,
         "plan": day_plan.build(conn, day, due=due),
         "due_reviews": len(due),
+        "due_sentence": english_due.get("sentence", 0),
+        "due_word": english_due.get("word", 0),
         "due_items": due,
         "recent_wrong": recent_wrong,
         "cet6": stats.cet6_groups(conn, day),
@@ -62,6 +66,8 @@ def payload(conn, day: str = "") -> dict:
         "transcripts": stats.transcript_totals(conn, day),
         "recordings": store.recording_totals(conn, day=day),
         "due_reviews": learning["due_reviews"],
+        "due_sentence": learning["due_sentence"],
+        "due_word": learning["due_word"],
         "actions": today_actions.build(
             conn, day, learning["due_items"],
             {item["paper_id"] for item in learning["cet6"] if item["paper_id"]}),

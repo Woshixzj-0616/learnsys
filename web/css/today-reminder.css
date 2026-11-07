@@ -13,3 +13,13 @@
 .review-reminder:hover { background: var(--bg-raised); }
 .review-reminder b { color: var(--mark); }
 .review-reminder-icon { font-size: 15px; }
+.review-reminder-text { color: var(--muted); }
+.review-reminder-link {
+  padding: 2px 10px;
+  border: 1px solid var(--mark-soft);
+  border-radius: 999px;
+  color: var(--text);
+  text-decoration: none;
+}
+.review-reminder-link:hover { border-color: var(--mark); }
+.review-reminder-link[hidden] { display: none; }

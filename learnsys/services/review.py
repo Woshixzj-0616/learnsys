@@ -11,6 +11,33 @@ from learnsys.services import fsrs
 
 ITEM_TYPES = store.REVIEW_ITEM_TYPES
 
+# 英语复习的两个 tab：句子卡来自写作/翻译批改，词卡来自生词本。
+# 来源白名单是业务口径，只在这里定义；store 只负责按传进来的条件查。
+KINDS = {
+    "sentence": {"item_types": ("wrong",),
+                 "sources": ("writing", "translation", "sentence")},
+    "word": {"item_types": ("vocab",), "sources": ()},
+}
+NEW_PER_DAY = 10   # 每个 tab 每天最多进 10 张新卡
+
+
+def _kind_spec(kind: str) -> dict:
+    return KINDS.get(str(kind or "").strip(), {})
+
+
+def _introduced_today(conn, item_types: tuple, day: str) -> int:
+    """今天已经正式复习过的新卡数（review_log 里 state_before='new'）。"""
+    types = tuple(t for t in item_types if t in ITEM_TYPES)
+    if not types:
+        return 0
+    placeholders = ",".join("?" * len(types))
+    row = conn.execute(
+        "SELECT count(*) FROM review_log "
+        "WHERE substr(ts, 1, 10) = ? AND state_before = 'new' "
+        f"AND item_type IN ({placeholders})",
+        (str(day)[:10], *types)).fetchone()
+    return int(row[0] or 0)
+
 
 def _exists(conn, item_type: str, item_id: int) -> bool:
     if item_type == "wrong":
@@ -72,15 +99,41 @@ def bump_review_stage(conn, item_ids: list[int]) -> None:
         review_wrong_item(conn, int(item_id), "remember")
 
 
-def queue(conn, *, limit: int = 50, item_type: str = "") -> dict:
+def queue(conn, *, limit: int = 50, item_type: str = "",
+          kind: str = "", today=None) -> dict:
     store.seed_review_states(conn)
-    items = store.due_review_items(conn, limit=limit, item_type=item_type)
+    day = str(today or dt.date.today().isoformat())[:10]
+    spec = _kind_spec(kind)
+    if spec:
+        introduced = _introduced_today(conn, spec["item_types"], day)
+        new_left = max(0, NEW_PER_DAY - introduced)
+        items = store.due_review_items(
+            conn, limit=limit, today=day,
+            item_types=spec["item_types"], sources=spec["sources"],
+            max_new=new_left)
+        return {"items": items, "count": len(items), "kind": kind,
+                "new_per_day": NEW_PER_DAY, "new_remaining": new_left}
+    items = store.due_review_items(conn, limit=limit, item_type=item_type,
+                                   today=day)
     return {"items": items, "count": len(items)}
 
 
-def stats(conn, item_type: str = "") -> dict:
+def due_counts(conn, today=None) -> dict:
+    """今日页用：只数句子/词各有多少到期，不建队列、不写复习状态。"""
+    day = str(today or dt.date.today().isoformat())[:10]
+    return {kind: store.due_review_count(
+        conn, today=day, item_types=spec["item_types"], sources=spec["sources"])
+        for kind, spec in KINDS.items()}
+
+
+def stats(conn, item_type: str = "", kind: str = "", today=None) -> dict:
     store.seed_review_states(conn)
-    return store.review_stats(conn, item_type=item_type)
+    spec = _kind_spec(kind)
+    if spec:
+        return store.review_counts(
+            conn, today=today, item_types=spec["item_types"],
+            sources=spec["sources"])
+    return store.review_stats(conn, item_type=item_type, today=today)
 
 
 def recent_log(conn, limit: int = 20) -> dict:

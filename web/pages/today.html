@@ -48,10 +48,14 @@
     </form>
   </section>
 
-  <a class="card review-reminder" id="review-reminder" href="#/wrongbook" hidden>
+  <div class="card review-reminder" id="review-reminder" hidden>
     <span class="review-reminder-icon" aria-hidden="true">🔔</span>
-    <span>今日 <b id="review-due-num">0</b> 张到期 → 去复习</span>
-  </a>
+    <span class="review-reminder-text">今日到期</span>
+    <a class="review-reminder-link" id="review-sentence-link"
+       href="#/english-review?tab=sentence">句子 <b id="review-sentence-num">0</b></a>
+    <a class="review-reminder-link" id="review-word-link"
+       href="#/english-review?tab=word">单词 <b id="review-word-num">0</b></a>
+  </div>
 
   <section class="domain-grid" id="domain-grid" aria-label="学习 / 工作 / 生活" hidden></section>
 

@@ -16,11 +16,11 @@ class ReviewIn(BaseModel):
 
 
 @router.get("/api/review/queue")
-def review_queue(limit: int = 50, item_type: str = "",
+def review_queue(limit: int = 50, item_type: str = "", kind: str = "",
                  _=Depends(require_token)):
     conn = store.connect()
     try:
-        return review.queue(conn, limit=limit, item_type=item_type)
+        return review.queue(conn, limit=limit, item_type=item_type, kind=kind)
     finally:
         conn.close()
 
@@ -40,10 +40,11 @@ def submit_review(item_type: str, item_id: int, req: ReviewIn,
 
 
 @router.get("/api/review/stats")
-def review_stats(item_type: str = "", _=Depends(require_token)):
+def review_stats(item_type: str = "", kind: str = "",
+                 _=Depends(require_token)):
     conn = store.connect()
     try:
-        return review.stats(conn, item_type=item_type)
+        return review.stats(conn, item_type=item_type, kind=kind)
     finally:
         conn.close()
 

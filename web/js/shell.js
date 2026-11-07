@@ -38,7 +38,8 @@ function moduleById(id) {
 const GROUP_ORDER = ["学习", "生活", "资料", "工具", "系统"];
 const GROUP_OF = {
   ask: "学习", cet6: "学习", netlab: "学习", review: "学习", quiz: "学习",
-  knowledge: "学习", wrongbook: "学习", vocab: "学习", briefing: "学习",
+  knowledge: "学习", wrongbook: "学习", vocab: "学习", "english-review": "学习",
+  briefing: "学习",
   daily: "学习",
   life: "生活", art: "生活",
   materials: "资料", recordings: "资料",

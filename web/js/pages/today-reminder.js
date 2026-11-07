@@ -1,9 +1,16 @@
-// 到期复习窄提醒：只做提示，明细与评级都在错题本。
+// 到期复习窄提醒：句子和词分开计数，各自进英语复习对应 tab。
 export function renderReminder(today) {
   const bar = document.getElementById("review-reminder");
   if (!bar) return;
-  const due = Number(today?.due_reviews || 0);
-  bar.hidden = due <= 0;
-  const num = document.getElementById("review-due-num");
-  if (num) num.textContent = String(due);
+  const sentence = Number(today?.due_sentence || 0);
+  const word = Number(today?.due_word || 0);
+  bar.hidden = sentence + word <= 0;
+  const sentenceLink = document.getElementById("review-sentence-link");
+  const wordLink = document.getElementById("review-word-link");
+  const sentenceNum = document.getElementById("review-sentence-num");
+  const wordNum = document.getElementById("review-word-num");
+  if (sentenceNum) sentenceNum.textContent = String(sentence);
+  if (wordNum) wordNum.textContent = String(word);
+  if (sentenceLink) sentenceLink.hidden = sentence <= 0;
+  if (wordLink) wordLink.hidden = word <= 0;
 }

@@ -162,8 +162,8 @@ def _review_join_sql() -> str:
     return (
         "SELECT r.item_type, r.item_id, r.state, r.due, r.stability, r.difficulty, "
         "r.reps, r.lapses, r.last_review, r.scheduled_days, "
-        "w.question, w.answer, w.my_answer, w.tags, w.note, w.material_id, "
-        "v.word, v.meaning, v.context, v.paper_title "
+        "w.question, w.answer, w.my_answer, w.tags, w.note, w.material_id, w.source, "
+        "v.word, v.meaning, v.context, v.paper_title, v.source "
         "FROM review_state r "
         "LEFT JOIN wrong_items w ON r.item_type = 'wrong' AND w.id = r.item_id "
         "LEFT JOIN vocab_items v ON r.item_type = 'vocab' AND v.id = r.item_id ")
@@ -179,31 +179,127 @@ def _review_card(row) -> dict:
         "question": row[10] or "", "answer": row[11] or "",
         "my_answer": row[12] or "", "tags": row[13] or "", "note": row[14] or "",
         "material_id": int(row[15] or 0),
-        "word": row[16] or "", "meaning": row[17] or "",
-        "context": row[18] or "", "paper_title": row[19] or "",
+        "source": row[16] or row[21] or "",
+        "word": row[17] or "", "meaning": row[18] or "",
+        "context": row[19] or "", "paper_title": row[20] or "",
     }
     item["title"] = item["question"] if item["item_type"] == "wrong" else item["word"]
     return item
 
 
-def due_review_items(conn: sqlite3.Connection, *, limit: int = 50,
-                     today=None, item_type: str = "") -> list[dict]:
-    day = str(today or dt.date.today().isoformat())[:10]
+def _review_where(day: str, item_types: tuple, sources: tuple) -> tuple[str, list]:
+    """到期卡的公共条件：卡片仍有效，且属于给定类型/来源。"""
     where = [
         "r.due <= ?",
         "(r.item_type <> 'wrong' OR (w.id IS NOT NULL AND w.mastered = 0))",
         "(r.item_type <> 'vocab' OR (v.id IS NOT NULL AND v.status = 'active'))",
     ]
     args: list = [day]
-    if item_type in REVIEW_ITEM_TYPES:
-        where.insert(0, "r.item_type = ?")
-        args.insert(0, item_type)
-    sql = (_review_join_sql() + "WHERE " + " AND ".join(where)
+    types = tuple(t for t in item_types if t in REVIEW_ITEM_TYPES)
+    if types:
+        where.append("r.item_type IN (" + ",".join("?" * len(types)) + ")")
+        args.extend(types)
+    src = tuple(s for s in sources if s)
+    if src:
+        where.append("(r.item_type <> 'wrong' OR w.source IN ("
+                     + ",".join("?" * len(src)) + "))")
+        args.extend(src)
+    return " AND ".join(where), args
+
+
+def due_review_items(conn: sqlite3.Connection, *, limit: int = 50,
+                     today=None, item_type: str = "",
+                     item_types: tuple = (), sources: tuple = (),
+                     max_new: int | None = None) -> list[dict]:
+    """到期卡队列。
+
+    `item_types` / `sources` 是英语复习的过滤条件；`max_new` 限制新卡张数
+    （英语复习每天 10 张），不会影响已进入复习的卡。
+    """
+    day = str(today or dt.date.today().isoformat())[:10]
+    types = (item_type,) if item_type in REVIEW_ITEM_TYPES else tuple(item_types)
+    where, args = _review_where(day, types, sources)
+    # 多取一些，给新卡限流留出替换空间；最终仍按 due 顺序返回。
+    fetch = max(1, min(int(limit or 50), 500))
+    sql = (_review_join_sql() + "WHERE " + where
            + " ORDER BY r.due, r.item_type, r.item_id LIMIT ?")
-    args.append(max(1, min(int(limit or 50), 500)))
+    args.append(fetch if max_new is None else min(fetch * 4, 500))
     with _LOCK:
         rows = conn.execute(sql, args).fetchall()
-    return [_review_card(row) for row in rows]
+    items = [_review_card(row) for row in rows]
+    if max_new is not None:
+        left = max(0, int(max_new))
+        kept: list[dict] = []
+        for item in items:
+            if item["state"] == "new":
+                if left <= 0:
+                    continue
+                left -= 1
+            kept.append(item)
+        items = kept
+    return items[:fetch]
+
+
+def due_review_count(conn: sqlite3.Connection, *, today=None,
+                     item_type: str = "", item_types: tuple = (),
+                     sources: tuple = ()) -> int:
+    """只数到期卡张数，不建队列、不碰复习状态（今日页用）。"""
+    day = str(today or dt.date.today().isoformat())[:10]
+    types = (item_type,) if item_type in REVIEW_ITEM_TYPES else tuple(item_types)
+    where, args = _review_where(day, types, sources)
+    with _LOCK:
+        row = conn.execute(
+            "SELECT count(*) FROM review_state r "
+            "LEFT JOIN wrong_items w ON r.item_type = 'wrong' AND w.id = r.item_id "
+            "LEFT JOIN vocab_items v ON r.item_type = 'vocab' AND v.id = r.item_id "
+            "WHERE " + where, args).fetchone()
+    return int(row[0] or 0)
+
+
+def review_counts(conn: sqlite3.Connection, *, today=None,
+                  item_type: str = "", item_types: tuple = (),
+                  sources: tuple = ()) -> dict:
+    """英语复习两个 tab 的计数：到期 / 新卡 / 总数 / 今日已复习 / 下张到期。"""
+    day = str(today or dt.date.today().isoformat())[:10]
+    types = (item_type,) if item_type in REVIEW_ITEM_TYPES else tuple(item_types)
+    valid = [
+        "(r.item_type <> 'wrong' OR (w.id IS NOT NULL AND w.mastered = 0))",
+        "(r.item_type <> 'vocab' OR (v.id IS NOT NULL AND v.status = 'active'))",
+    ]
+    conds = list(valid)
+    args: list = []
+    if types:
+        conds.append("r.item_type IN (" + ",".join("?" * len(types)) + ")")
+        args.extend(types)
+    src = tuple(s for s in sources if s)
+    if src:
+        conds.append("(r.item_type <> 'wrong' OR w.source IN ("
+                     + ",".join("?" * len(src)) + "))")
+        args.extend(src)
+    base = ("FROM review_state r "
+            "LEFT JOIN wrong_items w ON r.item_type = 'wrong' AND w.id = r.item_id "
+            "LEFT JOIN vocab_items v ON r.item_type = 'vocab' AND v.id = r.item_id "
+            "WHERE " + " AND ".join(conds))
+    with _LOCK:
+        total = conn.execute("SELECT count(*) " + base, args).fetchone()[0]
+        new = conn.execute(
+            "SELECT count(*) " + base + " AND r.state = 'new'", args).fetchone()[0]
+        due = conn.execute(
+            "SELECT count(*) " + base + " AND r.due <= ?", [*args, day]).fetchone()[0]
+        next_row = conn.execute(
+            "SELECT min(r.due) " + base + " AND r.due > ?", [*args, day]).fetchone()
+        if types:
+            placeholders = ",".join("?" * len(types))
+            reviewed = conn.execute(
+                "SELECT count(*) FROM review_log WHERE substr(ts, 1, 10) = ? "
+                f"AND item_type IN ({placeholders})", [day, *types]).fetchone()[0]
+        else:
+            reviewed = conn.execute(
+                "SELECT count(*) FROM review_log WHERE substr(ts, 1, 10) = ?",
+                [day]).fetchone()[0]
+    return {"due": int(due or 0), "new": int(new or 0), "total": int(total or 0),
+            "reviewed_today": int(reviewed or 0),
+            "next_due": (next_row[0] if next_row else "") or ""}
 
 
 def review_stats(conn: sqlite3.Connection, today=None, item_type: str = "") -> dict:

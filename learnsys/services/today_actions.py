@@ -31,15 +31,15 @@ def build(conn, day: str, due: list,
             "title": f"六级训练 · {train_due} 张到期错误卡",
             "detail": f"写作 {plan['due']['writing']} 张 · "
                       f"翻译 {plan['due']['translation']} 张",
-            "href": "#/cet6?tab=review",
+            "href": "#/english-review?tab=sentence",
             "label": "去复习",
         })
     elif due:
         actions.append({
             "kind": "due",
             "title": f"{len(due)} 条到期",
-            "detail": "错题和生词按记忆曲线排到了今天",
-            "href": "#/wrongbook",
+            "detail": "句子和单词按记忆曲线排到了今天",
+            "href": "#/english-review",
             "label": "去复习",
         })
     if (not train_due or train_due != len(due)) and plan["today"]["total"] == 0 \
