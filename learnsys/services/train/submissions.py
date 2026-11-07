@@ -1,7 +1,8 @@
 """写作/翻译提交的生命周期：草稿 → 提交 → 轮询 → 批改落库 → 错误卡。
 
 模型调用在 `services/train_review.py`；这里只做业务编排与落库。
-二稿新建一行，`parent_id` 指初稿；只有“严重”错误自动进错题本，术语错进生词本。
+二稿新建一行，`parent_id` 指初稿；只有“严重”错误自动进错题本（整句卡），
+通过词条准入的搭配/术语另进生词本。
 """
 from __future__ import annotations
 
@@ -242,24 +243,21 @@ def _store_cards(conn, row: dict, review: dict) -> dict:
         _, created = store.add_wrong_item(
             conn, question=question, answer=card.get("answer", ""),
             my_answer=card.get("my_answer", ""), tags=card.get("tags", ""),
-            note=card.get("note", ""), source=source,
-            source_id=f"{source}:{card.get('source_id') or store.wrong_fingerprint(question)}",
-            auto=bool(card.get("auto", True)))
+            note=card.get("note", ""), source=card.get("source") or source,
+            source_id=card.get("source_id") or store.wrong_fingerprint(question),
+            auto=bool(card.get("auto", True)), update_if_exists=True)
         added += 1 if created else 0
+    # 生词本只收通过准入的词条；整句问题由上面的整句卡承担。
     terms = 0
-    # 术语卡记的是「学生写错 → 正确英文」，不是中英对照。
-    # 词头取正确英文、释义取中文 why，避免把英文-英文写进生词本；
-    # 同一句被多次批改时按正确英文去重。
-    for card in review.get("term_cards") or []:
-        quote = str(card.get("front") or card.get("quote") or "").strip()
-        fix = str(card.get("back") or card.get("fix") or "").strip()
-        why = str(card.get("note") or card.get("why") or "").strip()
-        if not fix or fix == quote:
+    for card in review.get("vocab_cards") or []:
+        quote = str(card.get("quote") or "").strip()
+        word = str(card.get("word") or "").strip()
+        if not word:
             continue
         _, created = store.add_vocab(
-            conn, word=fix, meaning=why or "术语改译",
-            context=f"改译：{quote} → {fix}" if quote else "",
-            paper_id=row["prompt_id"], source="translation")
+            conn, word=word, meaning=card.get("meaning") or "",
+            context=f"改译：{quote} → {word}" if quote else "",
+            paper_id=row["prompt_id"], source=source)
         terms += 1 if created else 0
     return {"wrong_added": added, "terms_added": terms}
 

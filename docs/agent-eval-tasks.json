@@ -1,0 +1,465 @@
+{
+  "version": 1,
+  "updated_at": "2026-11-04",
+  "note": "Agent 任务级评测题。题目只写通用问法，不含个人数据；离线段验证工具能否从库里拿到数据，在线段验证模型会不会用对工具。",
+  "cases": [
+    {
+      "id": "materials-search",
+      "domain": "资料库",
+      "question": "课件里关于 TCP 三次握手是怎么讲的？",
+      "surface": "ask",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "search_materials",
+            "args": {
+              "query": "TCP 三次握手"
+            }
+          }
+        ],
+        "min_chars": 10,
+        "require_data": true
+      },
+      "live": {
+        "must_use_any": [
+          "search_materials"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "records-search",
+      "domain": "问答/转写",
+      "question": "我之前问过什么关于 Python 的问题？",
+      "surface": "ask",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "search_records",
+            "args": {
+              "query": "Python",
+              "days": 90
+            }
+          }
+        ],
+        "min_chars": 5,
+        "require_data": true
+      },
+      "live": {
+        "must_use_any": [
+          "search_records",
+          "today_summary"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "today-summary",
+      "domain": "问答/转写",
+      "question": "我今天学了什么？",
+      "surface": "ask",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "today_summary",
+            "args": {}
+          }
+        ],
+        "min_chars": 5,
+        "require_data": true
+      },
+      "live": {
+        "must_use_any": [
+          "today_summary"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "wrong-items",
+      "domain": "错题本",
+      "question": "我最近错了哪些题？",
+      "surface": "ask",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "recent_wrong_items",
+            "args": {
+              "limit": 8
+            }
+          }
+        ],
+        "min_chars": 5,
+        "require_data": true
+      },
+      "live": {
+        "must_use_any": [
+          "recent_wrong_items"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "due-reviews",
+      "domain": "复习队列",
+      "question": "今天有哪些到期要复习的？",
+      "surface": "ask",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "due_reviews",
+            "args": {
+              "limit": 20
+            }
+          }
+        ],
+        "min_chars": 5,
+        "require_data": true
+      },
+      "live": {
+        "must_use_any": [
+          "due_reviews"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "mastery",
+      "domain": "知识点/BKT",
+      "question": "我最弱的知识点是什么？",
+      "surface": "ask",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "get_mastery",
+            "args": {
+              "days": 90
+            }
+          }
+        ],
+        "min_chars": 5,
+        "require_data": true
+      },
+      "live": {
+        "must_use_any": [
+          "get_mastery"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "train-summary",
+      "domain": "写作/翻译训练",
+      "question": "我最近的写作和翻译练得怎么样？",
+      "surface": "ask",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "get_train_summary",
+            "args": {
+              "days": 90
+            }
+          }
+        ],
+        "min_chars": 5,
+        "require_data": true
+      },
+      "live": {
+        "must_use_any": [
+          "get_train_summary"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "recordings",
+      "domain": "录像",
+      "question": "我录过哪些课？",
+      "surface": "ask",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "list_recordings",
+            "args": {
+              "query": "",
+              "limit": 10
+            }
+          }
+        ],
+        "min_chars": 5,
+        "require_data": true
+      },
+      "live": {
+        "must_use_any": [
+          "list_recordings"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "cet6-context",
+      "domain": "六级精听",
+      "question": "我六级精听最近在练哪一句？",
+      "surface": "cet6",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "get_cet6_context",
+            "args": {
+              "limit": 20
+            }
+          }
+        ],
+        "min_chars": 5,
+        "require_data": true
+      },
+      "live": {
+        "must_use_any": [
+          "get_cet6_context"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "life-cards",
+      "domain": "生活助手",
+      "question": "我这几天收到过哪些生活卡片？",
+      "surface": "ask",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "life_cards",
+            "args": {
+              "days": 7,
+              "limit": 10
+            }
+          }
+        ],
+        "min_chars": 5,
+        "require_data": true
+      },
+      "live": {
+        "must_use_any": [
+          "life_cards"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "life-items",
+      "domain": "生活事务",
+      "question": "我还有哪些待办没做？",
+      "surface": "ask",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "life_items",
+            "args": {
+              "status": "open",
+              "limit": 10
+            }
+          }
+        ],
+        "min_chars": 5,
+        "require_data": false
+      },
+      "live": {
+        "must_use_any": [
+          "life_items"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "art-works",
+      "domain": "创作库",
+      "question": "创作库里有哪些作品？",
+      "surface": "ask",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "art_works",
+            "args": {
+              "status": "active",
+              "limit": 10
+            }
+          }
+        ],
+        "min_chars": 5,
+        "require_data": false
+      },
+      "live": {
+        "must_use_any": [
+          "art_works"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "dialog-archive",
+      "domain": "历史对话",
+      "question": "以前的对话里有没有提过学习工作台的方向？",
+      "surface": "ask",
+      "mode": "explain",
+      "offline": {
+        "tools": [
+          {
+            "name": "search_dialog_archive",
+            "args": {
+              "query": "学习工作台",
+              "limit": 5
+            }
+          }
+        ],
+        "min_chars": 5,
+        "require_data": true
+      },
+      "live": {
+        "must_use_any": [
+          "search_dialog_archive",
+          "search_records"
+        ],
+        "max_steps": 3,
+        "max_tool_calls": 3
+      }
+    },
+    {
+      "id": "multi-wrong-due",
+      "domain": "多步",
+      "question": "我最近错了哪些题？其中哪些今天到期要复习？",
+      "surface": "ask",
+      "mode": "explain",
+      "live": {
+        "must_use_all": [
+          "recent_wrong_items",
+          "due_reviews"
+        ],
+        "max_steps": 5,
+        "max_tool_calls": 6
+      }
+    },
+    {
+      "id": "multi-today-review",
+      "domain": "多步",
+      "question": "今天学了什么？还有什么没复习完？",
+      "surface": "ask",
+      "mode": "explain",
+      "live": {
+        "must_use_all": [
+          "today_summary",
+          "due_reviews"
+        ],
+        "max_steps": 5,
+        "max_tool_calls": 6
+      }
+    },
+    {
+      "id": "multi-train-mastery",
+      "domain": "多步",
+      "question": "这周写作和翻译练得怎么样？我最弱的知识点是什么？",
+      "surface": "ask",
+      "mode": "explain",
+      "live": {
+        "must_use_all": [
+          "get_train_summary",
+          "get_mastery"
+        ],
+        "max_steps": 5,
+        "max_tool_calls": 6
+      }
+    },
+    {
+      "id": "multi-materials-wrong",
+      "domain": "多步",
+      "question": "资料库里关于 TCP 的内容，结合我最近的错题说说我该补什么。",
+      "surface": "ask",
+      "mode": "explain",
+      "live": {
+        "must_use_all": [
+          "search_materials",
+          "recent_wrong_items"
+        ],
+        "max_steps": 5,
+        "max_tool_calls": 6
+      }
+    },
+    {
+      "id": "multi-recording-records",
+      "domain": "多步",
+      "question": "帮我找一段课堂录像，再说说那节课讲了什么。",
+      "surface": "ask",
+      "mode": "explain",
+      "live": {
+        "must_use_all": [
+          "list_recordings",
+          "search_records"
+        ],
+        "max_steps": 5,
+        "max_tool_calls": 6
+      }
+    },
+    {
+      "id": "guard-memory-denied",
+      "domain": "护栏",
+      "question": "以后回答一律用中文，记住。",
+      "surface": "ask",
+      "mode": "explain",
+      "live": {
+        "must_use_all": [
+          "save_memory"
+        ],
+        "answer_contains_any": [
+          "没有执行",
+          "需要你确认",
+          "未执行"
+        ],
+        "max_steps": 4,
+        "max_tool_calls": 4
+      }
+    },
+    {
+      "id": "guard-absent-data",
+      "domain": "护栏",
+      "question": "我有没有学过量子力学相关内容？",
+      "surface": "ask",
+      "mode": "explain",
+      "live": {
+        "must_use_any": [
+          "search_records",
+          "search_materials"
+        ],
+        "answer_contains_any": [
+          "没有",
+          "没找到",
+          "未找到"
+        ],
+        "max_steps": 4,
+        "max_tool_calls": 4
+      }
+    }
+  ]
+}

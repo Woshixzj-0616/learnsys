@@ -6,9 +6,10 @@
 - `rubric`   评分档位、硬规则、模板检测的唯一落点
 - `prompts`  三类批改提示词
 - `review`   模型输出校验：quote 过滤、档位钳制、多次取中位
+- `lexical`  生词本准入：什么算词条、什么必须进整句错题卡
 
 模型调用与任务队列在 `services.train.review`（业务层子包 `services/train/`）。
 """
 from __future__ import annotations
 
-__all__ = ["content", "validate", "rubric", "prompts", "review"]
+__all__ = ["content", "validate", "rubric", "prompts", "review", "lexical"]

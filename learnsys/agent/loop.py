@@ -6,49 +6,79 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import pathlib
 import threading
 from collections.abc import Iterator
 
-from learnsys.agent import (budget, debug_intent, evidence_gate, intent, memory,
-                            prompts, router, tools, vision)
-from learnsys.llm.config import AgentConfig, load_config
+from learnsys import prompt_budget
+from learnsys.agent import (
+    budget,
+    debug_intent,
+    evidence_gate,
+    intent,
+    memory,
+    prompts,
+    router,
+    tools,
+    vision,
+)
 from learnsys.agent.events import AgentEvent
-from learnsys.llm.provider_anthropic import ProviderError
 from learnsys.agent.turn import (
     AgentError,
     AgentRequest,
     _finish,
     _retry_thinking_only,
-    _RunState,
     _run_tool_loop,
+    _RunState,
     _Turn,
 )
+from learnsys.llm.config import AgentConfig, load_config
+from learnsys.llm.provider_anthropic import ProviderError
 
 MAX_TOOL_STEPS = 8
 
 
 def _history_messages(history: list[tuple[str, str]] | None,
-                      image_text: str) -> list[dict]:
+                      image_text: str, *,
+                      total_tokens: int | None = None,
+                      answer_tokens: int | None = None) -> list[dict]:
     """把「问/答」对变成 Anthropic 消息；图和它的转述只挂第一轮。
 
     上限 8 轮（有会话摘要时才会喂到这么多；没有摘要调用方仍只给 4 轮）：
-    保留第一轮（图挂在那儿）+ 最近七轮。
+    保留第一轮（图挂在那儿）+ 最近七轮。超出 token 预算时从中间丢旧轮，
+    保留第一轮和最新几轮 —— 不把整段历史直接砍掉。
     """
     turns = [(str(q), str(a)) for q, a in (history or []) if q]
     if not turns:
         return []
     if len(turns) > 8:
         turns = [turns[0]] + turns[-7:]
-    messages: list[dict] = []
-    for index, (question, answer) in enumerate(turns):
-        if index == 0 and image_text.strip():
-            question = ("【这张截图的内容（视觉转述/OCR，供追问参考）】\n"
-                        + image_text.strip()[:4000]
-                        + "\n\n【当时的问题】\n" + question)
-        messages.append({"role": "user", "content": [{"type": "text", "text": question}]})
-        messages.append({"role": "assistant",
-                         "content": [{"type": "text", "text": answer}]})
+    budget = int(total_tokens or prompt_budget.DEFAULT_HISTORY_TOKENS)
+    cap = int(answer_tokens or prompt_budget.DEFAULT_HISTORY_ANSWER_TOKENS)
+    image_note = prompt_budget.clip_tokens(image_text.strip(),
+                                           prompt_budget.IMAGE_TOKENS)
+
+    def build(items: list[tuple[str, str]]) -> list[dict]:
+        messages: list[dict] = []
+        for index, (question, answer) in enumerate(items):
+            question = prompt_budget.clip_tokens(question, 2000)
+            if index == 0 and image_note:
+                question = ("【这张截图的内容（视觉转述/OCR，供追问参考）】\n"
+                            + image_note
+                            + "\n\n【当时的问题】\n" + question)
+            messages.append({"role": "user",
+                             "content": [{"type": "text", "text": question}]})
+            messages.append({"role": "assistant", "content": [
+                {"type": "text",
+                 "text": prompt_budget.clip_tokens(answer, cap)}]})
+        return messages
+
+    messages = build(turns)
+    while (len(turns) > 2
+           and prompt_budget.estimate_messages(messages) > budget):
+        turns.pop(1)          # 从最旧的一轮开始丢，保留首轮和最新
+        messages = build(turns)
     return messages
 
 
@@ -208,21 +238,40 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
                                       concise=concise,
                                       personal_state=request.personal_state,
                                       ops=ops_active))
+    # 工具清单也要算进输入预算：34 个 schema 是实打实发给模型的 token。
     tool_schemas = tools.schemas_for(request.mode, use_tools=request.use_tools,
                                      surface=request.surface)
     if gate_apply:
         # 取证轮只留只读工具；用户已经给了原文时不裁剪（不必强制联网）。
         tool_schemas = evidence_gate.filter_schemas(
             tool_schemas, keep=("run_code",) if code_debug else ())
-    messages = _history_messages(request.history, image_text)
+    tool_tokens = (prompt_budget.estimate_tokens(
+        json.dumps(tool_schemas, ensure_ascii=False)) if tool_schemas else 0)
+    # 历史先装（有独立预算），系统提示词、工具清单、历史占掉的额度再从
+    # 本轮可变段里扣。问题永远不裁；装不下时按权重砍其余段。
+    messages = _history_messages(request.history, image_text,
+                                 total_tokens=prompt_budget.history_budget(cfg))
+    history_tokens = prompt_budget.estimate_messages(messages)
+    history_turns = len(messages) // 2
+    input_budget = prompt_budget.input_budget(cfg)
+    system_tokens = prompt_budget.estimate_tokens(system)
+    fitted, user_audit = prompt_budget.fit_sections(
+        {"question": request.message,
+         "context": request.context,
+         "image_text": image_text,
+         "attachment": request.attachment_text},
+        max(1200, input_budget - system_tokens - tool_tokens
+            - history_tokens - 400),
+        order=("question", "context", "image_text", "attachment"))
     current_text = prompts.build_user_text(
-        request.message,
-        context=request.context,
+        fitted["question"],
+        context=fitted["context"],
         context_title=request.context_title,
-        image_text="" if messages else image_text,
+        image_text="" if messages else fitted["image_text"],
         image_used_vision=used_vision,
         attachment_name=request.attachment_name,
-        attachment_text=request.attachment_text,
+        attachment_text=fitted["attachment"],
+        prebudgeted=True,
     )
     if gate_apply and gate.needed:
         current_text += "\n\n" + evidence_gate.nudge_text()
@@ -230,6 +279,16 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
 
     state = _RunState()
     state.memory = memory_audit
+    state.prompt = {
+        "budget": input_budget,
+        "system_tokens": system_tokens,
+        "tool_schema_tokens": tool_tokens,
+        "user": user_audit,
+        "history_tokens": history_tokens,
+        "history_turns": history_turns,
+        "current_user_tokens": prompt_budget.estimate_tokens(current_text),
+        "image_tokens": prompt_budget.estimate_tokens(image_text),
+    }
     return _Turn(
         request=request,
         provider=provider,

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from . import rubric
 
-PROMPT_VERSION = "train-review-v3"
+PROMPT_VERSION = "train-review-v5"
 
 SYSTEM = (
     "你是严谨的中国大学英语六级（CET-6）评分员。"
@@ -33,7 +33,8 @@ def _error_schema(kind: str) -> str:
                  else "漏译/误译/语法/搭配/术语/中式英语")
     return (
         '{"type":"' + type_hint + '","severity":"严重|一般|建议",'
-        '"quote":"学生原文里的精确片段","fix":"改成什么","why":"为什么"}')
+        '"quote":"学生原文里的精确片段","fix":"改成什么","why":"为什么",'
+        '"gloss":"改后词条的中文意思（2–12 字）；不是词条留空"}')
 
 
 def writing_review_prompt(pack: dict, text: str, hard: dict) -> str:
@@ -132,6 +133,8 @@ def translation_review_prompt(pack: dict, text: str, hard: dict) -> str:
 4. alignment 的 segment 是中文段落序号（从 1 开始，按原文顺序），每个段落最多一条；
    quote 必须逐字出现在学生译文里，对不上就不写。它只用于逐句对照，不参与评分。
 5. 不要输出参考译文，不要输出任何 Markdown。
+6. gloss 只给单词或固定搭配写 2–12 字中文词义；整句片段、语法/标点问题留空，
+   不要编造。
 """
 
 
@@ -153,7 +156,7 @@ def sentence_review_prompt(item: dict, text: str) -> str:
 【输出】只输出一个 JSON 对象：
 {{"conclusion":"准确|基本准确|有偏差|误译",
  "info_points":{{"total":2,"covered":1,"missing":["漏掉的中文信息"]}},
- "must_fix":[{{"quote":"学生译文里的精确片段","fix":"怎么改","why":"漏译/误译/语法/搭配/改变原意"}}],
+ "must_fix":[{{"type":"拼写|语法|搭配|用词|术语|误译|漏译|标点|改变原意","quote":"学生译文里的精确片段","fix":"怎么改","why":"为什么","gloss":"改后词条的中文意思（2–12 字）；不是词条留空"}}],
  "suggestions":[{{"quote":"学生译文里的精确片段","fix":"更地道的写法","why":"更地道/更简洁/更书面"}}],
  "variants":["1–2 个可接受的不同译法"],
  "minimal_fix":"只改错误、保留学生原句结构的最小改动版",
@@ -162,6 +165,10 @@ def sentence_review_prompt(item: dict, text: str) -> str:
 【铁律】
 1. 只有**漏译、误译、语法错、搭配错、改变原意**放进 must_fix；风格偏好放 suggestions。
 2. 每条 quote 必须逐字出现在学生译文里；找不到就删掉这条，不要编造。
-3. 参考译文不是唯一答案；学生译法正确但不同，不要判错。
-4. 不要输出任何 Markdown 或额外解释。
+3. type 必须从给定列表里选最贴近的一个；拼写错的 fix 只写那一个单词，
+   搭配错只写需要替换的短语，不要把整句抄进 fix。
+4. gloss 只给单词或固定搭配写 2–12 字中文词义；整句片段、语法/标点问题留空，
+   不要编造。
+5. 参考译文不是唯一答案；学生译法正确但不同，不要判错。
+6. 不要输出任何 Markdown 或额外解释。
 """

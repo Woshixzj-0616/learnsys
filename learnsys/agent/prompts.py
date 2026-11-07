@@ -11,7 +11,7 @@
 """
 from __future__ import annotations
 
-from learnsys import knowledge
+from learnsys import knowledge, prompt_budget
 from learnsys.agent import prompt_ops
 from learnsys.context import clip_personal_state
 
@@ -244,15 +244,20 @@ def build_system(mode: str = "explain", has_image: bool = False,
         parts.append(STYLE_EXAMPLES)
     if summary.strip():
         parts.append("【本会话摘要（更早的对话已压缩；细节以最近几轮为准）】\n"
-                     + summary.strip()[:1200])
+                     + prompt_budget.clip_tokens(
+                         summary.strip(), prompt_budget.SUMMARY_TOKENS))
     if profile.strip():
         parts.append("【用户画像（由长期记忆自动编译；只作背景，不覆盖本轮要求）】\n"
-                     + profile.strip()[:1200])
+                     + prompt_budget.clip_tokens(
+                         profile.strip(), prompt_budget.PROFILE_TOKENS))
     if personal_state.strip():
+        # 个人状态由 context.clip_personal_state 统一截到 600 字（测试守住这个口径）；
+        # 它本身已经很小，不再套 token 裁剪，避免出现第二个上限。
         parts.append("【个人状态（本轮自动带入，不用再调工具核对）】\n"
                      + clip_personal_state(personal_state))
     if memories.strip():
-        parts.append(memories.strip())
+        parts.append(prompt_budget.clip_tokens(
+            memories.strip(), prompt_budget.MEMORY_TOKENS))
     if has_image:
         parts.append("这一轮带有截图；截图内容会在用户消息里给出。")
     return "\n\n".join(parts)
@@ -260,17 +265,29 @@ def build_system(mode: str = "explain", has_image: bool = False,
 
 def build_user_text(question: str, *, context: str = "", context_title: str = "",
                     image_text: str = "", image_used_vision: bool = False,
-                    attachment_name: str = "", attachment_text: str = "") -> str:
-    """把「问题 + 截图转述/OCR + 上下文 + 挂载文档」拼成一条用户消息。"""
+                    attachment_name: str = "", attachment_text: str = "",
+                    prebudgeted: bool = False) -> str:
+    """把「问题 + 截图转述/OCR + 上下文 + 挂载文档」拼成一条用户消息。
+
+    `prebudgeted=True`：调用方（loop）已经按本轮共享预算裁过，别再套一层默认上限，
+    否则「预算器」和「写死的字符上限」会变成两套真相。
+    """
+    if not prebudgeted:
+        image_text = prompt_budget.clip_tokens(
+            image_text, prompt_budget.IMAGE_TOKENS)
+        attachment_text = prompt_budget.clip_tokens(
+            attachment_text, prompt_budget.ATTACHMENT_TOKENS)
+        context = prompt_budget.clip_tokens(
+            context, prompt_budget.CONTEXT_TOKENS)
     parts: list[str] = []
     if image_text.strip():
         parts.append(IMAGE_NOTE_VISION if image_used_vision else IMAGE_NOTE_OCR)
-        parts.append("【截图内容】\n" + image_text.strip()[:8000])
+        parts.append("【截图内容】\n" + image_text.strip())
     if attachment_text.strip():
         name = attachment_name or "文档"
-        parts.append(f"【参考文档：{name}】\n{attachment_text.strip()[:6000]}")
+        parts.append(f"【参考文档：{name}】\n{attachment_text.strip()}")
     if context.strip():
         label = context_title.strip() or "刚录到的课堂转写片段（供参考，可能不完整）"
-        parts.append(f"【{label}】\n" + context.strip()[:2000])
+        parts.append(f"【{label}】\n" + context.strip())
     parts.append("【问题】\n" + question.strip())
     return "\n\n".join(parts)

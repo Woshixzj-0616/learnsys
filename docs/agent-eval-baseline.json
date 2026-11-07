@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "offline": {
+    "materials-search": {
+      "status": "通过"
+    },
+    "records-search": {
+      "status": "通过"
+    },
+    "today-summary": {
+      "status": "通过"
+    },
+    "wrong-items": {
+      "status": "通过"
+    },
+    "due-reviews": {
+      "status": "通过"
+    },
+    "mastery": {
+      "status": "通过"
+    },
+    "train-summary": {
+      "status": "通过"
+    },
+    "recordings": {
+      "status": "通过"
+    },
+    "cet6-context": {
+      "status": "通过"
+    },
+    "life-cards": {
+      "status": "通过"
+    },
+    "life-items": {
+      "status": "空数据"
+    },
+    "art-works": {
+      "status": "空数据"
+    },
+    "dialog-archive": {
+      "status": "通过"
+    }
+  },
+  "offline_saved_at": "2026-11-04 23:02:01"
+}

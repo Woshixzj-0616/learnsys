@@ -120,4 +120,6 @@ def apply(turn, *, abort) -> Generator[AgentEvent, None, None]:
         "truncated": state.stop_reason == "max_tokens",
         "code_unverified": code_unverified,
         "memory": dict(state.memory or {}),
+        "prompt": dict(state.prompt or {}),
+        "tool_tokens": state.tool_tokens,
     })

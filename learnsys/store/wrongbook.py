@@ -62,8 +62,13 @@ def add_wrong_item(conn: sqlite3.Connection, *, question: str, answer: str = "",
                    auto: bool = False, material_id: int = 0,
                    code: str = "", language: str = "",
                    error_type: str = "",
-                   test_cases: str = "") -> tuple[int, bool]:
-    """收一道错题；返回 (id, 是否新建)。同 source+source_id 只留第一条。"""
+                   test_cases: str = "",
+                   update_if_exists: bool = False) -> tuple[int, bool]:
+    """收一道错题；返回 (id, 是否新建)。同 source+source_id 只留第一条。
+
+    `update_if_exists=True` 时，已存在的卡只刷新题面/答案/备注，保留复习进度。
+    整句卡按句子 id 去重、重复批改要覆盖上一次内容，用这个开关。
+    """
     question = str(question or "").strip()
     if not question:
         raise ValueError("错题的问题不能为空")
@@ -87,8 +92,37 @@ def add_wrong_item(conn: sqlite3.Connection, *, question: str, answer: str = "",
                 "SELECT id FROM wrong_items WHERE source = ? AND source_id = ?",
                 (source, source_id)).fetchone()
             item_id = int(row[0]) if row else 0
+            if item_id and update_if_exists:
+                conn.execute(
+                    "UPDATE wrong_items SET question = ?, answer = ?, "
+                    "my_answer = ?, tags = ?, note = ?, auto = ? WHERE id = ?",
+                    (question, str(answer or ""), str(my_answer or ""),
+                     str(tags or ""), str(note or ""), 1 if auto else 0, item_id))
         conn.commit()
     return item_id, created
+
+
+def rewrite_wrong_item(conn: sqlite3.Connection, item_id: int, *,
+                       source_id: str | None = None, question: str | None = None,
+                       answer: str | None = None, my_answer: str | None = None,
+                       tags: str | None = None,
+                       note: str | None = None) -> bool:
+    """原地改写卡片内容（迁移用）：保留 id、复习状态与收录时间。"""
+    fields: dict[str, str] = {}
+    for key, value in (("source_id", source_id), ("question", question),
+                       ("answer", answer), ("my_answer", my_answer),
+                       ("tags", tags), ("note", note)):
+        if value is not None:
+            fields[key] = str(value)
+    if not fields:
+        return False
+    assignments = ", ".join(f"{key}=?" for key in fields)
+    with _LOCK:
+        cur = conn.execute(
+            f"UPDATE wrong_items SET {assignments} WHERE id = ?",
+            [*fields.values(), int(item_id)])
+        conn.commit()
+        return bool(cur.rowcount)
 
 
 def toggle_ask_wrong(conn: sqlite3.Connection, ask_id: int) -> bool:

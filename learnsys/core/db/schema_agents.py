@@ -24,10 +24,15 @@ CREATE TABLE IF NOT EXISTS agent_tasks (
     result_text TEXT NOT NULL DEFAULT '',
     runner      TEXT NOT NULL DEFAULT '',
     heartbeat_at TEXT NOT NULL DEFAULT '',
-    project_id  INTEGER NOT NULL DEFAULT 0
+    project_id  INTEGER NOT NULL DEFAULT 0,
+    contract_json TEXT NOT NULL DEFAULT '',
+    verdict_state TEXT NOT NULL DEFAULT '',
+    verdict_json  TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_created
     ON agent_tasks (created_at DESC, id DESC);
+-- idx_agent_tasks_verdict 在 migrate._migrate_columns 里建：
+-- 老库的 agent_tasks 还没有 verdict_state，这里先建会引用不存在的列。
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_status
     ON agent_tasks (status, agent);
 CREATE TABLE IF NOT EXISTS agent_task_events (

@@ -3,7 +3,8 @@
 口径（施工单 §5.7）：
 - 提交前不下发参考译文与可接受变体；
 - 单句只跑 1 次模型，目标 2 秒；
-- 只有 must_fix 自动进错题本；suggestions 只展示；
+- must_fix 生成一张整句错题卡；只有通过词条准入的项另进生词本；
+- suggestions 只展示；
 - 每次尝试都落 `train_submissions(mode=sentence)`，供统计与“已练”去重。
 """
 from __future__ import annotations
@@ -70,24 +71,17 @@ def get_sentence(conn, sentence_id: str) -> dict:
     return row
 
 
-MAX_VOCAB_TERM = 120
-
-
 def _store_vocab(conn, item: dict, review: dict) -> int:
-    """一句一译的必改项也进生词本：正确英文 + 中文原因 + 原文/我的写法。"""
+    """只落通过准入的词条；句子级必改点由整句错题卡承担。"""
     added = 0
     source_zh = str(item.get("zh") or "").strip()
-    for row in review.get("must_fix") or []:
+    for row in review.get("vocab_cards") or []:
         quote = str(row.get("quote") or "").strip()
-        fix = str(row.get("fix") or "").strip()
-        why = str(row.get("why") or "").strip()
-        if not fix or fix == quote or len(fix) > MAX_VOCAB_TERM:
-            continue
         context = f"一句一译：{source_zh}" if source_zh else "一句一译"
         if quote:
             context += f" ｜ 我当时写：{quote}"
         _, created = store.add_vocab(
-            conn, word=fix, meaning=why or "一句一译必改",
+            conn, word=row.get("word") or "", meaning=row.get("meaning") or "",
             context=context, paper_id=item.get("id") or "",
             paper_title=item.get("source_title") or "一句一译",
             source="sentence")
@@ -95,7 +89,8 @@ def _store_vocab(conn, item: dict, review: dict) -> int:
     return added
 
 
-def _store_cards(conn, sentence_id: str, review: dict) -> int:
+def _store_cards(conn, review: dict) -> int:
+    """整句卡：同一句重复批改只刷新内容，不新增卡。"""
     added = 0
     for card in review.get("cards") or []:
         question = str(card.get("question") or "").strip()
@@ -104,9 +99,9 @@ def _store_cards(conn, sentence_id: str, review: dict) -> int:
         _, created = store.add_wrong_item(
             conn, question=question, answer=card.get("answer", ""),
             my_answer=card.get("my_answer", ""), tags=card.get("tags", ""),
-            note=card.get("note", ""), source="translation",
-            source_id=f"sentence:{sentence_id}:{card.get('source_id') or store.wrong_fingerprint(question)}",
-            auto=True)
+            note=card.get("note", ""), source=card.get("source") or "translation",
+            source_id=card.get("source_id") or store.wrong_fingerprint(question),
+            auto=bool(card.get("auto", True)), update_if_exists=True)
         added += 1 if created else 0
     return added
 
@@ -134,7 +129,7 @@ def review_sentence(conn, sentence_id: str, text: str,
         conn, sub_id, status="reviewed",
         band_json=json.dumps(review, ensure_ascii=False),
         error_count=len(must_fix), serious_count=len(must_fix))
-    cards_added = _store_cards(conn, sentence_id, review)
+    cards_added = _store_cards(conn, review)
     vocab_added = _store_vocab(conn, item, review)
     store.add_event(
         conn, "train", "sentence",

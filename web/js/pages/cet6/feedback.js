@@ -160,7 +160,7 @@ export function feedbackHtml(detail) {
   const review = detail.review || {};
   const band = detail.band;
   const cards = review.cards || [];
-  const terms = review.term_cards || [];
+  const vocab = review.vocab_cards || [];
   const score = detail.external_score;
   return `<div class="cet6-feedback">
     <header class="cet6-feedback-head">
@@ -187,7 +187,7 @@ export function feedbackHtml(detail) {
       </section>
       <section class="cet6-block">
         <h3>这次收进复习</h3>
-        <p>严重错误自动进错题本：<b>${cards.length}</b> 条${terms.length ? `；术语卡：<b>${terms.length}</b> 条` : ""}。</p>
+        <p>自动收进复习：<b>${cards.length}</b> ${detail.kind === "translation" ? "张整句卡" : "条错误卡"}${vocab.length ? `；生词本：<b>${vocab.length}</b> 条` : ""}。</p>
         <p class="hint">一般错误可以逐条点「加入错题本」。错题会按 FSRS 排期出现，不会重复收同一条。</p>
         <div class="cet6-actions">
           <a class="btn btn-small" href="#/wrongbook" data-act="go-wrongbook">打开错题本</a>

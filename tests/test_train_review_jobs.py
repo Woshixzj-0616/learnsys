@@ -128,7 +128,7 @@ class TrainReviewJobsTest(unittest.TestCase):
         data = json.loads(row["content_json"])
         self.assertEqual(data["band"], 8)
         self.assertEqual(data["info_points"]["missing"], ["ip1", "ip2"])
-        self.assertEqual(len(data["term_cards"]), 1)
+        self.assertEqual(len(data["vocab_cards"]), 1)
 
     def test_sentence_sync_uses_one_sample(self):
         self.texts = [json.dumps({

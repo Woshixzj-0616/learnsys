@@ -12,12 +12,12 @@ import uuid
 from collections.abc import Generator
 from dataclasses import dataclass, field
 
-from learnsys import config
+from learnsys import config, prompt_budget
 from learnsys.agent import finish_turn, planning, selfcheck, tools
 from learnsys.agent import usage as agent_usage
-from learnsys.llm.config import AgentConfig
 from learnsys.agent.events import AgentEvent
 from learnsys.agent.fallback import stream_with_fallback
+from learnsys.llm.config import AgentConfig
 from learnsys.llm.provider_anthropic import ProviderResult
 
 
@@ -69,6 +69,8 @@ class _RunState:
     tool_attempts: dict[str, int] = field(default_factory=dict)
     gate_rounds: int = 0                                    # 取证补轮次数（最多 1）
     memory: dict = field(default_factory=dict)              # 本轮注入的记忆审计
+    prompt: dict = field(default_factory=dict)              # 本轮提示词预算审计
+    tool_tokens: int = 0                                    # 已塞回模型的工具结果 token
 
 
 @dataclass
@@ -293,6 +295,16 @@ def _handle_tool_call(turn: _Turn, call, tool_results: list[dict], *,
     content, preview, ok, raw = _execute_tool(call, turn.ctx)
     if ok:
         state.tools_ok.add(call.name)
+    # 工具结果也过预算：单次上限 + 整轮上限。证据仍用未截断的 raw，
+    # 只有塞回模型的文本会被裁；否则 8 步工具调用会把上下文迅速撑大。
+    result_budget = prompt_budget.tool_result_budget(
+        turn.cfg_holder[0], state.tool_tokens, call.name)
+    fitted_raw = prompt_budget.clip_tokens(raw, result_budget, keep="head_tail")
+    if fitted_raw != raw:
+        content = (f'<record source="{call.name}">\n{fitted_raw}\n</record>\n'
+                   "（工具结果过长，已按本轮预算截断；需要完整内容请缩小查询范围"
+                   "或分段读取。）")
+    state.tool_tokens += prompt_budget.estimate_tokens(content)
     tool_ms = int((time.monotonic() - tool_started) * 1000)
     # 代码运行的输出即使失败（编译错误 / 超时）也是可引用的证据；
     # 写入失败则不是，不能拿来当来源。

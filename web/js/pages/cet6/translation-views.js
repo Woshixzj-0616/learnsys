@@ -91,8 +91,8 @@ function sentenceBodyHtml(review, cardsAdded = 0, vocabAdded = 0) {
   const must = review.must_fix || [];
   const suggestions = review.suggestions || [];
   const recorded = [
-    cardsAdded ? `错题本 +${cardsAdded}` : "",
-    vocabAdded ? `生词本 +${vocabAdded}` : "",
+    cardsAdded ? `错题本 +${cardsAdded}（整句）` : "",
+    vocabAdded ? `生词本 +${vocabAdded}（词条）` : "",
   ].filter(Boolean).join(" · ");
   return `
     ${(points.missing || []).length

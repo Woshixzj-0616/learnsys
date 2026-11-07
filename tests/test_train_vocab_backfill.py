@@ -46,19 +46,16 @@ class TrainVocabBackfillTest(unittest.TestCase):
     def test_collect_filters_and_apply_adds(self):
         self.seed()
         report = tool.collect(self.conn)
-        self.assertEqual([row["fix"] for row in report["rows"]],
-                         ["the danger of dying out", "spring couplets"])
-        self.assertEqual(len(report["skipped"]), 3)
+        self.assertEqual([row["fix"] for row in report["rows"]], ["spring couplets"])
+        self.assertEqual(len(report["skipped"]), 4)
         applied = tool.apply(self.conn, report)
-        self.assertEqual(applied, {"added": 2, "merged": 0})
+        self.assertEqual(applied, {"added": 1, "merged": 0})
 
         rows = {row["word"]: row for row in store.list_vocab(self.conn)["items"]}
-        sentence = rows["the danger of dying out"]
-        self.assertTrue(sentence["meaning"].startswith("误译｜"))
-        self.assertIn("the losing questions → the danger of dying out",
-                      sentence["meaning"])
-        self.assertIn("一句一译", sentence["context"])
-        self.assertEqual(sentence["paper_title"], "技能专项")
+        self.assertIn("the urban population", rows)
+        self.assertNotIn("have an insight", rows, "纯格式修正不进生词本")
+        self.assertNotIn("the danger of dying out", rows,
+                         "超过词条形态的改错不进生词本")
         translation = rows["spring couplets"]
         self.assertEqual(translation["meaning"], "“春联”术语错误")
         self.assertIn("spring paper → spring couplets", translation["context"])

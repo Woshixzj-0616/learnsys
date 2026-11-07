@@ -68,9 +68,16 @@ def _migrate_columns(conn: sqlite3.Connection) -> None:
         ("runner", "TEXT NOT NULL DEFAULT ''"),
         ("heartbeat_at", "TEXT NOT NULL DEFAULT ''"),
         ("project_id", "INTEGER NOT NULL DEFAULT 0"),
+        ("contract_json", "TEXT NOT NULL DEFAULT ''"),
+        ("verdict_state", "TEXT NOT NULL DEFAULT ''"),
+        ("verdict_json", "TEXT NOT NULL DEFAULT ''"),
     ):
         if task_cols and column not in task_cols:
             conn.execute(f"ALTER TABLE agent_tasks ADD COLUMN {column} {ddl}")
+    if task_cols:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_agent_tasks_verdict "
+            "ON agent_tasks (verdict_state)")
     message_cols = {row[1] for row in conn.execute(
         "PRAGMA table_info(messages)").fetchall()}
     if message_cols and "result_id" not in message_cols:

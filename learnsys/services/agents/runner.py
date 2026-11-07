@@ -11,9 +11,10 @@ import subprocess
 import threading
 import time
 
+from learnsys import config as app_config
 from learnsys import store
 
-from . import approvals
+from . import approvals, warden
 from .base import AgentSpec, build_argv, parse_line
 
 MAX_OUTPUT_CHARS = 5_000_000
@@ -82,11 +83,69 @@ def cancel_task(task_id: int) -> bool:
     return event is not None
 
 
+_VERDICT_LABELS = {"passed": "通过", "failed": "未通过",
+                   "skipped": "未验证", "error": "验收出错"}
+
+
+def _verdict_exclude(conn, data_root: pathlib.Path,
+                     db_path: pathlib.Path | None) -> list[pathlib.Path]:
+    """验收要排除系统自己的痕迹：结果文件、数据库及其 WAL/SHM。
+
+    默认工作目录就是数据目录，不排除的话，光是开库写 -wal 就会被判成
+    「只读任务改动了工作区」。库路径以**实际连接**为准，别用配置推算。
+    """
+    paths = [pathlib.Path(data_root) / "学习档案" / "agents"]
+    db = pathlib.Path(db_path) if db_path else None
+    if db is None:
+        try:
+            row = conn.execute("PRAGMA database_list").fetchone()
+            if row and row[2]:
+                db = pathlib.Path(row[2])
+        except Exception:
+            db = None
+    if db is None:
+        try:
+            db = pathlib.Path(app_config.db_path())
+        except Exception:
+            db = None
+    if db is not None:
+        for suffix in ("", "-wal", "-shm", "-journal"):
+            paths.append(pathlib.Path(str(db) + suffix))
+    return paths
+
+
+def _verdict_lines(verdict: dict) -> list[str]:
+    """结果文件里的验收段：逐条列绿红，人不用翻 JSON。"""
+    label = _VERDICT_LABELS.get(verdict.get("state"), "未验证")
+    lines = ["", "## 验收", "",
+             f"- 结论：{label}（{verdict.get('summary') or ''}）"]
+    changes = verdict.get("changes") or {}
+    changed = changes.get("changed") or []
+    if changed:
+        shown = "、".join(str(path) for path in changed[:20])
+        more = f" 等 {len(changed)} 个" if len(changed) > 20 else ""
+        lines.append(f"- 改动：{shown}{more}")
+        if changes.get("truncated"):
+            lines.append("- 注意：改动清单被截断，验收不完整")
+    items = verdict.get("items") or []
+    if items:
+        lines += ["", "| 检查 | 期望 | 实际 | 结果 |", "|---|---|---|---|"]
+        for item in items:
+            lines.append(
+                f"| {item.get('check') or ''} | {item.get('expected') or ''} | "
+                f"{item.get('actual') or ''} | "
+                f"{'通过' if item.get('ok') else '未通过'} |")
+        details = [str(item.get("detail")) for item in items if item.get("detail")]
+        if details:
+            lines += ["", "问题：" + "；".join(details)]
+    return lines
+
+
 def _save_output(data_root: pathlib.Path, task_id: int, spec: AgentSpec,
                  prompt: str, workspace: pathlib.Path, status: str,
                  duration_ms: int, exit_code: int | None, cost: float,
                  answer: str, error: str, approval_rows: list[dict] | None = None,
-                 mode: str = "read") -> str:
+                 mode: str = "read", verdict: dict | None = None) -> str:
     folder = data_root / "学习档案" / "agents"
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f"{task_id:04d}-{spec.id}.md"
@@ -110,6 +169,8 @@ def _save_output(data_root: pathlib.Path, task_id: int, spec: AgentSpec,
         "",
         answer or "（没有文本输出）",
     ]
+    if verdict:
+        lines += _verdict_lines(verdict)
     if approval_rows:
         label = {"allowed": "允许", "denied": "拒绝",
                  "expired": "超时", "pending": "未决"}
@@ -140,6 +201,17 @@ def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
     conn = store.connect(db_path)
     started = time.monotonic()
     seq = 0
+    # 契约与起始快照必须在子进程起来之前拿到；失败只影响验收，不影响任务本身。
+    contract, contract_error, before = {}, "", None
+    exclude = _verdict_exclude(conn, data_root, db_path)
+    try:
+        raw_contract = store.get_agent_task_contract(conn, task_id)
+        contract, contract_error = warden.normalize_contract(
+            raw_contract, mode, workspace)
+        if not contract_error:
+            before = warden.snapshot(workspace, exclude=exclude)
+    except Exception as exc:
+        contract_error = f"准备验收失败：{exc}"
     answer_parts: list[str] = []
     stderr_parts: list[str] = []
     usage: dict = {}
@@ -272,6 +344,15 @@ def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
     finally:
         duration_ms = int((time.monotonic() - started) * 1000)
         answer = "\n".join(part for part in answer_parts if part).strip()
+        if contract_error:
+            verdict = warden.invalid(contract_error, str(workspace))
+        else:
+            verdict = warden.verify(contract, workspace, before, exclude=exclude)
+        try:
+            contract_text = (json.dumps(contract, ensure_ascii=False)[:16000]
+                             if contract else "")
+        except (TypeError, ValueError):
+            contract_text = ""
         try:
             approval_rows = store.agent_approvals_summary(conn, task_id)
         except Exception:
@@ -280,7 +361,7 @@ def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
             output_path = _save_output(
                 data_root, task_id, spec, prompt, workspace, status,
                 duration_ms, exit_code, cost, answer, error,
-                approval_rows, mode)
+                approval_rows, mode, verdict=verdict)
         except OSError as exc:
             output_path = ""
             error = (error + f"；结果文件没写出来：{exc}").strip("；")
@@ -291,7 +372,10 @@ def _run(task_id: int, spec: AgentSpec, prompt: str, workspace: pathlib.Path,
                 output_path=output_path, error=error,
                 cost_usd=cost,
                 usage_json=json.dumps(usage, ensure_ascii=False),
-                result_text=answer[:MAX_RESULT_CHARS])
+                result_text=answer[:MAX_RESULT_CHARS],
+                contract_json=contract_text,
+                verdict_state=str(verdict.get("state") or ""),
+                verdict_json=warden.dumps(verdict))
             emit("status", {"done": "任务完成", "failed": "任务失败",
                             "cancelled": "任务已取消"}.get(status, status))
         except Exception:

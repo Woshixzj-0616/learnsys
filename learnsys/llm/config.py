@@ -15,6 +15,7 @@ import re
 from dataclasses import dataclass, field
 
 from learnsys import config as app_config
+from learnsys import prompt_budget
 
 CLAUDE_SETTINGS = pathlib.Path.home() / ".claude" / "settings.json"
 
@@ -85,6 +86,11 @@ def _as_int(value, default: int) -> int:
     except (TypeError, ValueError):
         return default
     return number if number > 0 else default
+
+
+def _clamp_int(value, default: int, low: int, high: int) -> int:
+    """预算类配置：非法值回默认，越界夹到安全范围。"""
+    return max(low, min(_as_int(value, default), high))
 
 
 def _as_bool(value, default: bool) -> bool:
@@ -187,6 +193,13 @@ class AgentConfig:
     # 流式读超时（秒）：首 token 与流中停顿共用同一个 socket 读超时。
     stream_timeout: float = 30.0
 
+    # 上下文预算（token）：输入总量、单次工具结果、整轮工具结果、历史窗口。
+    # 0 = 用 prompt_budget 里的默认值；调大不会突破模型窗口，只是少截断。
+    prompt_budget_tokens: int = prompt_budget.DEFAULT_PROMPT_TOKENS
+    tool_result_tokens: int = prompt_budget.DEFAULT_TOOL_RESULT_TOKENS
+    tool_turn_tokens: int = prompt_budget.DEFAULT_TOOL_TURN_TOKENS
+    history_tokens: int = prompt_budget.DEFAULT_HISTORY_TOKENS
+
     def model_for(self, task: str, default: str = "") -> str:
         """按任务取模型；没配置就返回 default（调用方再退 fast_model / model）。"""
         value = (self.routes or {}).get(str(task or ""))
@@ -228,6 +241,10 @@ class AgentConfig:
             "ops_gate": self.ops_gate,
             "summary_guard": self.summary_guard,
             "stream_timeout": self.stream_timeout,
+            "prompt_budget_tokens": self.prompt_budget_tokens,
+            "tool_result_tokens": self.tool_result_tokens,
+            "tool_turn_tokens": self.tool_turn_tokens,
+            "history_tokens": self.history_tokens,
         }
 
 
@@ -315,4 +332,16 @@ def load_config() -> AgentConfig:
         ops_gate=ops_gate,
         summary_guard=summary_guard,
         stream_timeout=stream_timeout,
+        prompt_budget_tokens=_clamp_int(
+            agent.get("prompt_budget_tokens"),
+            prompt_budget.DEFAULT_PROMPT_TOKENS, 2000, 200000),
+        tool_result_tokens=_clamp_int(
+            agent.get("tool_result_tokens"),
+            prompt_budget.DEFAULT_TOOL_RESULT_TOKENS, 400, 32000),
+        tool_turn_tokens=_clamp_int(
+            agent.get("tool_turn_tokens"),
+            prompt_budget.DEFAULT_TOOL_TURN_TOKENS, 1000, 100000),
+        history_tokens=_clamp_int(
+            agent.get("history_tokens"),
+            prompt_budget.DEFAULT_HISTORY_TOKENS, 1000, 60000),
     )

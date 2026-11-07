@@ -89,7 +89,7 @@ test("批改视图：档位、不稳定提示、严重错误自动收录、普�
   assert.match(html, /data-act="add-card" data-index="1"/);
   assert.match(html, /&lt;script&gt;bad&lt;\/script&gt;/);
   assert.doesNotMatch(html, /<script>bad<\/script>/);
-  assert.match(html, /严重错误自动进错题本：<b>1<\/b>/);
+  assert.match(html, /自动收进复习：<b>1<\/b>/);
   assert.match(html, /程序检查/);
   assert.match(html, /只有 74 词/);
   assert.match(html, /粘贴 25 个字符/);

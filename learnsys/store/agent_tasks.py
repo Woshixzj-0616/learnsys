@@ -18,13 +18,14 @@ _TASK_COLUMNS = (
     "id, agent, prompt, workspace, mode, status, exit_code, created_at, "
     "started_at, ended_at, duration_ms, output_path, error, cost_usd, usage_json, "
     "route_json, timeout_s, depends_on, (length(result_text) > 0), project_id, "
-    "COALESCE((SELECT p.name FROM project_refs p WHERE p.id = project_id), '')"
+    "COALESCE((SELECT p.name FROM project_refs p WHERE p.id = project_id), ''), "
+    "verdict_state, (length(contract_json) > 0)"
 )
 
 _UPDATE_FIELDS = {
     "status", "exit_code", "started_at", "ended_at", "duration_ms",
     "output_path", "error", "cost_usd", "usage_json", "route_json",
-    "result_text",
+    "result_text", "contract_json", "verdict_state", "verdict_json",
 }
 
 
@@ -49,6 +50,7 @@ def _task_dict(row) -> dict:
         "route": _json_dict(row[15]), "timeout_s": int(row[16] or 0),
         "depends_on": int(row[17] or 0), "has_result": bool(row[18]),
         "project_id": int(row[19] or 0), "project_name": row[20] or "",
+        "verdict_state": row[21] or "", "has_contract": bool(row[22]),
         "parent_status": "",
     }
 
@@ -56,15 +58,17 @@ def _task_dict(row) -> dict:
 def add_task(conn: sqlite3.Connection, *, agent: str, prompt: str,
              workspace: str = "", mode: str = "read", timeout_s: int = 0,
              route_json: str = "", depends_on: int = 0,
-             project_id: int = 0) -> int:
+             project_id: int = 0, contract_json: str = "") -> int:
     with _LOCK:
         cur = conn.execute(
             "INSERT INTO agent_tasks (agent, prompt, workspace, mode, status, "
-            "created_at, route_json, timeout_s, depends_on, project_id) "
-            "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?)",
+            "created_at, route_json, timeout_s, depends_on, project_id, "
+            "contract_json) "
+            "VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?)",
             (str(agent), str(prompt), str(workspace), str(mode), now(),
              str(route_json or ""), max(0, int(timeout_s or 0)),
-             max(0, int(depends_on or 0)), max(0, int(project_id or 0))))
+             max(0, int(depends_on or 0)), max(0, int(project_id or 0)),
+             str(contract_json or "")))
         conn.commit()
         return int(cur.lastrowid)
 
@@ -72,7 +76,8 @@ def add_task(conn: sqlite3.Connection, *, agent: str, prompt: str,
 def add_queued(conn: sqlite3.Connection, *, agent: str, prompt: str,
                workspace: str = "", mode: str = "read", timeout_s: int = 0,
                route_json: str = "", queue_max: int = 10,
-               depends_on: int = 0, project_id: int = 0) -> int | None:
+               depends_on: int = 0, project_id: int = 0,
+               contract_json: str = "") -> int | None:
     """队列未满且父任务可接续才落库；一条 SQL 同时判断与插入。
 
     返回 None 时调用方要复查父任务，区分「父不可接续」与「队列已满」。
@@ -81,14 +86,15 @@ def add_queued(conn: sqlite3.Connection, *, agent: str, prompt: str,
     with _LOCK:
         cur = conn.execute(
             "INSERT INTO agent_tasks (agent, prompt, workspace, mode, status, "
-            "created_at, route_json, timeout_s, depends_on, project_id) "
-            "SELECT ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ? "
+            "created_at, route_json, timeout_s, depends_on, project_id, "
+            "contract_json) "
+            "SELECT ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ? "
             "WHERE (SELECT count(*) FROM agent_tasks WHERE status = 'queued') < ? "
             "AND (? = 0 OR EXISTS (SELECT 1 FROM agent_tasks p "
             "     WHERE p.id = ? AND p.status NOT IN ('failed', 'cancelled')))",
             (str(agent), str(prompt), str(workspace), str(mode), now(),
              str(route_json or ""), max(0, int(timeout_s or 0)), parent,
-             max(0, int(project_id or 0)),
+             max(0, int(project_id or 0)), str(contract_json or ""),
              max(1, int(queue_max or 10)), parent, parent))
         conn.commit()
         if cur.rowcount <= 0:
@@ -307,6 +313,24 @@ def get_task_result(conn: sqlite3.Connection, task_id: int) -> str:
     with _LOCK:
         row = conn.execute(
             "SELECT result_text FROM agent_tasks WHERE id = ?",
+            (int(task_id),)).fetchone()
+    return str(row[0] or "") if row else ""
+
+
+def get_task_contract(conn: sqlite3.Connection, task_id: int) -> str:
+    """验收契约原文；只给执行器读，不进列表。"""
+    with _LOCK:
+        row = conn.execute(
+            "SELECT contract_json FROM agent_tasks WHERE id = ?",
+            (int(task_id),)).fetchone()
+    return str(row[0] or "") if row else ""
+
+
+def get_task_verdict(conn: sqlite3.Connection, task_id: int) -> str:
+    """验收结果全文；只在任务详情里返回。"""
+    with _LOCK:
+        row = conn.execute(
+            "SELECT verdict_json FROM agent_tasks WHERE id = ?",
             (int(task_id),)).fetchone()
     return str(row[0] or "") if row else ""
 

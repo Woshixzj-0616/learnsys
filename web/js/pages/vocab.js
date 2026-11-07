@@ -27,7 +27,7 @@ function dueBadge(item) {
 }
 
 export async function mount(ctx) {
-  ctx.setSub("划词收藏与手动添加的词统一进库；按记忆曲线安排复习");
+  ctx.setSub("只收词条（单词与固定搭配）；整句翻译问题进错题本，按记忆曲线复习");
   ctx.setActions('<a class="btn" href="#/cet6">去六级训练</a>');
   items = [];
   query = "";

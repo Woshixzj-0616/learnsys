@@ -29,6 +29,7 @@ class TaskIn(BaseModel):
     timeout: int = Field(default=0, ge=0, le=900)
     depends_on: int = Field(default=0, ge=0)
     project_id: int = Field(default=0, ge=0)
+    contract: dict | None = None
 
 
 class DecisionIn(BaseModel):
@@ -119,6 +120,15 @@ def create_task(req: TaskIn, _=Depends(require_token)):
     if not prompt:
         raise HTTPException(status_code=400, detail="任务内容是空的")
 
+    # 契约不填也照样验（只读零改动 / 可写不越界）；写了就必须合法。
+    contract, contract_error = agents.warden.normalize_contract(
+        req.contract, req.mode, workspace)
+    if contract_error:
+        raise HTTPException(status_code=422, detail=f"契约无效：{contract_error}")
+    contract_text = json.dumps(contract, ensure_ascii=False)
+    if len(contract_text) > 16000:
+        raise HTTPException(status_code=422, detail="契约太长（超过 16000 字）")
+
     conn = store.connect()
     try:
         if req.project_id and store.get_project(conn, int(req.project_id)) is None:
@@ -141,7 +151,7 @@ def create_task(req: TaskIn, _=Depends(require_token)):
         task_id = store.add_agent_queued_task(
             conn, agent=spec.id, prompt=prompt, workspace=str(workspace),
             mode=req.mode, timeout_s=timeout_s, depends_on=req.depends_on,
-            project_id=req.project_id,
+            project_id=req.project_id, contract_json=contract_text,
             route_json=_route_json(conn, spec, mode=req.mode, chosen=spec.id,
                                    settings=settings),
             queue_max=agents.queue_max(settings))
@@ -180,7 +190,12 @@ def get_task(task_id: int, _=Depends(require_token)):
     _ready()
     conn = store.connect()
     try:
-        return {"task": _task_or_404(conn, task_id)}
+        task = _task_or_404(conn, task_id)
+        task["verdict"] = agents.warden.loads(
+            store.get_agent_task_verdict(conn, task_id))
+        task["contract"] = agents.warden.loads(
+            store.get_agent_task_contract(conn, task_id))
+        return {"task": task}
     finally:
         conn.close()
 

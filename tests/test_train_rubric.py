@@ -150,7 +150,7 @@ class ValidateTest(unittest.TestCase):
             "errors": [
                 {"type": "术语", "severity": "严重",
                  "quote": "Spring Festival", "fix": "the Spring Festival",
-                 "why": "专有名词需要冠词"},
+                 "why": "专有名词需要冠词", "gloss": "春节"},
             ],
             "dimensions": {"coverage": 3, "accuracy": 4, "fluency": 4,
                            "terminology": 3},
@@ -160,7 +160,9 @@ class ValidateTest(unittest.TestCase):
         self.assertEqual(result["info_points"]["total"], 10)
         self.assertEqual(result["info_points"]["covered"], 6)
         self.assertEqual(result["alignment"], [{"segment": 2, "quote": "Spring Festival"}])
-        self.assertEqual(len(result["term_cards"]), 1)
+        self.assertEqual(len(result["vocab_cards"]), 1)
+        self.assertEqual(result["vocab_cards"][0]["meaning"],
+                         "春节｜专有名词需要冠词")
         self.assertEqual(len(result["cards"]), 1)
 
     def test_translation_unknown_missing_does_not_cap(self):

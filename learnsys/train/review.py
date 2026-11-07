@@ -12,7 +12,7 @@ import hashlib
 import re
 import unicodedata
 
-from . import rubric
+from . import lexical, rubric
 
 MAX_ERRORS = 12
 CARD_SEVERITIES = ("严重",)
@@ -52,6 +52,32 @@ def quote_in_text(quote: str, text: str) -> bool:
     return loose_needle in _loose(text)
 
 
+def sentence_around(text: str, quote: str) -> str:
+    """把 quote 扩成它在学生原文里的完整句子（确定性，不调模型）。
+
+    找不到 quote 时退回 quote 本身——调用方仍能建卡，只是正面不完整。
+    """
+    text = str(text or "")
+    quote = str(quote or "").strip()
+    if not quote:
+        return ""
+    index = text.lower().find(quote.lower())
+    if index < 0:
+        return quote
+    start = 0
+    for pos in range(index - 1, -1, -1):
+        if text[pos] in ".!?;":
+            start = pos + 1
+            break
+    end = len(text)
+    for pos in range(index + len(quote), len(text)):
+        if text[pos] in ".!?":
+            end = pos + 1
+            break
+    segment = text[start:end].strip()
+    return segment or quote
+
+
 def _severity(value) -> str:
     raw = str(value or "").strip()
     return raw if raw in rubric.SEVERITIES else "一般"
@@ -80,6 +106,7 @@ def filter_errors(raw, text: str, limit: int = MAX_ERRORS) -> tuple[list[dict], 
             "quote": quote,
             "fix": fix,
             "why": _text(item.get("why"), 400),
+            "gloss": _text(item.get("gloss"), 60),
         })
         if len(rows) >= limit:
             break
@@ -121,28 +148,113 @@ def _priorities(raw) -> list[str]:
     return rows
 
 
-def _card(kind: str, pack: dict, row: dict, index: int) -> dict:
-    digest = hashlib.sha1(
-        f"{row['quote']}\n{row['fix']}".encode("utf-8")).hexdigest()[:10]
-    return {
-        "source": kind,
-        "source_id": f"{pack.get('id')}:{index}:{digest}",
-        "question": f"改错：{row['quote']}",
-        "answer": row["fix"],
-        "my_answer": row["quote"],
-        "tags": f"{row['type']} 写作" if kind == "writing" else f"{row['type']} 翻译",
-        "note": row["why"],
-        "auto": True,
-    }
+def error_lines(errors: list[dict]) -> str:
+    lines = []
+    for row in errors:
+        line = f"- `{row['quote']}` → **{row['fix']}**"
+        if row.get("why"):
+            line += f"：{row['why']}"
+        lines.append(line)
+    return "\n".join(lines)
 
 
-def _cards(kind: str, pack: dict, errors: list[dict]) -> list[dict]:
+def _writing_cards(pack: dict, errors: list[dict]) -> list[dict]:
+    """写作仍按错误点建卡：作文的错误多在半句/短语，独立重练更有效。"""
     rows = []
     for index, row in enumerate(errors, start=1):
         if row["type"] in NON_CARD_TYPES:
             continue
-        if row["severity"] in CARD_SEVERITIES:
-            rows.append(_card(kind, pack, row, index))
+        if row["severity"] not in CARD_SEVERITIES:
+            continue
+        digest = hashlib.sha1(
+            f"{row['quote']}\n{row['fix']}".encode("utf-8")).hexdigest()[:10]
+        rows.append({
+            "source": "writing",
+            "source_id": f"writing:{pack.get('id')}:{index}:{digest}",
+            "question": f"改错：{row['quote']}",
+            "answer": row["fix"],
+            "my_answer": row["quote"],
+            "tags": f"{row['type']} 写作",
+            "note": row["why"],
+            "auto": True,
+        })
+    return rows
+
+
+def translation_sentence_card(source_prefix: str, sentence: str,
+                              rows: list[dict], my_answer: str = "") -> dict:
+    """整篇翻译的整句卡；迁移脚本与批改落库共用这一种形状。"""
+    digest = hashlib.sha1(sentence.encode("utf-8")).hexdigest()[:10]
+    return {
+        "source": "translation",
+        "source_id": f"{source_prefix}:{digest}",
+        "question": sentence,
+        "answer": "**必改**\n" + error_lines(rows),
+        "my_answer": my_answer,
+        "tags": "翻译 整句",
+        "note": f"{len(rows)} 处必改 · 整句重译",
+        "auto": True,
+    }
+
+
+def _translation_cards(pack: dict, text: str, errors: list[dict]) -> list[dict]:
+    """整篇翻译：一个完整句子一张卡，该句全部错误点放在背面。
+
+    只有句子里至少有一处“严重”错误才建卡；一般错误仍列在背面，
+    让复习时能看到完整语境，但不额外增加卡量。
+    """
+    groups: dict[str, list[dict]] = {}
+    for row in errors:
+        if row["type"] in NON_CARD_TYPES:
+            continue
+        groups.setdefault(sentence_around(text, row["quote"]), []).append(row)
+    cards = []
+    for sentence, rows in groups.items():
+        if not any(row["severity"] in CARD_SEVERITIES for row in rows):
+            continue
+        cards.append(translation_sentence_card(
+            f"translation:{pack.get('id')}", sentence, rows))
+    return cards
+
+
+def sentence_card(item: dict, text: str, must_fix: list[dict],
+                  minimal_fix: str) -> dict:
+    """一句一译：中文原句一张卡，整句重译，背面列全部必改点。"""
+    parts = []
+    if item.get("reference"):
+        parts.append(f"**参考译文**：{item['reference']}")
+    parts.append("**必改**\n" + error_lines(must_fix))
+    if minimal_fix:
+        parts.append(f"**最小改动版**：{minimal_fix}")
+    return {
+        "source": "translation",
+        "source_id": f"sentence:{item.get('id')}",
+        "question": item.get("zh") or "",
+        "answer": "\n\n".join(parts),
+        "my_answer": text,
+        "tags": "翻译 整句",
+        "note": f"{len(must_fix)} 处必改 · 整句重译",
+        "auto": True,
+    }
+
+
+def _vocab_cards(errors: list[dict]) -> list[dict]:
+    rows = []
+    seen: set[str] = set()
+    for row in errors:
+        entry = lexical.as_vocab_entry(
+            error_type=row.get("type", ""), quote=row.get("quote", ""),
+            fix=row.get("fix", ""), why=row.get("why", ""),
+            gloss=row.get("gloss", ""))
+        if entry is None:
+            continue
+        word, meaning = entry
+        key = word.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append({"word": word, "meaning": meaning,
+                     "quote": row.get("quote", ""), "why": row.get("why", "")})
     return rows
 
 
@@ -177,8 +289,8 @@ def validate_writing(obj: dict, text: str, pack: dict,
         "rewrite_task": _text(obj.get("rewrite_task"), 600),
         "template": template,
         "hard_rules": hard,
-        "cards": _cards("writing", pack, errors),
-        "term_cards": [],
+        "cards": _writing_cards(pack, errors),
+        "vocab_cards": [],
     }
 
 
@@ -225,21 +337,6 @@ def _alignment(raw, text: str, segment_count: int) -> list[dict]:
     return rows
 
 
-def _term_cards(errors: list[dict]) -> list[dict]:
-    rows = []
-    for index, row in enumerate(errors, start=1):
-        if "术语" not in row["type"]:
-            continue
-        rows.append({
-            "front": row["quote"],
-            "back": row["fix"],
-            "tags": "术语 翻译",
-            "note": row["why"],
-            "auto": True,
-        })
-    return rows
-
-
 def validate_translation(obj: dict, text: str, pack: dict,
                          flags: dict | None = None,
                          hard: dict | None = None) -> dict:
@@ -275,8 +372,8 @@ def validate_translation(obj: dict, text: str, pack: dict,
         "rewrite_task": _text(obj.get("rewrite_task"), 600),
         "template": hard.get("template") or rubric.template_check(text),
         "hard_rules": hard,
-        "cards": _cards("translation", pack, errors),
-        "term_cards": _term_cards(errors),
+        "cards": _translation_cards(pack, text, errors),
+        "vocab_cards": _vocab_cards(errors),
     }
 
 
@@ -314,19 +411,8 @@ def validate_sentence(obj: dict, text: str, item: dict) -> dict:
     must_fix, dropped = filter_errors(obj.get("must_fix"), text, limit=6)
     suggestions, sug_dropped = filter_errors(obj.get("suggestions"), text,
                                              limit=6)
-    cards = [{
-        "source": "translation",
-        "source_id": f"{item.get('id')}:{index}:"
-                     + hashlib.sha1(
-                         f"{row['quote']}\n{row['fix']}".encode("utf-8")
-                     ).hexdigest()[:10],
-        "question": f"改译：{row['quote']}",
-        "answer": row["fix"],
-        "my_answer": row["quote"],
-        "tags": f"{row['type']} 翻译",
-        "note": row["why"],
-        "auto": True,
-    } for index, row in enumerate(must_fix, start=1)]
+    minimal_fix = _text(obj.get("minimal_fix"), 800)
+    cards = [sentence_card(item, text, must_fix, minimal_fix)] if must_fix else []
     return {
         "kind": "sentence",
         "sentence_id": item.get("id"),
@@ -339,10 +425,10 @@ def validate_sentence(obj: dict, text: str, item: dict) -> dict:
         "errors_dropped": dropped + sug_dropped,
         "reference": item.get("reference", ""),
         "variants": _variants(item, obj.get("variants")),
-        "minimal_fix": _text(obj.get("minimal_fix"), 800),
+        "minimal_fix": minimal_fix,
         "idiomatic": _text(obj.get("idiomatic"), 800),
         "cards": cards,
-        "term_cards": [],
+        "vocab_cards": _vocab_cards(must_fix),
     }
 
 

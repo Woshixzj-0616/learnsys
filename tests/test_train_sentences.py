@@ -24,7 +24,8 @@ PAYLOAD = {
     "conclusion": "有偏差",
     "info_points": {"total": 2, "covered": 1, "missing": ["城市人口增长"]},
     "must_fix": [
-        {"quote": "city people", "fix": "the urban population", "why": "用词不准"},
+        {"type": "用词", "quote": "city people", "fix": "the urban population",
+         "why": "用词不准", "gloss": "城市人口"},
         {"quote": "not in the text", "fix": "x", "why": "编造"},
     ],
     "suggestions": [
@@ -100,7 +101,7 @@ class SentenceServiceTest(unittest.TestCase):
             vocab = store.list_vocab(conn)["items"]
             self.assertEqual(len(vocab), 1)
             self.assertEqual(vocab[0]["word"], "the urban population")
-            self.assertEqual(vocab[0]["meaning"], "用词不准")
+            self.assertEqual(vocab[0]["meaning"], "城市人口｜用词不准")
             self.assertIn("一句一译", vocab[0]["context"])
             self.assertIn("city people", vocab[0]["context"])
 
@@ -112,7 +113,10 @@ class SentenceServiceTest(unittest.TestCase):
             self.assertIsNone(rows["items"][0]["band"])
             wrong = store.wrong_items(conn, source="translation")
             self.assertEqual(len(wrong), 1)
-            self.assertIn("city people", wrong[0]["question"])
+            self.assertEqual(wrong[0]["question"], content.sentence("x001")["zh"])
+            self.assertEqual(wrong[0]["my_answer"], TEXT)
+            self.assertIn("the urban population", wrong[0]["answer"])
+            self.assertIn("1 处必改", wrong[0]["note"])
 
             history = submissions.history(conn, "translation")
             self.assertEqual(history["count"], 0, "单句尝试不进整篇历史")

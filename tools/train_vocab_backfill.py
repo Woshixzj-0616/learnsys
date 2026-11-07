@@ -4,6 +4,7 @@
 - `train_submissions.mode='sentence'` 的 `must_fix`（一句一译）；
 - 整篇翻译/写作的 `errors`（`band_json`）。
 过滤：空 fix、fix=quote、fix 超过 120 字、去掉空白/标点/大小写后完全相同的纯格式问题；
+不是词条的（语法/标点/误译、超过词条形态）也跳过——它们由整句错题卡承担。
 同一批按英文词头去重，库里已有的由 `store.add_vocab` 自动合并。
 """
 from __future__ import annotations
@@ -18,22 +19,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from learnsys import config, store  # noqa: E402
-from learnsys.train import content  # noqa: E402
+from learnsys.train import content, lexical  # noqa: E402
 
 MAX_WORD = 120
-GENERIC_WHY = {"拼写错误", "语法", "搭配", "用词", "误译"}
 CJK = re.compile(r"[一-鿿]")
-
-
-def _meaning(why: str, quote: str, fix: str) -> str:
-    """why 只有「拼写错误 / 语法 / 搭配」这类标签时，补上改前→改后。"""
-    why = str(why or "").strip()
-    if not why:
-        return "六级训练必改"
-    if why in GENERIC_WHY:
-        pair = f"{quote} → {fix}" if quote else fix
-        return f"{why}｜{pair}"
-    return why
 
 
 def _has_cjk(text: str) -> bool:
@@ -89,6 +78,9 @@ def collect(conn) -> dict:
             quote = str(item.get("quote") or "").strip()
             fix = str(item.get("fix") or "").strip()
             why = str(item.get("why") or "").strip()
+            error_type = str(item.get("type") or "").strip()
+            entry = lexical.as_vocab_entry(
+                error_type=error_type, quote=quote, fix=fix, why=why)
             reason = ""
             if not fix:
                 reason = "空 fix"
@@ -98,6 +90,8 @@ def collect(conn) -> dict:
                 reason = "fix 超过 120 字"
             elif _content_key(quote) == _content_key(fix):
                 reason = "纯格式（空白/标点/大小写）"
+            elif entry is None:
+                reason = "不是词条（进整句错题卡）"
             elif _norm_word(fix) in existing:
                 reason = "生词本已有"
             elif _norm_word(fix) in seen:
@@ -110,7 +104,8 @@ def collect(conn) -> dict:
             rows.append({
                 "submission": sid, "kind": kind, "mode": mode,
                 "prompt_id": prompt_id, "quote": quote, "fix": fix,
-                "why": why, "created_at": created_at,
+                "why": why, "type": error_type, "created_at": created_at,
+                "word": entry[0], "meaning": entry[1],
             })
     return {"rows": rows, "skipped": skipped, "submissions": len(submissions)}
 
@@ -119,8 +114,7 @@ def apply(conn, report: dict) -> dict:
     added = merged = 0
     for row in report["rows"]:
         _, created = store.add_vocab(
-            conn, word=row["fix"],
-            meaning=_meaning(row["why"], row["quote"], row["fix"]),
+            conn, word=row["word"], meaning=row["meaning"],
             context=_context(row["kind"], row["mode"], row["prompt_id"],
                              row["quote"], row["fix"]),
             paper_id=row["prompt_id"],

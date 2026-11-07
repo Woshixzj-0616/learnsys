@@ -5,6 +5,7 @@ import json
 
 from learnsys import store
 from learnsys.agent import tools as agent_tools
+
 from .state import _TRACE_KINDS
 
 
@@ -30,9 +31,18 @@ def _clip(value, cap: int = 600, depth: int = 0):
 def _trace_event(event) -> dict | None:
     # 记忆审计挂在 done 上，不新增事件，避免打乱既有事件顺序断言。
     if event.kind == "done":
-        memory = (event.data or {}).get("memory") if isinstance(event.data, dict) else None
-        if memory:
-            return {"kind": "memory", "text": "", "data": _clip(memory)}
+        data = event.data if isinstance(event.data, dict) else {}
+        memory = data.get("memory")
+        prompt = data.get("prompt")
+        if memory or prompt:
+            payload = {}
+            if memory:
+                payload.update(_clip(memory))
+            if prompt:
+                payload["prompt"] = _clip(prompt)
+            if data.get("tool_tokens"):
+                payload["tool_tokens"] = int(data["tool_tokens"])
+            return {"kind": "memory", "text": "", "data": _clip(payload)}
         return None
     if event.kind not in _TRACE_KINDS:
         return None
