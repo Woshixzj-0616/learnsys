@@ -200,6 +200,30 @@ def get_task(task_id: int, _=Depends(require_token)):
         conn.close()
 
 
+@router.get("/api/agents/tasks/{task_id}/experience-draft")
+def task_experience_draft(task_id: int, _=Depends(require_token)):
+    """把一次派活的结果起草成经验三格；只给摘录，不把完整结果搬进页面。"""
+    _ready()
+    conn = store.connect()
+    try:
+        task = _task_or_404(conn, task_id)
+        result = store.get_agent_task_result(conn, task_id)
+        prompt = str(task.get("prompt") or "").strip()
+        first = (prompt.splitlines()[0] if prompt else f"派活任务 #{task_id}")[:80]
+        excerpt = " ".join(result.split())[:240] if result else str(
+            task.get("error") or "").strip()[:240]
+        return {"ok": True, "draft": {
+            "title": first[:60],
+            "scene": f"派活：{prompt[:200] or first}",
+            "pitfall": (f"结果（请改成下次能直接用的一句话）：\n{excerpt}"
+                        if excerpt else ""),
+            "next_time": "",
+            "tags": "#AI协作 #派活",
+        }}
+    finally:
+        conn.close()
+
+
 @router.get("/api/agents/tasks/{task_id}/events")
 def task_events(task_id: int, after: int = 0, limit: int = 1000,
                 _=Depends(require_token)):

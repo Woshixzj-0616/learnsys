@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import sqlite3
 
 from ._base import _LOCK, now
@@ -46,7 +47,11 @@ REVIEW_INTERVALS = (1, 3, 7)   # 收录后第 1 / 3 / 7 天各复习一次
 # P14 复习调度：review_state 是唯一状态，review_log 是历史
 # ---------------------------------------------------------------------------
 
-REVIEW_ITEM_TYPES = ("wrong", "vocab")
+REVIEW_ITEM_TYPES = ("wrong", "vocab", "accum")
+
+# 每日积累从这一天起产卡；历史 120 条不回填（P34.2 阶段 5 口径）。
+DAILY_REVIEW_EPOCH = dt.date(2026, 11, 7)
+ACCUM_REVIEW_KINDS = ("writing", "translation")
 _REVIEW_STATE_COLUMNS = (
     "item_type", "item_id", "state", "due", "stability", "difficulty",
     "reps", "lapses", "last_review", "scheduled_days", "elapsed_days",
@@ -155,6 +160,19 @@ def seed_review_states(conn: sqlite3.Connection, today=None) -> int:
             difficulty=5.0, reps=0, lapses=0, last_review="",
             scheduled_days=0, elapsed_days=0)
         seeded += 1
+    # 每日积累：只收启用日之后的写作句型与翻译短语，历史条目不回填。
+    accum_rows = conn.execute(
+        "SELECT a.id, a.day FROM cet6_accum_items a LEFT JOIN review_state r "
+        "ON r.item_type = 'accum' AND r.item_id = a.id "
+        "WHERE r.item_id IS NULL AND a.day >= ? AND a.kind IN (?, ?)",
+        (DAILY_REVIEW_EPOCH.isoformat(), *ACCUM_REVIEW_KINDS)).fetchall()
+    for item_id, item_day in accum_rows:
+        due = max(str(item_day or day)[:10], day)
+        save_review_state(
+            conn, "accum", int(item_id), state="new", due=due, stability=1.0,
+            difficulty=5.0, reps=0, lapses=0, last_review="",
+            scheduled_days=0, elapsed_days=0)
+        seeded += 1
     return seeded
 
 
@@ -163,10 +181,12 @@ def _review_join_sql() -> str:
         "SELECT r.item_type, r.item_id, r.state, r.due, r.stability, r.difficulty, "
         "r.reps, r.lapses, r.last_review, r.scheduled_days, "
         "w.question, w.answer, w.my_answer, w.tags, w.note, w.material_id, w.source, "
-        "v.word, v.meaning, v.context, v.paper_title, v.source "
+        "v.word, v.meaning, v.context, v.paper_title, v.source, "
+        "a.kind, a.payload_json "
         "FROM review_state r "
         "LEFT JOIN wrong_items w ON r.item_type = 'wrong' AND w.id = r.item_id "
-        "LEFT JOIN vocab_items v ON r.item_type = 'vocab' AND v.id = r.item_id ")
+        "LEFT JOIN vocab_items v ON r.item_type = 'vocab' AND v.id = r.item_id "
+        "LEFT JOIN cet6_accum_items a ON r.item_type = 'accum' AND a.id = r.item_id ")
 
 
 def _review_card(row) -> dict:
@@ -183,16 +203,52 @@ def _review_card(row) -> dict:
         "word": row[17] or "", "meaning": row[18] or "",
         "context": row[19] or "", "paper_title": row[20] or "",
     }
-    item["title"] = item["question"] if item["item_type"] == "wrong" else item["word"]
+    if item["item_type"] == "accum":
+        _fill_accum_card(item, row[22] or "", row[23] or "")
+    item["title"] = (item["question"]
+                     if item["item_type"] == "wrong"
+                     or (item["item_type"] == "accum"
+                         and item.get("accum_kind") == "writing")
+                     else item["word"])
     return item
 
 
-def _review_where(day: str, item_types: tuple, sources: tuple) -> tuple[str, list]:
+def _fill_accum_card(item: dict, kind: str, raw_payload: str) -> None:
+    """把每日积累的 payload 映射成现有卡片字段，前端不用再学一套结构。
+
+    写作句型走句子 tab：正面是中文用途，背面是句型 + 例句；
+    翻译短语走词 tab：正面是中文短语，背面是英文表达 + 提示。
+    """
+    try:
+        payload = json.loads(raw_payload or "{}")
+    except ValueError:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+    item["accum_kind"] = kind or ""
+    item["source"] = "daily"
+    item["tags"] = ""
+    if kind == "writing":
+        item["question"] = str(payload.get("zh") or "").strip()
+        item["answer"] = str(payload.get("pattern") or "").strip()
+        parts = [str(payload.get("example") or "").strip(),
+                 str(payload.get("example_zh") or "").strip()]
+        item["note"] = " ｜ ".join(part for part in parts if part)
+        item["my_answer"] = ""
+    else:
+        item["word"] = str(payload.get("zh") or "").strip()
+        item["meaning"] = str(payload.get("en") or "").strip()
+        item["context"] = str(payload.get("note") or payload.get("theme") or "").strip()
+
+
+def _review_where(day: str, item_types: tuple, sources: tuple,
+                  accum_kinds: tuple = ()) -> tuple[str, list]:
     """到期卡的公共条件：卡片仍有效，且属于给定类型/来源。"""
     where = [
         "r.due <= ?",
         "(r.item_type <> 'wrong' OR (w.id IS NOT NULL AND w.mastered = 0))",
         "(r.item_type <> 'vocab' OR (v.id IS NOT NULL AND v.status = 'active'))",
+        "(r.item_type <> 'accum' OR a.id IS NOT NULL)",
     ]
     args: list = [day]
     types = tuple(t for t in item_types if t in REVIEW_ITEM_TYPES)
@@ -204,12 +260,18 @@ def _review_where(day: str, item_types: tuple, sources: tuple) -> tuple[str, lis
         where.append("(r.item_type <> 'wrong' OR w.source IN ("
                      + ",".join("?" * len(src)) + "))")
         args.extend(src)
+    kinds = tuple(k for k in accum_kinds if k)
+    if kinds:
+        where.append("(r.item_type <> 'accum' OR a.kind IN ("
+                     + ",".join("?" * len(kinds)) + "))")
+        args.extend(kinds)
     return " AND ".join(where), args
 
 
 def due_review_items(conn: sqlite3.Connection, *, limit: int = 50,
                      today=None, item_type: str = "",
                      item_types: tuple = (), sources: tuple = (),
+                     accum_kinds: tuple = (),
                      max_new: int | None = None) -> list[dict]:
     """到期卡队列。
 
@@ -218,11 +280,13 @@ def due_review_items(conn: sqlite3.Connection, *, limit: int = 50,
     """
     day = str(today or dt.date.today().isoformat())[:10]
     types = (item_type,) if item_type in REVIEW_ITEM_TYPES else tuple(item_types)
-    where, args = _review_where(day, types, sources)
+    where, args = _review_where(day, types, sources, accum_kinds)
     # 多取一些，给新卡限流留出替换空间；最终仍按 due 顺序返回。
     fetch = max(1, min(int(limit or 50), 500))
+    # 每日积累当天生成，排在同一轮的最前面；旧错题/生词按到期日排在后面。
     sql = (_review_join_sql() + "WHERE " + where
-           + " ORDER BY r.due, r.item_type, r.item_id LIMIT ?")
+           + " ORDER BY CASE WHEN r.item_type = 'accum' THEN 0 ELSE 1 END, "
+             "r.due, r.item_type, r.item_id LIMIT ?")
     args.append(fetch if max_new is None else min(fetch * 4, 500))
     with _LOCK:
         rows = conn.execute(sql, args).fetchall()
@@ -231,7 +295,7 @@ def due_review_items(conn: sqlite3.Connection, *, limit: int = 50,
         left = max(0, int(max_new))
         kept: list[dict] = []
         for item in items:
-            if item["state"] == "new":
+            if item["state"] == "new" and item["item_type"] != "accum":
                 if left <= 0:
                     continue
                 left -= 1
@@ -242,29 +306,31 @@ def due_review_items(conn: sqlite3.Connection, *, limit: int = 50,
 
 def due_review_count(conn: sqlite3.Connection, *, today=None,
                      item_type: str = "", item_types: tuple = (),
-                     sources: tuple = ()) -> int:
+                     sources: tuple = (), accum_kinds: tuple = ()) -> int:
     """只数到期卡张数，不建队列、不碰复习状态（今日页用）。"""
     day = str(today or dt.date.today().isoformat())[:10]
     types = (item_type,) if item_type in REVIEW_ITEM_TYPES else tuple(item_types)
-    where, args = _review_where(day, types, sources)
+    where, args = _review_where(day, types, sources, accum_kinds)
     with _LOCK:
         row = conn.execute(
             "SELECT count(*) FROM review_state r "
             "LEFT JOIN wrong_items w ON r.item_type = 'wrong' AND w.id = r.item_id "
             "LEFT JOIN vocab_items v ON r.item_type = 'vocab' AND v.id = r.item_id "
+            "LEFT JOIN cet6_accum_items a ON r.item_type = 'accum' AND a.id = r.item_id "
             "WHERE " + where, args).fetchone()
     return int(row[0] or 0)
 
 
 def review_counts(conn: sqlite3.Connection, *, today=None,
                   item_type: str = "", item_types: tuple = (),
-                  sources: tuple = ()) -> dict:
+                  sources: tuple = (), accum_kinds: tuple = ()) -> dict:
     """英语复习两个 tab 的计数：到期 / 新卡 / 总数 / 今日已复习 / 下张到期。"""
     day = str(today or dt.date.today().isoformat())[:10]
     types = (item_type,) if item_type in REVIEW_ITEM_TYPES else tuple(item_types)
     valid = [
         "(r.item_type <> 'wrong' OR (w.id IS NOT NULL AND w.mastered = 0))",
         "(r.item_type <> 'vocab' OR (v.id IS NOT NULL AND v.status = 'active'))",
+        "(r.item_type <> 'accum' OR a.id IS NOT NULL)",
     ]
     conds = list(valid)
     args: list = []
@@ -276,9 +342,15 @@ def review_counts(conn: sqlite3.Connection, *, today=None,
         conds.append("(r.item_type <> 'wrong' OR w.source IN ("
                      + ",".join("?" * len(src)) + "))")
         args.extend(src)
+    kinds = tuple(k for k in accum_kinds if k)
+    if kinds:
+        conds.append("(r.item_type <> 'accum' OR a.kind IN ("
+                     + ",".join("?" * len(kinds)) + "))")
+        args.extend(kinds)
     base = ("FROM review_state r "
             "LEFT JOIN wrong_items w ON r.item_type = 'wrong' AND w.id = r.item_id "
             "LEFT JOIN vocab_items v ON r.item_type = 'vocab' AND v.id = r.item_id "
+            "LEFT JOIN cet6_accum_items a ON r.item_type = 'accum' AND a.id = r.item_id "
             "WHERE " + " AND ".join(conds))
     with _LOCK:
         total = conn.execute("SELECT count(*) " + base, args).fetchone()[0]

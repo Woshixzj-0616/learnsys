@@ -225,6 +225,8 @@ def ensure_day(conn, day: str | None = None) -> None:
             store.add_accum(conn, day=day, kind="pron",
                             ref_key=row["ref_key"], payload=row["payload"])
         store.mark_pron_used(conn, [row["pron_id"] for row in rows], day)
+    # 当天生成即产复习卡（写作用句子 tab、短语用词 tab）；启用日之前的历史不回填。
+    store.seed_review_states(conn, day)
 
 
 def _day_complete(conn, day: str) -> bool:

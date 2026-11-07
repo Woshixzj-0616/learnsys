@@ -137,7 +137,8 @@ from .recordings import (default_title as recording_title,
                          set_material as set_recording_material,
                          transcript_text as recording_transcript,
                          update_video)
-from .review import (REVIEW_ITEM_TYPES, add_review_log, due_review_count,
+from .review import (ACCUM_REVIEW_KINDS, DAILY_REVIEW_EPOCH,
+                     REVIEW_ITEM_TYPES, add_review_log, due_review_count,
                      due_review_items, get_review_state, recent_review_log,
                      review_counts, review_stats, save_review_state,
                      seed_review_states)

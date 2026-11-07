@@ -12,8 +12,8 @@ const SOURCE_LABELS = {
 };
 const KIND_LABEL = { sentence: "句子", word: "单词短语" };
 const KIND_HINT = {
-  sentence: "正面是中文原句；先自己译一遍，再看参考译文和你上次的译文。",
-  word: "正面是词或短语；先回忆词义，再显示释义。",
+  sentence: "正面是中文原句或中文用途；先自己译/补一遍，再看参考译文和你上次的译文。",
+  word: "正面是词、短语或中文表达；先回忆英文，再显示释义。",
 };
 const PAGE_SIZE = 10;
 
@@ -87,8 +87,8 @@ function paintCounts() {
 
 function paintHint() {
   nodes.hint.textContent = newRemaining > 0
-    ? `今日新卡还剩 ${newRemaining} 张`
-    : "今日新卡已用完";
+    ? `今日新卡还剩 ${newRemaining} 张（每日积累另计）`
+    : "今日新卡已用完（每日积累另计）";
 }
 
 async function switchKind(next) {
@@ -166,7 +166,7 @@ function renderSentence(card) {
   nodes.body.innerHTML = `
     <div class="er-card">
       ${meta(card)}
-      <div class="er-label">中文原句</div>
+      <div class="er-label">${card.accum_kind === "writing" ? "中文用途" : "中文原句"}</div>
       <div class="er-prompt">${escapeHtml(card.question || "")}</div>
       ${revealed ? "" : `<textarea class="er-typed" id="er-typed"
         placeholder="先自己译一遍，再对照参考译文">${escapeHtml(typed)}</textarea>`}
@@ -174,7 +174,7 @@ function renderSentence(card) {
         ${revealed ? "收起重译" : "看参考译文"}</button></div>
       <div class="er-answer" ${revealed ? "" : "hidden"}>
         <div class="er-block">
-          <div class="er-label">参考译文</div>
+          <div class="er-label">${card.accum_kind === "writing" ? "句型与例句" : "参考译文"}</div>
           <div class="er-ref" id="er-ref"></div>
         </div>
         ${typed ? `<div class="er-block">
@@ -194,11 +194,13 @@ function renderWord(card) {
   nodes.body.innerHTML = `
     <div class="er-card">
       ${meta(card)}
+      ${card.accum_kind ? '<div class="er-label">中文短语</div>' : ""}
       <div class="er-word">${escapeHtml(card.word || "")}</div>
       ${card.context ? `<div class="er-context">${escapeHtml(card.context)}</div>` : ""}
       <div class="er-reveal"><button class="btn btn-primary" type="button" id="er-show">
         ${revealed ? "收起释义" : "显示释义"}</button></div>
       <div class="er-answer" ${revealed ? "" : "hidden"}>
+        ${card.accum_kind ? '<div class="er-label">英文表达</div>' : ""}
         <div class="er-meaning">${escapeHtml(card.meaning || "（还没有释义）")}</div>
         ${ratings()}
       </div>
@@ -221,7 +223,9 @@ async function onClick(event) {
   const rating = Number(button.dataset.rating || 3);
   const path = card.item_type === "vocab"
     ? `/api/review/vocab/${card.item_id}`
-    : `/api/review/wrong/${card.item_id}`;
+    : card.item_type === "accum"
+      ? `/api/review/accum/${card.item_id}`
+      : `/api/review/wrong/${card.item_id}`;
   button.disabled = true;
   try {
     const data = await api.post(path, { rating });

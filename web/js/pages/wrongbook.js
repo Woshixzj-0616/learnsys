@@ -1,4 +1,4 @@
-// 错题本：待复习 / 全部 / 已掌握；展开看答案，标掌握、删除、导出 Anki。
+// 错题本：错误历史检索（全部 / 已掌握）；复习已迁到英语复习页。
 import { api, download } from "../api.js";
 import { renderInto } from "../markdown.js";
 import { escapeHtml, toast } from "../ui.js";
@@ -8,10 +8,9 @@ const SOURCE_LABEL = {
   manual: "手动收录", cet6: "六级断点", code: "代码调试",
   cet6_dictation: "听辨", cet6_chunk: "意群",
 };
-const RATING_LABELS = { 1: "忘了", 2: "模糊", 3: "记得", 4: "简单" };
 const LANGUAGE_LABEL = { cpp: "C++", c: "C", python: "Python" };
 
-let status = "due";
+let status = "all";
 let source = "";
 let materialFilter = 0;
 let items = [];
@@ -20,7 +19,7 @@ let materialFacets = [];
 let nodes = {};
 
 export async function mount(ctx) {
-  ctx.setSub("答错的、收藏的，都在这本里；按记忆曲线（FSRS）安排复习");
+  ctx.setSub("答错的、收藏的，都在这本里；复习请到「英语复习」");
   ctx.setActions('<a class="btn" href="#/quiz">去测验</a>');
   nodes = {
     list: ctx.root.querySelector("#wrong-list"),
@@ -31,7 +30,7 @@ export async function mount(ctx) {
     export: ctx.root.querySelector("#wrong-export"),
   };
   nodes.tabs.forEach((tab) => tab.addEventListener("click", () => {
-    status = tab.dataset.status || "due";
+    status = tab.dataset.status || "all";
     nodes.tabs.forEach((item) => item.classList.toggle("active", item === tab));
     load();
   }));
@@ -67,7 +66,6 @@ async function load() {
 
 function renderStats() {
   nodes.stats.innerHTML = [
-    ["待复习", counts.due ?? 0, "due"],
     ["全部", counts.all ?? 0, "all"],
     ["已掌握", counts.mastered ?? 0, "mastered"],
   ].map(([label, value, key]) => `
@@ -93,33 +91,8 @@ function dayOf(stamp) {
   return String(stamp || "").slice(0, 10);
 }
 
-function daysOverdue(item) {
-  const due = dayOf(item.next_review);
-  if (!due) return 0;
-  const today = new Date();
-  const todayText = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const diff = Math.floor((new Date(todayText) - new Date(due)) / 86400000);
-  return diff > 0 ? diff : 0;
-}
-
-function dueBadge(item) {
-  if (item.mastered) return '<span class="wrong-badge mastered">已掌握</span>';
-  const overdue = daysOverdue(item);
-  if (overdue > 0) return `<span class="wrong-badge due">逾期 ${overdue} 天</span>`;
-  if (item.next_review && dayOf(item.next_review) <= todayText()) {
-    return '<span class="wrong-badge due">今天到期</span>';
-  }
-  return "";
-}
-
-function todayText() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
 function emptyText() {
   if (source) return "这个来源下还没有题。";
-  if (status === "due") return "今天没有到期的错题 —— 去「全部」看看，或者去测验攒几道。";
   if (status === "mastered") return "还没有标记为掌握的题。";
   return "错题本还是空的 —— 测验答错会自动收进来，问答也能收藏。";
 }
@@ -130,17 +103,13 @@ function renderList() {
     return;
   }
   nodes.list.innerHTML = items.map((item) => {
-    const reps = Number(item.review_reps || 0);
-    const lapses = Number(item.review_lapses || 0);
-    const stage = item.mastered ? "已掌握"
-      : (reps ? `复习 ${reps} 次${lapses ? ` · 遗忘 ${lapses} 次` : ""}` : "新卡");
-    const next = item.next_review ? `下次 ${item.next_review}` : "";
+    const stage = item.mastered ? "已掌握" : "未掌握";
     return `
-      <article class="wrong-card ${dueBadge(item) ? "is-due" : ""}" data-id="${item.id}">
+      <article class="wrong-card" data-id="${item.id}">
         <button class="wrong-card-head" type="button" aria-expanded="false">
           <span class="wrong-source ${escapeHtml(item.source)}">${escapeHtml(SOURCE_LABEL[item.source] || "错题")}</span>
           <span class="wrong-question">${escapeHtml(item.question)}</span>
-          <span class="wrong-card-side">${dueBadge(item)}
+          <span class="wrong-card-side">
             <span class="hint">${escapeHtml(dayOf(item.ts))} 收录</span>
           </span>
         </button>
@@ -168,11 +137,9 @@ function renderList() {
           <div class="wrong-meta">
             ${item.material_title ? `<span>资料：${escapeHtml(item.material_title)}</span>` : ""}
             ${item.tags ? `<span>知识点：${escapeHtml(item.tags)}</span>` : ""}
-            <span>${escapeHtml(stage)}${next ? ` · ${escapeHtml(next)}` : ""}</span>
+            <span>${escapeHtml(stage)}</span>
           </div>
           <div class="wrong-actions">
-            ${[1, 2, 3, 4].map((rating) => `<button class="btn ${rating === 3 ? "btn-primary" : ""}"
-              type="button" data-act="rating" data-rating="${rating}">${RATING_LABELS[rating]}</button>`).join("")}
             <button class="btn btn-quiet" type="button" data-act="master">${item.mastered ? "取消掌握" : "标记掌握"}</button>
             <button class="btn btn-danger" type="button" data-act="delete">删除</button>
           </div>
@@ -212,12 +179,7 @@ async function act(action, item, button) {
   }
   button.disabled = true;
   try {
-    if (action === "rating") {
-      const rating = Number(button.dataset.rating || 3);
-      const data = await api.post(`/api/review/wrong/${item.id}`, { rating });
-      const days = Number(data.scheduled_days || 0);
-      toast(`${RATING_LABELS[rating]} · 下次 ${data.next_review}（${days} 天后）`, "ok");
-    } else if (action === "master") {
+    if (action === "master") {
       await api.post(`/api/wrongbook/${item.id}/master`, { mastered: !item.mastered });
       toast(item.mastered ? "已取消掌握" : "已标记掌握", "ok");
     } else if (action === "delete") {

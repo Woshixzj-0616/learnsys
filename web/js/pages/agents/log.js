@@ -121,12 +121,16 @@ export function createLog({ root, agents, onStop, onTerminal, onDecide }) {
     const routeHint = routeText(task.route, agents);
     routeBox.hidden = !routeHint;
     routeBox.textContent = routeHint;
-    if (task.output_path) {
+    if (task.output_path || task.has_result) {
       result.hidden = false;
       result.innerHTML = `<strong>结果已存</strong>`
-        + `<span>${escapeHtml(task.output_path)}</span>`
+        + (task.output_path ? `<span>${escapeHtml(task.output_path)}</span>` : "")
         + (task.duration_ms ? `<span>${msText(task.duration_ms)}</span>` : "")
-        + (task.cost_usd ? `<span>CLI 自报 $${Number(task.cost_usd).toFixed(4)}</span>` : "");
+        + (task.cost_usd ? `<span>CLI 自报 $${Number(task.cost_usd).toFixed(4)}</span>` : "")
+        + `<button class="btn btn-small" type="button" data-experience>记一条经验</button>`;
+      result.querySelector("[data-experience]")?.addEventListener("click", (event) => {
+        draftExperience(Number(task.id) || 0, event.currentTarget);
+      });
     } else {
       result.hidden = true;
     }
@@ -137,6 +141,20 @@ export function createLog({ root, agents, onStop, onTerminal, onDecide }) {
     if (terminal && !notified) {
       notified = true;
       onTerminal?.(task);
+    }
+  }
+
+  async function draftExperience(id, button) {
+    if (!id) return;
+    button.disabled = true;
+    try {
+      const data = await api.get(`/api/agents/tasks/${id}/experience-draft`);
+      if (!data?.draft) throw new Error("没有拿到经验草稿");
+      sessionStorage.setItem("practice-draft", JSON.stringify(data.draft));
+      location.hash = "#/practice";
+    } catch (error) {
+      button.disabled = false;
+      toast(error?.message || "经验草稿没取到");
     }
   }
 
