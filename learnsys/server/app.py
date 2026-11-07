@@ -26,14 +26,14 @@ from learnsys.server import (routes_agent, routes_agents, routes_briefing,
                              routes_browser, routes_cet6, routes_cet6_chunk,
                              routes_cet6_drill, routes_cet6_exam, routes_code,
                              routes_daily, routes_data, routes_knowledge,
-                             routes_materials, routes_memory,
+                             routes_local_index, routes_materials, routes_memory,
                              routes_memory_archive, routes_practice,
                              routes_recordings, routes_results, routes_review, routes_services,
                              routes_settings, routes_train, routes_ui,
                              routes_upload, routes_vocab, routes_web, runtime)
 from learnsys.server.nav_bridge import NavBridge
 from learnsys.server.security import origin_allowed
-from learnsys.services import agents, briefing, life
+from learnsys.services import agents, briefing, life, local_index
 
 DEFAULT_PORT = 8765
 
@@ -48,7 +48,15 @@ async def _lifespan(_app):
         life.ensure_started()        # 生活订阅调度，和简报互不依赖
     except Exception:
         pass
+    try:
+        local_index.ensure_started()  # 本机文件索引，测试进程里会自己跳过
+    except Exception:
+        pass
     yield
+    try:
+        local_index.shutdown()
+    except Exception:
+        pass
     try:
         life.shutdown()
     except Exception:
@@ -112,6 +120,7 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
     app.include_router(routes_knowledge.router)
     app.include_router(routes_web.router)
     app.include_router(routes_settings.router)
+    app.include_router(routes_local_index.router)
     app.include_router(routes_memory.router)
     app.include_router(routes_memory_archive.router)
     app.include_router(routes_upload.router)

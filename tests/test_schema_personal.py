@@ -26,7 +26,7 @@ class TestSchemaPersonal(unittest.TestCase):
         self.assertEqual(
             conn.execute("PRAGMA user_version").fetchone()[0],
             core_db.SCHEMA_VERSION)
-        self.assertEqual(core_db.SCHEMA_VERSION, 23)
+        self.assertEqual(core_db.SCHEMA_VERSION, 24)
 
     def test_connect_twice_keeps_rows_and_does_not_rebuild(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -7,9 +7,10 @@ import tempfile
 import unittest
 from unittest import mock
 
-from learnsys import config
+from learnsys import config, store
 from learnsys.agent import tools
 from learnsys.agent.tools import local_files
+from learnsys.services import local_index
 
 
 class LocalFilesTest(unittest.TestCase):
@@ -35,8 +36,20 @@ class LocalFilesTest(unittest.TestCase):
             config, "USER", {"materials": {"import_dirs": [str(self.root)]}})
         self.patcher.start()
         self.addCleanup(self.patcher.stop)
-        local_files._SCAN_CACHE.clear()
+
+        # 索引走临时库；测试进程不启动后台线程，直接同步建一次索引
+        self.db_path = self.root / "test.db"
+        conn = store.connect(self.db_path)
+        conn.close()
+        self._orig_connect = store.connect
+        self.connect_patcher = mock.patch.object(
+            store, "connect",
+            side_effect=lambda path=None: self._orig_connect(path or self.db_path))
+        self.connect_patcher.start()
+        self.addCleanup(self.connect_patcher.stop)
+
         local_files._TEXT_CACHE.clear()
+        local_index.reconcile(self.root)
         self.ctx = tools.ToolContext(data_root=self.data_root)
 
     def test_search_by_name_and_skip_noise(self):

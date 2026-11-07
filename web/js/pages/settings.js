@@ -23,6 +23,7 @@ export async function mount(ctx) {
   }
   fill(current);
   bind();
+  loadLocalIndex();
   loadMemories();
   loadCandidates();
   loadProfileStatus();
@@ -103,6 +104,57 @@ function renderLocalRoots() {
     </div>`).join("");
 }
 
+const INDEX_STATUS_LABELS = {
+  pending: "等待首次扫描",
+  missing: "目录暂时不可用",
+  truncated: "文件过多，只索引了前 20 万个",
+  error: "扫描出错",
+};
+
+async function loadLocalIndex() {
+  const node = document.getElementById("local-index-status");
+  if (!node) return;
+  try {
+    const data = await api.get("/api/local-index");
+    const roots = Array.isArray(data.roots) ? data.roots : [];
+    if (!roots.length) {
+      node.textContent = "还没有可读目录，索引为空。";
+      node.title = "";
+      return;
+    }
+    const stamps = roots.map((row) => String(row.scanned_at || "")).filter(Boolean).sort();
+    const last = stamps.length ? stamps[stamps.length - 1].slice(11, 16) : "";
+    let text = `已索引 ${Number(data.total || 0)} 个文件`;
+    if (last) text += ` · 最后更新 ${last}`;
+    if (data.scanning) text += " · 正在更新…";
+    const bad = roots.filter((row) => row.status && row.status !== "ok");
+    if (bad.length) text += `；${bad.length} 个目录异常`;
+    node.textContent = text;
+    node.title = bad.map((row) =>
+      `${row.root}：${INDEX_STATUS_LABELS[row.status] || row.status}` +
+      (row.note ? `（${row.note}）` : "")).join("\n");
+  } catch (error) {
+    node.textContent = `索引状态没读出来：${error.message || error}`;
+    node.title = "";
+  }
+}
+
+async function rebuildIndex() {
+  const button = document.getElementById("local-index-rebuild");
+  if (!button) return;
+  button.disabled = true;
+  try {
+    const result = await api.post("/api/local-index/rebuild", {});
+    toast(result.message || "已开始重建索引", "ok");
+    setTimeout(loadLocalIndex, 1200);
+    setTimeout(loadLocalIndex, 4000);
+  } catch (error) {
+    toast(error.message || "重建索引失败", "err");
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function setValue(id, value) {
   const node = document.getElementById(id);
   if (node) node.value = value ?? "";
@@ -167,6 +219,8 @@ function bind() {
     renderLocalRoots();
     markDirty();
   });
+  document.getElementById("local-index-rebuild")
+    ?.addEventListener("click", rebuildIndex);
 
   bindMemory();
 }
@@ -306,6 +360,7 @@ async function save() {
     note.textContent = result.restart_required?.length
       ? `${result.message}（重启学习工作台后生效）`
       : "已保存";
+    loadLocalIndex();
     window.dispatchEvent(new CustomEvent("learnsys:prefs", { detail: payload.modules }));
   } catch (error) {
     note.textContent = "";

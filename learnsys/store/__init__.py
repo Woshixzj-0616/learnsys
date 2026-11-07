@@ -106,6 +106,13 @@ from .life_items import (ITEM_KINDS as LIFE_ITEM_KINDS,
                          list_items as list_life_items,
                          set_status as set_life_item_status,
                          update_item as update_life_item)
+from .local_files import (delete_root as delete_local_file_root,
+                          delete_unseen as delete_unseen_local_files,
+                          put_root_status as put_local_file_root_status,
+                          root_status as local_file_root_status,
+                          root_statuses as local_file_root_statuses,
+                          search as search_local_files_index,
+                          upsert_entries as upsert_local_file_entries)
 from .memories import (add_memory, delete_memory, get_memory, list_memories,
                        mark_used, promote_memory, update_memory)
 from .model_usage import add_usage as add_model_usage, day_by_model, day_totals, \

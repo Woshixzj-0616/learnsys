@@ -1,193 +1,37 @@
 """本机文件：白名单目录的只读检索与分段读取。
 
-P34.1 口径：
+P34.2 起检索走 `services/local_index` 的后台索引（SQL），本模块只负责
+读取、分段与结果排版；白名单与敏感文件的判断也归 `local_index`，不在这里维护第二份。
+
 - 只读，不改文件、不移动；写仍只落「学习档案」。
-- 只认设置里 `materials.import_dirs` 的目录（和资料批量导入共用同一份清单）。
 - 敏感文件（密钥 / 数据库 / 浏览器登录数据）永远不读，哪怕在目录里。
-- 检索只走文件名 / 路径；正文按扩展名抽取，分段返回，不把整份塞给模型。
+- 正文按扩展名抽取，分段返回，不把整份塞给模型。
 """
 from __future__ import annotations
 
 import codecs
 import datetime
 import json
-import os
 import pathlib
 import threading
-import time
 
-from learnsys import config
+from learnsys.services import local_index
+from learnsys.services.local_index import (EXCLUDE_DIRS, SENSITIVE_NAMES,
+                                           SENSITIVE_SUFFIXES, is_allowed_path,
+                                           resolve_path, roots)
 from learnsys.services.study.document import extract_document
 
-EXCLUDE_DIRS = {
-    ".git", ".hg", ".svn", ".ssh", ".gnupg", "node_modules", ".venv", "venv",
-    "__pycache__", "appdata", "$recycle.bin", "system volume information",
-    ".cache", ".npm", ".gradle", ".mypy_cache", ".pytest_cache",
-}
-SENSITIVE_NAMES = {
-    "设置.json", "界面设置.json", ".env", "id_rsa", "id_dsa", "id_ecdsa",
-    "id_ed25519", "credentials", "credentials.json", "login data", "cookies",
-    "cookies.sqlite", "ntuser.dat", "sam", "system",
-}
-SENSITIVE_SUFFIXES = {
-    ".pem", ".key", ".pfx", ".p12", ".kdbx", ".jks", ".keystore",
-    ".db", ".db-wal", ".db-shm", ".sqlite", ".sqlite3",
-}
+__all__ = ["EXCLUDE_DIRS", "SENSITIVE_NAMES", "SENSITIVE_SUFFIXES",
+           "is_allowed_path", "resolve_path", "roots", "read_local_file",
+           "search_local_files"]
+
 DOC_SUFFIXES = {".pdf", ".docx", ".pptx"}
-MAX_ENTRIES = 40_000
-MAX_DEPTH = 12
-SCAN_SECONDS = 3.0
-CACHE_TTL = 60.0
 MAX_FILE_BYTES = 25 * 1024 * 1024
 MAX_TEXT_CHARS = 2_000_000
 TEXT_CACHE_MAX = 6
 
 _LOCK = threading.Lock()
-_SCAN_CACHE: dict[str, tuple[float, list[tuple]]] = {}
 _TEXT_CACHE: dict[tuple[str, int, int], tuple[str, str]] = {}
-
-
-def roots() -> list[pathlib.Path]:
-    """设置里的本机可读目录；不存在或非目录的条目自动跳过。"""
-    section = config.USER.get("materials")
-    raw = section.get("import_dirs") if isinstance(section, dict) else []
-    if isinstance(raw, str):
-        raw = [raw]
-    if not isinstance(raw, (list, tuple)):
-        return []
-    out: list[pathlib.Path] = []
-    seen: set[str] = set()
-    for item in raw:
-        text = str(item or "").strip()
-        if not text:
-            continue
-        try:
-            path = pathlib.Path(text).expanduser().resolve()
-        except (OSError, ValueError):
-            continue
-        if not path.is_dir():
-            continue
-        key = str(path).casefold()
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(path)
-    return out
-
-
-def resolve_path(raw) -> pathlib.Path | None:
-    """绝对路径原样解析；相对路径依次尝试各白名单目录。"""
-    text = str(raw or "").strip()
-    if not text:
-        return None
-    try:
-        path = pathlib.Path(text).expanduser()
-    except (OSError, ValueError):
-        return None
-    if ":" in path.name:          # Windows 备用数据流：file.txt:secret 不算普通文件
-        return None
-    try:
-        if path.is_absolute():
-            return path.resolve()
-    except OSError:
-        return None
-    for root in roots():
-        candidate = (root / path)
-        try:
-            if candidate.exists():
-                return candidate.resolve()
-        except OSError:
-            continue
-    return None
-
-
-def _within(path: pathlib.Path, root: pathlib.Path) -> bool:
-    try:
-        path.relative_to(root)
-        return True
-    except ValueError:
-        return False
-
-
-def _matching_root(path: pathlib.Path) -> pathlib.Path | None:
-    for root in roots():
-        if _within(path, root):
-            return root
-    return None
-
-
-def _sensitive(path: pathlib.Path, root: pathlib.Path | None = None) -> bool:
-    """密钥 / 数据库 / 浏览器登录数据：检索与读取都跳过。
-
-    目录名看「相对白名单根」的部分：白名单本身在 AppData 下（测试临时目录）不算敏感，
-    只有根里的 AppData 子目录才跳过。
-    """
-    # Windows 会忽略文件名末尾的点和空格：`设置.json ` 仍是同一个文件。
-    name = path.name.casefold().rstrip(" .")
-    if name in SENSITIVE_NAMES or name.startswith(".env"):
-        return True
-    if pathlib.PurePath(name).suffix in SENSITIVE_SUFFIXES:
-        return True
-    if root is not None:
-        rel = path.relative_to(root)
-        return any(part.casefold() in EXCLUDE_DIRS for part in rel.parts[:-1])
-    # 白名单外：只拦密钥目录；APPData / node_modules 这类噪音目录靠确认框兜底。
-    return bool({part.casefold() for part in path.parts} & {".ssh", ".gnupg"})
-
-
-def is_allowed_path(raw) -> bool:
-    """路径是否在白名单目录内且不是敏感文件。"""
-    path = resolve_path(raw)
-    if path is None:
-        return False
-    root = _matching_root(path)
-    if root is None:
-        return False
-    return not _sensitive(path, root)
-
-
-def _scan(root: pathlib.Path) -> list[tuple]:
-    key = str(root)
-    now = time.monotonic()
-    with _LOCK:
-        cached = _SCAN_CACHE.get(key)
-        if cached and now - cached[0] < CACHE_TTL:
-            return cached[1]
-
-    entries: list[tuple] = []
-    deadline = now + SCAN_SECONDS
-    stack: list[tuple[pathlib.Path, int]] = [(root, 0)]
-    while stack and len(entries) < MAX_ENTRIES and time.monotonic() < deadline:
-        folder, depth = stack.pop()
-        try:
-            with os.scandir(folder) as it:
-                for entry in it:
-                    try:
-                        if entry.is_dir(follow_symlinks=False):
-                            name = entry.name.casefold()
-                            if (depth < MAX_DEPTH and name not in EXCLUDE_DIRS
-                                    and not entry.name.startswith(".")):
-                                stack.append((pathlib.Path(entry.path), depth + 1))
-                            continue
-                        if not entry.is_file(follow_symlinks=False):
-                            continue
-                        path = pathlib.Path(entry.path)
-                        if _sensitive(path, root):
-                            continue
-                        stat = entry.stat(follow_symlinks=False)
-                        entries.append((str(path), entry.name.casefold(),
-                                        path.suffix.casefold(), stat.st_size,
-                                        stat.st_mtime))
-                    except OSError:
-                        continue
-                    if len(entries) >= MAX_ENTRIES:
-                        break
-        except OSError:
-            continue
-
-    with _LOCK:
-        _SCAN_CACHE[key] = (time.monotonic(), entries)
-    return entries
 
 
 def _size_text(size: int) -> str:
@@ -208,49 +52,32 @@ def _mtime_text(stamp: float) -> str:
 
 def search_local_files(query: str = "", limit: int = 10, suffix: str = "",
                        *, ctx=None) -> str:
-    """在白名单目录里按文件名 / 路径找文件；不读正文。"""
-    roots_now = roots()
+    """在白名单目录的索引里按文件名 / 路径找文件；不读正文。"""
+    try:
+        result = local_index.search(query, limit, suffix)
+    except Exception as exc:  # noqa: BLE001 —— 工具错误转成中文文本，不裸抛给模型
+        return f"搜本机文件失败：{exc}"
+
+    roots_now = result["roots"]
     if not roots_now:
         return ("还没设置「本机可读目录」。告诉用户：在 工具 → 本机可读目录 里"
                 "添加要允许读取的文件夹（例如 D:\\学习资料），保存后就能直接读，不用导入。")
-    limit = max(1, min(int(limit or 10), 20))
-    needle = str(suffix or "").strip().casefold()
-    if needle and not needle.startswith("."):
-        needle = "." + needle
-    tokens = [part for part in str(query or "").casefold().split() if part]
 
-    matched: list[tuple] = []
-    total = 0
-    for root in roots_now:
-        for entry in _scan(root):
-            total += 1
-            path, name, ext, size, mtime = entry
-            if needle and ext != needle:
-                continue
-            if tokens and not all(token in name or token in path.casefold()
-                                  for token in tokens):
-                continue
-            score = 0
-            if tokens and name == " ".join(tokens):
-                score = 0
-            elif tokens and all(token in name for token in tokens):
-                score = 1 if name.startswith(tokens[0]) else 2
-            elif tokens:
-                score = 3
-            matched.append((score, -mtime, path, size, mtime))
-
-    if not matched:
-        where = "、".join(str(root) for root in roots_now)
+    entries = result["entries"]
+    total = int(result.get("total") or 0)
+    matched = int(result.get("matched") or 0)
+    if not entries:
+        where = "、".join(roots_now)
         what = f"「{query}」" if query else (suffix or "文件")
         return f"在可读目录里没找到{what}。可读目录：{where}"
 
-    matched.sort()
-    lines = [f"在本机可读目录里找到 {min(len(matched), limit)} 个文件"
-             f"（共扫到 {total} 个；只列元数据，正文用 read_local_file 读）："]
-    for _score, _neg, path, size, mtime in matched[:limit]:
-        lines.append(f"- {path} · {_size_text(size)} · {_mtime_text(mtime)}")
-    if len(matched) > limit:
-        lines.append(f"（还有 {len(matched) - limit} 个；加关键词或 suffix 缩小范围。）")
+    lines = [f"在本机可读目录里找到 {len(entries)} 个文件"
+             f"（索引共 {total} 个；只列元数据，正文用 read_local_file 读）："]
+    for path, _name_l, size, mtime_ns in entries:
+        lines.append(f"- {path} · {_size_text(size)} · "
+                     f"{_mtime_text(int(mtime_ns) / 1_000_000_000)}")
+    if matched > len(entries):
+        lines.append(f"（还有 {matched - len(entries)} 个；加关键词或 suffix 缩小范围。）")
     return "\n".join(lines)
 
 
@@ -269,7 +96,7 @@ def _decode(raw: bytes) -> str:
         return raw.decode("utf-8", errors="replace")
 
 
-def _text_of(path: pathlib.Path, stat: os.stat_result) -> tuple[str, str]:
+def _text_of(path, stat) -> tuple[str, str]:
     key = (str(path), int(stat.st_mtime_ns), int(stat.st_size))
     with _LOCK:
         cached = _TEXT_CACHE.get(key)
@@ -297,7 +124,7 @@ def _text_of(path: pathlib.Path, stat: os.stat_result) -> tuple[str, str]:
     return text, kind
 
 
-def _audit(ctx, path: pathlib.Path, chars: int) -> None:
+def _audit(ctx, path, chars: int) -> None:
     """读取留痕：路径、字数、时间、会话；写失败不影响读取。"""
     try:
         folder = pathlib.Path(ctx.data_root) / "日志"
@@ -320,8 +147,8 @@ def read_local_file(path: str, offset: int = 0, length: int = 6000, *,
     target = resolve_path(path)
     if target is None:
         return f"没有找到这个文件：{path}"
-    root = _matching_root(target)
-    if _sensitive(target, root):
+    root = local_index._matching_root(target)
+    if local_index._sensitive(target, root):
         return "这个文件属于密钥 / 数据库 / 浏览器登录数据，按安全规则不读。"
     approved = {str(item).casefold() for item in getattr(ctx, "approved_paths", ())}
     if root is None and str(target).casefold() not in approved:
@@ -340,7 +167,7 @@ def read_local_file(path: str, offset: int = 0, length: int = 6000, *,
         text, kind = _text_of(target, stat)
     except ValueError as exc:
         return str(exc)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 —— 文档抽取失败也按可读文本报错
         return f"读文件失败：{exc}"
 
     try:

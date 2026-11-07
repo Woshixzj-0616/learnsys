@@ -8,6 +8,7 @@ from .schema_agents import AGENT_SCHEMA
 from .schema_briefing import BRIEFING_SCHEMA
 from .schema_cet6 import CET6_DRILL_SCHEMA
 from .schema_daily import DAILY_SCHEMA
+from .schema_local_files import LOCAL_FILES_SCHEMA
 from .schema_memory import MEMORY_SCHEMA
 from .schema_personal import PERSONAL_SCHEMA
 from .schema_practice import PRACTICE_SCHEMA
@@ -15,7 +16,7 @@ from .schema_practice import PRACTICE_SCHEMA
 # 统一库结构版本。改了 `SCHEMA` 或 `_migrate_columns` 就 +1：
 # `connect()` 只在版本不一致时跑建表/补列；类目这类“只加行”的数据种子
 # 由 `knowledge.SEED_VERSION` + `meta.knowledge_seed_version` 单独判断。
-SCHEMA_VERSION = 23
+SCHEMA_VERSION = 24
 
 
 SCHEMA = """
@@ -485,7 +486,7 @@ CREATE INDEX IF NOT EXISTS idx_train_prompt
     ON train_submissions (prompt_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_train_parent
     ON train_submissions (parent_id);
-""" + AGENT_SCHEMA + BRIEFING_SCHEMA + PERSONAL_SCHEMA + PRACTICE_SCHEMA + CET6_DRILL_SCHEMA + DAILY_SCHEMA + MEMORY_SCHEMA
+""" + AGENT_SCHEMA + BRIEFING_SCHEMA + PERSONAL_SCHEMA + PRACTICE_SCHEMA + CET6_DRILL_SCHEMA + DAILY_SCHEMA + MEMORY_SCHEMA + LOCAL_FILES_SCHEMA
 
 FTS_SCHEMA = """
 CREATE VIRTUAL TABLE IF NOT EXISTS search_idx USING fts5(

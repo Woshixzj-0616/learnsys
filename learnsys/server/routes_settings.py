@@ -24,6 +24,7 @@ from learnsys.llm.config import load_config
 from learnsys.agent import vision
 from learnsys.modules import load_registry
 from learnsys.server.security import require_token
+from learnsys.services import local_index
 
 router = APIRouter()
 
@@ -355,6 +356,8 @@ def save_settings(patch: SettingsPatch, _=Depends(require_token)):
     # load_config() 每次重读 app_config.USER；原地更新，文本/视觉模型立即生效
     app_config.USER.clear()
     app_config.USER.update(data)
+    if "materials.import_dirs" in changed:
+        local_index.wake()       # 白名单变了：立即处理新增/移除的目录
 
     return {"ok": True, "saved": changed, "restart_required": restart,
             "message": "已保存" + ("；热键要重启学习工作台才生效" if restart else "")}

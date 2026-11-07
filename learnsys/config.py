@@ -142,6 +142,7 @@ SETTINGS_TEMPLATE = {
     "materials": {
         "import_dirs": [],
         "obsidian_dir": "",
+        "index_refresh_s": 120,
     },
     "_browser": "工作台浏览器（P20.2）：独立 profile 的 Edge/Chrome，只记录 URL/标题/域名。"
                 "enabled=false 关闭功能；record=false 暂停记录；exclude_domains 不记录的域名；"
