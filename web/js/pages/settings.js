@@ -6,6 +6,7 @@ import { escapeHtml, toast } from "../ui.js";
 let ctxRef = null;
 let current = null;
 let dirty = false;
+let localRoots = [];
 
 export async function mount(ctx) {
   ctxRef = ctx;
@@ -60,6 +61,9 @@ function fill(data) {
   document.getElementById("data-root").value = data.data_root || "";
   document.getElementById("settings-path").textContent = `设置在：${data.settings_path || ""}`;
   document.getElementById("backup-dir").textContent = `备份目录：${data.backup_dir || ""}`;
+  localRoots = Array.isArray(data.materials?.import_dirs)
+    ? data.materials.import_dirs.map((item) => String(item)).filter(Boolean) : [];
+  renderLocalRoots();
 
   const container = document.getElementById("module-toggles");
   const modules = ctxRef.registry || [];
@@ -83,6 +87,20 @@ function keyHint(has, mask, source) {
   if (source === "agent") return `跟随主模型 key：${mask || "••••"}（留空不改）`;
   const where = source === "env" ? "来自环境变量" : "已保存在设置文件";
   return `${where}：${mask || "••••"}（留空不改）`;
+}
+
+function renderLocalRoots() {
+  const box = document.getElementById("local-roots");
+  if (!box) return;
+  if (!localRoots.length) {
+    box.innerHTML = '<span class="local-root-empty">还没有目录；agent 暂时读不了本机文件。</span>';
+    return;
+  }
+  box.innerHTML = localRoots.map((path) => `
+    <div class="local-root-row">
+      <code>${escapeHtml(path)}</code>
+      <button class="btn" type="button" data-local-root="${escapeHtml(path)}">移除</button>
+    </div>`).join("");
 }
 
 function setValue(id, value) {
@@ -125,6 +143,30 @@ function bind() {
     markDirty();
   });
   priceBox.addEventListener("input", markDirty);
+
+  const rootInput = document.getElementById("local-root-input");
+  const addRoot = () => {
+    const value = rootInput.value.trim().replace(/^"|"$/g, "");
+    if (!value) return;
+    if (!localRoots.includes(value)) localRoots.push(value);
+    rootInput.value = "";
+    renderLocalRoots();
+    markDirty();
+  };
+  document.getElementById("local-root-add").addEventListener("click", addRoot);
+  rootInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addRoot();
+    }
+  });
+  document.getElementById("local-roots").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-local-root]");
+    if (!button) return;
+    localRoots = localRoots.filter((item) => item !== button.dataset.localRoot);
+    renderLocalRoots();
+    markDirty();
+  });
 
   bindMemory();
 }
@@ -234,6 +276,7 @@ function collect() {
 
   return {
     agent, vision, hotkey: valueOf("hotkey"), modules, briefing,
+    materials: { import_dirs: localRoots.slice() },
     ...(Number.isFinite(weeklyGoalDays) && weeklyGoalDays >= 3 && weeklyGoalDays <= 7
       ? { weekly_goal_days: Math.round(weeklyGoalDays) } : {}),
   };

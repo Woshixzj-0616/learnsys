@@ -134,6 +134,7 @@ from .schemas_art import ART_WORKS_SCHEMA
 from .schemas_learning import (DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
                                GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA)
 from .schemas_life import LIFE_CARDS_SCHEMA, LIFE_ITEMS_SCHEMA
+from .schemas_local import READ_LOCAL_FILE_SCHEMA, SEARCH_LOCAL_FILES_SCHEMA
 from .schemas_web import WEB_SCHEMAS
 from .schemas_write import (ADD_VOCAB_SCHEMA, CET6_WRITE_SCHEMAS,
                             RUN_CODE_SCHEMA, WRITE_LABELS_EXTRA,
@@ -383,6 +384,8 @@ TOOL_LABELS = {
     "list_recordings": "查录像",
     "get_cet6_context": "看六级进度",
     "search_materials": "查资料",
+    "search_local_files": "搜本机文件",
+    "read_local_file": "读本机文件",
     "search_dialog_archive": "查历史对话",
     "read_material": "读资料正文",
     "read_attachment": "读挂载文档",
@@ -434,7 +437,8 @@ def schemas_for(mode: str = "explain", *, use_tools: bool = True,
         # 测验页不该顺手打开本机文件 / 程序 / 网页；只在工作台问答页暴露。
         schemas += (WEB_SCHEMAS
                     + [OPEN_FILE_SCHEMA, LAUNCH_APP_SCHEMA,
-                       OPEN_URL_SCHEMA, BROWSER_STATUS_SCHEMA, BROWSER_HISTORY_SCHEMA])
+                       OPEN_URL_SCHEMA, BROWSER_STATUS_SCHEMA, BROWSER_HISTORY_SCHEMA,
+                       SEARCH_LOCAL_FILES_SCHEMA, READ_LOCAL_FILE_SCHEMA])
         schemas += WRITING_WRITE_SCHEMAS
         # 生活数据只给工作台问答，不给快速栏 / 六级 / 录像 / 测验。
         schemas += [LIFE_CARDS_SCHEMA, LIFE_ITEMS_SCHEMA, ART_WORKS_SCHEMA]
@@ -452,6 +456,9 @@ def write_summary(name: str, args: dict) -> str:
     if extra:
         return extra
     label = WRITE_LABELS.get(name, name)
+    if name == "read_local_file":
+        # 白名单外才走到确认框：完整路径，方便判断要不要给。
+        return f"读取白名单外的文件：{str(args.get('path') or '').strip() or '（空路径）'}"
     if name == "save_memory":
         content = " ".join(str(args.get("content") or "").split())[:120]
         return f"{label}：「{content}」"

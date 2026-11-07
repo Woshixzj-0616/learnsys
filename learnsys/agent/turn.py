@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import pathlib
 import time
 import uuid
 from collections.abc import Generator
@@ -251,7 +252,7 @@ def _handle_tool_call(turn: _Turn, call, tool_results: list[dict], *,
         "label": tools.label_for(call.name),
         "goal": goal, "step": step_index})
 
-    if call.name in tools.CONFIRM_TOOLS:
+    if tools.needs_confirm(call.name, call.input, turn.ctx):
         approved = False
         if call.name == "run_code" and getattr(turn.request, "auto_run_code", False):
             # 用户明确要求跑 / 代码调试：沙箱内自动执行，不再打断。
@@ -273,7 +274,7 @@ def _handle_tool_call(turn: _Turn, call, tool_results: list[dict], *,
             yield _aborted(state)
             return False
         if not approved:
-            label = tools.WRITE_LABELS.get(call.name, call.name)
+            label = tools.TOOL_LABELS.get(call.name, call.name)
             state.denied_writes.append(tools.write_summary(call.name, call.input))
             raw = (f"用户没有确认这次操作（{label}），工具没有执行。"
                    "不要当成已经完成；需要的话用一句话说明请在界面上确认。")
@@ -289,6 +290,16 @@ def _handle_tool_call(turn: _Turn, call, tool_results: list[dict], *,
                 yield AgentEvent("plan_update", data={
                     "index": step_index, "status": "failed", "steps": state.plan})
             return True
+        if call.name == "read_local_file":
+            # 白名单外读文件：确认过了才放行，且只放行这一次路径。
+            raw_path = str((call.input or {}).get("path") or "").strip()
+            if raw_path:
+                turn.ctx.approved_paths.add(raw_path)
+                try:
+                    turn.ctx.approved_paths.add(
+                        str(pathlib.Path(raw_path).expanduser().resolve()))
+                except (OSError, ValueError):
+                    pass
 
     tool_started = time.monotonic()
     state.tools_used.add(call.name)

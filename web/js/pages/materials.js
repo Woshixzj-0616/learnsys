@@ -2,6 +2,7 @@
 import { api, download, streamChat, uploadRaw } from "../api.js";
 import { renderInto } from "../markdown.js";
 import { escapeHtml, toast } from "../ui.js";
+import { loadReadRoots } from "./materials-roots.js";
 
 const KIND_LABEL = { pdf: "PDF", docx: "Word", pptx: "PPT", txt: "TXT", md: "Markdown", note: "笔记" };
 const ACCEPT = /\.(pdf|docx|pptx|txt|md)$/i;
@@ -20,7 +21,7 @@ let controller = null;
 let nodes = {};
 
 export async function mount(ctx) {
-  ctx.setSub("课件、笔记、术语表；导入后能搜、能问、能生成");
+  ctx.setSub("课件、笔记、术语表；本机目录可直接问，导入用于精读与批注");
   ctx.setActions('<a class="btn" href="#/ask">去问一问</a>');
   nodes = {
     stats: ctx.root.querySelector("#mat-stats"),
@@ -41,9 +42,10 @@ export async function mount(ctx) {
     genResult: ctx.root.querySelector("#mat-gen-result"),
     genSave: ctx.root.querySelector("#mat-gen-save"),
     genClose: ctx.root.querySelector("#mat-gen-close"),
+    readRoots: ctx.root.querySelector("#mat-read-roots"),
   };
   bind();
-  await loadList();
+  await Promise.all([loadList(), loadReadRoots(nodes.readRoots)]);
 }
 
 export function unmount() {

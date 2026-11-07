@@ -14,6 +14,24 @@
   </section>
 
   <section class="settings-section">
+    <h2>本机可读目录</h2>
+    <p class="hint">agent 只读这些目录里的文件，不移动、不改名；不用再导入资料库。
+      留空 = 不允许读本机文件。资料批量导入也用这份列表。</p>
+    <div class="setting-row">
+      <label class="setting-label">目录<small>绝对路径，最多 20 个</small></label>
+      <div class="setting-control">
+        <div class="local-root-list" id="local-roots"></div>
+        <div class="inline">
+          <input class="input" id="local-root-input" spellcheck="false"
+                 placeholder="例如 D:\学习资料">
+          <button class="btn" type="button" id="local-root-add">添加</button>
+        </div>
+        <span class="hint">保存时检查目录是否存在；密钥、数据库、浏览器登录数据不会读。</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="settings-section">
     <h2>文本模型</h2>
     <p class="hint">主对话用的 Anthropic Messages 兼容服务。密钥只保存在本机，页面拿不到明文。</p>
 

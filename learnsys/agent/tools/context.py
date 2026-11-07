@@ -17,6 +17,7 @@ class ToolContext:
     material_id: int = 0          # 从资料出题时带上，错题按资料归档
     code_debug: bool = False      # 代码调试轮：run_code 用更短的超时，减少坏输入的等待
     saved: set[str] = field(default_factory=set)
+    approved_paths: set[str] = field(default_factory=set)  # 白名单外读文件：确认过的路径
 
 
 def _one_line(text: str, cap: int = 300) -> str:

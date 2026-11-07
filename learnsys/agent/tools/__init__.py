@@ -5,12 +5,14 @@
 from __future__ import annotations
 
 from .context import ToolContext, _one_line, _safe_path, _stamp
+from .confirm import needs_confirm
 from .archive_search import search_dialog_archive
 from .execute import execute
 from .files import (STUDY_FILE_SUFFIXES, _study_target, run_code, write_study_file)
 from .learning_write import (add_vocab, delete_vocab, rate_review,
                              save_training_error)
 from .life_tools import art_works, life_cards, life_items
+from .local_files import read_local_file, search_local_files
 from .materials import read_material, save_material_note, search_materials
 from .records import ocr_image, read_attachment, search_records, today_summary
 from .schemas import (ART_WORKS_SCHEMA,
@@ -20,11 +22,13 @@ from .schemas import (ART_WORKS_SCHEMA,
                       GET_TRAIN_SUMMARY_SCHEMA, LAUNCH_APP_SCHEMA,
                       LIFE_CARDS_SCHEMA, LIFE_ITEMS_SCHEMA,
                       LIST_RECORDINGS_SCHEMA, MAKE_PLAN_SCHEMA, OPEN_FILE_SCHEMA,
-                      OPEN_URL_SCHEMA, RECENT_WRONG_ITEMS_SCHEMA, RUN_CODE_SCHEMA,
+                      OPEN_URL_SCHEMA, READ_LOCAL_FILE_SCHEMA,
+                      RECENT_WRONG_ITEMS_SCHEMA, RUN_CODE_SCHEMA,
                       SAVE_MATERIAL_NOTE_SCHEMA, SAVE_MEMORY_SCHEMA,
-                      SAVE_WRONGBOOK_SCHEMA, TOOL_LABELS, TOOL_SCHEMAS, WRITE_LABELS,
-                      WRITE_TOOLS, WRITE_STUDY_FILE_SCHEMA, label_for, schemas_for,
-                      write_summary)
+                      SAVE_WRONGBOOK_SCHEMA, SEARCH_LOCAL_FILES_SCHEMA,
+                      TOOL_LABELS, TOOL_SCHEMAS, WRITE_LABELS,
+                      WRITE_TOOLS, WRITE_STUDY_FILE_SCHEMA, label_for,
+                      schemas_for, write_summary)
 from .study_tools import (due_reviews, forget_memory, get_cet6_context,
                           get_mastery, get_train_summary, list_recordings,
                           recent_wrong_items, save_memory, save_wrongbook)
@@ -32,7 +36,7 @@ from .system_tools import (browser_history, browser_status, launch_app, open_fil
                            open_url)
 
 __all__ = [
-    "ToolContext", "execute", "schemas_for", "write_summary",
+    "ToolContext", "execute", "schemas_for", "write_summary", "needs_confirm",
     "TOOL_SCHEMAS", "CONFIRM_TOOLS", "WRITE_TOOLS", "WRITE_LABELS",
     "TOOL_LABELS", "label_for",
     "MAKE_PLAN_SCHEMA", "RECENT_WRONG_ITEMS_SCHEMA", "GET_CET6_CONTEXT_SCHEMA",
@@ -40,6 +44,8 @@ __all__ = [
     "ART_WORKS_SCHEMA",
     "LIFE_CARDS_SCHEMA", "LIFE_ITEMS_SCHEMA", "LIST_RECORDINGS_SCHEMA",
     "OPEN_FILE_SCHEMA", "LAUNCH_APP_SCHEMA", "OPEN_URL_SCHEMA",
+    "SEARCH_LOCAL_FILES_SCHEMA", "READ_LOCAL_FILE_SCHEMA",
+    "search_local_files", "read_local_file",
     "BROWSER_STATUS_SCHEMA", "BROWSER_HISTORY_SCHEMA",
     "SAVE_WRONGBOOK_SCHEMA", "SAVE_MEMORY_SCHEMA", "FORGET_MEMORY_SCHEMA",
     "SAVE_MATERIAL_NOTE_SCHEMA", "WRITE_STUDY_FILE_SCHEMA", "RUN_CODE_SCHEMA",

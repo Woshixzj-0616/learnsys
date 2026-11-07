@@ -7,6 +7,7 @@ from .files import run_code, write_study_file
 from .learning_write import (add_vocab, delete_vocab, rate_review,
                              save_training_error)
 from .life_tools import art_works, life_cards, life_items
+from .local_files import read_local_file, search_local_files
 from .archive_search import search_dialog_archive
 from .materials import read_material, save_material_note, search_materials
 from .records import ocr_image, read_attachment, search_records, today_summary
@@ -90,6 +91,23 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
                                          int(args.get("limit") or 8), ctx=ctx)
             ok = not text.startswith(("还没有封存", "对话总汇里没有找到"))
             return text, "查了历史对话", ok
+        if name == "search_local_files":
+            text = search_local_files(
+                str(args.get("query") or ""),
+                int(args.get("limit") or 10),
+                str(args.get("suffix") or ""), ctx=ctx)
+            # 没找到是正常回答；只有「没设置 / 扫描失败」才算这次调用没成功。
+            ok = not text.startswith(("还没设置", "搜本机文件失败"))
+            return text, "搜了本机文件", ok
+        if name == "read_local_file":
+            text = read_local_file(
+                str(args.get("path") or ""),
+                int(args.get("offset") or 0),
+                int(args.get("length") or 6000), ctx=ctx)
+            ok = not text.startswith(("没有找到", "这个文件属于", "这个路径不在",
+                                      "这不是一个文件", "读文件失败", "文件太大",
+                                      "这是二进制"))
+            return text, "读了本机文件", ok
         if name == "search_materials":
             text = search_materials(str(args.get("query") or ""),
                                     int(args.get("limit") or 5), ctx=ctx)

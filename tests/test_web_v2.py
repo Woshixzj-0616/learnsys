@@ -110,6 +110,33 @@ class WebTest(unittest.TestCase):
         self.assertEqual(raw["agent"]["auth_token"], "sk-test-123456")
         self.assertEqual(raw["vision"]["api_key"], "vk-test-abcdef")
 
+    def test_local_read_dirs_saved_and_validated(self):
+        from learnsys.server import routes_settings as settings_routes
+
+        folder = pathlib.Path(self.tmp.name) / "学习资料"
+        folder.mkdir()
+        # 临时目录在 AppData 下：先确认默认会被拦，再放行以便测保存链路。
+        blocked = self.client.post("/api/settings", headers=AUTH,
+                                   json={"materials": {"import_dirs": [str(folder)]}})
+        self.assertEqual(blocked.status_code, 400)
+        self.assertIn("AppData", blocked.json()["detail"])
+        with mock.patch.object(settings_routes, "_blocked_read_root", return_value=False):
+            saved = self.client.post("/api/settings", headers=AUTH,
+                                     json={"materials": {"import_dirs": [str(folder)]}})
+        self.assertEqual(saved.status_code, 200, saved.text)
+        after = self.client.get("/api/settings", headers=AUTH).json()
+        self.assertEqual(after["materials"]["import_dirs"], [str(folder.resolve())])
+
+        missing = self.client.post("/api/settings", headers=AUTH,
+                                   json={"materials": {"import_dirs": [str(folder / "不存在")]}})
+        self.assertEqual(missing.status_code, 400)
+        self.assertIn("目录不存在", missing.json()["detail"])
+
+        relative = self.client.post("/api/settings", headers=AUTH,
+                                    json={"materials": {"import_dirs": ["学习资料"]}})
+        self.assertEqual(relative.status_code, 400)
+        self.assertIn("绝对路径", relative.json()["detail"])
+
     def test_settings_auto_route(self):
         saved = self.client.post("/api/settings", headers=AUTH, json={
             "agent": {"auto_route": "shadow",

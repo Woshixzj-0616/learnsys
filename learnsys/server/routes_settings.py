@@ -69,6 +69,12 @@ def get_settings(_=Depends(require_token)):
     agent_raw = raw.get("agent") if isinstance(raw.get("agent"), dict) else {}
     vision_raw = raw.get("vision") if isinstance(raw.get("vision"), dict) else {}
     modules_raw = raw.get("modules") if isinstance(raw.get("modules"), dict) else {}
+    materials_raw = raw.get("materials") if isinstance(raw.get("materials"), dict) else {}
+    import_dirs = materials_raw.get("import_dirs")
+    if isinstance(import_dirs, str):
+        import_dirs = [import_dirs]
+    if not isinstance(import_dirs, list):
+        import_dirs = []
     try:
         weekly_goal_days = int(raw.get("weekly_goal_days")
                                or app_config.WEEKLY_GOAL_DAYS)
@@ -106,6 +112,10 @@ def get_settings(_=Depends(require_token)):
         "backup_dir": str(_backup_dir(raw)),
         "settings_path": str(app_config.SETTINGS_FILE),
         "modules": {mid: bool(modules_raw.get(mid, True)) for mid in _module_ids()},
+        "materials": {
+            "import_dirs": [str(item).strip() for item in import_dirs
+                            if str(item or "").strip()],
+        },
         "weekly_goal_days": weekly_goal_days,
         "briefing": briefing_settings(),
         "restart_fields": ["hotkey", "backup_dir"],
@@ -142,6 +152,10 @@ class BriefingPatch(BaseModel):
     generate_at: str | None = None
 
 
+class MaterialsPatch(BaseModel):
+    import_dirs: list[str] | None = None
+
+
 class SettingsPatch(BaseModel):
     agent: AgentPatch | None = None
     vision: VisionPatch | None = None
@@ -149,6 +163,7 @@ class SettingsPatch(BaseModel):
     modules: dict[str, bool] | None = None
     weekly_goal_days: int | None = Field(default=None, ge=3, le=7)
     briefing: BriefingPatch | None = None
+    materials: MaterialsPatch | None = None
 
 
 def _clean_prices(raw) -> dict[str, dict]:
@@ -171,6 +186,60 @@ def _clean_prices(raw) -> dict[str, dict]:
             out[model] = entry
         if len(out) >= 100:
             break
+    return out
+
+
+def _blocked_read_root(path: pathlib.Path) -> bool:
+    """系统目录和 AppData 不进「本机可读目录」：噪音大，且藏着账号数据。"""
+    special = []
+    for raw in (os.environ.get("WINDIR") or "C:/Windows",
+                "C:/Program Files", "C:/Program Files (x86)", "C:/ProgramData",
+                str(pathlib.Path.home() / "AppData")):
+        try:
+            special.append(pathlib.Path(raw).resolve())
+        except OSError:
+            continue
+    return any(path == item or item in path.parents for item in special)
+
+
+def _clean_import_dirs(values) -> list[str]:
+    """校验「本机可读目录」：绝对路径、真实存在、不是盘符根 / 系统目录。"""
+    if isinstance(values, str):
+        values = [values]
+    if not isinstance(values, list):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for item in values:
+        text = str(item or "").strip().strip('"')
+        if not text:
+            continue
+        try:
+            path = pathlib.Path(text).expanduser()
+        except (OSError, ValueError):
+            raise HTTPException(status_code=400, detail=f"这个路径不合法：{text}")
+        if not path.is_absolute():
+            raise HTTPException(status_code=400,
+                                detail=f"目录要写绝对路径，例如 D:\\学习资料：{text}")
+        try:
+            path = path.resolve()
+        except OSError:
+            raise HTTPException(status_code=400, detail=f"这个目录读不了：{text}")
+        if not path.is_dir():
+            raise HTTPException(status_code=400, detail=f"目录不存在：{text}")
+        if path.parent == path:
+            raise HTTPException(status_code=400,
+                                detail=f"不要选整个盘符，请选具体文件夹：{text}")
+        if _blocked_read_root(path):
+            raise HTTPException(status_code=400,
+                                detail=f"系统目录和 AppData 不能加入可读目录：{text}")
+        key = str(path).casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(str(path))
+    if len(out) > 20:
+        raise HTTPException(status_code=400, detail="本机可读目录最多 20 个")
     return out
 
 
@@ -268,6 +337,11 @@ def save_settings(patch: SettingsPatch, _=Depends(require_token)):
             briefing["generate_at"] = when
         _put(data, "briefing", briefing)
         changed.extend(f"briefing.{key}" for key in briefing)
+
+    if patch.materials is not None and patch.materials.import_dirs is not None:
+        roots = _clean_import_dirs(patch.materials.import_dirs)
+        _put(data, "materials", {"import_dirs": roots})
+        changed.append("materials.import_dirs")
 
     try:
         target = pathlib.Path(app_config.SETTINGS_FILE)
