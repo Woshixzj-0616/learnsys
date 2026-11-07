@@ -1,0 +1,78 @@
+/* 经验库：三格卡 + 搜索 + 项目筛选 */
+.practice-toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.practice-search { flex: 1; min-width: 220px; }
+.practice-form-panel .panel-body { display: flex; flex-direction: column; gap: 6px; }
+.practice-kind { display: flex; gap: 16px; margin-bottom: 6px; }
+.practice-label {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.practice-form-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+.practice-more { margin-top: 10px; }
+.practice-more summary { cursor: pointer; color: var(--muted); font-size: var(--fs-sm); }
+.practice-list { display: flex; flex-direction: column; gap: 12px; }
+.practice-card {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-raised);
+}
+.practice-card-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.practice-card-head h3 { margin: 0; font-size: 16px; }
+.practice-card-head .hint { margin-left: auto; }
+.practice-kind-badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.practice-kind-badge.pitfall { background: var(--warn-soft); color: var(--warn-ink); }
+.practice-kind-badge.good_practice { background: var(--accent-soft); color: var(--accent-ink); }
+.practice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.practice-grid p { margin: 4px 0 0; line-height: 1.6; }
+.practice-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.practice-tags { color: var(--mark); }
+.practice-evidence {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.practice-actions { display: flex; gap: 8px; margin-top: 10px; }
+@media (max-width: 760px) {
+  .practice-grid { grid-template-columns: 1fr; }
+}

@@ -27,8 +27,8 @@ from learnsys.server import (routes_agent, routes_agents, routes_briefing,
                              routes_cet6_drill, routes_cet6_exam, routes_code,
                              routes_daily, routes_data, routes_knowledge,
                              routes_materials, routes_memory,
-                             routes_memory_archive, routes_recordings,
-                             routes_results, routes_review, routes_services,
+                             routes_memory_archive, routes_practice,
+                             routes_recordings, routes_results, routes_review, routes_services,
                              routes_settings, routes_train, routes_ui,
                              routes_upload, routes_vocab, routes_web, runtime)
 from learnsys.server.nav_bridge import NavBridge
@@ -123,6 +123,7 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
     app.include_router(routes_cet6_exam.router)
     app.include_router(routes_cet6_chunk.router)
     app.include_router(routes_daily.router)
+    app.include_router(routes_practice.router)
 
     # 六级精听（可选模块）：工作台 + 试卷挂到 /cet6/；没装就跳过，主功能不受影响
     routes_cet6.mount_static(app)

@@ -1,0 +1,72 @@
+<div class="practice-page">
+  <section class="stage-hero practice-hero">
+    <div>
+      <p class="stage-eyebrow">实践经验 · 三句话</p>
+      <h2>下次遇到同样的事，先看这里。</h2>
+      <p class="stage-sub">场景 / 坑或有效点 / 下次怎么做。技术原因可以不写，AI 会帮你补；
+        不按记忆曲线每天催，用得到时搜。</p>
+      <div class="practice-toolbar">
+        <input class="input practice-search" id="practice-q" type="search"
+               placeholder="搜场景、坑、命令、标签…">
+        <select class="select" id="practice-project">
+          <option value="0">全部项目</option>
+        </select>
+        <button class="btn btn-primary" type="button" id="practice-new">记一条</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel practice-form-panel" id="practice-form-panel" hidden>
+    <div class="panel-head">
+      <strong id="practice-form-title">记一条经验</strong>
+      <button class="btn" type="button" id="practice-cancel">取消</button>
+    </div>
+    <div class="panel-body">
+      <div class="practice-kind">
+        <label><input type="radio" name="practice-kind" value="pitfall" checked> 踩坑</label>
+        <label><input type="radio" name="practice-kind" value="good_practice"> 有效做法</label>
+      </div>
+      <label class="practice-label" for="practice-title">标题</label>
+      <input class="input" id="practice-title"
+             placeholder="一句话标题，比如「codex 说完成不等于做对了」">
+      <label class="practice-label" for="practice-scene">场景：我在干什么</label>
+      <textarea class="input" id="practice-scene" rows="2"
+                placeholder="例如：让 codex 改完后端"></textarea>
+      <label class="practice-label" for="practice-pitfall">坑 / 有效点：实际发生了什么</label>
+      <textarea class="input" id="practice-pitfall" rows="2"
+                placeholder="例如：它回复完成，接口还是 500"></textarea>
+      <label class="practice-label" for="practice-next">下次：下次先做什么</label>
+      <textarea class="input" id="practice-next" rows="2"
+                placeholder="例如：先看 /api/health 和实际请求"></textarea>
+      <details class="practice-more">
+        <summary>更多（可选）</summary>
+        <label class="practice-label" for="practice-why">技术原因（AI 可补）</label>
+        <textarea class="input" id="practice-why" rows="2"></textarea>
+        <label class="practice-label" for="practice-evidence">证据：命令 / 日志 / 链接</label>
+        <textarea class="input" id="practice-evidence" rows="2"></textarea>
+        <label class="practice-label" for="practice-tags">标签</label>
+        <input class="input" id="practice-tags" placeholder="#AI协作 #部署">
+        <label class="practice-label" for="practice-form-project">项目</label>
+        <select class="select" id="practice-form-project">
+          <option value="0">不关联项目</option>
+        </select>
+      </details>
+      <div class="practice-form-actions">
+        <button class="btn btn-primary" type="button" id="practice-save">保存</button>
+        <span class="hint" id="practice-status"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <strong id="practice-count">经验</strong>
+      <span class="hint" id="practice-hint"></span>
+    </div>
+    <div class="panel-body">
+      <div class="practice-list" id="practice-list">
+        <div class="empty">正在读经验库…</div>
+      </div>
+    </div>
+  </section>
+</div>

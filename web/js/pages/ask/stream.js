@@ -1,9 +1,9 @@
 // SSE 流式：开始、逐事件渲染、完成/出错/停止。
 import { streamChat, stopChat } from "../../api.js";
 import { state, dom, TOOL_NAMES } from "./state.js";
-import { addSource, addToolRow, attachReplay, createAssistantBlock,
-         paintAssistant, renderPlan, scrollBottom, setAssistantStatus, showCheck,
-         updateToolPreview } from "./thread.js";
+import { addSource, addToolRow, attachExperience, attachReplay,
+         createAssistantBlock, paintAssistant, renderPlan, scrollBottom,
+         setAssistantStatus, showCheck, updateToolPreview } from "./thread.js";
 import { loadConversations } from "./conversations.js";
 import { updateSendButton } from "./attachments.js";
 
@@ -19,6 +19,7 @@ function startTimer() {
 }
 
 export async function startStreaming(payload) {
+  const question = String(payload?.message || "");
   state.streaming = true;
   state.stopped = false;
   state.text = "";
@@ -118,6 +119,7 @@ export async function startStreaming(payload) {
         }
         finishStreaming(block, true, event.data?.code_unverified
           ? "未运行验证 · 静态分析" : "");
+        attachExperience(block, question, finalText);
       } else if (event.kind === "error") {
         showStreamError(block, event.text || "模型没有回答");
       }

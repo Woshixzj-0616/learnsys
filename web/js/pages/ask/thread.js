@@ -38,8 +38,10 @@ export function renderThread() {
     return;
   }
 
+  let lastUser = "";
   for (const message of state.messages) {
     if (message.role === "user") {
+      lastUser = messageText(message.content);
       addUserBlock(messageText(message.content));
     } else if (message.role === "assistant") {
       const text = messageText(message.content);
@@ -58,6 +60,7 @@ export function renderThread() {
           block.error.textContent = `生成中断：${message.content.error}`;
         }
         dom.inner.appendChild(block.wrap);
+        attachExperience(block, lastUser, text);
         if (message.content?.run_id) attachReplay(block, message.content.run_id);
       } else if (message.content?.error) {
         const block = createAssistantBlock();
@@ -122,11 +125,36 @@ export function createAssistantBlock() {
   const sources = document.createElement("div");
   sources.className = "sources";
 
-  wrap.append(status, planEl, thinkingEl, toolsEl, body, checkEl, error, sources);
+  // 问完一个问题，把这次结论起草成一条经验；人只做判断和改一句话。
+  const experience = document.createElement("button");
+  experience.type = "button";
+  experience.className = "btn btn-small ask-experience";
+  experience.textContent = "记一条经验";
+  experience.hidden = true;
+
+  wrap.append(status, planEl, thinkingEl, toolsEl, body, checkEl, error, sources,
+    experience);
   dom.inner.appendChild(wrap);
   return {
     wrap, status, planEl, thinkingEl, thinkingPre, toolsEl, toolsSummary, toolsBody,
-    body, checkEl, error, sources,
+    body, checkEl, error, sources, experience,
+  };
+}
+
+export function attachExperience(block, question, answer) {
+  if (!block?.experience || !String(answer || "").trim()) return;
+  block.experience.hidden = false;
+  block.experience.onclick = () => {
+    const draft = {
+      title: String(question || "问 AI 得到的一条经验").slice(0, 60),
+      scene: `问 AI：${String(question || "").slice(0, 200)}`,
+      pitfall: `AI 的回答（请改成你下次能直接用的一句话）：\n${String(answer || "").slice(0, 300)}`,
+      next_time: "",
+      tags: "#AI协作",
+      source: "ask",
+    };
+    sessionStorage.setItem("practice-draft", JSON.stringify(draft));
+    location.hash = "#/practice";
   };
 }
 

@@ -584,3 +584,4 @@
 .conv-item .conv-meta {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.ask-experience { margin-top: 10px; }
