@@ -73,6 +73,9 @@
 
     if(btn.dataset.act === "text") setCardText(card, btn);
     if(btn.dataset.act === "toggle") WB.audio.toggleSentence(i);
+    if(btn.dataset.act === "dictation" && WB.dictation){
+      WB.dictation.toggle(card, i);
+    }
     if(btn.dataset.act === "ask"){
       const s = WB.paper.findSentence(i);
       if(WB.ask && WB.ask.openFor) WB.ask.openFor({

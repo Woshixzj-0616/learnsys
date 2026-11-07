@@ -202,5 +202,5 @@
   });
 
   WB.cet6Sync = {build: build, buildFor: buildFor, push: push, schedule: schedule,
-                 syncPaper: syncPaper, flush: flush};
+                 syncPaper: syncPaper, flush: flush, paperId: paperId};
 })(window.WB = window.WB || {});

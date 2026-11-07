@@ -165,6 +165,9 @@ export function bindEvents() {
   ctxRef.root.querySelector("#new-conv").addEventListener("click", newConversation);
   dom.stop.addEventListener("click", stopStreaming);
 
+  ctxRef.root.querySelector("#dispatch-agent").addEventListener("click", () => {
+    location.hash = "#/agents";
+  });
   ctxRef.root.querySelector("#attach-image").addEventListener("click", () => dom.fileImage.click());
   ctxRef.root.querySelector("#attach-doc").addEventListener("click", () => dom.fileDoc.click());
   ctxRef.root.querySelector("#attach-material").addEventListener("click", openMaterialPicker);

@@ -144,6 +144,7 @@
             U.escapeHtml(note) + "</textarea>" +
           '<div class="controls">' +
             '<button data-act="text">显示原文</button>' +
+            '<button data-act="dictation" title="听写这一句，提交后看漏了哪些词">听写这句</button>' +
             '<button data-act="ask" title="带着这一句问 AI">问 AI</button>' +
             '<button data-act="start" title="先把音频播到这句开头，暂停，再点这里">设起点</button>' +
             (manual

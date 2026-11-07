@@ -46,6 +46,8 @@ const GROUP_OF = {
   agents: "工具", browser: "工具", agentruns: "工具", projects: "工具",
   settings: "系统", plugins: "系统",
 };
+// 派活与运行记录是内嵌工具，不再占一级导航；仍可用 #/agents、#/agentruns 直达。
+const HIDDEN_NAV = new Set(["agents", "agentruns"]);
 const byOrder = (a, b) => Number(a.order || 999) - Number(b.order || 999);
 
 function navItem(module, activeId) {
@@ -66,7 +68,8 @@ function navGroup(label, items, activeId) {
 }
 
 function renderNav(activeId) {
-  const visible = registry.filter((module) => prefs[module.id] !== false);
+  const visible = registry.filter(
+    (module) => prefs[module.id] !== false && !HIDDEN_NAV.has(module.id));
   const today = visible.find((m) => m.id === "today");
   let html = today ? navItem(today, activeId) : "";
   const order = getModes().scene === "work"

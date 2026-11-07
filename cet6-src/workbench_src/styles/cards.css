@@ -70,3 +70,26 @@
 .errors button{font-size:12px;padding:3px 9px}
 .errors button.on{background:var(--danger-soft);border-color:var(--danger-line);color:var(--danger)}
 .empty{color:var(--muted);text-align:center;padding:26px 0;display:none}
+/* 句子内听写：不再有独立专项队列 */
+.dictation-box{
+  margin-top:10px;padding:10px 12px;border:1px dashed var(--accent-line);
+  border-radius:10px;background:var(--field-alt);
+}
+.dictation-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.dictation-head b{color:var(--accent-ink)}
+.dictation-head button{font-size:12px;padding:2px 9px}
+.dictation-status{margin-left:auto;font-size:12px;color:var(--muted)}
+.dictation-input{
+  width:100%;min-height:64px;padding:8px 10px;border:1px solid var(--line);
+  border-radius:8px;background:var(--field);color:var(--ink);
+  font:inherit;font-size:13px;resize:vertical;
+}
+.dictation-input:focus{outline:2px solid var(--accent-line);border-color:var(--accent-line)}
+.dictation-actions{display:flex;gap:8px;align-items:center;margin-top:8px}
+.dictation-score{color:var(--accent-ink);font-weight:700}
+.dictation-expected{margin:8px 0;line-height:1.7}
+.dictation-miss{
+  background:var(--warn-soft);color:var(--warn-ink);
+  border-bottom:2px solid var(--warn);padding:0 1px;
+}
+.dictation-cards{margin:6px 0;color:var(--muted);font-size:13px}

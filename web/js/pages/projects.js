@@ -80,6 +80,7 @@ function renderList() {
           <button class="btn btn-quiet" type="button" data-act="edit">编辑</button>
           <button class="btn" type="button" data-act="handoff">生成交接</button>
           <button class="btn btn-quiet" type="button" data-act="open">看交接</button>
+          <button class="btn btn-quiet" type="button" data-act="agent">派活</button>
           ${item.status === "archived" ? "" :
             '<button class="btn btn-danger" type="button" data-act="archive">归档</button>'}
         </div>
@@ -106,6 +107,8 @@ async function onListClick(event) {
     await generateHandoff(card, item, button);
   } else if (action === "open") {
     await openHandoff(card, item, button);
+  } else if (action === "agent") {
+    location.hash = "#/agents";
   } else if (action === "archive") {
     await archive(card, item, button);
   }
