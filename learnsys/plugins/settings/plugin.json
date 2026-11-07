@@ -1,6 +1,6 @@
 {
   "id": "settings",
-  "name": "设置",
+  "name": "工具",
   "icon": "⚙",
   "type": "native-page",
   "entry": "pages/settings.html",
@@ -10,6 +10,6 @@
   "version": "2.0.0",
   "category": "系统",
   "home": false,
-  "tagline": "模型、视觉、热键、数据",
+  "tagline": "问一问 · 插件 · 模型与数据",
   "description": "模型与密钥、视觉兜底、热键、数据路径、备份、插件开关。"
 }

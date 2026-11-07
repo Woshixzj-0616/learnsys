@@ -1,6 +1,6 @@
 {
   "id": "practice",
-  "name": "经验库",
+  "name": "实践",
   "icon": "◆",
   "type": "native-page",
   "entry": "pages/practice.html",
@@ -10,6 +10,6 @@
   "version": "0.1.0",
   "category": "实践",
   "home": true,
-  "tagline": "场景 / 坑 / 下次",
+  "tagline": "经验库 · 项目",
   "description": "记录和 AI、工具打交道时下次还想记得的事：三句话，可搜索，按最近用到取用；不按记忆曲线催复习。"
 }

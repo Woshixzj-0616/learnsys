@@ -35,19 +35,21 @@ function moduleById(id) {
 }
 
 // 侧栏分组：只在这里定义一次。今日单列，不归任何组。
-const GROUP_ORDER = ["学习", "生活", "资料", "工具", "系统"];
+// P33 起一级入口只有 5 个：今日 / 英语 / 实践 / 资料 / 工具；其余模块收进聚合页或页内入口。
+const GROUP_ORDER = ["英语", "实践", "资料", "工具"];
+const WORK_ORDER = ["工具", "资料", "实践", "英语"];
 const GROUP_OF = {
-  ask: "学习", cet6: "学习", netlab: "学习", review: "学习", quiz: "学习",
-  knowledge: "学习", wrongbook: "学习", vocab: "学习", "english-review": "学习",
-  practice: "学习", briefing: "学习",
-  daily: "学习",
-  life: "生活", art: "生活",
-  materials: "资料", recordings: "资料",
-  agents: "工具", browser: "工具", agentruns: "工具", projects: "工具",
-  settings: "系统", plugins: "系统",
+  english: "英语",
+  practice: "实践",
+  materials: "资料",
+  settings: "工具",
 };
-// 派活与运行记录是内嵌工具，不再占一级导航；仍可用 #/agents、#/agentruns 直达。
-const HIDDEN_NAV = new Set(["agents", "agentruns"]);
+// 旧 hash 仍可直达（#/cet6、#/daily、#/english-review、#/agents 等），只是不占侧栏。
+const HIDDEN_NAV = new Set([
+  "cet6", "daily", "english-review", "wrongbook", "vocab", "review",
+  "quiz", "knowledge", "netlab", "briefing", "life", "art", "browser",
+  "recordings", "agents", "agentruns", "plugins", "projects", "ask",
+]);
 const byOrder = (a, b) => Number(a.order || 999) - Number(b.order || 999);
 
 function navItem(module, activeId) {
@@ -63,8 +65,10 @@ function navItem(module, activeId) {
 
 function navGroup(label, items, activeId) {
   if (!items.length) return "";
-  return `<div class="nav-group-label">${escapeHtml(label)}</div>`
-    + items.map((item) => navItem(item, activeId)).join("");
+  // P33 起每组通常只有一个入口；组名和入口重名时不重复显示。
+  const heading = items.length > 1
+    ? `<div class="nav-group-label">${escapeHtml(label)}</div>` : "";
+  return heading + items.map((item) => navItem(item, activeId)).join("");
 }
 
 function renderNav(activeId) {
@@ -72,9 +76,7 @@ function renderNav(activeId) {
     (module) => prefs[module.id] !== false && !HIDDEN_NAV.has(module.id));
   const today = visible.find((m) => m.id === "today");
   let html = today ? navItem(today, activeId) : "";
-  const order = getModes().scene === "work"
-    ? ["工具", "生活", "资料", "学习", "系统"]
-    : GROUP_ORDER;
+  const order = getModes().scene === "work" ? WORK_ORDER : GROUP_ORDER;
   for (const label of order) {
     const items = visible
       .filter((m) => m.id !== "today" && GROUP_OF[m.id] === label)

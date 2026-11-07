@@ -1,0 +1,53 @@
+/* 英语聚合页：精听 / 写作·翻译 / 每日积累 / 复习 */
+.english-shell { display: flex; flex-direction: column; min-height: 100%; gap: 14px; }
+.english-hero { grid-template-columns: minmax(0, 1fr); }
+.english-hero .stage-sub { max-width: 58ch; margin-bottom: 0; }
+
+.english-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+.english-tab {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.english-tab:hover { color: var(--text); background: var(--bg-raised); }
+.english-tab.active {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.english-panel { flex: 1; min-height: 0; }
+
+/* 写作 / 翻译的二级切换 */
+.english-subtabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.english-subtab {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.english-subtab:hover { color: var(--text); background: var(--bg-raised); }
+.english-subtab.active {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+

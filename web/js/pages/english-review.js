@@ -18,6 +18,7 @@ const KIND_HINT = {
 const PAGE_SIZE = 10;
 
 let kind = "sentence";
+let ctxRef = null;
 let queue = [];
 let index = 0;
 let revealed = false;
@@ -37,7 +38,9 @@ function hashTab() {
 }
 
 export async function mount(ctx) {
-  const requested = hashTab();
+  ctxRef = ctx;
+  // 独立页读 #/english-review?tab=；嵌进英语聚合页时由外层把 kind 放进 ctx.query。
+  const requested = ctx.query?.get?.("kind") || hashTab();
   kind = requested === "word" ? "word" : "sentence";
   queue = [];
   index = 0;
@@ -92,7 +95,11 @@ async function switchKind(next) {
   if (!next || next === kind) return;
   kind = next;
   nodes.tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.kind === kind));
-  history.replaceState(null, "", `#/english-review?tab=${kind}`);
+  if (typeof ctxRef?.onKind === "function") {
+    ctxRef.onKind(kind);              // 聚合页自己写 #/english?tab=review&kind=
+  } else {
+    history.replaceState(null, "", `#/english-review?tab=${kind}`);
+  }
   await startRound();
 }
 

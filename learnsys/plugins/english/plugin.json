@@ -1,0 +1,15 @@
+{
+  "id": "english",
+  "name": "英语",
+  "icon": "文",
+  "type": "native-page",
+  "entry": "pages/english.html",
+  "script": "js/pages/english/index.js",
+  "order": 20,
+  "status": "ready",
+  "version": "0.1.0",
+  "category": "语言",
+  "home": true,
+  "tagline": "精听 · 写作翻译 · 每日积累 · 复习",
+  "description": "英语聚合页：精听 iframe、写作/翻译、每日积累与英语复习两个 tab 收在一页；旧 hash 仍可直达。"
+}
