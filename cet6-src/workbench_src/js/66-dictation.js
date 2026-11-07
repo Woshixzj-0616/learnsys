@@ -46,7 +46,6 @@
     input.addEventListener("keydown", function(e){
       if((e.ctrlKey || e.metaKey) && e.key === "Enter") submit(box, s);
     });
-    WB.audio.playSentence(i);
   }
 
   async function submit(box, s){
