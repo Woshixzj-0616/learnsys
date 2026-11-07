@@ -92,9 +92,10 @@
   // 持久化学习状态，由 boot 从 storage 载入。
   WB.state = null;
 
-  // P17.1 退休开关：唯一构建常量。11-04 凭 tools/cet6_dualwrite_report.py
-  // 的报告决定是否改 true；改完必须重建工作台 HTML 并同步快照。
-  WB.FLAGS = { retired: false };
+  // P17.1 退休开关：唯一构建常量。2026-11-07 凭 tools/cet6_dualwrite_report.py
+  // 提前启用（证据 14 天 / 干净 12 天 / 连续 5 天；原定判定日 2026-11-09）。
+  // file:// 只读、不再推送；HTTP 模式不受影响。改完重建工作台 HTML 并同步快照。
+  WB.FLAGS = { retired: true };
 
   WB.dom = {};
 
