@@ -152,8 +152,8 @@ from .study import (add_frame_text, add_transcript, add_window_event,
                     last_transcript, minutes, search_transcripts, session_exists,
                     session_stats, session_summary, session_title, session_windows,
                     start_session, window_titles)
-from .practice import (add_note, archive_note, delete_note, get_note,
-                       list_notes, update_note, use_note)
+from .practice import (add_note, archive_note, counts_by_project as practice_project_counts,
+                       delete_note, get_note, list_notes, update_note, use_note)
 from .vocab import (add_vocab, delete_vocab, export_vocab, get_vocab, import_vocab,
                     list_vocab, normalize_pair, reorient_vocab, update_vocab)
 from .wrongbook import (WRONG_SOURCES, add_wrong_item, delete_wrong_item,

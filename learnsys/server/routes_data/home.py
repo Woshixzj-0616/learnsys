@@ -146,9 +146,11 @@ def list_projects(status: str = "active", _=Depends(require_token)):
     conn = _conn()
     try:
         items = store.list_projects(conn, status="" if status == "all" else status)
+        counts = store.practice_project_counts(conn)
         for item in items:
             raw = str(item.get("repo_path") or "").strip()
             item["repo_exists"] = bool(raw) and pathlib.Path(raw).is_dir()
+            item["experience_count"] = counts.get(int(item["id"]), 0)
         return {"items": items, "count": len(items)}
     finally:
         conn.close()

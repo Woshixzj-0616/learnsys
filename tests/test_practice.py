@@ -94,6 +94,16 @@ class PracticeApiTest(unittest.TestCase):
         self.assertEqual(self.client.delete(
             f"/api/practice/{note['id']}", headers=AUTH).status_code, 200)
 
+    def test_project_card_has_experience_count(self):
+        project = self.client.post(
+            "/api/projects", json={"name": "学习工作台", "status": "active"},
+            headers=AUTH).json()
+        self._create(project_id=project["id"])
+        items = self.client.get(
+            "/api/projects?status=all", headers=AUTH).json()["items"]
+        card = next(item for item in items if item["id"] == project["id"])
+        self.assertEqual(card["experience_count"], 1)
+
     def test_patch_updates_next_time(self):
         note = self._create().json()
         updated = self.client.patch(

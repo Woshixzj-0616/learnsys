@@ -132,3 +132,13 @@ def delete_note(conn: sqlite3.Connection, note_id: int) -> bool:
             "DELETE FROM practice_notes WHERE id = ?", (int(note_id),))
         conn.commit()
         return bool(cur.rowcount)
+
+
+def counts_by_project(conn: sqlite3.Connection) -> dict[int, int]:
+    """每个项目下仍有效的经验条数；项目卡用。"""
+    with _LOCK:
+        rows = conn.execute(
+            "SELECT project_id, COUNT(*) FROM practice_notes "
+            "WHERE status = 'active' AND project_id > 0 "
+            "GROUP BY project_id").fetchall()
+    return {int(project_id): int(count) for project_id, count in rows}

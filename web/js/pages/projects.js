@@ -77,6 +77,8 @@ function renderList() {
         <p class="project-next"><b>下一步</b> ${escapeHtml(item.next_step || "未填写")}</p>
         ${item.risk ? `<p class="project-risk"><b>风险</b> ${escapeHtml(item.risk)}</p>` : ""}
         <div class="project-actions">
+          <a class="btn btn-quiet" href="#/practice?project=${item.id}"
+             title="只看这个项目的经验">经验 ${Number(item.experience_count || 0)}</a>
           <button class="btn btn-quiet" type="button" data-act="edit">编辑</button>
           <button class="btn" type="button" data-act="handoff">生成交接</button>
           <button class="btn btn-quiet" type="button" data-act="open">看交接</button>

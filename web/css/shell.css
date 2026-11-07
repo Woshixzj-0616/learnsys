@@ -533,3 +533,59 @@ kbd {
 @media (max-width: 720px) {
   .confirm-card { right: 12px; bottom: 84px; width: calc(100vw - 24px); }
 }
+
+/* 派活任务条：有运行/排队任务时浮在底部中间，避开右下角的精听 AI */
+.agent-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 8px 10px 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.agent-bar[hidden] { display: none; }
+.agent-bar-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: agent-bar-pulse 1.4s ease-in-out infinite;
+}
+.agent-bar-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-bar-close {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.agent-bar-close:hover { background: var(--surface-2); color: var(--text); }
+@keyframes agent-bar-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (max-width: 720px) {
+  .agent-bar { left: 12px; right: 12px; transform: none; max-width: none; }
+}

@@ -41,6 +41,11 @@ export async function mount(ctx) {
   };
   bind();
   await loadProjects();
+  // 项目卡「经验 N」带 #/practice?project=ID 进来时，直接筛到该项目。
+  const initialProject = Number(ctx.query?.get?.("project") || 0);
+  if (initialProject && projects.some((item) => Number(item.id) === initialProject)) {
+    nodes.project.value = String(initialProject);
+  }
   await load();
   const draft = sessionStorage.getItem("practice-draft");
   if (draft) {

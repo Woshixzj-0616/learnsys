@@ -1,4 +1,5 @@
 // 壳层：侧栏、hash 路由、页面生命周期。加模块只改 registry.json。
+import { installAgentBar } from "./agent-bar.js";
 import { api, initApi } from "./api.js";
 import { getModes, initModes } from "./modes.js";
 import { installNavBridge } from "./nav_bridge.js";
@@ -250,6 +251,7 @@ async function boot() {
     }
     await navigate();
     installNavBridge();            // B1 深链桥：Qt 点击后按 seq 跳到目标 hash
+    installAgentBar();             // 派活运行中：底部浮动任务条
   } catch (error) {
     showOffline(error);
     console.error(error);
