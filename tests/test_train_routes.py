@@ -268,7 +268,7 @@ class TrainRoutesTest(unittest.TestCase):
         self.assertEqual(card["source"], "writing")
         plan = self.client.get("/api/cet6/train/plan", headers=AUTH).json()
         self.assertEqual(plan["due"]["total"], 1)
-        self.assertEqual(plan["task"]["href"], "#/cet6?tab=review")
+        self.assertEqual(plan["task"]["href"], "#/english-review?tab=sentence")
 
         rated = self.client.post(f"/api/review/wrong/{card['id']}",
                                  json={"rating": 3}, headers=AUTH)

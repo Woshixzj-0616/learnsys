@@ -92,7 +92,7 @@ def _task(conn, due: list[dict], today: dict) -> dict | None:
             "kind": "review", "mode": "review", "prompt_id": "",
             "title": f"复习 {len(due)} 张到期错误卡",
             "detail": detail,
-            "href": "#/cet6?tab=review",
+            "href": "#/english-review?tab=sentence",
             "label": "去复习",
         }
     if not today["writing"]:

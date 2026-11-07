@@ -223,7 +223,7 @@ def build(conn, day: str = "", due: list | None = None) -> dict:
             train_minutes = max(5, min(60, counts["exam"] * 10))
         elif counts["reviews"]:
             train_title = f"复习 · 今天已复习 {counts['reviews']} 张"
-            train_href = "#/wrongbook"
+            train_href = "#/english-review"
             train_minutes = max(5, min(30, round(counts["reviews"] * 1.2)))
         elif counts["quizzes"]:
             train_title = f"测验 · 今天开了 {counts['quizzes']} 场"
