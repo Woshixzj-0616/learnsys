@@ -46,8 +46,8 @@ node --test web/tests/quiz-parse.test.mjs
 - 同步 / 查漂移：`.venv/Scripts/python.exe tools/sync_cet6_src.py [--check]`（提交前跑）
 - 构建：`python D:\cet6_tool\build_workbench.py --check`
 - 部署：`python D:\cet6_tool\split_listening.py --refresh-index --workbench`
-- 产物：`D:\Desktop\六级精听\工作台\精听工作台.html`（不要手改）
-- 试卷：`D:\Desktop\六级精听\试卷\`（不进 Git）
+- 产物：`D:\Desktop\learnsys\cet6\工作台\精听工作台.html`（不要手改）
+- 试卷：`D:\Desktop\learnsys\cet6\试卷\`（不进 Git）
 
 ## 规矩
 

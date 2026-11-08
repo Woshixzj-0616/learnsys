@@ -134,8 +134,8 @@ SETTINGS_TEMPLATE = {
     "workbench_on_start": True,
     "_pwa_app_id": "可选：已安装 PWA 的 app-id。填了就用它打开工作台（任务栏有独立的「学习工作台」按钮）；留空 = Edge 应用窗口。",
     "pwa_app_id": "",
-    "_cet6_dir": "六级精听目录（可选模块；留空 = 自动找仓库旁边的「六级精听」）。"
-                 "目录里要有 工作台\\精听工作台.html 和 试卷\\",
+    "_cet6_dir": "六级精听目录（可选模块；留空 = 自动找仓库内的 cet6/，"
+                 "再找旁边的「六级精听」）。目录里要有 工作台\\精听工作台.html 和 试卷\\",
     "cet6_dir": "",
     "_materials": "资料库批量导入：import_dirs 是允许扫描的目录列表（留空 = 不允许批量导入）；"
                   "obsidian_dir 只用于手动「导入 Obsidian」，默认不自动扫。只读，不移动原文件。",
@@ -345,10 +345,11 @@ def cet6_dir_candidates() -> list[pathlib.Path]:
     if raw:
         cands.append(pathlib.Path(raw).expanduser())
     if FROZEN:                                  # exe 在 dist/学习工作台/ 里
-        cands.append(ROOT.parent.parent.parent / "六级精听")
+        cands.append(ROOT.parent.parent / "cet6")        # 仓库内 cet6/
+        cands.append(ROOT.parent.parent.parent / "六级精听")  # 旧位置，兼容
     else:                                       # 源码在 D:\Desktop\learnsys
-        cands.append(ROOT.parent / "六级精听")
-    cands.append(ROOT / "cet6")                 # 也可以把可选模块放进仓库
+        cands.append(ROOT / "cet6")             # 仓库内 cet6/
+        cands.append(ROOT.parent / "六级精听")  # 旧位置，兼容
     return cands
 
 

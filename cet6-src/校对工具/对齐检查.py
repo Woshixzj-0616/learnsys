@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
-DEFAULT_PAPERS = Path(r"D:\Desktop\六级精听\试卷")
+DEFAULT_PAPERS = Path(r"D:\Desktop\learnsys\cet6\试卷")
 
 
 def pick_dir(args) -> Path:

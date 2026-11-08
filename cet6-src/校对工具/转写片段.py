@@ -3,7 +3,7 @@
 
 用法：
   D:\\cet6_tool\\.venv\\Scripts\\python.exe 转写片段.py --title "试卷标题" --start 69 --end 76
-  ... --dir "D:\\Desktop\\六级精听\\试卷\\某卷" --start 100 --end 120
+  ... --dir "D:\\Desktop\\learnsys\\cet6\\试卷\\某卷" --start 100 --end 120
 
 注意：base.en 也会听错；它只用来确认「有没有这个词 / 是不是这个音」。
 """
@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-DEFAULT_PAPERS = Path(r"D:\Desktop\六级精听\试卷")
+DEFAULT_PAPERS = Path(r"D:\Desktop\learnsys\cet6\试卷")
 DEFAULT_MODEL = Path(r"D:\cet6_tool\models\base.en")
 
 

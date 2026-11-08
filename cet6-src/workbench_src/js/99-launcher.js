@@ -86,7 +86,7 @@
       await loadScript(withCacheBust(INDEX));
     }catch(e){
       fail("找不到 试卷\\试卷索引.js。\n请先运行一次分割工具，或执行：\n" +
-        "D:\\cet6_tool\\.venv\\Scripts\\python.exe D:\\cet6_tool\\split_listening.py --refresh-index --out \"D:\\Desktop\\六级精听\\试卷\"");
+        "D:\\cet6_tool\\.venv\\Scripts\\python.exe D:\\cet6_tool\\split_listening.py --refresh-index --out \"D:\\Desktop\\learnsys\\cet6\\试卷\"");
       return;
     }
 

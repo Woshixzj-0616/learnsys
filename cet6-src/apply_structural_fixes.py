@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 TOOL = Path(__file__).resolve().parent
-PAPERS = Path(r"D:\Desktop\六级精听\试卷")
+PAPERS = Path(r"D:\Desktop\learnsys\cet6\试卷")
 FIXES = TOOL / "校对" / "结构修复.json"
 DATA_PREFIX = "window.PAPER ="
 

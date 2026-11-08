@@ -7,7 +7,7 @@
 - 日常修改与构建：`D:\cet6_tool`
   - 工作台源码：`workbench_src/`（18 个 JS + 3 个样式 + `shell.html`）
   - 校对补丁：`校对/*.json`（每份试卷一份 + `结构修复.json`）
-  - 构建：`python build_workbench.py` → `D:\Desktop\六级精听\工作台\精听工作台.html`
+  - 构建：`python build_workbench.py` → `D:\Desktop\learnsys\cet6\工作台\精听工作台.html`
 - 本目录：上述**文本源码**的单向快照，随仓库提交。
 
 ## 为什么有两份
@@ -40,5 +40,5 @@ python tools/sync_cet6_src.py --check    # 检查仓库是否落后（落后返�
 
 ## 注意
 
-校对 / 重切脚本里的默认目录写的是作者本机路径（`D:\Desktop\六级精听\试卷`、
+校对 / 重切脚本里的默认目录写的是作者本机路径（`D:\Desktop\learnsys\cet6\试卷`、
 `D:\cet6_tool\校对`），都可用 `--papers` / `--dir` 参数覆盖；换机时按需改参数，不用改脚本。

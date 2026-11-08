@@ -3,10 +3,10 @@
 
 用法：
   python apply_corrections.py --title "英语六级强化刷题卷三"
-  python apply_corrections.py --dir "D:\\Desktop\\六级精听\\试卷\\英语六级强化刷题卷三"
+  python apply_corrections.py --dir "D:\\Desktop\\learnsys\\cet6\\试卷\\英语六级强化刷题卷三"
   python apply_corrections.py --title "卷三" --no-audio   # 只改文本，不重切 MP3
 
-默认试卷根目录是 `D:\\Desktop\\六级精听\\试卷`，可用 --papers 覆盖。
+默认试卷根目录是 `D:\\Desktop\\learnsys\\cet6\\试卷`，可用 --papers 覆盖。
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from transcript_fixes import (
     recut_changed_sentences,
 )
 
-DEFAULT_PAPERS = Path(r"D:\Desktop\六级精听\试卷")
+DEFAULT_PAPERS = Path(r"D:\Desktop\learnsys\cet6\试卷")
 DATA_PREFIX = "window.PAPER ="
 
 

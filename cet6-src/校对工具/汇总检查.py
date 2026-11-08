@@ -3,7 +3,7 @@
 
 用法：
   D:\\cet6_tool\\.venv\\Scripts\\python.exe 汇总检查.py
-  ... --corrections-dir D:\\cet6_tool\\校对 --papers D:\\Desktop\\六级精听\\试卷
+  ... --corrections-dir D:\\cet6_tool\\校对 --papers D:\\Desktop\\learnsys\\cet6\\试卷
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 DEFAULT_CORRECTIONS = Path(r"D:\cet6_tool\校对")
-DEFAULT_PAPERS = Path(r"D:\Desktop\六级精听\试卷")
+DEFAULT_PAPERS = Path(r"D:\Desktop\learnsys\cet6\试卷")
 
 
 def load_paper(paper_dir: Path) -> dict:

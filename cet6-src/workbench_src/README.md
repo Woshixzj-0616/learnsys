@@ -1,6 +1,6 @@
 # 精听工作台源码
 
-这里是工作台的**唯一源码**。`D:\cet6_tool\workbench_template.html` 是构建产物，不要手改它；部署到 `D:\Desktop\六级精听\工作台\精听工作台.html` 的文件同样由构建脚本生成。
+这里是工作台的**唯一源码**。`D:\cet6_tool\workbench_template.html` 是构建产物，不要手改它；部署到 `D:\Desktop\learnsys\cet6\工作台\精听工作台.html` 的文件同样由构建脚本生成。
 
 ## 为什么还要构建成单文件
 
