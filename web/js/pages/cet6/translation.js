@@ -7,6 +7,7 @@ import { pollSubmission } from "./poll.js";
 import {
   addCard, addTerm, reviewAgain, saveScore, startRewrite,
 } from "./translation-actions.js";
+import { openDeepLink } from "./deep-link.js";
 import {
   failedHtml, historyHtml, homeHtml, libraryHtml, progressHtml,
   promptViewHtml, sentenceAttemptHtml, sentenceHintsHtml, sentenceResultHtml,
@@ -186,9 +187,6 @@ async function submitSentence() {
   }
 }
 
-function sentenceNext(sameSkill) {
-  renderSentence(sameSkill ? sentence?.skill || "" : sentenceSkill);
-}
 
 async function renderLibrary() {
   view = "library";
@@ -429,9 +427,9 @@ function onClick(event) {
   } else if (act === "sentence-submit") {
     submitSentence();
   } else if (act === "sentence-next") {
-    sentenceNext(false);
+    renderSentence(sentenceSkill);
   } else if (act === "sentence-next-skill") {
-    sentenceNext(true);
+    renderSentence(sentence?.skill || "");
   } else if (act === "sentence-retry") {
     sentenceResult = null;
     hintLevel = 0;
@@ -482,6 +480,9 @@ export async function mount(options) {
   panel.addEventListener("change", onChange);
   setContextProvider(context);
   await renderHome();
+  await openDeepLink({ ctx, tab: "translation", openSubmission, renderSentence,
+    startRewrite: (id) => current?.mode === "rewrite" ? undefined
+      : startRewrite({ current, renderEditor, invalidate, id }) });
   return () => {
     panel?.removeEventListener("click", onClick);
     panel?.removeEventListener("input", onInput);

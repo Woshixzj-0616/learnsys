@@ -23,3 +23,25 @@
 }
 .review-reminder-link:hover { border-color: var(--mark); }
 .review-reminder-link[hidden] { display: none; }
+
+/* 写作/翻译提升提醒：每天最多一条，明细只写今天那一步 */
+.coach-reminder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--mark);
+  background: var(--bg-raised);
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
+.coach-reminder-body {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-width: 0;
+}
+.coach-reminder-body b { color: var(--mark); }
+.coach-reminder-body span { color: var(--muted); }

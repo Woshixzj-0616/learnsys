@@ -8,6 +8,7 @@ from PySide6 import QtCore
 from learnsys import config, store
 from learnsys.services import backup
 from learnsys.services import study
+from learnsys.services.train import coach as train_coach
 from .web_service import check_new_version
 
 
@@ -55,6 +56,22 @@ class _StartupWorker(QtCore.QThread):
             pass
         if due_total:
             self.message.emit(f"错题本有 {due_total} 题到复习期了 —— 打开工作台的「错题本」过一遍。")
+
+        # 写作/翻译提升提醒：每天第一次打开工作台时弹一次，不按固定时钟。
+        # 只推写作/翻译，优先级由 services/train/coach.py 决定；同一天不重复弹。
+        try:
+            today = _dt.date.today().isoformat()
+            conn = store.connect(config.db_path())
+            try:
+                action = train_coach.build(conn, today)
+                if action and store.meta_value(conn, "coach_notice_day") != today:
+                    store.set_meta(conn, "coach_notice_day", today)
+                    self.message.emit(
+                        f"英语写作翻译 · {action['title']} —— {action['label']}")
+            finally:
+                conn.close()
+        except Exception:
+            pass
 
 
 class _BackupWorker(QtCore.QThread):

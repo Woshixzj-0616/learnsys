@@ -15,6 +15,7 @@ from learnsys.services.cet6 import daily_accum
 from learnsys.services import knowledge as knowledge_service
 from learnsys.services import study as study_mod
 from learnsys.services import study_time, today_actions
+from learnsys.services.train import coach as train_coach
 from learnsys.store import asks as ask_store
 from learnsys.store import stats
 
@@ -71,6 +72,7 @@ def payload(conn, day: str = "") -> dict:
         "actions": today_actions.build(
             conn, day, learning["due_items"],
             {item["paper_id"] for item in learning["cet6"] if item["paper_id"]}),
+        "coaching": train_coach.build(conn, day),
         "cet6": learning["cet6"],
         "daily": daily_accum.today_summary(conn, day),
     }

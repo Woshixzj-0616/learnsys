@@ -5,6 +5,7 @@ import { createEditor } from "./editor.js";
 import { feedbackHtml } from "./feedback.js";
 import { MODE_LABEL, filterByField, statusLabel } from "./format.js";
 import { pollSubmission } from "./poll.js";
+import { openDeepLink } from "./deep-link.js";
 import { clearContextProvider, setContextProvider } from "./ai.js";
 import { writingContext } from "./cet6-contexts.js";
 
@@ -456,6 +457,8 @@ export async function mount(options) {
   panel.addEventListener("click", onClick);
   setContextProvider(context);
   await renderHome();
+  await openDeepLink({ ctx, tab: "writing", openSubmission,
+    startRewrite: (id) => current?.mode === "rewrite" ? undefined : startRewrite(id) });
   return () => {
     panel?.removeEventListener("click", onClick);
     clearContextProvider();
