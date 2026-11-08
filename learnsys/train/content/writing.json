@@ -2589,6 +2589,117 @@
         "结尾空喊「大学很宝贵」，没有判断标准。"
       ],
       "rewrite_task": "只改三处：① 第二段用毕业后代价对比选修课；② 第三段补「记录三项」；③ 结尾用单一路径与多条路径对比。"
+    },
+    {
+      "id": "w25",
+      "title": "为竞争世界做好准备（2025-12 第三套）",
+      "type": "首句续写",
+      "minutes": 30,
+      "target_words": [
+        150,
+        200
+      ],
+      "lead_sentence": "Living in an increasingly competitive world, college students should better prepare themselves to confront various challenges.",
+      "prompt_zh": "以「Living in an increasingly competitive world, college students should better prepare themselves to confront various challenges.」为开头写一篇短文：谈谈大学生应如何为竞争世界的挑战做好准备。",
+      "angle_points": [
+        "准备不是预测每一个挑战，而是建立计划失效时仍然有用的能力和习惯。",
+        "先夯实专业基础，再通过跨领域学习扩大适应面。",
+        "把竞争看成提升自己的工具，同时学会与他人合作。",
+        "准备要落到具体行动：项目、实习、比赛带来的反馈。"
+      ],
+      "stances": [
+        "从能力准备切入：专业技能、心态、合作三条线。",
+        "从审题切入：先逐字照抄首句，再紧扣“如何准备”展开。"
+      ],
+      "arguments": [
+        "专业基础是面对变化时最基本的信心来源。",
+        "广泛阅读和跨专业课程能让人更灵活地适应新情况。",
+        "积极心态能把竞争从威胁转化为改进动力。",
+        "与同学、老师合作能把个人努力放大成更大进步。",
+        "具体经历和反馈比空谈道理更有说服力。"
+      ],
+      "collocations": [
+        "prepare themselves for challenges",
+        "confront various challenges",
+        "consolidate a solid foundation",
+        "broaden one's knowledge",
+        "adapt to changes",
+        "maintain a positive mindset",
+        "view competition as a tool",
+        "cooperate with others",
+        "make greater progress",
+        "a highly competitive world",
+        "take effective measures",
+        "a double-edged sword"
+      ],
+      "patterns": [
+        "Living in an increasingly competitive world, ...",
+        "First and foremost, students should ...",
+        "Furthermore, it is also crucial to ...",
+        "Instead of merely ..., we should ...",
+        "Only in this way can we ..."
+      ],
+      "model_essay": {
+        "band": 14,
+        "text": "Living in an increasingly competitive world, college students should better prepare themselves to confront various challenges. Such preparation does not mean predicting every difficulty; it means building abilities and habits that remain useful when plans change.\n\nFirst and foremost, students should consolidate a solid foundation in their profession. Professional skills are the basis of confidence, yet a single specialty is no longer enough. By reading widely and taking courses outside their major, students can broaden their knowledge and adapt more flexibly to new situations.\n\nFurthermore, it is crucial to cultivate a positive mindset. Competition should be viewed as a tool for self-improvement rather than a chance to defeat others. At the same time, learning to cooperate with classmates and teachers can turn individual efforts into greater progress.\n\nFinally, preparation should be translated into concrete action. Joining a project, doing an internship, or taking part in a competition gives students real feedback that no amount of talking can provide.\n\nIn conclusion, college students should prepare for competition by strengthening their skills, adjusting their attitude and seeking cooperation. Only in this way can they thrive in a changing world.",
+        "notes": [
+          {
+            "paragraph": 1,
+            "note": "逐字照抄首句后，把“准备”定义成能力与习惯，而不是预测困难。"
+          },
+          {
+            "paragraph": 2,
+            "note": "第一条：夯实专业基础，再用跨领域学习扩大适应面。"
+          },
+          {
+            "paragraph": 3,
+            "note": "第二条：积极心态 + 把竞争当工具 + 学会合作。"
+          },
+          {
+            "paragraph": 4,
+            "note": "第三条：把准备落到项目、实习、比赛等具体行动。"
+          },
+          {
+            "paragraph": 5,
+            "note": "结尾三条并列收束，用 Only in this way 倒装。"
+          }
+        ]
+      },
+      "upgrades": [
+        {
+          "low": "With the development of science and technology, competition is becoming serious.",
+          "high": "Living in an increasingly competitive world, college students should better prepare themselves to confront various challenges.",
+          "why": "题目要求逐字照抄首句；科技发展套话既跑题又拿不到审题分。"
+        },
+        {
+          "low": "Competition is very important.",
+          "high": "Competition should be viewed as a tool for self-improvement rather than a chance to defeat others.",
+          "why": "important 太空；给出“把竞争当工具”的具体态度。"
+        },
+        {
+          "low": "We should learn to cooperate.",
+          "high": "Learning to cooperate with classmates and teachers can turn individual efforts into greater progress.",
+          "why": "cooperate 太笼统；补出合作对象和结果。"
+        },
+        {
+          "low": "We should prepare well.",
+          "high": "Preparation should be translated into concrete action.",
+          "why": "prepare well 没有动作；用 translate into concrete action 指出落地。"
+        },
+        {
+          "low": "In conclusion, competition is a double-edged sword.",
+          "high": "Only in this way can they thrive in a changing world.",
+          "why": "结尾套话不升华；用倒装句把三条准备与“立足变化世界”扣起来。"
+        }
+      ],
+      "pitfalls": [
+        "没有逐字照抄题目给定首句，直接丢审题分。",
+        "把“如何准备”写成“竞争与合作的辩证关系”，主体偏题。",
+        "用 corporation 代替 cooperation、toll 代替 tool，用错高级词。",
+        "第一段从科技发展写起，与题目要求无关。",
+        "通篇大道理，没有一条具体准备行动或例子。"
+      ],
+      "rewrite_task": "只改三处：① 开头逐字照抄给定首句；② 把 corporation 改为 cooperation、toll 改为 tool、confront to 改为 confront；③ 第三段删掉与“如何准备”无关的竞争/合作议论，换成一个具体准备行动。"
     }
   ]
 }

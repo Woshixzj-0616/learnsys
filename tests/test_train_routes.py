@@ -77,7 +77,7 @@ class TrainRoutesTest(unittest.TestCase):
         data = self.client.get("/api/cet6/train/prompts",
                                params={"kind": "writing"}, headers=AUTH).json()
         self.assertEqual(data["kind"], "writing")
-        self.assertEqual(len(data["items"]), 24)
+        self.assertEqual(len(data["items"]), 25)
         first = data["items"][0]
         self.assertEqual(first["id"], "w01")
         self.assertEqual(first["done"], 0)

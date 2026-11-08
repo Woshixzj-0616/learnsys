@@ -60,7 +60,8 @@ TEMPLATE_PHRASES = (
 SEVERITIES = ("严重", "一般", "建议")
 WRITING_MIN_WORDS = 150
 WRITING_SEVERE_MIN = 140
-TRANSLATION_SOURCE_CHARS = (180, 200)
+# 真题汉译英原文常在 160–180 字；下限放宽到 160，仍保留上限 200。
+TRANSLATION_SOURCE_CHARS = (160, 200)
 _WORD = re.compile(r"[A-Za-z][A-Za-z'’-]*")
 _CJK = re.compile(r"[一-鿿]")
 _PHRASE = re.compile(
@@ -158,11 +159,14 @@ def inspect(kind: str, text: str, pack_item: dict | None = None,
                               f"模板短语占 {template['ratio']:.0%}，换题盲写时留意。"))
     elif kind == "translation":
         source_chars = cjk_count(str((pack_item or {}).get("source_zh") or ""))
-        ratio = round(words / chars, 2) if chars else 0.0
-        if chars and (ratio < 0.35 or ratio > 1.2):
+        # 英文词数对中文原文字数：正常约 0.7–0.9，过短说明漏译。
+        ratio = round(words / source_chars, 2) if source_chars else 0.0
+        if source_chars and (ratio < 0.35 or ratio > 1.2):
             rows.append(_flag("length", "提示",
-                              f"英文 {words} 词 / 中文 {chars} 字，比例 {ratio} 异常。"))
-        if source_chars and abs(chars - source_chars) > max(8, source_chars * 0.1):
+                              f"英文 {words} 词 / 中文 {source_chars} 字，比例 {ratio} 异常。"))
+        # 译文里残留中文才提示；纯英文译文 chars=0 属于正常。
+        if chars and source_chars and abs(chars - source_chars) > max(
+                8, source_chars * 0.1):
             rows.append(_flag("length", "提示",
                               f"译文含 {chars} 个汉字，与原文 {source_chars} 字差距较大，确认是否漏译。"))
         if template["ratio"] >= 0.25:

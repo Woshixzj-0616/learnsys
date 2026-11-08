@@ -6482,6 +6482,288 @@
         "「锣鼓」写成 gong and drum，单复数不稳。",
         "「敬茶」译成 give tea with respect，表达生硬。"
       ]
+    },
+    {
+      "id": "t25",
+      "title": "自强自立（2025-12 第三套）",
+      "theme": "国家发展",
+      "difficulty": 3,
+      "minutes": 30,
+      "source_zh": "中华民族崇尚自强自立的精神，这一精神深植于中国文化之中，是民族生存与发展的重要支撑。改革开放以来，中国在自强自立的征程上，持续加大科研投入，在信息技术、人工智能、航天工程等领域不断取得新突破。5G网络覆盖全国，远程医疗发展迅速，电子支付的使用全球领先，嫦娥探月工程展现了航天领域引人注目的发展。自强自立精神成为推动国家现代化进程的强大动力，激励着中国人民为实现民族复兴（rejuvenation）的中国梦不断奋进。",
+      "info_points": [
+        {
+          "id": "ip1",
+          "zh": "中华民族崇尚自强自立的精神",
+          "en": "the Chinese nation advocates the spirit of self-reliance"
+        },
+        {
+          "id": "ip2",
+          "zh": "这一精神深植于中国文化",
+          "en": "this spirit is deeply rooted in Chinese culture"
+        },
+        {
+          "id": "ip3",
+          "zh": "是民族生存与发展的重要支撑",
+          "en": "an important support for the nation's survival and development"
+        },
+        {
+          "id": "ip4",
+          "zh": "改革开放以来",
+          "en": "since the reform and opening-up"
+        },
+        {
+          "id": "ip5",
+          "zh": "持续加大科研投入",
+          "en": "continuously increase investment in scientific research"
+        },
+        {
+          "id": "ip6",
+          "zh": "在信息技术、人工智能、航天工程等领域不断取得新突破",
+          "en": "make new breakthroughs in information technology, artificial intelligence and aerospace engineering"
+        },
+        {
+          "id": "ip7",
+          "zh": "5G网络覆盖全国",
+          "en": "5G networks cover the whole country"
+        },
+        {
+          "id": "ip8",
+          "zh": "远程医疗发展迅速，电子支付的使用全球领先",
+          "en": "remote medicine develops rapidly and electronic payments lead the world"
+        },
+        {
+          "id": "ip9",
+          "zh": "嫦娥探月工程展现了航天领域引人注目的发展",
+          "en": "the Chang'e lunar exploration project shows remarkable developments in aerospace"
+        },
+        {
+          "id": "ip10",
+          "zh": "成为推动国家现代化进程的强大动力",
+          "en": "become a powerful driving force for the country's modernization"
+        },
+        {
+          "id": "ip11",
+          "zh": "激励中国人民为实现民族复兴的中国梦不断奋进",
+          "en": "inspire the Chinese people to strive for the Chinese Dream of national rejuvenation"
+        }
+      ],
+      "segments": [
+        {
+          "zh": "中华民族崇尚自强自立的精神，",
+          "reference": "The Chinese nation advocates the spirit of self-reliance.",
+          "keywords": [
+            "Chinese nation",
+            "advocate",
+            "spirit of self-reliance"
+          ],
+          "skeleton": "the Chinese nation + advocates + the spirit",
+          "info_points": [
+            "ip1"
+          ],
+          "skill": "文化术语"
+        },
+        {
+          "zh": "这一精神深植于中国文化之中，是民族生存与发展的重要支撑。",
+          "reference": "This spirit is deeply rooted in Chinese culture and serves as an important support for the nation's survival and development.",
+          "keywords": [
+            "deeply rooted in",
+            "serve as",
+            "survival and development"
+          ],
+          "skeleton": "this spirit + is rooted + and serves as",
+          "info_points": [
+            "ip2",
+            "ip3"
+          ],
+          "skill": "增补省译"
+        },
+        {
+          "zh": "改革开放以来，中国在自强自立的征程上，持续加大科研投入，",
+          "reference": "Since the reform and opening-up, on its journey towards self-reliance, China has continuously increased investment in scientific research,",
+          "keywords": [
+            "reform and opening-up",
+            "journey towards self-reliance",
+            "increase investment"
+          ],
+          "skeleton": "since + China + has increased + investment",
+          "info_points": [
+            "ip4",
+            "ip5"
+          ],
+          "skill": "文化术语"
+        },
+        {
+          "zh": "在信息技术、人工智能、航天工程等领域不断取得新突破。",
+          "reference": "and made new breakthroughs in fields such as information technology, artificial intelligence and aerospace engineering.",
+          "keywords": [
+            "make new breakthroughs",
+            "information technology",
+            "aerospace engineering"
+          ],
+          "skeleton": "and made + breakthroughs + in fields",
+          "info_points": [
+            "ip6"
+          ],
+          "skill": "断句意群"
+        },
+        {
+          "zh": "5G网络覆盖全国，远程医疗发展迅速，电子支付的使用全球领先，",
+          "reference": "5G networks cover the whole country, remote medicine is developing rapidly, and the use of electronic payments leads the world,",
+          "keywords": [
+            "cover the whole country",
+            "remote medicine",
+            "leads the world"
+          ],
+          "skeleton": "5G + covers; medicine + develops; payments + lead",
+          "info_points": [
+            "ip7",
+            "ip8"
+          ],
+          "skill": "断句意群"
+        },
+        {
+          "zh": "嫦娥探月工程展现了航天领域引人注目的发展。",
+          "reference": "while the Chang'e lunar exploration project demonstrates remarkable developments in the aerospace field.",
+          "keywords": [
+            "Chang'e lunar exploration project",
+            "remarkable",
+            "aerospace field"
+          ],
+          "skeleton": "the project + demonstrates + developments",
+          "info_points": [
+            "ip9"
+          ],
+          "skill": "文化术语"
+        },
+        {
+          "zh": "自强自立精神成为推动国家现代化进程的强大动力，",
+          "reference": "This spirit of self-reliance has become a powerful driving force for advancing the country's modernization process,",
+          "keywords": [
+            "powerful driving force",
+            "modernization process"
+          ],
+          "skeleton": "this spirit + has become + a driving force",
+          "info_points": [
+            "ip10"
+          ],
+          "skill": "词性转换"
+        },
+        {
+          "zh": "激励着中国人民为实现民族复兴（rejuvenation）的中国梦不断奋进。",
+          "reference": "inspiring the Chinese people to continue striving for the Chinese Dream of national rejuvenation.",
+          "keywords": [
+            "inspiring",
+            "strive for",
+            "national rejuvenation"
+          ],
+          "skeleton": "inspiring + the people + to strive",
+          "info_points": [
+            "ip11"
+          ],
+          "skill": "长句拆分"
+        }
+      ],
+      "terms": [
+        {
+          "zh": "自强自立",
+          "en": "self-reliance",
+          "note": "不要生造 self-strong"
+        },
+        {
+          "zh": "崇尚",
+          "en": "advocate / uphold",
+          "note": "emphasize 是强调，且及物"
+        },
+        {
+          "zh": "深植于",
+          "en": "be deeply rooted in",
+          "note": "比 cultivated 更自然"
+        },
+        {
+          "zh": "民族",
+          "en": "nation",
+          "note": "the Chinese nation"
+        },
+        {
+          "zh": "改革开放",
+          "en": "reform and opening-up",
+          "note": "不是 revolution"
+        },
+        {
+          "zh": "科研投入",
+          "en": "investment in scientific research",
+          "note": "可数名词 investment"
+        },
+        {
+          "zh": "航天工程",
+          "en": "aerospace engineering",
+          "note": "不是 navigation"
+        },
+        {
+          "zh": "取得新突破",
+          "en": "make new breakthroughs",
+          "note": "breakthrough 可数"
+        },
+        {
+          "zh": "远程医疗",
+          "en": "remote medicine / telemedicine",
+          "note": "不是 remote medical"
+        },
+        {
+          "zh": "电子支付",
+          "en": "electronic payment",
+          "note": "不是 electrical"
+        },
+        {
+          "zh": "全球领先",
+          "en": "lead the world",
+          "note": "不是 made advanced in earth"
+        },
+        {
+          "zh": "嫦娥探月工程",
+          "en": "the Chang'e lunar exploration project",
+          "note": "专有名词，不能字对字直译"
+        }
+      ],
+      "traps": [
+        "「自强自立」不要直译 self-strong and self-independent，用 self-reliance。",
+        "「崇尚」用 advocate / uphold；emphasize 是“强调”，而且及物，不加 on。",
+        "「改革开放」是 reform and opening-up，不是 revolution（革命）。",
+        "「航天工程」是 aerospace engineering，不是 navigation（航海/导航）。",
+        "「远程医疗」是 remote medicine / telemedicine，不是 remote medical。",
+        "「电子支付」是 electronic payment，不是 electrical payment（电气的）。",
+        "「全球领先」是 lead the world，不是 made advanced in earth。",
+        "「嫦娥探月工程」是 the Chang'e lunar exploration project。"
+      ],
+      "typical_errors": [
+        "把“崇尚”写成 emphasize on，emphasize 是及物动词。",
+        "China continue continuously harvests more strengthen... 一句双谓语、词性混乱。",
+        "consecutire 拼写错误，应为 consecutive；固定搭配用 make new breakthroughs。",
+        "remote medical 词性错误，应为 remote medicine。",
+        "Changer grouping moon 是严重误译，应为 the Chang'e lunar exploration project。"
+      ],
+      "reference": "The Chinese nation advocates the spirit of self-reliance. This spirit is deeply rooted in Chinese culture and serves as an important support for the nation's survival and development. Since the reform and opening-up, on its journey towards self-reliance, China has continuously increased investment in scientific research, and made new breakthroughs in fields such as information technology, artificial intelligence and aerospace engineering. 5G networks cover the whole country, remote medicine is developing rapidly, and the use of electronic payments leads the world, while the Chang'e lunar exploration project demonstrates remarkable developments in the aerospace field. This spirit of self-reliance has become a powerful driving force for advancing the country's modernization process, inspiring the Chinese people to continue striving for the Chinese Dream of national rejuvenation.",
+      "variants": [
+        {
+          "segment": 1,
+          "options": [
+            "The Chinese nation values the spirit of self-reliance.",
+            "The Chinese people uphold the spirit of self-reliance."
+          ]
+        },
+        {
+          "segment": 4,
+          "options": [
+            "and have made new breakthroughs in information technology, artificial intelligence and aerospace engineering."
+          ]
+        },
+        {
+          "segment": 8,
+          "options": [
+            "encouraging the Chinese people to keep working towards the Chinese Dream of national rejuvenation."
+          ]
+        }
+      ]
     }
   ]
 }

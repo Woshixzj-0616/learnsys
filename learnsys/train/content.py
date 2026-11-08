@@ -1,8 +1,8 @@
 """训练内容包：加载、版本、单句派生。
 
 内容即代码：JSON 进仓库，改动可 diff、可校验。
-- `writing.json`：24 篇写作内容包（含 12 篇「给定首句续写」）
-- `translation.json`：24 篇翻译内容包（含逐句切分）
+- `writing.json`：25 篇写作内容包（含 13 篇「给定首句续写」）
+- `translation.json`：25 篇翻译内容包（含逐句切分）
 - `sentences.json`：技能专项单句（120 句）
 
 一句一译的“从篇目拆出的单句”**不另存一份**：直接由 translation 的

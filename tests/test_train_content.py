@@ -10,13 +10,13 @@ from learnsys.train import content, validate
 class TrainContentTest(unittest.TestCase):
     def test_release_counts(self):
         counts = validate.counts()
-        self.assertEqual(counts["writing"], 24)
-        self.assertEqual(counts["translation"], 24)
+        self.assertEqual(counts["writing"], 25)
+        self.assertEqual(counts["translation"], 25)
         self.assertEqual(counts["writing_patterns"], 48)
         self.assertEqual(counts["translation_phrases"], 64)
         self.assertEqual(counts["extra_sentences"], 120)
-        self.assertEqual(counts["derived_sentences"], 192)
-        self.assertEqual(counts["sentences"], 312)
+        self.assertEqual(counts["derived_sentences"], 200)
+        self.assertEqual(counts["sentences"], 320)
 
     def test_daily_libraries_are_usable(self):
         for item in content.writing_patterns():
@@ -56,7 +56,7 @@ class TrainContentTest(unittest.TestCase):
     def test_lead_sentence_items(self):
         leads = [item for item in content.writing_items()
                  if item.get("lead_sentence")]
-        self.assertEqual(len(leads), 12)
+        self.assertEqual(len(leads), 13)
         for item in leads:
             self.assertEqual(item["type"], "首句续写")
             self.assertIn(item["lead_sentence"], item["prompt_en"])
