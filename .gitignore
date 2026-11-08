@@ -1,7 +1,8 @@
 data/
 models/
 # 六级精听可选模块：真题音频/试卷 4GB+，只在本机，不进公开仓库
-cet6/
+# 只忽略仓库根目录的 cet6/，别误伤 web/js/pages/cet6/
+/cet6/
 .venv/
 __pycache__/
 *.pyc
