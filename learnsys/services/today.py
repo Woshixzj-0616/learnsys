@@ -29,9 +29,13 @@ def learning_summary(conn, day: str = "") -> dict:
     due = store.wrong_due_items(conn, day)
     recent_wrong = store.recent_wrong_items(conn, limit=3)
     english_due = review_service.due_counts(conn, day)
+    plan = day_plan.build(conn, day, due=due)
+    tasks = plan.get("tasks") or []
+    focus_href = str(tasks[1].get("href") or "") if len(tasks) > 1 else ""
     return {
         "date": day,
-        "plan": day_plan.build(conn, day, due=due),
+        "plan": plan,
+        "focus_href": focus_href,
         "due_reviews": len(due),
         "due_sentence": english_due.get("sentence", 0),
         "due_word": english_due.get("word", 0),
@@ -49,6 +53,15 @@ def payload(conn, day: str = "") -> dict:
     recorded = study_time.recorded(conn, day)
     focus_stats = store.focus_stats(conn, day=day)
     recent = store.recent_asks(conn, limit=10, day=day, with_conversation=True)
+    actions = today_actions.build(
+        conn, day, learning["due_items"],
+        {item["paper_id"] for item in learning["cet6"] if item["paper_id"]},
+        exclude_href=learning.get("focus_href", ""))
+    coaching = train_coach.build(conn, day)
+    seen_hrefs = {row.get("href") for row in actions}
+    seen_hrefs.add(learning.get("focus_href", ""))
+    if coaching and coaching.get("href") in seen_hrefs:
+        coaching = None      # 今日目标或行动卡已经推同一件事，不再重复一条提醒
     return {
         "date": day,
         "study_minutes": recorded["minutes"],
@@ -69,10 +82,8 @@ def payload(conn, day: str = "") -> dict:
         "due_reviews": learning["due_reviews"],
         "due_sentence": learning["due_sentence"],
         "due_word": learning["due_word"],
-        "actions": today_actions.build(
-            conn, day, learning["due_items"],
-            {item["paper_id"] for item in learning["cet6"] if item["paper_id"]}),
-        "coaching": train_coach.build(conn, day),
+        "actions": actions,
+        "coaching": coaching,
         "cet6": learning["cet6"],
         "daily": daily_accum.today_summary(conn, day),
     }

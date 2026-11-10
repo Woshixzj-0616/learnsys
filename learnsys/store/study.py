@@ -128,6 +128,40 @@ def session_summary(conn: sqlite3.Connection, session_id: int, ended_at: str = "
     return {"分钟": round(total, 1), "切换": switches, "最久": (top[0], round(top[1], 1))}
 
 
+def focus_ranges(conn: sqlite3.Connection, lo: str = "",
+                 hi: str = "") -> list[tuple]:
+    """专注会话的起止文本；缺表返回空列表。"""
+    try:
+        if lo:
+            rows = conn.execute(
+                "SELECT started_at, COALESCE(ended_at, '') FROM sessions "
+                "WHERE started_at < ? AND (ended_at = '' OR ended_at > ?)",
+                (hi, lo)).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT started_at, COALESCE(ended_at, '') FROM sessions"
+            ).fetchall()
+    except sqlite3.OperationalError:
+        return []
+    return [(row[0], row[1]) for row in rows]
+
+
+def transcript_ranges(conn: sqlite3.Connection, lo: str = "",
+                      hi: str = "") -> list[tuple]:
+    """转写片段的起止文本；缺表返回空列表。"""
+    try:
+        if lo:
+            rows = conn.execute(
+                "SELECT ts_start, ts_end FROM transcripts "
+                "WHERE ts_start < ? AND ts_end > ?", (hi, lo)).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT ts_start, ts_end FROM transcripts").fetchall()
+    except sqlite3.OperationalError:
+        return []
+    return [(row[0], row[1]) for row in rows]
+
+
 def last_transcript(conn: sqlite3.Connection, session_id: int):
     with _LOCK:
         return conn.execute(

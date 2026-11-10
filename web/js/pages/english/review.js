@@ -82,9 +82,9 @@ function emptyHtml() {
     <h2>今天没有到期的错误卡</h2>
     <p>按记忆曲线，下一批会在到期后自动出现。</p>
     <div class="cet6-actions">
-      <a class="btn btn-primary" href="#/cet6?tab=drill">去做听写</a>
-      <a class="btn" href="#/cet6?tab=writing">去写作</a>
-      <a class="btn" href="#/cet6?tab=translation">去翻译</a>
+      <a class="btn btn-primary" href="#/english?tab=listening">去做听写</a>
+      <a class="btn" href="#/english?tab=writing">去写作</a>
+      <a class="btn" href="#/english?tab=writing&sub=translation">去翻译</a>
       <a class="btn btn-small" href="#/wrongbook">全部错题</a>
     </div>
   </div>`;
@@ -98,9 +98,9 @@ function doneHtml() {
     <p class="hint">忘了的卡会很快再出现；记得的会按记忆曲线拉长间隔。</p>
     <div class="cet6-actions">
       <button class="btn btn-primary" type="button" data-act="again">再查一遍到期</button>
-      <a class="btn" href="#/cet6?tab=drill">去做听写</a>
-      <a class="btn" href="#/cet6?tab=writing">去写作</a>
-      <a class="btn" href="#/cet6?tab=translation">去翻译</a>
+      <a class="btn" href="#/english?tab=listening">去做听写</a>
+      <a class="btn" href="#/english?tab=writing">去写作</a>
+      <a class="btn" href="#/english?tab=writing&sub=translation">去翻译</a>
     </div>
   </div>`;
 }

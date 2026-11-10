@@ -10,6 +10,6 @@
   "version": "0.1.0",
   "category": "语言",
   "home": true,
-  "tagline": "精听 · 写作翻译 · 每日积累 · 复习",
-  "description": "英语聚合页：精听 iframe、写作/翻译、每日积累与英语复习两个 tab 收在一页；旧 hash 仍可直达。"
+  "tagline": "精听 · 写作翻译 · 每日积累 · 复习 · 统计",
+  "description": "英语聚合页：精听 iframe、写作/翻译、每日积累、英语复习与统计收在一页；旧 #/cet6 由壳层重定向到这里。"
 }

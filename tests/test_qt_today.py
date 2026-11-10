@@ -41,10 +41,10 @@ OVERVIEW = {
               "goal_tasks": [
                   {"id": "listen", "title": "精听 · 测试卷 / Section C",
                    "detail": "今天 2 个不同句子", "minutes": 25, "done": False,
-                   "label": "去精听", "href": "#/cet6"},
+                   "label": "去精听", "href": "#/english?tab=listening"},
                   {"id": "output", "title": "写作 · 练习",
                    "detail": "写完并提交", "minutes": 30, "done": True,
-                   "label": "去做", "href": "#/cet6?tab=writing"},
+                   "label": "去做", "href": "#/english?tab=writing"},
                   {"id": "report", "title": "复盘今天",
                    "detail": "让 AI 读一遍今天的记录", "minutes": 10, "done": False,
                    "label": "去复盘", "href": "#/review"},
@@ -116,10 +116,10 @@ TODAY = {
     "due_reviews": 5,
     "actions": [
         {"kind": "cet6", "title": "接着昨天的听力断点",
-         "detail": "强化卷三（5 个断点）", "href": "#/cet6?paper=paper-3",
+         "detail": "强化卷三（5 个断点）", "href": "#/english?tab=listening&paper=paper-3",
          "label": "回到断点"},
         {"kind": "train", "title": "六级训练 · 大学生该不该做兼职",
-         "detail": "观点论证 · 30 分钟", "href": "#/cet6?tab=writing",
+         "detail": "观点论证 · 30 分钟", "href": "#/english?tab=writing",
          "label": "开始写作"},
         {"kind": "weak", "title": "薄弱点练一道 · 阅读",
          "detail": "掌握度 17%", "href": "#/quiz?focus=阅读", "label": "练这类"},
@@ -256,7 +256,7 @@ class TestTodayWindow(unittest.TestCase):
     def test_Hero_任务与提问跳转(self):
         self.window.hero.tasks[0].clicked.emit()
         self.window.hero.ask.clicked.emit()
-        self.assertEqual(self.opened, ["#/cet6", "#/ask"])
+        self.assertEqual(self.opened, ["#/english?tab=listening", "#/ask"])
 
     def test_三域卡内容与跳转(self):
         grid = self.window.domains
@@ -285,7 +285,7 @@ class TestTodayWindow(unittest.TestCase):
         self.assertEqual(learn.title.text(), "今日 0/3 · 到期复习 0")
         self.assertIn("暂无", learn.sub.text())
         learn.clicked.emit()
-        self.assertEqual(opened, ["#/cet6"])
+        self.assertEqual(opened, ["#/english"])
 
     def test_三域入口失败不挡主内容(self):
         window, _ = _window(errors={"/api/home": "后台忙"})
@@ -340,8 +340,8 @@ class TestTodayWindow(unittest.TestCase):
             QtWidgets.QLabel, "AltTitle").text())
         card.alts[0].clicked.emit()
         card.button.click()
-        self.assertEqual(self.opened, ["#/cet6?tab=writing",
-                                       "#/cet6?paper=paper-3"])
+        self.assertEqual(self.opened, ["#/english?tab=writing",
+                                       "#/english?tab=listening&paper=paper-3"])
 
     def test_精听达标文案(self):
         overview = copy.deepcopy(OVERVIEW)

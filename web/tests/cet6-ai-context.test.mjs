@@ -3,10 +3,10 @@ import { test } from "node:test";
 
 import {
   TAB_NAMES, collectContext, contextLine, snapshotOf,
-} from "../js/pages/cet6/ai-context.js";
+} from "../js/pages/english/ai-context.js";
 import {
   translationContext, writingContext,
-} from "../js/pages/cet6/cet6-contexts.js";
+} from "../js/pages/english/cet6-contexts.js";
 
 const base = {
   activeTab: "drill",

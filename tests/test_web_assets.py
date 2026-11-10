@@ -38,6 +38,14 @@ class WebAssetTest(unittest.TestCase):
         self.assertIn("setEnabled(tab !== \"listening\")", ENGLISH)
         self.assertIn("setPage", ENGLISH)
 
+    def test_english_shell_has_stats_and_legacy_redirect(self):
+        html = (ROOT / "web/pages/english.html").read_text(encoding="utf-8")
+        self.assertIn('data-tab="stats"', html)
+        self.assertIn('"stats"', ENGLISH)
+        self.assertIn('"/web/js/legacy-routes.js"', SW)
+        shell = (ROOT / "web/js/shell.js").read_text(encoding="utf-8")
+        self.assertIn("legacyEnglishHash", shell)
+
     def test_retired_practice_modules_stay_removed(self):
         for name in ("practice.js", "drill.js", "exam.js", "chunk.js"):
             self.assertFalse((CET6_DIR / name).exists(),

@@ -64,7 +64,7 @@ function chunkCard(chunk) {
     ${statRow("完成", String(chunk?.sentences || 0), " 句")}
     ${statRow("平均得分", percent(chunk?.avg_score))}
     ${statRow("自动建卡", String(chunk?.cards_added || 0), " 张")}
-    <a class="btn btn-small" href="#/cet6?tab=drill&mode=chunk">去练长句</a>
+    <a class="btn btn-small" href="#/english?tab=listening">去练长句</a>
     <p class="hint">只统计 ≥12 词的长句；提交后按意群逐段回放。</p>
   </section>`;
 }
@@ -82,7 +82,7 @@ function examCard(exam) {
     ${statRow("题数", String(exam?.questions || 0), " 题")}
     ${statRow("自评正确率", percent(exam?.self_accuracy))}
     ${rows}
-    <a class="btn btn-small" href="#/cet6?tab=drill&mode=exam">去练真题</a>
+    <a class="btn btn-small" href="#/english?tab=listening">去练真题</a>
     <p class="hint">按段听完整真题后逐题自评；不是机器判分。</p>
   </section>`;
 }
@@ -164,9 +164,9 @@ async function render() {
             整段翻译 ${byKind.translation?.submissions || 0} 篇 ·
             一句一译 ${totals.sentences || 0} 次 · ${formatMinutes(totals.minutes || 0)}</p>
           <div class="cet6-actions">
-            <a class="btn btn-primary" href="#/cet6?tab=writing">去写作</a>
-            <a class="btn" href="#/cet6?tab=translation">去翻译</a>
-            ${due.total ? `<a class="btn btn-small" href="#/cet6?tab=review">${due.total} 张到期错卡</a>`
+            <a class="btn btn-primary" href="#/english?tab=writing">去写作</a>
+            <a class="btn" href="#/english?tab=writing&sub=translation">去翻译</a>
+            ${due.total ? `<a class="btn btn-small" href="#/english?tab=review">${due.total} 张到期错卡</a>`
               : '<a class="btn btn-small" href="#/wrongbook">错题本</a>'}
           </div>
         </div>

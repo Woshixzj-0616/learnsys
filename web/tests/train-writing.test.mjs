@@ -4,8 +4,8 @@ import { test } from "node:test";
 import {
   cjkCount, clock, countWords, filterByField, initialEditorText,
   splitSentences, statusLabel,
-} from "../js/pages/cet6/format.js";
-import { feedbackHtml } from "../js/pages/cet6/feedback.js";
+} from "../js/pages/english/format.js";
+import { feedbackHtml } from "../js/pages/english/feedback.js";
 
 test("词数：撇号与连字符算一个词，中文不计", () => {
   assert.equal(countWords("It's a well-known fact."), 4);

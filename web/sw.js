@@ -3,7 +3,7 @@
  * 目标：PWA 能装、断网时至少能打开壳并提示「后台未连接」；
  * 数据永远走本地 FastAPI，不在这里缓存。
  */
-const CACHE = "learnsys-web-v72";
+const CACHE = "learnsys-web-v73";
 const CORE = [
   "/",
   "/manifest.webmanifest",
@@ -40,6 +40,7 @@ const CORE = [
   "/web/css/english.css",
   "/web/css/english-review.css",
   "/web/js/shell.js",
+  "/web/js/legacy-routes.js",
   "/web/js/agent-bar.js",
   "/web/js/modes.js",
   "/web/js/nav_bridge.js",
@@ -66,6 +67,25 @@ const CORE = [
   "/web/pages/english.html",
   "/web/pages/english-review.html",
   "/web/js/pages/english/index.js",
+  "/web/js/pages/english/listening.js",
+  "/web/js/pages/english/ai.js",
+  "/web/js/pages/english/ai-view.js",
+  "/web/js/pages/english/ai-context.js",
+  "/web/js/pages/english/ai-floating.js",
+  "/web/js/pages/english/writing.js",
+  "/web/js/pages/english/editor.js",
+  "/web/js/pages/english/format.js",
+  "/web/js/pages/english/poll.js",
+  "/web/js/pages/english/feedback.js",
+  "/web/js/pages/english/deep-link.js",
+  "/web/js/pages/english/cet6-contexts.js",
+  "/web/js/pages/english/translation.js",
+  "/web/js/pages/english/translation-views.js",
+  "/web/js/pages/english/translation-actions.js",
+  "/web/js/pages/english/review.js",
+  "/web/js/pages/english/review-keys.js",
+  "/web/js/pages/english/stats.js",
+  "/web/js/pages/english/stats-format.js",
   "/web/js/pages/english-review.js",
   "/web/js/pages/english-review-round.js",
   "/web/js/pages/today.js",

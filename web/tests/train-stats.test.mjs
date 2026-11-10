@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import {
   bandText, bandWidth, formatMinutes, overallBand, trendBar,
-} from "../js/pages/cet6/stats-format.js";
+} from "../js/pages/english/stats-format.js";
 
 test("档位文本：空值显示破折号", () => {
   assert.equal(bandText(null), "—");

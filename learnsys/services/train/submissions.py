@@ -119,12 +119,9 @@ def create_submission(conn, *, kind: str, prompt_id: str,
             raise ValueError("二稿必须与初稿是同一道题")
         mode = "rewrite"
         # 同一篇已有未提交的二稿草稿就复用：提醒点两次不能建出两份草稿。
-        existing = conn.execute(
-            "SELECT id FROM train_submissions WHERE parent_id = ? "
-            "AND mode = 'rewrite' AND status = 'draft' "
-            "ORDER BY id DESC LIMIT 1", (int(parent_id),)).fetchone()
+        existing = store.find_draft_rewrite(conn, int(parent_id))
         if existing:
-            return detail(conn, int(existing[0]))
+            return detail(conn, existing)
         # 二稿预填必须落库：只靠前端预填，用户直接离开就会变成空草稿。
         initial_text = parent.get("text") or ""
         initial_words = int(parent.get("word_count") or 0)

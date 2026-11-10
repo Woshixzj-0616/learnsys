@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { reviewKey } from "../js/pages/cet6/review-keys.js";
+import { reviewKey } from "../js/pages/english/review-keys.js";
 
 test("输入框里：Ctrl/Cmd+Enter 显示答案，普通 Enter 不劫持", () => {
   assert.equal(reviewKey("Enter", { typing: true, ctrl: true }), "reveal");

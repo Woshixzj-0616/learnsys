@@ -35,22 +35,8 @@ def _introduced_today(conn, item_types: tuple, day: str,
     复习 manual/quiz 卡把英语句子 tab 的新卡配额吃光。
     """
     types = tuple(t for t in item_types if t in ITEM_TYPES)
-    if not types:
-        return 0
-    placeholders = ",".join("?" * len(types))
-    where = ["substr(ts, 1, 10) = ?", "state_before = 'new'",
-             f"item_type IN ({placeholders})"]
-    args: list = [str(day)[:10], *types]
-    src = tuple(s for s in sources if s)
-    if src and "wrong" in types:
-        marks = ",".join("?" * len(src))
-        where.append("(item_type <> 'wrong' OR item_id IN "
-                     f"(SELECT id FROM wrong_items WHERE source IN ({marks})))")
-        args.extend(src)
-    row = conn.execute(
-        "SELECT count(*) FROM review_log WHERE " + " AND ".join(where),
-        args).fetchone()
-    return int(row[0] or 0)
+    return store.count_introduced(conn, day=day, item_types=types,
+                                  sources=sources)
 
 
 def _exists(conn, item_type: str, item_id: int) -> bool:

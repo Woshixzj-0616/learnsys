@@ -98,7 +98,7 @@ class TodayLayoutTest(unittest.TestCase):
         self.assertEqual([row["key"] for row in rows],
                          ["learn", "work", "life"])
         self.assertEqual([row["href"] for row in rows],
-                         ["#/cet6", "#/agents", "#/life"])
+                         ["#/english", "#/agents", "#/life"])
         for key in ('"learn"', '"work"', '"life"'):
             self.assertIn(key, QT_DOMAINS)
         self.assertIn('"href"', QT_DOMAINS)

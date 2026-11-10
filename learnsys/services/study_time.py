@@ -16,7 +16,9 @@
 from __future__ import annotations
 
 import datetime
-import sqlite3
+
+from learnsys import store
+from learnsys.store import stats as store_stats
 
 # 估算上限：数字写在这里，页面只读结果，不在前端再算一份。
 CET6_MINUTES_PER_SENTENCE = 2.0
@@ -77,19 +79,6 @@ def merge_minutes(spans: list[tuple]) -> float:
     return sum((end - start).total_seconds() for start, end in merge_spans(spans)) / 60.0
 
 
-def _safe_rows(conn, sql: str, args=()) -> list:
-    """旧库 / 精简测试库可能缺表：缺表当 0，不让一个统计拖垮整个今日页。"""
-    try:
-        return conn.execute(sql, args).fetchall()
-    except sqlite3.OperationalError:
-        return []
-
-
-def _safe_count(conn, sql: str, args=()) -> int:
-    rows = _safe_rows(conn, sql, args)
-    return int(rows[0][0] or 0) if rows else 0
-
-
 def _day_like(day: str) -> str:
     return f"{str(day)[:10]}%" if day else "%"
 
@@ -100,20 +89,11 @@ def _measured_spans(conn, day: str, now: datetime.datetime) -> tuple[list[tuple]
         lo, hi = day_bounds(day)
         lo_text = lo.strftime("%Y-%m-%d %H:%M:%S")
         hi_text = hi.strftime("%Y-%m-%d %H:%M:%S")
-        focus_rows = _safe_rows(
-            conn,
-            "SELECT started_at, COALESCE(ended_at, '') FROM sessions "
-            "WHERE started_at < ? AND (ended_at = '' OR ended_at > ?)",
-            (hi_text, lo_text))
-        transcript_rows = _safe_rows(
-            conn,
-            "SELECT ts_start, ts_end FROM transcripts "
-            "WHERE ts_start < ? AND ts_end > ?", (hi_text, lo_text))
+        focus_rows = store.focus_ranges(conn, lo_text, hi_text)
+        transcript_rows = store.transcript_ranges(conn, lo_text, hi_text)
     else:
-        focus_rows = _safe_rows(
-            conn, "SELECT started_at, COALESCE(ended_at, '') FROM sessions")
-        transcript_rows = _safe_rows(
-            conn, "SELECT ts_start, ts_end FROM transcripts")
+        focus_rows = store.focus_ranges(conn)
+        transcript_rows = store.transcript_ranges(conn)
 
     focus = []
     for started, ended in focus_rows:
@@ -137,12 +117,7 @@ def _cet6_estimate(conn, day: str) -> tuple[float, int, int]:
 
     同一条句子按 188 次断点也只算一次；返回 (分钟, 断点次数, 不同句子数)。
     """
-    rows = _safe_rows(
-        conn,
-        "SELECT substr(ts, 1, 10), "
-        "COALESCE(NULLIF(paper_id, ''), COALESCE(paper_title, '')), "
-        "COALESCE(section, ''), COALESCE(item, ''), COALESCE(sentence, 0) "
-        "FROM cet6_events WHERE ts LIKE ?", (_day_like(day),))
+    rows = store_stats.cet6_event_rows(conn, day)
     groups: dict[tuple, set] = {}
     for stamp, paper, section, item, sentence in rows:
         key = (stamp, paper, section, item)
@@ -181,12 +156,7 @@ def recorded(conn, day: str = "") -> dict:
             breakdown[name] = gain
 
     # 训练提交有真实秒数；落在专注/转写区间内的，视为已经被实测覆盖。
-    train_rows = _safe_rows(
-        conn,
-        "SELECT created_at, updated_at, duration_s FROM train_submissions "
-        "WHERE duration_s > 0"
-        + (" AND substr(updated_at, 1, 10) = ?" if day else ""),
-        (str(day)[:10],) if day else ())
+    train_rows = store.duration_rows(conn, day)
     covered = merge_spans(measured_spans)
     train_minutes = 0.0
     for created, updated, seconds in train_rows:
@@ -199,25 +169,13 @@ def recorded(conn, day: str = "") -> dict:
         breakdown["train"] = round(train_minutes, 1)
 
     cet6_minutes, breakpoints, sentences = _cet6_estimate(conn, day)
-    asks = _safe_count(conn, "SELECT COUNT(*) FROM asks WHERE ts LIKE ?", (like,))
-    reviews = _safe_count(
-        conn, "SELECT COUNT(*) FROM review_log"
-        + (" WHERE substr(ts, 1, 10) = ?" if day else ""),
-        (str(day)[:10],) if day else ())
-    netlab = _safe_count(
-        conn, "SELECT COUNT(*) FROM events WHERE module = 'netlab' AND ts LIKE ?",
-        (like,))
-    quizzes = _safe_count(
-        conn, "SELECT COUNT(*) FROM events WHERE module = 'quiz' "
-        "AND kind = 'quiz' AND ts LIKE ?", (like,))
-    materials = _safe_count(
-        conn, "SELECT COUNT(*) FROM events WHERE module = 'materials' "
-        "AND kind IN ('ask', 'quiz') AND ts LIKE ?", (like,))
-    trains = _safe_count(
-        conn, "SELECT COUNT(*) FROM train_submissions "
-        "WHERE status IN ('reviewed', 'failed')"
-        + (" AND substr(updated_at, 1, 10) = ?" if day else ""),
-        (str(day)[:10],) if day else ())
+    activity = store_stats.study_activity_counts(conn, day)
+    asks = activity["asks"]
+    reviews = activity["reviews"]
+    netlab = activity["netlab"]
+    quizzes = activity["quizzes"]
+    materials = activity["materials"]
+    trains = activity["trains"]
 
     estimated_parts = {
         "cet6": cet6_minutes,

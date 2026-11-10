@@ -123,15 +123,12 @@ def translate(text: str, *, kind: str = "word", context: dict | None = None) -> 
     try:
         # 本地优先：自己生词本里已经有释义的词，不再花一次模型调用。
         if kind == "word":
-            row = conn.execute(
-                "SELECT id, meaning, phonetic FROM vocab_items "
-                "WHERE normalized = ? AND status = 'active'",
-                (text.strip().lower(),)).fetchone()
-            if row is not None and str(row[1] or "").strip():
-                meaning = str(row[1]).strip()
+            found = store.find_active_word(conn, text)
+            if found and found["meaning"].strip():
+                meaning = found["meaning"].strip()
                 return {"translation": meaning, "meaning": meaning,
-                        "phonetic": str(row[2] or ""), "cached": True,
-                        "source": "vocab", "vocab_id": int(row[0]),
+                        "phonetic": found["phonetic"], "cached": True,
+                        "source": "vocab", "vocab_id": found["id"],
                         "result_id": 0}
         cached = _cached(conn, kind=kind, target_id=target_id, scope=scope)
         if cached:

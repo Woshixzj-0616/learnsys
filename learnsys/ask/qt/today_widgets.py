@@ -290,7 +290,7 @@ class ContinueCard(QtWidgets.QWidget):
         self.setObjectName("ContinueCard")
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
         self._navigate = navigate or (lambda _href: None)
-        self._href = "#/cet6"
+        self._href = "#/english"
         self.alts: list[AltRow] = []
 
         box = QtWidgets.QVBoxLayout(self)
@@ -344,7 +344,7 @@ class ContinueCard(QtWidgets.QWidget):
             self.last.setText(f"最近 {stamp[11:16]}" if len(stamp) >= 16 else "今天刚记下")
             self.state.setText("今天精听已达标" if listen_done else "今天还没练")
             paper = str(item.get("paper_id") or item.get("paper") or "")
-            self._href = "#/cet6?paper=" + _quote(paper)
+            self._href = "#/english?tab=listening&paper=" + _quote(paper)
             self.button.setText("回到断点 →")
         else:
             self.title.setText("今天还没练六级")
@@ -352,7 +352,7 @@ class ContinueCard(QtWidgets.QWidget):
             self.count.setText("今天 0 个断点")
             self.last.setText("从 25 分钟的微训练开始")
             self.state.setText("")
-            self._href = "#/cet6"
+            self._href = "#/english"
             self.button.setText("去训练 →")
 
         while self.alts_box.count():

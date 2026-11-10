@@ -38,19 +38,26 @@ class TestHomePayload(unittest.TestCase):
 
     def test_domain_hrefs_are_the_single_source(self):
         data = home.payload(self.conn, self.day)
-        self.assertEqual(data["learning"]["href"], "#/cet6")
+        self.assertEqual(data["learning"]["href"],
+                         data["learning"]["tasks"][1]["href"],
+                         "学习域入口必须跟今日训练格主推同一个 href")
         self.assertEqual(data["work"]["href"], "#/projects")
         self.assertEqual(data["life"]["href"], "#/life")
 
-        item_id, _ = store.add_wrong_item(self.conn, question="到期题")
         two_days_ago = (dt.date.today() - dt.timedelta(days=2)).isoformat()
-        self.conn.execute("UPDATE wrong_items SET ts = ? WHERE id = ?",
-                          (f"{two_days_ago} 10:00:00", item_id))
+        for index in range(20):
+            item_id, _ = store.add_wrong_item(
+                self.conn, question=f"到期题 {index}")
+            self.conn.execute("UPDATE wrong_items SET ts = ? WHERE id = ?",
+                              (f"{two_days_ago} 10:00:00", item_id))
         self.conn.commit()
         data = home.payload(self.conn, self.day)
-        self.assertGreaterEqual(data["learning"]["due_reviews"], 1)
-        self.assertEqual(data["learning"]["href"], "#/review",
-                         "有到期复习时学习卡直接进复习页")
+        self.assertGreaterEqual(data["learning"]["due_reviews"], 20)
+        self.assertTrue(data["learning"]["tasks"][1]["title"].startswith("复习 "))
+        self.assertEqual(data["learning"]["href"],
+                         data["learning"]["tasks"][1]["href"])
+        self.assertIn("english-review", data["learning"]["href"],
+                      "到期卡紧迫时学习卡跟训练格一起进复习页")
 
     def test_seeded_domains(self):
         store.add_wrong_item(self.conn, question="二叉树的前序遍历怎么写",

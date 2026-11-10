@@ -64,7 +64,7 @@ def _writing_task(conn) -> dict:
         "prompt_id": item.get("id", ""),
         "title": item.get("title") or "写作练习",
         "detail": detail,
-        "href": "#/cet6?tab=writing",
+        "href": "#/english?tab=writing",
         "label": "开始写作",
     }
 
@@ -76,7 +76,7 @@ def _translation_task(conn) -> dict:
         "prompt_id": item.get("id", ""),
         "title": "一句一译",
         "detail": "先写一句英文，提交后立即审核；约 2 秒",
-        "href": "#/cet6?tab=translation",
+        "href": "#/english?tab=writing&sub=translation",
         "label": "开始翻译",
     }
 

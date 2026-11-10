@@ -141,10 +141,7 @@ def import_dir(path: str, *, source: str = "courses", recursive: bool = True,
                 continue
 
             sha256 = hashlib.sha256(blob).hexdigest()
-            row = conn.execute(
-                "SELECT id FROM materials WHERE sha256 = ? AND status = 'active'",
-                (sha256,)).fetchone()
-            if row is not None:
+            if store.find_by_sha256(conn, sha256):
                 stats["skipped"] += 1
                 continue
 

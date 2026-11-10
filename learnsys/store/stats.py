@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import datetime
 import sqlite3
 
 from ._base import now
@@ -106,6 +107,129 @@ def cet6_groups(conn: sqlite3.Connection, day: str, limit: int = 10) -> list[dic
              "paper_id": row[5] or row[0] or ""} for row in rows]
 
 
+def study_activity_counts(conn: sqlite3.Connection, day: str = "") -> dict:
+    """学习时长估算要的动作次数；`day` 为空时算全量。"""
+    like = f"{str(day)[:10]}%" if day else "%"
+    day_eq = str(day)[:10] if day else ""
+
+    def count(sql: str, args: tuple) -> int:
+        try:
+            row = conn.execute(sql, args).fetchone()
+        except sqlite3.OperationalError:
+            return 0
+        return int(row[0] or 0) if row else 0
+
+    return {
+        "asks": count("SELECT COUNT(*) FROM asks WHERE ts LIKE ?", (like,)),
+        "reviews": count(
+            "SELECT COUNT(*) FROM review_log"
+            + (" WHERE substr(ts, 1, 10) = ?" if day else ""),
+            (day_eq,) if day else ()),
+        "netlab": count(
+            "SELECT COUNT(*) FROM events WHERE module = 'netlab' AND ts LIKE ?",
+            (like,)),
+        "quizzes": count(
+            "SELECT COUNT(*) FROM events WHERE module = 'quiz' "
+            "AND kind = 'quiz' AND ts LIKE ?", (like,)),
+        "materials": count(
+            "SELECT COUNT(*) FROM events WHERE module = 'materials' "
+            "AND kind IN ('ask', 'quiz') AND ts LIKE ?", (like,)),
+        "trains": count(
+            "SELECT COUNT(*) FROM train_submissions "
+            "WHERE status IN ('reviewed', 'failed')"
+            + (" AND substr(updated_at, 1, 10) = ?" if day else ""),
+            (day_eq,) if day else ()),
+    }
+
+
+def cet6_event_rows(conn: sqlite3.Connection, day: str) -> list[tuple]:
+    """当天精听事件（ts, paper, section, item, sentence）；缺表返回空。"""
+    try:
+        return conn.execute(
+            "SELECT substr(ts, 1, 10), "
+            "COALESCE(NULLIF(paper_id, ''), COALESCE(paper_title, '')), "
+            "COALESCE(section, ''), COALESCE(item, ''), COALESCE(sentence, 0) "
+            "FROM cet6_events WHERE ts LIKE ?", (f"{str(day)[:10]}%",)
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return []
+
+
+def count_review_log(conn: sqlite3.Connection, day: str) -> int:
+    """某天复习过的卡片条数（review_log）。"""
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM review_log WHERE substr(ts, 1, 10) = ?",
+            (str(day)[:10],)).fetchone()
+    except sqlite3.OperationalError:
+        return 0
+    return int(row[0] or 0) if row else 0
+
+
+def count_events(conn: sqlite3.Connection, module: str, kind: str,
+                 day: str) -> int:
+    """某天某模块某类事件数；缺表按 0。"""
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM events WHERE module = ? AND kind = ? "
+            "AND ts LIKE ?", (str(module), str(kind), f"{str(day)[:10]}%")
+        ).fetchone()
+    except sqlite3.OperationalError:
+        return 0
+    return int(row[0] or 0) if row else 0
+
+
+def count_asks(conn: sqlite3.Connection, day: str) -> int:
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM asks WHERE ts LIKE ?",
+            (f"{str(day)[:10]}%",)).fetchone()
+    except sqlite3.OperationalError:
+        return 0
+    return int(row[0] or 0) if row else 0
+
+
+def listen_sentences(conn: sqlite3.Connection, day: str) -> int:
+    """同一段录音里当天标记过的不同句子数（句子号为 0 时退化为题目名）。"""
+    try:
+        rows = conn.execute(
+            "SELECT COALESCE(NULLIF(paper_id, ''), COALESCE(paper_title, '')), "
+            "COALESCE(section, ''), COALESCE(item, ''), COALESCE(sentence, 0) "
+            "FROM cet6_events WHERE ts LIKE ?", (f"{day}%",)).fetchall()
+    except sqlite3.OperationalError:
+        return 0
+    seen = set()
+    for paper, section, item, sentence in rows:
+        seen.add((paper, section, item, int(sentence or 0) or str(item)))
+    return len(seen)
+
+
+def latest_recording(conn: sqlite3.Connection) -> dict:
+    """最近一次精听断点的试卷 / 小节；没有就返回空 dict。"""
+    try:
+        row = conn.execute(
+            "SELECT paper_id, paper_title, section, item FROM cet6_events "
+            "ORDER BY ts DESC, id DESC LIMIT 1").fetchone()
+    except sqlite3.OperationalError:
+        return {}
+    if not row:
+        return {}
+    paper_id, paper, section, item = row
+    return {"paper_id": paper_id or paper or "", "paper": paper or "六级精听",
+            "section": section or "", "item": item or ""}
+
+
+def reviewed_since(conn: sqlite3.Connection, day: str, days: int) -> bool:
+    """`day` 之前 days 天内是否复习过（复习冷却用）。"""
+    start = (datetime.date.fromisoformat(day)
+             - datetime.timedelta(days=int(days))).isoformat()
+    row = conn.execute(
+        "SELECT COUNT(*) FROM review_log "
+        "WHERE substr(ts, 1, 10) >= ? AND substr(ts, 1, 10) < ?",
+        (start, str(day)[:10])).fetchone()
+    return bool(row and int(row[0] or 0))
+
+
 def latest_cet6_group(conn: sqlite3.Connection, day: str) -> dict | None:
     """某天断点最多的一组（「接着昨天的断点」用）。"""
     row = conn.execute(
@@ -119,10 +243,13 @@ def latest_cet6_group(conn: sqlite3.Connection, day: str) -> dict | None:
 
 
 def latest_material_event(conn: sqlite3.Connection, day: str) -> dict | None:
-    row = conn.execute(
-        "SELECT title, COUNT(*) FROM events WHERE module='materials' AND ts LIKE ? "
-        "GROUP BY title ORDER BY COUNT(*) DESC, MAX(id) DESC LIMIT 1",
-        (f"{day}%",)).fetchone()
+    try:
+        row = conn.execute(
+            "SELECT title, COUNT(*) FROM events WHERE module='materials' AND ts LIKE ? "
+            "GROUP BY title ORDER BY COUNT(*) DESC, MAX(id) DESC LIMIT 1",
+            (f"{day}%",)).fetchone()
+    except sqlite3.OperationalError:
+        return None
     if not row:
         return None
     return {"title": row[0], "count": int(row[1] or 0)}

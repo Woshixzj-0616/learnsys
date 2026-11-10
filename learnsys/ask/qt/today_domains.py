@@ -31,7 +31,7 @@ def domain_rows(home: dict | None) -> list[dict]:
     return [
         {
             "key": "learn", "label": "学习",
-            "href": str(learning.get("href") or "#/cet6"),
+            "href": str(learning.get("href") or "#/english"),
             "title": f"今日 {int(learning.get('done') or 0)}"
                      f"/{int(learning.get('total') or 3)}"
                      f" · 到期复习 {int(learning.get('due_reviews') or 0)}",

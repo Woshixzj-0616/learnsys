@@ -80,9 +80,10 @@ from .knowledge import (BKT_READY_SQL, add_attempt as add_knowledge_attempt,
                         point_by_id as knowledge_point, ready_attempts,
                         set_meta as set_knowledge_meta, stats as knowledge_stats,
                         meta_value, set_meta)
-from .materials import (MATERIAL_KINDS, add_material, delete_material_row, get_material,
-                        list_materials, material_counts, set_material_path,
-                        set_material_status, touch_material, update_material)
+from .materials import (MATERIAL_KINDS, add_material, delete_material_row,
+                        find_by_sha256, get_material, list_materials,
+                        material_counts, set_material_path, set_material_status,
+                        touch_material, update_material)
 from .art import (WORK_STATUSES as ART_WORK_STATUSES,
                   add_work as add_art_work,
                   delete_preset as delete_art_preset,
@@ -138,24 +139,27 @@ from .recordings import (default_title as recording_title,
                          transcript_text as recording_transcript,
                          update_video)
 from .review import (ACCUM_REVIEW_KINDS, DAILY_REVIEW_EPOCH,
-                     REVIEW_ITEM_TYPES, add_review_log, due_review_count,
-                     due_review_items, get_review_state, recent_review_log,
-                     review_counts, review_stats, save_review_state,
-                     seed_review_states)
+                     REVIEW_ITEM_TYPES, add_review_log, count_introduced,
+                     due_review_count, due_review_items, get_review_state,
+                     recent_review_log, review_counts, review_stats,
+                     save_review_state, seed_review_states)
 from .train import (STATUSES as TRAIN_STATUSES, activity_counts,
-                    create_submission, delete_submission, get_submission,
+                    create_submission, delete_submission, duration_rows,
+                    find_draft_rewrite, get_submission,
                     latest_train_by_prompt, list_submissions, reviewed_rows,
                     sentence_attempted, set_submission_review,
                     update_submission)
 from .study import (add_frame_text, add_transcript, add_window_event,
-                    add_window_event_at, end_session, focus_stats, frame_text_between,
-                    last_transcript, minutes, search_transcripts, session_exists,
-                    session_stats, session_summary, session_title, session_windows,
-                    start_session, window_titles)
+                    add_window_event_at, end_session, focus_ranges, focus_stats,
+                    frame_text_between, last_transcript, minutes,
+                    search_transcripts, session_exists, session_stats,
+                    session_summary, session_title, session_windows,
+                    start_session, transcript_ranges, window_titles)
 from .practice import (add_note, archive_note, counts_by_project as practice_project_counts,
                        delete_note, get_note, list_notes, update_note, use_note)
-from .vocab import (add_vocab, delete_vocab, export_vocab, get_vocab, import_vocab,
-                    list_vocab, normalize_pair, reorient_vocab, update_vocab)
+from .vocab import (add_vocab, delete_vocab, export_vocab, find_active_word,
+                    get_vocab, import_vocab, list_vocab, normalize_pair,
+                    reorient_vocab, update_vocab)
 from .wrongbook import (WRONG_SOURCES, add_wrong_item, delete_wrong_item,
                         due_starred, get_wrong_item, recent_wrong_items,
                         rewrite_wrong_item, set_wrong_mastered,

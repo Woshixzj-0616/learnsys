@@ -1,9 +1,9 @@
 // 英语聚合页：精听 / 写作·翻译 / 每日积累 / 复习。
-// 旧模块仍可用 #/cet6、#/daily、#/english-review 直达；这里只做收口，不改数据口径。
-import { mountListening } from "../cet6/listening.js";
+// 旧 #/cet6 由壳层重定向到这里；#/daily、#/english-review 仍可直达。这里只做收口，不改数据口径。
+import { mountListening } from "./listening.js";
 import {
   clearContextProvider, mount as mountAI, setEnabled, setPage,
-} from "../cet6/ai.js";
+} from "./ai.js";
 import { toast } from "../../ui.js";
 
 const TABS = {
@@ -11,6 +11,7 @@ const TABS = {
   writing: "写作 / 翻译",
   daily: "每日积累",
   review: "复习",
+  stats: "统计",
 };
 const SUBTABS = { writing: "写作", translation: "翻译" };
 const SUBTITLES = {
@@ -18,6 +19,7 @@ const SUBTITLES = {
   writing: "写作与翻译：题库、限时练习、批改与二稿",
   daily: "写作句型 + 翻译短语 + 你自己的纠音点，每天一小份",
   review: "听辨/写作/翻译的到期错误卡，按记忆曲线复习",
+  stats: "档位趋势、错误画像与训练量",
 };
 
 let root = null;
@@ -112,6 +114,12 @@ async function switchTab(tab, ctx) {
   }
   if (tab === "review") {
     await mountReview(ctx);
+    return;
+  }
+  if (tab === "stats") {
+    const page = await import("./stats.js");
+    if (active !== "stats") return;
+    cleanup = await page.mount({ panel, ctx });
   }
 }
 
@@ -156,7 +164,7 @@ async function switchSub(sub, ctx) {
   if (!host) return;
   host.innerHTML = "";
   const page = await import(
-    sub === "translation" ? "../cet6/translation.js" : "../cet6/writing.js");
+    sub === "translation" ? "./translation.js" : "./writing.js");
   if (active !== "writing" || subActive !== sub || !host.isConnected) return;
   const result = await page.mount({ panel: host, ctx });
   if (active !== "writing" || subActive !== sub) return;

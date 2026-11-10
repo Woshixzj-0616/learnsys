@@ -193,6 +193,18 @@ def _attach_vocab_review(conn: sqlite3.Connection, items: list[dict]) -> list[di
     return items
 
 
+def find_active_word(conn: sqlite3.Connection, word: str) -> dict | None:
+    """按归一后的词头查一条在册生词；查词本地优先用。"""
+    row = conn.execute(
+        "SELECT id, meaning, phonetic FROM vocab_items "
+        "WHERE normalized = ? AND status = 'active'",
+        (_normalize_word(word),)).fetchone()
+    if row is None:
+        return None
+    return {"id": int(row[0]), "meaning": str(row[1] or ""),
+            "phonetic": str(row[2] or "")}
+
+
 def get_vocab(conn: sqlite3.Connection, item_id: int) -> dict | None:
     row = conn.execute(
         f"SELECT {_VOCAB_SELECT} FROM vocab_items WHERE id = ?", (item_id,)).fetchone()

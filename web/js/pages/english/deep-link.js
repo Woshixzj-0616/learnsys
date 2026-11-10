@@ -9,7 +9,9 @@ export function readDeepLink(ctx) {
 
 function clearHash(tab) {
   const url = new URL(location.href);
-  url.hash = `#/cet6?tab=${tab}`;
+  url.hash = tab === "translation"
+    ? "#/english?tab=writing&sub=translation"
+    : "#/english?tab=writing";
   history.replaceState(null, "", url);
 }
 

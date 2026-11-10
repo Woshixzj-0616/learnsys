@@ -101,6 +101,57 @@ def scan(root: pathlib.Path | None = None) -> list[dict]:
 _SQL_WORDS = re.compile(r"\b(SELECT|INSERT|UPDATE|DELETE)\b")
 
 
+# 这些服务本身就在做数据访问（结果资产、审计写入、外部对话库），不走主库业务表。
+_SERVICE_SQL_ALLOW = (
+    "learnsys/services/results.py",
+    "learnsys/services/observability.py",
+    "learnsys/services/dialog_archive/",
+)
+
+
+def scan_service_sql(root: pathlib.Path | None = None) -> list[dict]:
+    """services 里直接对业务表写 SQL 的调用；每条含文件、行号、SQL 片段。
+
+    `results.py` / `observability.py` / `dialog_archive/` 是服务层自己的
+    小数据访问边界，进白名单；其余业务查询应下沉 `store/`。
+    """
+    services = pathlib.Path(root or PACKAGE_ROOT) / "services"
+    rows: list[dict] = []
+    for path in sorted(services.rglob("*.py")):
+        rel = path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else path.as_posix()
+        if any(rel == item or rel.startswith(item)
+               for item in _SERVICE_SQL_ALLOW):
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            if not isinstance(func, ast.Attribute) or func.attr != "execute":
+                continue
+            if not node.args:
+                continue
+            value = node.args[0]
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                sql = value.value
+            elif isinstance(value, ast.JoinedStr):
+                sql = "".join(
+                    part.value for part in value.values
+                    if isinstance(part, ast.Constant) and isinstance(part.value, str))
+            else:
+                continue
+            if _SQL_WORDS.search(sql):
+                rows.append({
+                    "file": path.relative_to(ROOT).as_posix(),
+                    "line": node.lineno,
+                    "sql": " ".join(sql.split())[:80],
+                })
+    return rows
+
+
 def scan_route_sql(root: pathlib.Path | None = None) -> list[dict]:
     """路由文件里直接出现的 SQL；每条含文件、行号、源码行。"""
     server = pathlib.Path(root or PACKAGE_ROOT) / "server"
@@ -198,11 +249,13 @@ def cycles(graph: dict[str, set[str]] | None = None) -> list[list[str]]:
 def report(rows: list[dict] | None = None,
            loops: list[list[str]] | None = None,
            route_sql: list[dict] | None = None,
-           service_calls: list[dict] | None = None) -> str:
+           service_calls: list[dict] | None = None,
+           service_sql: list[dict] | None = None) -> str:
     rows = rows if rows is not None else scan()
     loops = loops if loops is not None else cycles()
     route_sql = route_sql if route_sql is not None else scan_route_sql()
     service_calls = service_calls if service_calls is not None else scan_service_agent_calls()
+    service_sql = service_sql if service_sql is not None else scan_service_sql()
     lines = ["分层报告（低层不得依赖高层：core/store/browser → services/agent/ask/server；"
              "llm → store/services/agent/ask/server；agent/services → ask/server；server → ask）", ""]
     if not rows:
@@ -225,6 +278,12 @@ def report(rows: list[dict] | None = None,
             lines.append(f"  ✗ {row['file']}:{row['line']}  {row['symbol']}")
     else:
         lines.append("services 单轮调用只走 agent.complete —— 通过。")
+    if service_sql:
+        lines.append(f"services 直接写业务 SQL {len(service_sql)} 处（SQL 归 store）：")
+        for row in service_sql:
+            lines.append(f"  ✗ {row['file']}:{row['line']}  {row['sql']}")
+    else:
+        lines.append("services 直接写业务 SQL 0 处 —— 通过。")
     if loops:
         # 同级复用的循环（如 services 调用 agent.run）由规则允许，不计入失败；
         # 这里只报告，方便评审时看见全图，不用它卡 CI。
@@ -246,14 +305,16 @@ def main(argv: list[str] | None = None) -> int:
     loops = cycles()
     route_sql = scan_route_sql()
     service_calls = scan_service_agent_calls()
+    service_sql = scan_service_sql()
     if args.json:
         print(json.dumps({"violations": rows, "cycles": loops,
                           "route_sql": route_sql,
-                          "service_agent_calls": service_calls},
+                          "service_agent_calls": service_calls,
+                          "service_sql": service_sql},
                          ensure_ascii=False, indent=1))
     else:
-        print(report(rows, loops, route_sql, service_calls))
-    if args.check and (rows or route_sql or service_calls):
+        print(report(rows, loops, route_sql, service_calls, service_sql))
+    if args.check and (rows or route_sql or service_calls or service_sql):
         return 1
     return 0
 

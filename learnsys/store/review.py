@@ -410,6 +410,28 @@ def review_stats(conn: sqlite3.Connection, today=None, item_type: str = "") -> d
             "next_due": (next_row[3] if next_row else "") or ""}
 
 
+def count_introduced(conn: sqlite3.Connection, *, day: str,
+                     item_types: tuple, sources: tuple = ()) -> int:
+    """今天新卡进复习的条数（`state_before='new'`），可按来源白名单过滤。"""
+    types = tuple(str(t) for t in item_types if t)
+    if not types:
+        return 0
+    placeholders = ",".join("?" * len(types))
+    where = ["substr(ts, 1, 10) = ?", "state_before = 'new'",
+             f"item_type IN ({placeholders})"]
+    args: list = [str(day)[:10], *types]
+    src = tuple(s for s in sources if s)
+    if src and "wrong" in types:
+        marks = ",".join("?" * len(src))
+        where.append("(item_type <> 'wrong' OR item_id IN "
+                     f"(SELECT id FROM wrong_items WHERE source IN ({marks})))")
+        args.extend(src)
+    row = conn.execute(
+        "SELECT count(*) FROM review_log WHERE " + " AND ".join(where),
+        args).fetchone()
+    return int(row[0] or 0)
+
+
 def recent_review_log(conn: sqlite3.Connection, limit: int = 20) -> list[dict]:
     with _LOCK:
         rows = conn.execute(

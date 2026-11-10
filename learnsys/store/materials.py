@@ -96,6 +96,14 @@ def add_material(conn: sqlite3.Connection, *, title: str, kind: str = "note",
     return item_id, True
 
 
+def find_by_sha256(conn: sqlite3.Connection, sha256: str) -> int:
+    """按内容哈希查在册资料 id；没有返回 0。"""
+    row = conn.execute(
+        "SELECT id FROM materials WHERE sha256 = ? AND status = 'active'",
+        (str(sha256 or ""),)).fetchone()
+    return int(row[0]) if row else 0
+
+
 def get_material(conn: sqlite3.Connection, item_id: int,
                  *, with_body: bool = True) -> dict | None:
     with _LOCK:

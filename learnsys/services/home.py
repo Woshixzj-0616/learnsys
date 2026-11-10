@@ -19,7 +19,7 @@ def _learning(conn, day: str) -> dict:
     plan = summary["plan"]
     return {
         "date": summary["date"],
-        "href": "#/review" if summary["due_reviews"] else "#/cet6",
+        "href": summary.get("focus_href") or "#/english",
         "done": plan["done"],
         "total": plan["total"],
         "tier": plan["tier"],

@@ -209,7 +209,8 @@ class TrainRoutesTest(unittest.TestCase):
         self.assertEqual(plan["today"]["total"], 1)
         self.assertEqual(plan["streak"], 1)
         self.assertEqual(plan["task"]["kind"], "translation")
-        self.assertEqual(plan["task"]["href"], "#/cet6?tab=translation")
+        self.assertEqual(plan["task"]["href"],
+                         "#/english?tab=writing&sub=translation")
 
         stats = self.client.get("/api/cet6/train/stats",
                                 params={"days": 30}, headers=AUTH).json()

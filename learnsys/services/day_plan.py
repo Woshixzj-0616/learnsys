@@ -16,21 +16,16 @@
 from __future__ import annotations
 
 import datetime
-import sqlite3
 from urllib.parse import quote
 
 from learnsys import store
-from learnsys.services.train import coach as train_coach
-from learnsys.services.train import plan as train_plan
+from learnsys.services.train import agenda
+from learnsys.store import stats as store_stats
 
 TASK_TOTAL = 3
 PASS_TASKS = 2      # 两件算达标，第三件（复盘）是加分项
 LISTEN_SENTENCES = 3
 ASK_OUTPUT_COUNT = 3
-# 到期卡至少这么多张、且前两天没复习过，才把「复习」提为训练格主推；
-# 否则优先推更具体的写作/翻译任务，避免每天都是「复习到期卡」。
-REVIEW_URGENT = 20
-REVIEW_COOLDOWN_DAYS = 2
 LISTEN_MINUTES = 25
 REVIEW_MINUTES = 10
 REPORT_MINUTES = 10
@@ -39,45 +34,10 @@ TRANSLATION_MINUTES = 10
 GENERIC_MINUTES = 15
 
 
-def _day_like(day: str) -> str:
-    return f"{str(day)[:10]}%"
-
-
-def _safe_rows(conn, sql: str, args=()) -> list:
-    try:
-        return conn.execute(sql, args).fetchall()
-    except sqlite3.OperationalError:
-        return []
-
-
-def _count(conn, sql: str, args=()) -> int:
-    rows = _safe_rows(conn, sql, args)
-    return int(rows[0][0] or 0) if rows else 0
-
-
-def _listen_sentences(conn, day: str) -> int:
-    """同一段录音里今天标记过的不同句子数（句子号为 0 时退化为题目名）。"""
-    rows = _safe_rows(
-        conn,
-        "SELECT COALESCE(NULLIF(paper_id, ''), COALESCE(paper_title, '')), "
-        "COALESCE(section, ''), COALESCE(item, ''), COALESCE(sentence, 0) "
-        "FROM cet6_events WHERE ts LIKE ?", (_day_like(day),))
-    seen = set()
-    for paper, section, item, sentence in rows:
-        seen.add((paper, section, item, int(sentence or 0) or str(item)))
-    return len(seen)
-
-
-def _latest_recording(conn) -> dict:
-    row = _safe_rows(
-        conn,
-        "SELECT paper_id, paper_title, section, item FROM cet6_events "
-        "ORDER BY ts DESC, id DESC LIMIT 1")
-    if not row:
-        return {}
-    paper_id, paper, section, item = row[0]
-    return {"paper_id": paper_id or paper or "", "paper": paper or "六级精听",
-            "section": section or "", "item": item or ""}
+def _alternatives(conn, day: str, due: list | None) -> list[dict]:
+    """训练格候选：由 `agenda` 统一排序，这里只保留输出格能用的类型。"""
+    return [row for row in agenda.candidates(conn, day, due=due)
+            if row.get("kind") in agenda.OUTPUT_KINDS][:4]
 
 
 def _yesterday_summary(conn, day: str) -> str:
@@ -88,10 +48,8 @@ def _yesterday_summary(conn, day: str) -> str:
     trains = (train["writing"] + train["translation"] + train["sentence"]
               + train["dictation"] + train.get("exam", 0)
               + train.get("chunk", 0))
-    reviews = _count(
-        conn, "SELECT COUNT(*) FROM review_log WHERE substr(ts, 1, 10) = ?",
-        (yesterday,))
-    listen = _listen_sentences(conn, yesterday)
+    reviews = store_stats.count_review_log(conn, yesterday)
+    listen = store_stats.listen_sentences(conn, yesterday)
     parts = []
     if listen:
         parts.append(f"精听 {listen} 句")
@@ -104,110 +62,15 @@ def _yesterday_summary(conn, day: str) -> str:
     return "昨天 " + " · ".join(parts) + "；今天挑一件写清楚"
 
 
-def _reviewed_recently(conn, day: str,
-                       days: int = REVIEW_COOLDOWN_DAYS) -> bool:
-    """前两天有没有复习过；有就把「复习」降为备选，避免天天同一张卡。"""
-    start = (datetime.date.fromisoformat(day)
-             - datetime.timedelta(days=days)).isoformat()
-    return _count(
-        conn,
-        "SELECT COUNT(*) FROM review_log "
-        "WHERE substr(ts, 1, 10) >= ? AND substr(ts, 1, 10) < ?",
-        (start, day)) > 0
-
-
-def _review_task(plan: dict, due_total: int) -> dict:
-    breakdown = plan.get("due") or {}
-    parts = [f"写作 {breakdown[key]} 张" for key in ("writing",)
-             if breakdown.get(key)]
-    parts += [f"翻译 {breakdown[key]} 张" for key in ("translation",)
-              if breakdown.get(key)]
-    target = min(due_total, REVIEW_URGENT)
-    detail = " · ".join(parts) or "按记忆曲线排到了今天"
-    if target < due_total:
-        detail += f"（共到期 {due_total} 张）"
-    return {
-        "id": "review", "kind": "review",
-        "title": f"复习 {target} 张到期卡",
-        "detail": detail,
-        "href": "#/english-review?tab=sentence",
-        "label": "去复习",
-        "minutes": max(5, min(30, round(target * 1.2))),
-    }
-
-
-def _base_task(task: dict) -> dict | None:
-    kind = str((task or {}).get("kind") or "")
-    if kind not in ("writing", "translation"):
-        return None
-    return {
-        "id": kind, "kind": kind,
-        "title": task.get("title") or ("写作练习" if kind == "writing"
-                                       else "一句一译"),
-        "detail": task.get("detail") or "",
-        "href": task.get("href") or f"#/cet6?tab={kind}",
-        "label": task.get("label") or "去做",
-        "minutes": WRITING_MINUTES if kind == "writing" else TRANSLATION_MINUTES,
-    }
-
-
-def _dedupe(rows: list[dict]) -> list[dict]:
-    """同一入口只留一张卡（「本周整篇」与具体写作题都指向写作页）。"""
-    seen: set[str] = set()
-    out = []
-    for row in rows:
-        key = str(row.get("href") or row.get("id") or row.get("kind") or "")
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(row)
-    return out
-
-
-def _alternatives(conn, day: str, plan: dict, review_task: dict | None,
-                  due_total: int) -> list[dict]:
-    """训练格备选：主推一条，其余给「换一个」。
-
-    到期卡只在「≥20 张且前两天没复习」时提到第一位；
-    否则先推二稿、弱项技能、写作/翻译，复习放后面。
-    """
-    coach_rows = []
-    for row in train_coach.candidates(conn, day):
-        item = dict(row)
-        item.setdefault("id", str(row.get("kind") or ""))
-        item.setdefault("minutes", GENERIC_MINUTES)
-        coach_rows.append(item)
-    rows: list[dict] = []
-    if (review_task and due_total >= REVIEW_URGENT
-            and not _reviewed_recently(conn, day)):
-        rows.append(review_task)
-    rows.extend(row for row in coach_rows
-                if row.get("kind") in ("rewrite", "skill"))
-    base = _base_task(train_plan.next_task(conn, plan.get("today") or {}))
-    if base:
-        rows.append(base)
-    rows.extend(row for row in coach_rows if row.get("kind") == "whole")
-    if review_task and not any(row.get("id") == "review" for row in rows):
-        rows.append(review_task)
-    return _dedupe(rows)[:4]
-
-
 def check(conn, day: str = "") -> dict:
     """三格是否完成；周视图和历史回放都走这里，保证同一口径。"""
     day = str(day or datetime.date.today().isoformat())[:10]
     train = store.activity_counts(conn, day)
-    reviewed = _count(
-        conn, "SELECT COUNT(*) FROM review_log WHERE substr(ts, 1, 10) = ?",
-        (day,))
-    quizzes = _count(
-        conn, "SELECT COUNT(*) FROM events WHERE module = 'quiz' "
-        "AND kind = 'quiz' AND ts LIKE ?", (_day_like(day),))
-    report = _count(
-        conn, "SELECT COUNT(*) FROM events WHERE module = 'review' "
-        "AND kind = 'report' AND ts LIKE ?", (_day_like(day),))
-    listen = _listen_sentences(conn, day)
-    asks = _count(conn, "SELECT COUNT(*) FROM asks WHERE ts LIKE ?",
-                  (_day_like(day),))
+    reviewed = store_stats.count_review_log(conn, day)
+    quizzes = store_stats.count_events(conn, "quiz", "quiz", day)
+    report = store_stats.count_events(conn, "review", "report", day)
+    listen = store_stats.listen_sentences(conn, day)
+    asks = store_stats.count_asks(conn, day)
     output = (train["writing"] + train["translation"] + train["sentence"]
               + train["dictation"] + train.get("exam", 0)
               + train.get("chunk", 0) > 0
@@ -251,16 +114,16 @@ def build(conn, day: str = "", due: list | None = None) -> dict:
     state = check(conn, day)
     counts = state["counts"]
 
-    latest = _latest_recording(conn)
+    latest = store_stats.latest_recording(conn)
     if latest:
         title = f"精听 · {latest['paper']}"
         if latest["section"]:
             title += f" / {latest['section']}"
-        href = "#/cet6"
+        href = "#/english?tab=listening"
         if latest["paper_id"]:
-            href += "?paper=" + quote(str(latest["paper_id"]), safe="")
+            href += "&paper=" + quote(str(latest["paper_id"]), safe="")
     else:
-        title, href = "六级精听 1 段", "#/cet6"
+        title, href = "六级精听 1 段", "#/english?tab=listening"
     if state["checks"]["listen"]:
         listen_detail = f"今天已标记 {counts['listen_sentences']} 个不同句子"
     else:
@@ -274,13 +137,10 @@ def build(conn, day: str = "", due: list | None = None) -> dict:
 
     if due is None:
         due = store.wrong_due_items(conn, day)
-    plan = train_plan.plan(conn, day, due=due)
-    due_total = int((plan.get("due") or {}).get("total") or len(due))
-    review_task = _review_task(plan, due_total) if due_total else None
     output_done = state["checks"]["output"]
     alternatives: list[dict] = []
     if not output_done:
-        alternatives = _alternatives(conn, day, plan, review_task, due_total)
+        alternatives = _alternatives(conn, day, due)
         primary = alternatives[0] if alternatives else None
         if primary:
             train_title = primary["title"]
@@ -290,28 +150,29 @@ def build(conn, day: str = "", due: list | None = None) -> dict:
         else:
             train_title = "训练或复习"
             train_detail = "写一篇、译一句，或复习任意一张卡"
-            train_href = "#/cet6"
+            train_href = "#/english"
             train_minutes = GENERIC_MINUTES
             output_detail = f"{train_detail}；或问 {ASK_OUTPUT_COUNT} 个问题也算"
     if output_done:
         # 已完成时标题说「实际做了什么」，不拿推荐项冒充已完成。
         if counts["writing"]:
-            train_title, train_href = "写作 · 今天已完成", "#/cet6?tab=writing"
+            train_title, train_href = "写作 · 今天已完成", "#/english?tab=writing"
             train_minutes = WRITING_MINUTES
         elif counts["translation"] or counts["sentence"]:
-            train_title, train_href = "翻译 · 今天已完成", "#/cet6?tab=translation"
+            train_title, train_href = ("翻译 · 今天已完成",
+                                       "#/english?tab=writing&sub=translation")
             train_minutes = TRANSLATION_MINUTES
         elif counts.get("dictation"):
             train_title = f"专项听写 · 今天已完成 {counts['dictation']} 句"
-            train_href = "#/cet6?tab=drill"
+            train_href = "#/english?tab=listening"
             train_minutes = max(5, min(30, round(counts["dictation"] * 2)))
         elif counts.get("chunk"):
             train_title = f"意群长句 · 今天已完成 {counts['chunk']} 句"
-            train_href = "#/cet6?tab=drill&mode=chunk"
+            train_href = "#/english?tab=listening"
             train_minutes = max(5, min(30, round(counts["chunk"] * 3)))
         elif counts.get("exam"):
             train_title = f"真题自评 · 今天已完成 {counts['exam']} 段"
-            train_href = "#/cet6?tab=drill&mode=exam"
+            train_href = "#/english?tab=listening"
             train_minutes = max(5, min(60, counts["exam"] * 10))
         elif counts["reviews"]:
             train_title = f"复习 · 今天已复习 {counts['reviews']} 张"

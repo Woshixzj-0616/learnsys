@@ -72,7 +72,7 @@ class CoachTest(unittest.TestCase):
         finally:
             conn.close()
         self.assertEqual(action["kind"], "whole")
-        self.assertEqual(action["href"], "#/cet6?tab=writing")
+        self.assertEqual(action["href"], "#/english?tab=writing")
 
     def test_rewrite_first(self):
         sub_id = self._whole()

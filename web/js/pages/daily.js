@@ -132,7 +132,7 @@ function emptyPronHtml() {
   return `<li class="daily-empty">
     <p>今天没有新的纠音点。</p>
     <p class="hint">去精听，把没听出或听错的地方写进句子笔记；下一次会出现在这里。</p>
-    <a class="btn btn-small" href="#/cet6?tab=listening">去精听</a>
+    <a class="btn btn-small" href="#/english?tab=listening">去精听</a>
   </li>`;
 }
 

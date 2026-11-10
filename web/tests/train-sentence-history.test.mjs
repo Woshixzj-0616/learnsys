@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import {
   historyHtml, sentenceAttemptHtml,
-} from "../js/pages/cet6/translation-views.js";
+} from "../js/pages/english/translation-views.js";
 
 test("历史：整篇与单句两段切换、空态文案分开", () => {
   const whole = historyHtml([], "whole");

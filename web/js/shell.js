@@ -1,6 +1,7 @@
 // 壳层：侧栏、hash 路由、页面生命周期。加模块只改 registry.json。
 import { installAgentBar } from "./agent-bar.js";
 import { api, initApi } from "./api.js";
+import { legacyEnglishHash } from "./legacy-routes.js";
 import { getModes, initModes } from "./modes.js";
 import { installNavBridge } from "./nav_bridge.js";
 import { escapeHtml, setStatus, toast } from "./ui.js";
@@ -115,6 +116,11 @@ async function fetchPage(module) {
 
 async function navigate() {
   const route = parseRoute();
+  const legacy = legacyEnglishHash(route.id, route.query);
+  if (legacy) {
+    history.replaceState(null, "", legacy);
+    return navigate();
+  }
   const module = moduleById(route.id) || moduleById("today");
   if (!module) {
     view.innerHTML = `<div class="empty"><strong>没有可显示的插件</strong>检查

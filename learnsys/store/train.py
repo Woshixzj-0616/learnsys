@@ -133,6 +133,60 @@ def latest_train_by_prompt(conn: sqlite3.Connection, kind: str) -> dict:
     return out
 
 
+def duration_rows(conn: sqlite3.Connection, day: str = "") -> list[tuple]:
+    """有真实秒数的提交（created_at, updated_at, duration_s）；缺表返回空。"""
+    try:
+        sql = ("SELECT created_at, updated_at, duration_s FROM train_submissions "
+               "WHERE duration_s > 0")
+        args: tuple = ()
+        if day:
+            sql += " AND substr(updated_at, 1, 10) = ?"
+            args = (str(day)[:10],)
+        return conn.execute(sql, args).fetchall()
+    except sqlite3.OperationalError:
+        return []
+
+
+def recent_whole_submissions(conn: sqlite3.Connection,
+                             limit: int = 20) -> list[dict]:
+    """最近整篇（练习/限时）提交，新→旧；二稿不在内。"""
+    rows = conn.execute(
+        "SELECT id, kind, prompt_id, mode, band, band_json, created_at "
+        "FROM train_submissions "
+        "WHERE kind IN ('writing', 'translation') "
+        "AND mode IN ('practice', 'timed') "
+        "ORDER BY id DESC LIMIT ?", (int(limit),)).fetchall()
+    keys = ("id", "kind", "prompt_id", "mode", "band", "band_json", "created_at")
+    return [dict(zip(keys, row)) for row in rows]
+
+
+def find_draft_rewrite(conn: sqlite3.Connection, parent_id: int) -> int:
+    """同一篇已有未提交的二稿草稿时返回其 id，否则 0。"""
+    row = conn.execute(
+        "SELECT id FROM train_submissions WHERE parent_id = ? "
+        "AND mode = 'rewrite' AND status = 'draft' "
+        "ORDER BY id DESC LIMIT 1", (int(parent_id),)).fetchone()
+    return int(row[0]) if row else 0
+
+
+def has_rewrite(conn: sqlite3.Connection, parent_id: int) -> bool:
+    """父提交下是否已有提交过的二稿（草稿不算）。"""
+    row = conn.execute(
+        "SELECT 1 FROM train_submissions WHERE parent_id = ? AND mode = 'rewrite' "
+        "AND status <> 'draft' LIMIT 1", (int(parent_id),)).fetchone()
+    return row is not None
+
+
+def week_whole_count(conn: sqlite3.Connection, monday: str) -> int:
+    """周一以来整篇（练习/限时）提交数。"""
+    row = conn.execute(
+        "SELECT COUNT(*) FROM train_submissions "
+        "WHERE kind IN ('writing', 'translation') "
+        "AND mode IN ('practice', 'timed') "
+        "AND substr(created_at, 1, 10) >= ?", (str(monday)[:10],)).fetchone()
+    return int(row[0] or 0)
+
+
 def reviewed_rows(conn: sqlite3.Connection, *, since: str = "") -> list[dict]:
     """已批改的提交（统计与趋势的唯一读取点）；按批改时间升序。"""
     where = ["status = 'reviewed'"]
