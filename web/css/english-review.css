@@ -47,6 +47,24 @@
   font-size: 18px;
   line-height: 1.7;
 }
+.er-pattern {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  line-height: 1.7;
+}
+.er-example {
+  padding: 10px 12px;
+  border-left: 3px solid var(--mark);
+  background: var(--bg);
+  line-height: 1.7;
+}
+.er-example-zh {
+  margin-top: 6px;
+  color: var(--muted);
+  line-height: 1.6;
+}
 .er-typed {
   width: 100%;
   min-height: 96px;
@@ -60,6 +78,13 @@
   line-height: 1.6;
   resize: vertical;
 }
+.er-typed-word { min-height: 64px; }
+.er-match {
+  margin: 10px 0;
+  font-size: var(--fs-sm);
+}
+.er-match.ok { color: var(--mark); }
+.er-match.off { color: var(--muted); }
 .er-reveal { margin: 14px 0; }
 .er-answer {
   margin-top: 8px;

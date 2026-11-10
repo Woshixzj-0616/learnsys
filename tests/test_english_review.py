@@ -55,6 +55,7 @@ class EnglishReviewTest(unittest.TestCase):
         self.assertNotIn(self.manual_id, ids)
         self.assertTrue(all(item["item_type"] == "wrong" for item in body["items"]))
         self.assertEqual(body["kind"], "sentence")
+        self.assertEqual(body["quota_types"], ["wrong"])
 
     def test_word_tab_only_keeps_vocab(self):
         body = self.client.get(
@@ -62,6 +63,7 @@ class EnglishReviewTest(unittest.TestCase):
         self.assertTrue(all(item["item_type"] == "vocab" for item in body["items"]))
         self.assertEqual(len(body["items"]), 10)
         self.assertEqual(body["new_remaining"], 10)
+        self.assertEqual(body["quota_types"], ["vocab"])
 
     def test_new_card_limit_counts_reviewed_today(self):
         first = self.client.get(
@@ -75,6 +77,38 @@ class EnglishReviewTest(unittest.TestCase):
             "/api/review/queue?kind=word&limit=10", headers=AUTH).json()
         self.assertEqual(second["new_remaining"], 9)
         self.assertEqual(len(second["items"]), 9)
+
+    def test_manual_wrong_cards_do_not_consume_sentence_quota(self):
+        conn = self._orig(self.db_path)
+        ids = []
+        for index in range(10):
+            item_id, _ = store.add_wrong_item(
+                conn, question=f"手动题 {index}", answer="答案", source="manual")
+            ids.append(item_id)
+        store.seed_review_states(conn)
+        today = dt.date.today().isoformat()
+        conn.execute("UPDATE review_state SET due = ? WHERE item_type = 'wrong'",
+                     (today,))
+        conn.commit()
+        conn.close()
+        for item_id in ids:
+            response = self.client.post(
+                f"/api/review/wrong/{item_id}", json={"rating": 3}, headers=AUTH)
+            self.assertEqual(response.status_code, 200)
+
+        body = self.client.get(
+            "/api/review/queue?kind=sentence&limit=10", headers=AUTH).json()
+        self.assertEqual(body["new_remaining"], 10)   # 别页的手动错题不吃配额
+
+        self.client.post(
+            f"/api/review/wrong/{self.translation_id}", json={"rating": 3},
+            headers=AUTH)
+        body = self.client.get(
+            "/api/review/queue?kind=sentence&limit=10", headers=AUTH).json()
+        self.assertEqual(body["new_remaining"], 9)
+        stats = self.client.get(
+            "/api/review/stats?kind=sentence", headers=AUTH).json()
+        self.assertEqual(stats["reviewed_today"], 1)   # 手动错题不算句子 tab
 
     def test_due_counts_split_by_kind(self):
         stats_sentence = self.client.get(

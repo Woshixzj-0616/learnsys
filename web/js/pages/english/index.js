@@ -24,6 +24,7 @@ let subCleanup = null;
 let active = "";
 let subActive = "";
 let reviewKind = "sentence";
+let pageSeq = 0;      // 子页挂载 ticket：快速切 tab 时让在途 mount 失效
 
 function markTabs(tab) {
   for (const button of root?.querySelectorAll(".english-tab") || []) {
@@ -60,6 +61,7 @@ function setReviewKind(kind) {
 }
 
 function teardown() {
+  pageSeq += 1;
   const fn = cleanup;
   cleanup = null;
   if (fn) {
@@ -155,15 +157,21 @@ async function loadPageHtml(entry) {
 }
 
 async function mountReview(ctx) {
+  const ticket = ++pageSeq;
   const html = await loadPageHtml("pages/english-review.html");
-  if (active !== "review" || !panel?.isConnected) return;
+  if (ticket !== pageSeq || active !== "review" || !panel?.isConnected) return;
   panel.innerHTML = html;
   const page = await import("../english-review.js");
-  if (active !== "review" || !panel?.isConnected) return;
+  if (ticket !== pageSeq || active !== "review" || !panel?.isConnected) return;
   const query = new URLSearchParams({ kind: reviewKind });
-  await page.mount({ ...ctx, root: panel, query, onKind: setReviewKind });
-  if (active !== "review" || !panel?.isConnected) return;
-  cleanup = () => { panel.innerHTML = ""; };
+  const result = await page.mount({ ...ctx, root: panel, query, onKind: setReviewKind });
+  if (ticket !== pageSeq || active !== "review" || !panel?.isConnected) {
+    if (typeof result === "function") result();
+    return;
+  }
+  cleanup = typeof result === "function"
+    ? result
+    : () => { panel.innerHTML = ""; };
 }
 
 async function mountDaily(ctx) {

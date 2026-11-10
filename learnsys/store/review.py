@@ -229,11 +229,14 @@ def _fill_accum_card(item: dict, kind: str, raw_payload: str) -> None:
     item["source"] = "daily"
     item["tags"] = ""
     if kind == "writing":
+        pattern = str(payload.get("pattern") or "").strip()
         item["question"] = str(payload.get("zh") or "").strip()
-        item["answer"] = str(payload.get("pattern") or "").strip()
-        parts = [str(payload.get("example") or "").strip(),
-                 str(payload.get("example_zh") or "").strip()]
-        item["note"] = " ｜ ".join(part for part in parts if part)
+        item["answer"] = pattern       # 兼容旧前端 / MCP
+        item["pattern"] = pattern
+        item["example"] = str(payload.get("example") or "").strip()
+        item["example_zh"] = str(payload.get("example_zh") or "").strip()
+        item["note"] = str(payload.get("note") or "").strip()   # 只放语法提示
+        item["tags"] = str(payload.get("group") or "").strip()
         item["my_answer"] = ""
     else:
         item["word"] = str(payload.get("zh") or "").strip()
@@ -360,15 +363,12 @@ def review_counts(conn: sqlite3.Connection, *, today=None,
             "SELECT count(*) " + base + " AND r.due <= ?", [*args, day]).fetchone()[0]
         next_row = conn.execute(
             "SELECT min(r.due) " + base + " AND r.due > ?", [*args, day]).fetchone()
-        if types:
-            placeholders = ",".join("?" * len(types))
-            reviewed = conn.execute(
-                "SELECT count(*) FROM review_log WHERE substr(ts, 1, 10) = ? "
-                f"AND item_type IN ({placeholders})", [day, *types]).fetchone()[0]
-        else:
-            reviewed = conn.execute(
-                "SELECT count(*) FROM review_log WHERE substr(ts, 1, 10) = ?",
-                [day]).fetchone()[0]
+        # 今日已复习：复用 base 的有效性/来源/accum_kind 过滤，按「今天动过的不同卡片」数；
+        # 不按 review_log 行数，避免同一张卡重复评分被算两次，也不会把另一 tab 的 accum 算进来。
+        reviewed = conn.execute(
+            "SELECT count(*) " + base
+            + " AND substr(r.last_review, 1, 10) = ?",
+            [*args, day]).fetchone()[0]
     return {"due": int(due or 0), "new": int(new or 0), "total": int(total or 0),
             "reviewed_today": int(reviewed or 0),
             "next_due": (next_row[0] if next_row else "") or ""}

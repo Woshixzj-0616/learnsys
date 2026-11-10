@@ -59,6 +59,10 @@ class ReviewAccumTest(unittest.TestCase):
         card = sentence["items"][0]
         self.assertEqual(card["question"], "引出观点")
         self.assertIn("There is a growing awareness", card["answer"])
+        self.assertEqual(card["pattern"], card["answer"])
+        self.assertIn("There is a growing awareness", card["example"])
+        self.assertEqual(card["example_zh"], "越来越多的人意识到……")
+        self.assertEqual(card["note"], "")      # 例句不再塞进 note
         self.assertEqual(card["source"], "daily")
 
         word = review.queue(self.conn, kind="word", today=TODAY)
@@ -94,6 +98,25 @@ class ReviewAccumTest(unittest.TestCase):
         counts = review.due_counts(self.conn, today=TODAY)
         self.assertGreaterEqual(counts["sentence"], 1)
         self.assertGreaterEqual(counts["word"], 1)
+
+    def test_reviewed_today_splits_by_tab(self):
+        review.review(self.conn, "accum", self.writing_id, 3)
+        sentence = review.stats(self.conn, kind="sentence", today=TODAY)
+        word = review.stats(self.conn, kind="word", today=TODAY)
+        self.assertEqual(sentence["reviewed_today"], 1)
+        self.assertEqual(word["reviewed_today"], 0)
+
+        review.review(self.conn, "accum", self.phrase_id, 3)
+        sentence = review.stats(self.conn, kind="sentence", today=TODAY)
+        word = review.stats(self.conn, kind="word", today=TODAY)
+        self.assertEqual(sentence["reviewed_today"], 1)   # 翻译短语不算句子 tab
+        self.assertEqual(word["reviewed_today"], 1)
+
+    def test_queue_exposes_quota_types(self):
+        sentence = review.queue(self.conn, kind="sentence", today=TODAY)
+        word = review.queue(self.conn, kind="word", today=TODAY)
+        self.assertEqual(sentence["quota_types"], ["wrong"])
+        self.assertEqual(word["quota_types"], ["vocab"])
 
     def test_rating_accum_card(self):
         result = review.review(self.conn, "accum", self.phrase_id, 3)

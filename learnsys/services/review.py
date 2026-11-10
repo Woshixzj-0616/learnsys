@@ -27,17 +27,29 @@ def _kind_spec(kind: str) -> dict:
     return KINDS.get(str(kind or "").strip(), {})
 
 
-def _introduced_today(conn, item_types: tuple, day: str) -> int:
-    """今天已经正式复习过的新卡数（review_log 里 state_before='new'）。"""
+def _introduced_today(conn, item_types: tuple, day: str,
+                      sources: tuple = ()) -> int:
+    """今天已经正式复习过的新卡数（review_log 里 state_before='new'）。
+
+    `sources` 与到期队列同口径：只算本 tab 白名单来源的错题，避免在错题本
+    复习 manual/quiz 卡把英语句子 tab 的新卡配额吃光。
+    """
     types = tuple(t for t in item_types if t in ITEM_TYPES)
     if not types:
         return 0
     placeholders = ",".join("?" * len(types))
+    where = ["substr(ts, 1, 10) = ?", "state_before = 'new'",
+             f"item_type IN ({placeholders})"]
+    args: list = [str(day)[:10], *types]
+    src = tuple(s for s in sources if s)
+    if src and "wrong" in types:
+        marks = ",".join("?" * len(src))
+        where.append("(item_type <> 'wrong' OR item_id IN "
+                     f"(SELECT id FROM wrong_items WHERE source IN ({marks})))")
+        args.extend(src)
     row = conn.execute(
-        "SELECT count(*) FROM review_log "
-        "WHERE substr(ts, 1, 10) = ? AND state_before = 'new' "
-        f"AND item_type IN ({placeholders})",
-        (str(day)[:10], *types)).fetchone()
+        "SELECT count(*) FROM review_log WHERE " + " AND ".join(where),
+        args).fetchone()
     return int(row[0] or 0)
 
 
@@ -110,15 +122,17 @@ def queue(conn, *, limit: int = 50, item_type: str = "",
     spec = _kind_spec(kind)
     if spec:
         # 每日积累是当天的固定 10 张，不占旧错题/生词的 10 张新卡配额。
-        introduced = _introduced_today(conn, spec.get("quota_types",
-                                                      spec["item_types"]), day)
+        introduced = _introduced_today(
+            conn, spec.get("quota_types", spec["item_types"]), day,
+            sources=spec.get("sources", ()))
         new_left = max(0, NEW_PER_DAY - introduced)
         items = store.due_review_items(
             conn, limit=limit, today=day,
             item_types=spec["item_types"], sources=spec["sources"],
             accum_kinds=spec.get("accum_kinds", ()), max_new=new_left)
         return {"items": items, "count": len(items), "kind": kind,
-                "new_per_day": NEW_PER_DAY, "new_remaining": new_left}
+                "new_per_day": NEW_PER_DAY, "new_remaining": new_left,
+                "quota_types": list(spec.get("quota_types", spec["item_types"]))}
     items = store.due_review_items(conn, limit=limit, item_type=item_type,
                                    today=day)
     return {"items": items, "count": len(items)}

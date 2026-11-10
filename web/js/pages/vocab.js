@@ -1,15 +1,11 @@
-// 生词本：统一词表 + FSRS 复习（列表、搜索、手动加词、四档复习、导出）。
+// 生词本：统一词表（列表、搜索、手动加词、导出）；复习统一走 #/english-review?tab=word。
 import { api, download } from "../api.js";
 import { escapeHtml, toast } from "../ui.js";
 
-const RATING_LABELS = { 1: "忘了", 2: "模糊", 3: "记得", 4: "简单" };
 const STATE_LABEL = { new: "新词", learning: "学习中", review: "复习中" };
 
 let items = [];
 let query = "";
-let queue = [];
-let index = 0;
-let revealed = false;
 let nodes = {};
 let searchTimer = null;
 let meaningTimers = new Map();
@@ -31,9 +27,6 @@ export async function mount(ctx) {
   ctx.setActions('<a class="btn" href="#/cet6">去六级训练</a>');
   items = [];
   query = "";
-  queue = [];
-  index = 0;
-  revealed = false;
   nodes = {
     list: ctx.root.querySelector("#vocab-list"),
     stats: ctx.root.querySelector("#vocab-stats"),
@@ -43,11 +36,6 @@ export async function mount(ctx) {
     newMeaning: ctx.root.querySelector("#vocab-new-meaning"),
     add: ctx.root.querySelector("#vocab-add"),
     export: ctx.root.querySelector("#vocab-export"),
-    start: ctx.root.querySelector("#vocab-review-start"),
-    review: ctx.root.querySelector("#vocab-review-panel"),
-    reviewBody: ctx.root.querySelector("#vocab-review-body"),
-    reviewProgress: ctx.root.querySelector("#vocab-review-progress"),
-    reviewClose: ctx.root.querySelector("#vocab-review-close"),
   };
 
   nodes.search.addEventListener("input", () => {
@@ -62,11 +50,8 @@ export async function mount(ctx) {
     if (event.key === "Enter") addWord();
   });
   nodes.export.addEventListener("click", exportCsv);
-  nodes.start.addEventListener("click", startReview);
-  nodes.reviewClose.addEventListener("click", closeReview);
   nodes.list.addEventListener("input", onMeaningEdit);
   nodes.list.addEventListener("click", onListClick);
-  nodes.reviewBody.addEventListener("click", onReviewClick);
   await load();
 }
 
@@ -188,83 +173,6 @@ async function onListClick(event) {
     button.disabled = false;
     toast(error.message || "删除失败", "err");
   }
-}
-
-async function startReview() {
-  nodes.start.disabled = true;
-  try {
-    const data = await api.get("/api/review/queue?item_type=vocab&limit=100");
-    queue = Array.isArray(data.items) ? data.items : [];
-    index = 0;
-    revealed = false;
-    if (!queue.length) {
-      toast("今天没有到期的生词；新词明天才会出现", "ok");
-      return;
-    }
-    nodes.review.hidden = false;
-    renderReview();
-  } catch (error) {
-    toast(error.message || "复习队列没读出来", "err");
-  } finally {
-    nodes.start.disabled = false;
-  }
-}
-
-function renderReview() {
-  if (index >= queue.length) {
-    nodes.review.hidden = true;
-    toast(`这一轮复习完成，共 ${queue.length} 张`, "ok");
-    load();
-    return;
-  }
-  const card = queue[index];
-  nodes.reviewProgress.textContent = `第 ${index + 1} / ${queue.length} 张`;
-  const phonetic = card.paper_title ? `<span class="vocab-phonetic">${escapeHtml(card.paper_title)}</span>` : "";
-  nodes.reviewBody.innerHTML = `
-    <div class="vocab-review-card">
-      <div class="vocab-review-word">${escapeHtml(card.word || "")}</div>
-      ${phonetic}
-      ${card.context ? `<div class="vocab-review-context">${escapeHtml(card.context)}</div>` : ""}
-      <div class="vocab-review-reveal">
-        <button class="btn btn-primary" type="button" id="vocab-show">显示释义</button>
-      </div>
-      <div class="vocab-review-answer" ${revealed ? "" : "hidden"}>
-        <div class="vocab-review-meaning">${escapeHtml(card.meaning || "（还没有释义）")}</div>
-        <div class="wrong-actions vocab-review-actions">
-          ${[1, 2, 3, 4].map((rating) => `<button class="btn ${rating === 3 ? "btn-primary" : ""}"
-            type="button" data-rating="${rating}">${RATING_LABELS[rating]}</button>`).join("")}
-        </div>
-      </div>
-    </div>`;
-}
-
-async function onReviewClick(event) {
-  if (event.target.closest("#vocab-show")) {
-    revealed = true;
-    renderReview();
-    return;
-  }
-  const button = event.target.closest("button[data-rating]");
-  if (!button) return;
-  const card = queue[index];
-  if (!card) return;
-  button.disabled = true;
-  try {
-    const rating = Number(button.dataset.rating || 3);
-    const data = await api.post(`/api/review/vocab/${card.item_id}`, { rating });
-    toast(`${RATING_LABELS[rating]} · 下次 ${data.next_review}（${data.scheduled_days} 天后）`, "ok");
-    index += 1;
-    revealed = false;
-    renderReview();
-  } catch (error) {
-    button.disabled = false;
-    toast(error.message || "复习没记上", "err");
-  }
-}
-
-function closeReview() {
-  nodes.review.hidden = true;
-  load();
 }
 
 async function exportCsv() {
