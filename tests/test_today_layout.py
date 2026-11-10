@@ -87,6 +87,9 @@ class TodayLayoutTest(unittest.TestCase):
         self.assertIn('/web/css/home.css', INDEX)
         self.assertIn('"/web/css/home.css"', SW)
         self.assertIn('"/web/js/pages/today-domains.js"', SW)
+        self.assertIn('/web/css/today-goals.css', INDEX)
+        self.assertIn('"/web/css/today-goals.css"', SW)
+        self.assertIn('"/web/js/pages/today-goals.js"', SW)
 
     def test_qt_and_web_domain_entries_are_one_to_one(self):
         self.assertIn("DomainGrid", QT_TODAY)

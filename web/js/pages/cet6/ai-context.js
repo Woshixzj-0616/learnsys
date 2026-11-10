@@ -5,6 +5,7 @@ import { buildSnapshot } from "../../context.js";
 export const TAB_NAMES = {
   listening: "精听", drill: "专项", writing: "写作",
   translation: "翻译", review: "复习", stats: "统计",
+  daily: "每日积累",
 };
 
 export function safeProvider(provider) {

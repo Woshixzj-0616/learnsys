@@ -1,0 +1,59 @@
+/* 今日目标卡：三格 + 训练格「换一个」。 */
+.goal-tasks { display: grid; gap: 6px; margin-top: 18px; }
+.task-row { display: flex; align-items: stretch; gap: 6px; }
+.task {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color .18s, background .18s;
+  flex: 1;
+  min-width: 0;
+}
+.task:hover { border-color: var(--accent-line); }
+.task-swap {
+  flex: none;
+  align-self: center;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .18s, border-color .18s;
+}
+.task-swap:hover { color: var(--accent); border-color: var(--accent-line); }
+.task-check {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 50%;
+  color: transparent;
+  font-size: 10px;
+  line-height: 1;
+}
+.task.done .task-check { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.task-body { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.task-title { font-size: 13px; font-weight: 600; }
+.task.done .task-title { color: var(--text-faint); }
+.task-meta { color: var(--text-faint); font-size: 11.5px; }
+.task-min { flex: none; color: var(--text-faint); font-size: 11px; }
+.task-go {
+  flex: none;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  opacity: 0;
+  transition: opacity .18s, transform .18s;
+}
+.task:hover .task-go { opacity: 1; transform: translateX(2px); color: var(--accent); }

@@ -81,6 +81,16 @@ def _translation_task(conn) -> dict:
     }
 
 
+def next_task(conn, today: dict | None = None) -> dict | None:
+    """今天还没练的科目：先写作，再一次一译；都动过就返回 None。"""
+    today = today or {}
+    if not today.get("writing"):
+        return _writing_task(conn)
+    if not today.get("translation") and not today.get("sentence"):
+        return _translation_task(conn)
+    return None
+
+
 def _task(conn, due: list[dict], today: dict) -> dict | None:
     if due:
         counts = {source: sum(1 for row in due
@@ -95,11 +105,7 @@ def _task(conn, due: list[dict], today: dict) -> dict | None:
             "href": "#/english-review?tab=sentence",
             "label": "去复习",
         }
-    if not today["writing"]:
-        return _writing_task(conn)
-    if not today["translation"] and not today["sentence"]:
-        return _translation_task(conn)
-    return None
+    return next_task(conn, today)
 
 
 def plan(conn, day: str = "", due: list | None = None) -> dict:

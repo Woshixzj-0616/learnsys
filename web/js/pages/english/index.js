@@ -1,6 +1,9 @@
 // 英语聚合页：精听 / 写作·翻译 / 每日积累 / 复习。
 // 旧模块仍可用 #/cet6、#/daily、#/english-review 直达；这里只做收口，不改数据口径。
 import { mountListening } from "../cet6/listening.js";
+import {
+  clearContextProvider, mount as mountAI, setEnabled, setPage,
+} from "../cet6/ai.js";
 import { toast } from "../../ui.js";
 
 const TABS = {
@@ -21,6 +24,7 @@ let root = null;
 let panel = null;
 let cleanup = null;
 let subCleanup = null;
+let cleanupAI = null;
 let active = "";
 let subActive = "";
 let reviewKind = "sentence";
@@ -60,6 +64,13 @@ function setReviewKind(kind) {
   rememberTab("review");
 }
 
+// 便捷 AI：精听 iframe 自带一份，外层在这一页隐藏；其余标签共用外层抽屉。
+function syncAI(tab) {
+  clearContextProvider();
+  setPage(tab);
+  setEnabled(tab !== "listening");
+}
+
 function teardown() {
   pageSeq += 1;
   const fn = cleanup;
@@ -81,6 +92,7 @@ async function switchTab(tab, ctx) {
   rememberTab(tab);
   ctx.setSub(SUBTITLES[tab]);
   ctx.setActions("");
+  syncAI(tab);
 
   if (tab === "listening") {
     const query = new URLSearchParams(ctx.query);
@@ -138,6 +150,8 @@ async function switchSub(sub, ctx) {
   subActive = sub;
   markSubTabs(sub);
   rememberTab("writing", sub);
+  clearContextProvider();
+  setPage(sub);
   const host = panel?.querySelector("#english-subpanel");
   if (!host) return;
   host.innerHTML = "";
@@ -193,6 +207,7 @@ function initialSub(ctx) {
 export async function mount(ctx) {
   root = ctx.root;
   panel = root.querySelector("#english-panel");
+  cleanupAI = mountAI(root);
   subCleanup = null;
   subActive = "";
   reviewKind = ctx.query.get("kind") === "word" ? "word" : "sentence";
@@ -211,6 +226,10 @@ export async function mount(ctx) {
 
 export function unmount() {
   teardown();
+  if (cleanupAI) {
+    try { cleanupAI(); } catch { /* 忽略 */ }
+    cleanupAI = null;
+  }
   active = "";
   root = null;
   panel = null;

@@ -5,6 +5,7 @@ import { plain } from "../markdown.js";
 import { escapeHtml, minutesParts, timeOf, toast } from "../ui.js";
 import { renderDomains } from "./today-domains.js";
 import { renderDaily } from "./today-daily.js";
+import { bindGoals, renderGoals } from "./today-goals.js";
 import { renderCoach, renderReminder } from "./today-reminder.js";
 
 const WEEK_NAMES = "日一二三四五六";
@@ -39,6 +40,7 @@ export async function mount(ctx) {
   renderTimeline(today.asks || [], Number(today.ask_count || 0));
   renderFocus(today.focus || {});
   bindAsk();
+  bindGoals();
   bindWeekTips();
 }
 
@@ -105,19 +107,7 @@ function renderHero(overview) {
     else state.textContent = "做完两件算达标，第三件是加分";
   }
 
-  const root = document.getElementById("goal-tasks");
-  if (root) {
-    root.innerHTML = tasks.map((task) => `
-      <a class="task${task.done ? " done" : ""}" href="${escapeHtml(task.href || "#")}">
-        <span class="task-check" aria-hidden="true">✓</span>
-        <span class="task-body">
-          <span class="task-title">${escapeHtml(task.title || "")}</span>
-          <span class="task-meta">${escapeHtml(task.detail || "")}</span>
-        </span>
-        <span class="task-min">${Number(task.minutes || 0)} 分钟</span>
-        <span class="task-go">${escapeHtml(task.label || "打开")} →</span>
-      </a>`).join("");
-  }
+  renderGoals(tasks, todayKey());
 
   const percent = totalTasks ? Math.max(0, Math.min(100, done * 100 / totalTasks)) : 0;
   document.getElementById("goal-done").textContent = String(done);

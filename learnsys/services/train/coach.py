@@ -104,6 +104,7 @@ def _rewrite_action(row: dict) -> dict:
                  f"&submission={row['id']}&rewrite=1"),
         "label": "写二稿",
         "reason": "上次整篇还没重写",
+        "minutes": 30 if kind == "writing" else 10,
         "prompt_id": row.get("prompt_id") or "",
         "submission_id": row["id"],
     }
@@ -128,6 +129,7 @@ def _skill_action(kind: str, count: int, skill: str) -> dict:
         "href": "#/cet6?tab=translation&skill=" + quote(skill, safe=""),
         "label": "去练 10 句",
         "reason": f"错误画像：{kind}",
+        "minutes": 10,
         "skill": skill,
     }
 
@@ -156,21 +158,39 @@ def _whole_action(conn) -> dict:
         "href": "#/cet6?tab=writing",
         "label": "开始整篇",
         "reason": "本周整篇数为 0",
+        "minutes": 30,
     }
+
+
+def candidates(conn, day: str = "") -> list[dict]:
+    """今天可做的写作/翻译提升项，按优先级排序（不判断今天是否已经练过）。
+
+    二稿 > 弱项技能 > 本周整篇；今日页拿它当「训练格」的备选池，
+    `build()` 只取第一项，保证提醒与行动卡同一口径。
+    """
+    day = str(day or datetime.date.today().isoformat())[:10]
+    rows: list[dict] = []
+    whole = _latest_without_rewrite(conn, day)
+    if whole:
+        rows.append(_rewrite_action(whole))
+    weak = _top_error(conn)
+    if weak:
+        rows.append(_skill_action(*weak))
+    if _week_whole_count(conn, day) < 1:
+        rows.append(_whole_action(conn))
+    return rows
 
 
 def build(conn, day: str = "") -> dict | None:
     """返回今天唯一一条写作/翻译提醒；没有就返回 None。"""
     day = str(day or datetime.date.today().isoformat())[:10]
-    whole = _latest_without_rewrite(conn, day)
-    if whole:
-        return _rewrite_action(whole)
+    rows = candidates(conn, day)
+    if not rows:
+        return None
+    # 二稿优先：即使今天已经练过，也先把上次的整篇收口。
+    if rows[0].get("kind") == "rewrite":
+        return rows[0]
     today = train_plan.today_activity(conn, day)
     if today.get("writing") or today.get("translation") or today.get("sentence"):
         return None
-    weak = _top_error(conn)
-    if weak:
-        return _skill_action(*weak)
-    if _week_whole_count(conn, day) < 1:
-        return _whole_action(conn)
-    return None
+    return rows[0]

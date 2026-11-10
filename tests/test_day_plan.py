@@ -24,7 +24,9 @@ CREATE TABLE cet6_events (
 CREATE TABLE train_submissions (
     id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT, prompt_id TEXT,
     mode TEXT, status TEXT, duration_s INTEGER, band INTEGER,
-    created_at TEXT, updated_at TEXT);
+    band_json TEXT, word_count INTEGER DEFAULT 0,
+    serious_count INTEGER DEFAULT 0, error_count INTEGER DEFAULT 0,
+    parent_id INTEGER DEFAULT 0, created_at TEXT, updated_at TEXT);
 CREATE TABLE events (ts TEXT, module TEXT, kind TEXT);
 CREATE TABLE asks (ts TEXT);
 CREATE TABLE review_log (ts TEXT);
@@ -184,7 +186,7 @@ class BuildTest(unittest.TestCase):
         self.assertTrue(all(item["done"] for item in plan["tasks"]))
         self.assertEqual(plan["done"], 3)
 
-    def test_有到期卡时第二格是复习(self):
+    def test_少量到期卡只进备选不抢主推(self):
         conn = _db()
         yesterday = (datetime.date.fromisoformat(DAY)
                      - datetime.timedelta(days=1)).isoformat()
@@ -193,20 +195,54 @@ class BuildTest(unittest.TestCase):
             "VALUES (?, 'writing', 's1', '为什么这里用虚拟语气')",
             (f"{yesterday} 09:00:00",))
         conn.commit()
-        plan = day_plan.build(conn, DAY)
-        self.assertEqual(plan["tasks"][1]["title"], "复习到期卡")
+        output = day_plan.build(conn, DAY)["tasks"][1]
+        self.assertNotEqual(output["title"], "复习到期卡")
+        ids = [row["id"] for row in output["alternatives"]]
+        self.assertIn("review", ids)
+
+    def test_到期卡多且没复习时先推复习(self):
+        conn = _db()
+        yesterday = (datetime.date.fromisoformat(DAY)
+                     - datetime.timedelta(days=1)).isoformat()
+        for index in range(25):
+            conn.execute(
+                "INSERT INTO wrong_items (ts, source, source_id, question) "
+                "VALUES (?, 'writing', ?, '题')",
+                (f"{yesterday} 09:00:00", f"s{index}"))
+        conn.commit()
+        output = day_plan.build(conn, DAY)["tasks"][1]
+        self.assertTrue(output["title"].startswith("复习 "))
+        self.assertEqual(output["alternatives"][0]["id"], "review")
+        self.assertEqual(output["alternatives"][0]["minutes"], 24)
+
+    def test_前两天复习过就把复习降为备选(self):
+        conn = _db()
+        yesterday = (datetime.date.fromisoformat(DAY)
+                     - datetime.timedelta(days=1)).isoformat()
+        for index in range(25):
+            conn.execute(
+                "INSERT INTO wrong_items (ts, source, source_id, question) "
+                "VALUES (?, 'writing', ?, '题')",
+                (f"{yesterday} 09:00:00", f"s{index}"))
+        conn.execute("INSERT INTO review_log VALUES (?)",
+                     (f"{yesterday} 20:00:00",))
+        conn.commit()
+        output = day_plan.build(conn, DAY)["tasks"][1]
+        self.assertFalse(output["title"].startswith("复习 "))
+        ids = [row["id"] for row in output["alternatives"]]
+        self.assertIn("review", ids)
 
     def test_没有到期卡时推荐写作(self):
         conn = _db()
-        plan = day_plan.build(conn, DAY)
-        self.assertTrue(plan["tasks"][1]["title"].startswith("写作 · "))
+        output = day_plan.build(conn, DAY)["tasks"][1]
+        self.assertIn("tab=writing", output["href"])
 
-    def test_预算随到期卡数量变化(self):
+    def test_预算随紧迫复习变化(self):
         conn = _db()
         first = day_plan.build(conn, DAY)["budget_minutes"]
         yesterday = (datetime.date.fromisoformat(DAY)
                      - datetime.timedelta(days=1)).isoformat()
-        for index in range(5):
+        for index in range(20):
             conn.execute(
                 "INSERT INTO wrong_items (ts, source, source_id, question) "
                 "VALUES (?, 'writing', ?, '题')",
@@ -214,6 +250,17 @@ class BuildTest(unittest.TestCase):
         conn.commit()
         second = day_plan.build(conn, DAY)["budget_minutes"]
         self.assertNotEqual(first, second)
+
+    def test_复盘格引用昨天的记录(self):
+        conn = _db()
+        yesterday = (datetime.date.fromisoformat(DAY)
+                     - datetime.timedelta(days=1)).isoformat()
+        conn.execute("INSERT INTO review_log VALUES (?)",
+                     (f"{yesterday} 20:00:00",))
+        conn.commit()
+        report = day_plan.build(conn, DAY)["tasks"][2]
+        self.assertIn("昨天", report["detail"])
+        self.assertIn("复习 1 张", report["detail"])
 
 
 if __name__ == "__main__":
