@@ -62,6 +62,7 @@ def collect(conn) -> dict:
     existing = {row["normalized"] for row in store.list_vocab(conn, limit=500)["items"]}
     seen: set[str] = set()
     rows, skipped = [], []
+    term_cache: dict[str, list] = {}
     submissions = conn.execute(
         "SELECT id, kind, mode, prompt_id, band_json, created_at FROM train_submissions "
         "WHERE status = 'reviewed' AND band_json IS NOT NULL AND band_json <> '' "
@@ -79,8 +80,13 @@ def collect(conn) -> dict:
             fix = str(item.get("fix") or "").strip()
             why = str(item.get("why") or "").strip()
             error_type = str(item.get("type") or "").strip()
+            if prompt_id not in term_cache:
+                pack = (content.pack("translation", prompt_id) or {}
+                        if kind == "translation" else {})
+                term_cache[prompt_id] = pack.get("terms") or []
             entry = lexical.as_vocab_entry(
-                error_type=error_type, quote=quote, fix=fix, why=why)
+                error_type=error_type, quote=quote, fix=fix, why=why,
+                terms=term_cache[prompt_id])
             reason = ""
             if not fix:
                 reason = "空 fix"

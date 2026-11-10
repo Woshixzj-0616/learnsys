@@ -1,6 +1,6 @@
 // 写作/翻译批改视图：档位、错误清单、二稿任务、参考范文（仅复盘）。
 import { escapeHtml, relative } from "../../ui.js";
-import { MODE_LABEL, splitSentences } from "./format.js";
+import { MODE_LABEL } from "./format.js";
 
 const DIMENSIONS = {
   content: "内容切题", structure: "结构连贯", language: "语言准确",
@@ -58,11 +58,14 @@ function infoPoints(review) {
   </section>`;
 }
 
-function errorRows(errors) {
+function errorRows(errors, dropped = 0) {
+  const droppedNote = dropped > 0
+    ? `<p class="hint">另有 ${dropped} 条错误因为引用对不上原文被丢弃。</p>`
+    : "";
   if (!errors?.length) {
-    return '<p class="hint">这次没有列出需要改的错误。</p>';
+    return `${droppedNote}<p class="hint">这次没有列出需要改的错误。</p>`;
   }
-  return `<div class="cet6-errors">${errors.map((error, index) => {
+  return `${droppedNote}<div class="cet6-errors">${errors.map((error, index) => {
     const canCard = cardable(error);
     const auto = canCard && error.severity === "严重";
     const tail = auto
@@ -87,26 +90,38 @@ function errorRows(errors) {
 
 function translationComparison(detail) {
   if (detail.kind !== "translation" || !detail.segments?.length) return "";
-  const mine = splitSentences(detail.text);
   const aligned = new Map(
     (detail.review?.alignment || []).map((row) => [Number(row.segment), row.quote]));
   const pointTable = detail.info_point_table || [];
+  const referenceBlock = detail.reference
+    ? `<details class="cet6-compare-full"><summary>整段参考译文</summary>
+      <p>${escapeHtml(detail.reference)}</p></details>`
+    : "";
+  if (!aligned.size) {
+    // 没有可靠对齐就不硬配：中文意群数和英文句子数通常不同，按序号兜底必然错位。
+    return `<section class="cet6-block">
+      <h3>逐句对照</h3>
+      <p class="hint">这次没有拿到可靠的逐句对齐，暂不展示对照，避免把中文意群和英文句子错配。你的整段译文见「我的原文」。</p>
+      ${referenceBlock}
+    </section>`;
+  }
   const rows = detail.segments.map((seg, index) => {
     const no = index + 1;
     const zh = seg.zh || "";
     const ref = seg.reference || "";
-    const user = aligned.get(no) || mine[index] || "";
+    const user = aligned.get(no) || "";
     const points = pointTable
       .filter((point) => (seg.info_points || []).includes(point.id))
       .map((point) => point.zh);
     return `<details class="cet6-compare-row">
-      <summary><span>${escapeHtml(zh)}</span><span>${escapeHtml(user || "—")}</span><span>${escapeHtml(ref)}</span></summary>
+      <summary><span>${escapeHtml(zh)}</span><span class="${user ? "" : "hint"}">${escapeHtml(user || "—")}</span><span>${escapeHtml(ref)}</span></summary>
       <p class="hint">信息点：${escapeHtml(points.join("、") || "无")}</p>
     </details>`;
   }).join("");
-  const note = aligned.size
-    ? ""
-    : '<p class="hint">这次没有拿到逐句对齐，下面按原文顺序展示；你的整段译文见「我的原文」。</p>';
+  const missing = Math.max(0, detail.segments.length - aligned.size);
+  const note = missing
+    ? `<p class="hint">还有 ${missing} 个意群没有可靠对齐，显示为「—」；没有按英文句子顺序硬配。</p>`
+    : "";
   return `<section class="cet6-block">
     <h3>逐句对照 <span class="hint">点一行看信息点</span></h3>
     ${note}
@@ -114,8 +129,7 @@ function translationComparison(detail) {
       <div class="cet6-compare-head"><span>中文原句</span><span>我的译文</span><span>参考译文</span></div>
       ${rows}
     </div>
-    ${detail.reference ? `<details class="cet6-compare-full"><summary>整段参考译文</summary>
-      <p>${escapeHtml(detail.reference)}</p></details>` : ""}
+    ${referenceBlock}
   </section>`;
 }
 
@@ -202,7 +216,7 @@ export function feedbackHtml(detail) {
 
     <section class="cet6-block">
       <h3>错误清单</h3>
-      ${errorRows(review.errors)}
+      ${errorRows(review.errors, review.errors_dropped)}
     </section>
 
     <section class="cet6-block cet6-external">

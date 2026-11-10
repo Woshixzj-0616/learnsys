@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from . import rubric
 
-PROMPT_VERSION = "train-review-v5"
+PROMPT_VERSION = "train-review-v6"
 
 SYSTEM = (
     "你是严谨的中国大学英语六级（CET-6）评分员。"
@@ -30,7 +30,7 @@ def _dimension_rule(kind: str) -> str:
 
 def _error_schema(kind: str) -> str:
     type_hint = ("语法/搭配/用词/中式英语/拼写/标点/结构" if kind == "writing"
-                 else "漏译/误译/语法/搭配/术语/中式英语")
+                 else "漏译/误译/语法/搭配/术语/拼写/标点/中式英语")
     return (
         '{"type":"' + type_hint + '","severity":"严重|一般|建议",'
         '"quote":"学生原文里的精确片段","fix":"改成什么","why":"为什么",'
@@ -90,12 +90,19 @@ def translation_review_prompt(pack: dict, text: str, hard: dict) -> str:
         for row in pack.get("info_points") or [])
     term_lines = "\n".join(
         f"- {row.get('zh')} → {row.get('en')}" for row in pack.get("terms") or [])
+    segments = pack.get("segments") or []
+    segment_lines = "\n".join(
+        f"{index}. {row.get('zh', '')}" for index, row in enumerate(segments, 1))
+    segment_count = len(segments)
     flags = hard.get("flags") or []
     flag_lines = "\n".join(f"- {row['level']}：{row['message']}" for row in flags)
     return f"""【任务】批改下面这篇六级汉译英，定档并指出漏译、误译与语言错误。
 
 【中文原文】
 {pack.get('source_zh') or ''}
+
+【意群分段】（逐句对照用；共 {segment_count} 条，编号固定）
+{segment_lines or "（本题没有分段信息）"}
 
 【信息点清单】（评分用；缺哪个就把 id 放进 missing）
 {point_lines}
@@ -130,11 +137,15 @@ def translation_review_prompt(pack: dict, text: str, hard: dict) -> str:
 1. 每条错误的 quote 必须逐字出现在学生译文里，是连续片段；不要改写或加省略号。
 2. 最多 12 条错误；优先漏译、误译、改变原意，再列语法/搭配。
 3. missing 只能填上面清单里的 id；不要编造 id。
-4. alignment 的 segment 是中文段落序号（从 1 开始，按原文顺序），每个段落最多一条；
-   quote 必须逐字出现在学生译文里，对不上就不写。它只用于逐句对照，不参与评分。
+4. alignment 必须为上面【意群分段】的 {segment_count} 条**各给一条**，
+   segment 用清单里的编号（1–{segment_count}），不要合并、不要少给；
+   quote 只放该意群对应的英文片段（最多一两句），不能复制整段译文；
+   对不上就不写。它只用于逐句对照，不参与评分。
 5. 不要输出参考译文，不要输出任何 Markdown。
-6. gloss 只给单词或固定搭配写 2–12 字中文词义；整句片段、语法/标点问题留空，
-   不要编造。
+6. gloss：术语/搭配/拼写/用词类错误必须给 2–12 字中文词义；
+   语法/标点/漏译/误译等整句问题留空，不要编造。
+7. fix 必须是可以直接替换 quote 的英文片段；要解释理由写进 why，
+   不要把「use a coordinating structure」这类说明写进 fix。
 """
 
 

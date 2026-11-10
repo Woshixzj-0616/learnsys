@@ -11,23 +11,26 @@ class LexicalGateTest(unittest.TestCase):
     def test_spelling_accepts_single_word_only(self):
         entry = lexical.as_vocab_entry(
             error_type="拼写", quote="accommendation", fix="accommodation",
-            why="拼写错误")
-        self.assertEqual(entry, ("accommodation", "拼写错误"))
+            gloss="住宿")
+        self.assertEqual(entry, ("accommodation", "住宿"))
         self.assertIsNone(lexical.as_vocab_entry(
             error_type="拼写", quote="in different site",
-            fix="in different regions", why="拼写"))
+            fix="in different regions", gloss="地区"))
 
     def test_collocation_accepts_up_to_four_words(self):
         self.assertEqual(
             lexical.as_vocab_entry(error_type="搭配", quote="is largely different",
-                                   fix="vary greatly")[0],
+                                   fix="vary greatly", gloss="差异很大")[0],
             "vary greatly")
         self.assertEqual(
-            lexical.as_vocab_entry(error_type="术语", quote="spring paper",
-                                   fix="abundance year after year")[0],
+            lexical.as_vocab_entry(
+                error_type="术语", quote="spring paper",
+                fix="abundance year after year",
+                terms=[{"zh": "年年有余", "en": "abundance year after year"}])[0],
             "abundance year after year")
         self.assertIsNone(lexical.as_vocab_entry(
-            error_type="搭配", quote="x", fix="one two three four five"))
+            error_type="搭配", quote="x", fix="one two three four five",
+            gloss="一"))
 
     def test_sentence_types_never_enter_vocab(self):
         for kind in ("语法", "标点", "漏译", "误译", "改变原意", "结构", "中式英语"):
@@ -42,10 +45,36 @@ class LexicalGateTest(unittest.TestCase):
             why="different 不直接与 variety 搭配", gloss="差异很大")
         self.assertEqual(entry,
                          ("vary greatly", "差异很大｜different 不直接与 variety 搭配"))
-        # 非中文 gloss 不用，退回 why
+        # 非中文 gloss 不算释义；没有术语表就不入本，why 不能冒充释义
+        self.assertIsNone(lexical.as_vocab_entry(
+            error_type="搭配", fix="vary greatly", why="搭配错", gloss="vary"))
+
+    def test_term_table_supplies_meaning(self):
+        # 模型没给 gloss 时，用题库术语表里的中文，而不是错因说明
         entry = lexical.as_vocab_entry(
-            error_type="搭配", fix="vary greatly", why="搭配错", gloss="vary")
-        self.assertEqual(entry[1], "搭配错")
+            error_type="术语", quote="eletronic payment", fix="electronic payment",
+            why="电子支付拼写错误",
+            terms=[{"zh": "电子支付", "en": "electronic payment"}])
+        self.assertEqual(entry, ("electronic payment", "电子支付"))
+        entry = lexical.as_vocab_entry(
+            error_type="术语", quote="the spring festival",
+            fix="the Spring Festival", gloss="",
+            terms=[{"zh": "春节", "en": "the Spring Festival"}])
+        self.assertEqual(entry, ("the Spring Festival", "春节"))
+        # 术语表也查不到：不入本，避免「……拼写错误」这种假释义
+        self.assertIsNone(lexical.as_vocab_entry(
+            error_type="术语", quote="x", fix="breakthroughts",
+            why="拼写错误", terms=[{"zh": "电子支付", "en": "electronic payment"}]))
+        # 多词拼写：术语表认它才收（electronic payments → electronic payment）
+        self.assertEqual(
+            lexical.as_vocab_entry(
+                error_type="拼写", quote="eletronic payment",
+                fix="electronic payments", why="拼写错误",
+                terms=[{"zh": "电子支付", "en": "electronic payment"}]),
+            ("electronic payments", "电子支付"))
+        self.assertIsNone(lexical.as_vocab_entry(
+            error_type="拼写", quote="x", fix="chinese culture",
+            gloss="中国文化"))
 
     def test_sentence_punctuation_and_cjk_rejected(self):
         self.assertIsNone(lexical.as_vocab_entry(
@@ -94,11 +123,13 @@ class SentenceCardTest(unittest.TestCase):
                 {"type": "语法", "severity": "严重",
                  "quote": "a error", "fix": "an error", "why": "冠词"},
                 {"type": "搭配", "severity": "一般",
-                 "quote": "also wrong", "fix": "also incorrect", "why": "搭配"},
+                 "quote": "also wrong", "fix": "also incorrect", "why": "搭配",
+                 "gloss": "也不正确"},
                 {"type": "语法", "severity": "严重",
                  "quote": "wrong there", "fix": "incorrect there", "why": "用词"},
                 {"type": "搭配", "severity": "一般",
-                 "quote": "minor thing", "fix": "minor issue", "why": "搭配"},
+                 "quote": "minor thing", "fix": "minor issue", "why": "搭配",
+                 "gloss": "小问题"},
             ],
         }, text, pack)
         cards = {card["question"]: card for card in result["cards"]}
@@ -123,7 +154,8 @@ class SentenceCardTest(unittest.TestCase):
                 {"type": "语法", "quote": "School should",
                  "fix": "Schools should", "why": "主谓一致"},
                 {"type": "搭配", "quote": "psychological instruction",
-                 "fix": "psychological counselling", "why": "搭配"},
+                 "fix": "psychological counselling", "why": "搭配",
+                 "gloss": "心理辅导"},
             ],
             "suggestions": [],
             "minimal_fix": "Schools should provide psychological counselling.",

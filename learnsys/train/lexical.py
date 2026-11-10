@@ -42,12 +42,13 @@ def _clean(text) -> str:
 
 
 def as_vocab_entry(*, error_type: str, quote: str = "", fix: str = "",
-                   why: str = "", gloss: str = "") -> tuple[str, str] | None:
+                   why: str = "", gloss: str = "",
+                   terms=None) -> tuple[str, str] | None:
     """把一条改错判成生词本词条；不是词条返回 None。
 
     返回 `(word, meaning)`，与 `store.add_vocab` 的录入方向一致：
-    英文词头 + 中文释义。模型给了 `gloss` 时释义 = 「中文词义｜错因备注」，
-    否则退回 `why`（历史行为）。
+    英文词头 + 中文释义。释义来源固定为「模型 gloss → 题库术语表」，
+    两者都没有就不入本——`why` 是错因说明，不能冒充释义。
     """
     word = _clean(fix)
     if not word or word == _clean(quote):
@@ -58,23 +59,51 @@ def as_vocab_entry(*, error_type: str, quote: str = "", fix: str = "",
     kind = str(error_type or "")
     if "拼写" in kind:
         if len(words) > MAX_SPELLING_WORDS:
-            return None
-        return word, _meaning(gloss, why, "六级训练 · 拼写纠正")
+            # 多词「拼写」只有题库术语表认它才收（如 eletronic payment）。
+            term_meaning = _term_meaning(word, terms)
+            return (word, term_meaning) if term_meaning else None
+        meaning = _meaning(gloss, why, word, terms)
+        return (word, meaning) if meaning else None
     if any(token in kind for token in _SENTENCE_TYPES):
         return None
     if not any(token in kind for token in _VOCAB_TYPES):
         return None
     if len(words) > MAX_WORDS:
         return None
-    return word, _meaning(gloss, why, "六级训练 · 固定搭配")
+    meaning = _meaning(gloss, why, word, terms)
+    return (word, meaning) if meaning else None
 
 
-def _meaning(gloss: str, why: str, fallback: str) -> str:
+def _meaning(gloss: str, why: str, word: str, terms=None) -> str | None:
     note = _clean(why)
     gloss = _clean(gloss)
     if gloss and _CJK.search(gloss) and len(gloss) <= 40:
         return f"{gloss}｜{note}" if note and note != gloss else gloss
-    return note or fallback
+    return _term_meaning(word, terms)
+
+
+def _norm_term(text: str) -> str:
+    value = " ".join(str(text or "").lower().split())
+    value = re.sub(r"^(?:the|a|an)\s+", "", value)
+    if len(value) > 3 and value.endswith("s") and not value.endswith("ss"):
+        value = value[:-1]
+    return value
+
+
+def _term_meaning(word: str, terms) -> str | None:
+    """题库术语表里已有的中文；`en` 允许写成 `a / b` 的多译法。"""
+    target = _norm_term(word)
+    if not target:
+        return None
+    for row in terms or []:
+        if not isinstance(row, dict):
+            continue
+        for option in re.split(r"\s*/\s*", str(row.get("en") or "")):
+            if _norm_term(option) == target:
+                meaning = _clean(row.get("zh"))
+                if meaning:
+                    return meaning
+    return None
 
 
 def is_lexical_shape(text: str) -> bool:

@@ -9,73 +9,22 @@
 from __future__ import annotations
 
 import hashlib
-import re
-import unicodedata
 
 from . import lexical, rubric
+from .punctuation import with_mechanical
+from .textnorm import clip as _text
+from .textnorm import loose as _loose
+from .textnorm import quote_in_text, sentence_around
 
 MAX_ERRORS = 12
+# 一条错误/一段对齐的引用都应是一两个片段；超长说明模型在复制整段，
+# 截断会留下半截词，直接丢弃并计数更诚实。
+MAX_QUOTE_CHARS = 300
+MAX_ALIGN_CHARS = 360
 CARD_SEVERITIES = ("严重",)
 # 审题/结构问题无法“独立重练”成一张卡，只留在提交记录里（施工单 §3 铁律 3）。
 NON_CARD_TYPES = ("结构", "审题")
 _SENTENCE_CONCLUSIONS = ("准确", "基本准确", "有偏差", "误译")
-_LOOSE = re.compile(r"[^0-9a-z一-鿿]+")
-
-
-def _text(value, cap: int = 2000) -> str:
-    return str(value or "").strip()[:cap]
-
-
-def _normalized(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text or "").lower()
-    for old, new in (("’", "'"), ("‘", "'"), ("“", '"'), ("”", '"'),
-                     ("—", "-"), ("–", "-")):
-        text = text.replace(old, new)
-    return " ".join(text.split())
-
-
-def _loose(text: str) -> str:
-    """去掉标点与空白，只比内容顺序；防止句末标点差异误杀真引用。"""
-    return _LOOSE.sub("", _normalized(text))
-
-
-def quote_in_text(quote: str, text: str) -> bool:
-    needle = _normalized(quote)
-    if not needle:
-        return False
-    haystack = _normalized(text)
-    if needle in haystack:
-        return True
-    loose_needle = _loose(quote)
-    if len(loose_needle) < 4:
-        return False
-    return loose_needle in _loose(text)
-
-
-def sentence_around(text: str, quote: str) -> str:
-    """把 quote 扩成它在学生原文里的完整句子（确定性，不调模型）。
-
-    找不到 quote 时退回 quote 本身——调用方仍能建卡，只是正面不完整。
-    """
-    text = str(text or "")
-    quote = str(quote or "").strip()
-    if not quote:
-        return ""
-    index = text.lower().find(quote.lower())
-    if index < 0:
-        return quote
-    start = 0
-    for pos in range(index - 1, -1, -1):
-        if text[pos] in ".!?;":
-            start = pos + 1
-            break
-    end = len(text)
-    for pos in range(index + len(quote), len(text)):
-        if text[pos] in ".!?":
-            end = pos + 1
-            break
-    segment = text[start:end].strip()
-    return segment or quote
 
 
 def _severity(value) -> str:
@@ -84,14 +33,18 @@ def _severity(value) -> str:
 
 
 def filter_errors(raw, text: str, limit: int = MAX_ERRORS) -> tuple[list[dict], int]:
-    """逐条核对 quote；伪造或过短的引用直接丢弃。"""
+    """逐条核对 quote；伪造、过短或超长的引用直接丢弃。"""
     rows: list[dict] = []
     dropped = 0
     seen: set[tuple[str, str]] = set()
     for item in raw if isinstance(raw, list) else []:
         if not isinstance(item, dict):
             continue
-        quote = _text(item.get("quote"), 400)
+        raw_quote = str(item.get("quote") or "").strip()
+        if len(raw_quote) > MAX_QUOTE_CHARS:
+            dropped += 1
+            continue
+        quote = _text(raw_quote, MAX_QUOTE_CHARS)
         if not quote_in_text(quote, text):
             dropped += 1
             continue
@@ -238,14 +191,14 @@ def sentence_card(item: dict, text: str, must_fix: list[dict],
     }
 
 
-def _vocab_cards(errors: list[dict]) -> list[dict]:
+def _vocab_cards(errors: list[dict], terms=None) -> list[dict]:
     rows = []
     seen: set[str] = set()
     for row in errors:
         entry = lexical.as_vocab_entry(
             error_type=row.get("type", ""), quote=row.get("quote", ""),
             fix=row.get("fix", ""), why=row.get("why", ""),
-            gloss=row.get("gloss", ""))
+            gloss=row.get("gloss", ""), terms=terms)
         if entry is None:
             continue
         word, meaning = entry
@@ -272,6 +225,7 @@ def validate_writing(obj: dict, text: str, pack: dict,
         if cap_reason:
             reason = f"{reason} {cap_reason}".strip()
     errors, dropped = filter_errors(obj.get("errors"), text)
+    errors = with_mechanical(errors, text, MAX_ERRORS)
     template = hard.get("template") or rubric.template_check(text)
     return {
         "kind": "writing",
@@ -315,26 +269,44 @@ def _info_points(raw, pack: dict) -> dict:
     }
 
 
-def _alignment(raw, text: str, segment_count: int) -> list[dict]:
-    """逐句对照：模型给段落序号 + 学生译文片段；片段必须能在原文找到。"""
+def _fits_segment(quote: str, segment: dict | None) -> bool:
+    """对齐片段不能明显超过该意群的参考译文长度（防止模型整段复制）。"""
+    ref_words = len(str((segment or {}).get("reference") or "").split())
+    if not ref_words:
+        return True
+    return len(quote.split()) <= max(30, int(ref_words * 3.0) + 10)
+
+
+def _alignment(raw, text: str, segments: list[dict]) -> tuple[list[dict], int]:
+    """逐句对照：模型给意群编号 + 学生译文片段；片段必须能在原文找到。
+
+    超长片段（模型复制整段）直接丢弃并计数，不做截断——截断会留下半截词。
+    """
     rows: list[dict] = []
+    dropped = 0
     seen: set[int] = set()
+    count = len(segments or [])
     for item in raw if isinstance(raw, list) else []:
         if not isinstance(item, dict):
             continue
         try:
             segment = int(item.get("segment"))
         except (TypeError, ValueError):
+            dropped += 1
             continue
-        quote = _text(item.get("quote"), 400)
-        if not 1 <= segment <= segment_count or segment in seen:
+        if not 1 <= segment <= count or segment in seen:
+            dropped += 1
             continue
-        if not quote_in_text(quote, text):
+        quote = str(item.get("quote") or "").strip()
+        if (not quote or len(quote) > MAX_ALIGN_CHARS
+                or not _fits_segment(quote, segments[segment - 1])
+                or not quote_in_text(quote, text)):
+            dropped += 1
             continue
         seen.add(segment)
         rows.append({"segment": segment, "quote": quote})
     rows.sort(key=lambda row: row["segment"])
-    return rows
+    return rows, dropped
 
 
 def validate_translation(obj: dict, text: str, pack: dict,
@@ -354,6 +326,10 @@ def validate_translation(obj: dict, text: str, pack: dict,
         if cap_reason:
             reason = f"{reason} {cap_reason}".strip()
     errors, dropped = filter_errors(obj.get("errors"), text)
+    errors = with_mechanical(errors, text, MAX_ERRORS)
+    segments = pack.get("segments") or []
+    alignment, alignment_dropped = _alignment(obj.get("alignment"), text,
+                                              segments)
     return {
         "kind": "translation",
         "prompt_id": pack.get("id"),
@@ -364,8 +340,9 @@ def validate_translation(obj: dict, text: str, pack: dict,
         "dimensions": _dimensions(obj.get("dimensions"),
                                   rubric.TRANSLATION_DIMENSIONS),
         "info_points": points,
-        "alignment": _alignment(obj.get("alignment"), text,
-                                len(pack.get("segments") or [])),
+        "alignment": alignment,
+        "alignment_missing": max(0, len(segments) - len(alignment)),
+        "alignment_dropped": alignment_dropped,
         "errors": errors,
         "errors_dropped": dropped,
         "priorities": _priorities(obj.get("priorities")),
@@ -373,7 +350,7 @@ def validate_translation(obj: dict, text: str, pack: dict,
         "template": hard.get("template") or rubric.template_check(text),
         "hard_rules": hard,
         "cards": _translation_cards(pack, text, errors),
-        "vocab_cards": _vocab_cards(errors),
+        "vocab_cards": _vocab_cards(errors, pack.get("terms")),
     }
 
 
@@ -432,6 +409,26 @@ def validate_sentence(obj: dict, text: str, item: dict) -> dict:
     }
 
 
+def _merge_alignment(result: dict, samples: list[dict]) -> None:
+    """对齐与档位无关：三份样本按意群取并集，base 的条目优先。"""
+    if "alignment" not in result:
+        return
+    segment_count = (len(result.get("alignment") or [])
+                     + int(result.get("alignment_missing") or 0))
+    merged: dict[int, dict] = {}
+    for sample in [result] + list(samples):
+        for row in sample.get("alignment") or []:
+            try:
+                segment = int(row.get("segment"))
+            except (TypeError, ValueError):
+                continue
+            merged.setdefault(segment, row)
+    result["alignment"] = [merged[key] for key in sorted(merged)]
+    result["alignment_missing"] = max(0, segment_count - len(merged))
+    result["alignment_dropped"] = sum(
+        int(sample.get("alignment_dropped") or 0) for sample in samples)
+
+
 def merge_reviews(samples: list[dict], kind: str) -> dict:
     """三次评分取中位；base 取档位等于中位的那一份，错误清单跟着它。"""
     valid = [row for row in samples if row.get("band") is not None]
@@ -442,6 +439,7 @@ def merge_reviews(samples: list[dict], kind: str) -> dict:
     spread = max(bands) - min(bands)
     base = next((row for row in valid if row["band"] == median), valid[0])
     result = dict(base)
+    _merge_alignment(result, valid)
     result["stability"] = {
         "bands": bands, "spread": spread, "stable": spread <= 1,
         "samples": len(samples),

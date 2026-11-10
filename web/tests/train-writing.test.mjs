@@ -142,6 +142,45 @@ test("翻译复盘：逐句对照三列、信息点与术语卡", () => {
   assert.match(html, /春节/);
 });
 
+test("翻译复盘：没有对齐时不按英文句子顺序硬配", () => {
+  const html = feedbackHtml(detail({
+    kind: "translation",
+    text: "Spring Festival is important. Families eat together.",
+    segments: [
+      { zh: "春节很重要。", reference: "The Spring Festival is important.",
+        info_points: [] },
+      { zh: "家人一起吃饭。", reference: "Families eat together.",
+        info_points: [] },
+      { zh: "还有第三句。", reference: "A third sentence.",
+        info_points: [] },
+    ],
+    reference: "The Spring Festival is important. Families eat together.",
+    review: { ...detail().review, alignment: [] },
+  }));
+  assert.match(html, /没有拿到可靠的逐句对齐/);
+  assert.doesNotMatch(html, /中文原句/);
+});
+
+test("翻译复盘：未对齐意群显示破折号，不塞下一句", () => {
+  const html = feedbackHtml(detail({
+    kind: "translation",
+    text: "Spring Festival is important. Families eat together.",
+    segments: [
+      { zh: "春节很重要。", reference: "The Spring Festival is important.",
+        info_points: [] },
+      { zh: "家人一起吃饭。", reference: "Families eat together.",
+        info_points: [] },
+    ],
+    reference: "The Spring Festival is important. Families eat together.",
+    review: {
+      ...detail().review,
+      alignment: [{ segment: 1, quote: "Spring Festival is important." }],
+    },
+  }));
+  assert.match(html, /还有 1 个意群没有可靠对齐/);
+  assert.match(html, /<span class="hint">—<\/span>/);
+});
+
 test("批改视图：翻译信息点漏译", () => {
   const html = feedbackHtml(detail({
     kind: "translation", mode: "practice",

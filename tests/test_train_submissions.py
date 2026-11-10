@@ -212,7 +212,8 @@ class TrainSubmissionTest(unittest.TestCase):
             self.assertEqual(vocab["count"], 1)
             item = vocab["items"][0]
             self.assertEqual(item["word"], "the Spring Festival")
-            self.assertEqual(item["meaning"], "专有名词需要冠词")
+            # 没给 gloss 时用题库术语表的中文，而不是错因说明
+            self.assertEqual(item["meaning"], "春节")
             self.assertIn("Spring Festival → the Spring Festival", item["context"])
             wrong = store.wrong_items(conn, source="translation")
             self.assertEqual(len(wrong), 1)

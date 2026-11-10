@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from learnsys.train import content, review, rubric
+from learnsys.train import content, punctuation, review, rubric
 
 
 class QuoteTest(unittest.TestCase):
@@ -197,6 +197,63 @@ class ValidateTest(unittest.TestCase):
         self.assertEqual(result["errors_dropped"], 1)
         self.assertEqual(len(result["cards"]), 1)
         self.assertEqual(len(result["variants"]), 1)
+
+    def test_alignment_requires_per_segment_quote(self):
+        pack = content.pack("translation", "t01")
+        text = pack["reference"]
+        second = pack["segments"][1]["reference"]
+        result = review.validate_translation({
+            "band": 12,
+            "alignment": [
+                # 整段复制：超长，丢弃而不是截断
+                {"segment": 1, "quote": text},
+                {"segment": 2, "quote": second},
+                {"segment": 3, "quote": "not in the translation at all"},
+            ],
+        }, text, pack)
+        self.assertEqual(result["alignment"],
+                         [{"segment": 2, "quote": second}])
+        self.assertEqual(result["alignment_missing"], len(pack["segments"]) - 1)
+        self.assertEqual(result["alignment_dropped"], 2)
+
+    def test_merge_alignment_fills_missing_segments(self):
+        samples = [
+            {"band": 11, "alignment": [{"segment": 1, "quote": "A"}],
+             "alignment_missing": 1, "alignment_dropped": 1},
+            {"band": 12, "alignment": [{"segment": 2, "quote": "B"}],
+             "alignment_missing": 0, "alignment_dropped": 0},
+            {"band": 11, "alignment": [], "alignment_missing": 2,
+             "alignment_dropped": 2},
+        ]
+        result = review.merge_reviews(samples, "translation")
+        self.assertEqual(result["alignment"],
+                         [{"segment": 1, "quote": "A"},
+                          {"segment": 2, "quote": "B"}])
+        self.assertEqual(result["alignment_missing"], 0)
+        self.assertEqual(result["alignment_dropped"], 3)
+
+    def test_mechanical_punctuation_is_added_once(self):
+        text = "This is a test ,and it has development.Since then."
+        rows = punctuation.mechanical_errors(text)
+        self.assertTrue(rows)
+        self.assertTrue(all(row["type"] == "标点" for row in rows))
+        fixes = " ".join(row["fix"] for row in rows)
+        self.assertIn(", and", fixes)
+        self.assertIn(". Since", fixes)
+        # 模型已经报过的同一处不重复加
+        errors = punctuation.with_mechanical(
+            [{"type": "标点", "severity": "建议",
+              "quote": "development.Since", "fix": "development. Since",
+              "why": "句号后缺空格", "gloss": ""}], text)
+        self.assertEqual(sum("development.Since" in row["quote"] for row in errors), 1)
+
+    def test_mechanical_errors_are_not_crowded_out(self):
+        text = "This is a test ,and it has development.Since then."
+        filled = [{"type": "拼写", "severity": "建议", "quote": "test",
+                   "fix": "tests", "why": "", "gloss": ""}] * 12
+        rows = punctuation.with_mechanical(filled, text, limit=12)
+        self.assertEqual(len(rows), 12)
+        self.assertTrue(any(row["type"] == "标点" for row in rows))
 
     def test_merge_reviews_median_and_instability(self):
         samples = [

@@ -57,7 +57,7 @@ class TrainVocabBackfillTest(unittest.TestCase):
         self.assertNotIn("the danger of dying out", rows,
                          "超过词条形态的改错不进生词本")
         translation = rows["spring couplets"]
-        self.assertEqual(translation["meaning"], "“春联”术语错误")
+        self.assertEqual(translation["meaning"], "春联")
         self.assertIn("spring paper → spring couplets", translation["context"])
         self.assertEqual(translation["paper_title"], "春节与年夜饭")
 
