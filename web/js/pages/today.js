@@ -16,13 +16,21 @@ export async function mount(ctx) {
   ctx.setActions("");
   document.title = "今日 · 学习工作台";
 
-  const [overview, today, settings, briefing, home] = await Promise.all([
-    api.get("/api/overview"),
-    api.get("/api/today"),
+  // 今日页一次取齐；旧后台没有 /api/workbench 时退回三个原接口。
+  const [board, settings, briefing] = await Promise.all([
+    api.get("/api/workbench").catch(async () => {
+      const [overview, today, home] = await Promise.all([
+        api.get("/api/overview"), api.get("/api/today"),
+        api.get("/api/home").catch(() => null),
+      ]);
+      return { overview, today, home };
+    }),
     api.get("/api/settings").catch(() => null),
     api.get("/api/briefing/today").catch(() => null),
-    api.get("/api/home").catch(() => null),
   ]);
+  const overview = board.overview || {};
+  const today = board.today || {};
+  const home = board.home || null;
 
   const goalTasks = overview.today?.goal_tasks || [];
   renderOnboarding(settings);

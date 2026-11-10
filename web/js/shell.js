@@ -46,9 +46,9 @@ const GROUP_OF = {
   materials: "资料",
   settings: "工具",
 };
-// 旧 hash 仍可直达（#/cet6、#/daily、#/english-review、#/agents 等），只是不占侧栏。
+// 旧 hash 仍可直达（#/daily、#/english-review、#/agents 等）；#/cet6 由 legacyEnglishHash 重定向。
 const HIDDEN_NAV = new Set([
-  "cet6", "daily", "english-review", "wrongbook", "vocab", "review",
+  "daily", "english-review", "wrongbook", "vocab", "review",
   "quiz", "knowledge", "netlab", "briefing", "life", "art", "browser",
   "recordings", "agents", "agentruns", "plugins", "projects", "ask",
 ]);

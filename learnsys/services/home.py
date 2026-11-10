@@ -14,8 +14,8 @@ from learnsys.services import today as today_service
 from learnsys.services.life import items as life_items_service
 
 
-def _learning(conn, day: str) -> dict:
-    summary = today_service.learning_summary(conn, day)
+def _learning(conn, day: str, learning: dict | None = None) -> dict:
+    summary = learning or today_service.learning_summary(conn, day)
     plan = summary["plan"]
     return {
         "date": summary["date"],
@@ -82,12 +82,15 @@ def _life(conn, day: str) -> dict:
     }
 
 
-def payload(conn, day: str = "") -> dict:
-    """三域首页数据：{date, learning, work, life}。空数据也返回完整形状。"""
+def payload(conn, day: str = "", learning: dict | None = None) -> dict:
+    """三域首页数据：{date, learning, work, life}。空数据也返回完整形状。
+
+    `learning` 可由今日页聚合接口传入，避免重复算今日目标。
+    """
     day = str(day or datetime.date.today().isoformat())[:10]
     return {
         "date": day,
-        "learning": _learning(conn, day),
+        "learning": _learning(conn, day, learning),
         "work": _work(conn),
         "life": _life(conn, day),
     }

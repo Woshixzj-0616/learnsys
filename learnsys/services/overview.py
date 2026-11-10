@@ -100,14 +100,17 @@ def _achievements(counts_all: dict, streak: int, focus_all: float) -> list[dict]
     return out
 
 
-def build(conn, today: str = "") -> dict:
-    """学习台首页：学习点、等级、连续天数、周统计、成就、今日目标。"""
+def build(conn, today: str = "", plan: dict | None = None) -> dict:
+    """学习台首页：学习点、等级、连续天数、周统计、成就、今日目标。
+
+    `plan` 可由今日页聚合接口传入，避免同一次页面加载重复算三遍。
+    """
     today = today or datetime.date.today().isoformat()
     today_counts = stats.activity_counts(conn, today)
     today_focus = _focus_minutes(conn, today)
     today_xp = _xp(today_counts, today_focus)
     today_recorded = study_time.recorded(conn, today)
-    today_plan = day_plan.build(conn, today)
+    today_plan = plan or day_plan.build(conn, today)
 
     all_counts = stats.activity_counts(conn)
     all_focus = _focus_minutes(conn)

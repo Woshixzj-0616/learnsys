@@ -29,7 +29,7 @@ class PluginRegistryTest(unittest.TestCase):
         self.assertIn("plugins", ids)
         self.assertEqual(ids[0], "today")
         self.assertEqual(ids[-1], "plugins")
-        self.assertLess(ids.index("netlab"), ids.index("cet6"))
+        self.assertLess(ids.index("english"), ids.index("netlab"))
         netlab = next(m for m in data["modules"] if m["id"] == "netlab")
         self.assertEqual(netlab["status"], "ready")
         self.assertTrue(netlab["home"])

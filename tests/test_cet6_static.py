@@ -92,15 +92,14 @@ class Cet6StaticTest(unittest.TestCase):
 
 
 class RegistryTest(unittest.TestCase):
-    def test_cet6_module_is_ready(self):
+    def test_cet6_plugin_is_retired(self):
+        """旧 #/cet6 插件已退休；入口统一由 shell.js 重定向到 #/english。"""
         from learnsys.modules import load_registry
         data = load_registry()
-        mod = next(m for m in data["modules"] if m["id"] == "cet6")
-        self.assertEqual(mod["status"], "ready")
-        # P24 起外层是四标签原生页；精听 iframe 在 tabs 里，不再作为插件 entry
-        self.assertEqual(mod["type"], "native-page")
-        self.assertEqual(mod["entry"], "pages/cet6.html")
-        self.assertIn("cet6/index.js", mod["script"])
+        self.assertNotIn("cet6", [m["id"] for m in data["modules"]])
+        shell = (pathlib.Path(__file__).resolve().parents[1]
+                 / "web/js/shell.js").read_text(encoding="utf-8")
+        self.assertIn("legacyEnglishHash", shell)
 
     def test_iframe_branch_does_not_fetch_web_page(self):
         """iframe 的 entry 是 /cet6/…，不能先去 /web/cet6/… 拿页面（真踩过 404）。"""

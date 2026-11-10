@@ -46,10 +46,13 @@ def learning_summary(conn, day: str = "") -> dict:
     }
 
 
-def payload(conn, day: str = "") -> dict:
-    """一天的学习概况：时长、专注、问答、转写、六级断点、行动卡。"""
+def payload(conn, day: str = "", learning: dict | None = None) -> dict:
+    """一天的学习概况：时长、专注、问答、转写、六级断点、行动卡。
+
+    `learning` 可由今日页聚合接口传入，避免重复算今日目标。
+    """
     day = day or datetime.date.today().isoformat()
-    learning = learning_summary(conn, day)
+    learning = learning or learning_summary(conn, day)
     recorded = study_time.recorded(conn, day)
     focus_stats = store.focus_stats(conn, day=day)
     recent = store.recent_asks(conn, limit=10, day=day, with_conversation=True)
