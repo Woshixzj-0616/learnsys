@@ -3,7 +3,7 @@
  * 目标：PWA 能装、断网时至少能打开壳并提示「后台未连接」；
  * 数据永远走本地 FastAPI，不在这里缓存。
  */
-const CACHE = "learnsys-web-v74";
+const CACHE = "learnsys-web-v75";
 const CORE = [
   "/",
   "/manifest.webmanifest",
@@ -68,6 +68,8 @@ const CORE = [
   "/web/js/pages/english/index.js",
   "/web/js/pages/english/listening.js",
   "/web/js/pages/english/ai.js",
+  "/web/js/pages/english/ai-session.js",
+  "/web/js/pages/english/ai-dock.js",
   "/web/js/pages/english/ai-view.js",
   "/web/js/pages/english/ai-context.js",
   "/web/js/pages/english/ai-floating.js",
@@ -79,6 +81,8 @@ const CORE = [
   "/web/js/pages/english/deep-link.js",
   "/web/js/pages/english/cet6-contexts.js",
   "/web/js/pages/english/translation.js",
+  "/web/js/pages/english/translation-data.js",
+  "/web/js/pages/english/translation-flow.js",
   "/web/js/pages/english/translation-views.js",
   "/web/js/pages/english/translation-actions.js",
   "/web/js/pages/english/review.js",
@@ -112,6 +116,9 @@ const CORE = [
   "/web/js/pages/quiz.js",
   "/web/js/pages/wrongbook.js",
   "/web/js/pages/materials.js",
+  "/web/js/pages/materials-list.js",
+  "/web/js/pages/materials-detail.js",
+  "/web/js/pages/materials-import.js",
   "/web/js/pages/materials-roots.js",
   "/web/js/pages/quiz-parse.js",
   "/web/js/pages/knowledge.js",

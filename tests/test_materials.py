@@ -374,7 +374,7 @@ class TestMaterialPlugin(unittest.TestCase):
 
     def test_material_quiz_entry_exists(self):
         root = pathlib.Path(__file__).resolve().parents[1]
-        materials = (root / "web" / "js" / "pages" / "materials.js").read_text(encoding="utf-8")
+        materials = (root / "web" / "js" / "pages" / "materials-detail.js").read_text(encoding="utf-8")
         quiz = (root / "web" / "js" / "pages" / "quiz.js").read_text(encoding="utf-8")
         self.assertIn("用这份资料出题", materials)
         self.assertIn("quiz?material=", materials)
