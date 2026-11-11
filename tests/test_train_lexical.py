@@ -17,20 +17,39 @@ class LexicalGateTest(unittest.TestCase):
             error_type="拼写", quote="in different site",
             fix="in different regions", gloss="地区"))
 
-    def test_collocation_accepts_up_to_four_words(self):
-        self.assertEqual(
-            lexical.as_vocab_entry(error_type="搭配", quote="is largely different",
-                                   fix="vary greatly", gloss="差异很大")[0],
-            "vary greatly")
+    def test_multiword_only_terms_or_proper_nouns(self):
+        # 普通搭配/句子片段改错留在整句卡，不进生词本
+        self.assertIsNone(lexical.as_vocab_entry(
+            error_type="搭配", quote="is largely different",
+            fix="vary greatly", gloss="差异很大"))
+        self.assertIsNone(lexical.as_vocab_entry(
+            error_type="搭配", quote="x", fix="financial support",
+            gloss="经济支持"))
+        self.assertIsNone(lexical.as_vocab_entry(
+            error_type="搭配", quote="x", fix="pay New Year greetings to",
+            gloss="拜年"))
+        # 术语表里的术语、明显专有名词仍收
         self.assertEqual(
             lexical.as_vocab_entry(
                 error_type="术语", quote="spring paper",
                 fix="abundance year after year",
                 terms=[{"zh": "年年有余", "en": "abundance year after year"}])[0],
             "abundance year after year")
+        self.assertEqual(
+            lexical.as_vocab_entry(error_type="术语", quote="x",
+                                   fix="the Chinese Dream", gloss="中国梦")[0],
+            "the Chinese Dream")
         self.assertIsNone(lexical.as_vocab_entry(
             error_type="搭配", quote="x", fix="one two three four five",
             gloss="一"))
+        # 术语表里的多译法（带 /）也要能匹配
+        self.assertEqual(
+            lexical.as_vocab_entry(
+                error_type="术语", quote="x",
+                fix="remote medicine / telemedicine",
+                terms=[{"zh": "远程医疗",
+                        "en": "remote medicine / telemedicine"}])[0],
+            "remote medicine / telemedicine")
 
     def test_sentence_types_never_enter_vocab(self):
         for kind in ("语法", "标点", "漏译", "误译", "改变原意", "结构", "中式英语"):
@@ -38,16 +57,21 @@ class LexicalGateTest(unittest.TestCase):
                 self.assertIsNone(lexical.as_vocab_entry(
                     error_type=kind, quote="School should",
                     fix="Schools should", why="主谓一致"))
+        # 就算模型标成「用词」，主谓片段也不能进生词本
+        self.assertIsNone(lexical.as_vocab_entry(
+            error_type="用词", quote="government invests",
+            fix="the government has invested", gloss="政府已投入"))
 
     def test_gloss_becomes_meaning_prefix(self):
         entry = lexical.as_vocab_entry(
-            error_type="搭配", quote="is largely different", fix="vary greatly",
-            why="different 不直接与 variety 搭配", gloss="差异很大")
-        self.assertEqual(entry,
-                         ("vary greatly", "差异很大｜different 不直接与 variety 搭配"))
+            error_type="术语", quote="eletronic payment", fix="electronic payment",
+            why="拼写错误", gloss="电子支付",
+            terms=[{"zh": "电子支付", "en": "electronic payment"}])
+        self.assertEqual(entry, ("electronic payment", "电子支付｜拼写错误"))
         # 非中文 gloss 不算释义；没有术语表就不入本，why 不能冒充释义
         self.assertIsNone(lexical.as_vocab_entry(
-            error_type="搭配", fix="vary greatly", why="搭配错", gloss="vary"))
+            error_type="术语", fix="electronic payment", why="拼写错误",
+            gloss="electronic payment"))
 
     def test_term_table_supplies_meaning(self):
         # 模型没给 gloss 时，用题库术语表里的中文，而不是错因说明
@@ -101,6 +125,21 @@ class LexicalGateTest(unittest.TestCase):
         self.assertFalse(lexical.is_lexical_shape(
             "the rate of dropping out of school"))
 
+    def test_proper_noun_shape(self):
+        for word in ("the Chinese Dream",
+                     "the Chang'e lunar exploration project",
+                     "the Spring Festival"):
+            with self.subTest(word=word):
+                self.assertTrue(lexical.is_proper_noun_shape(word))
+        # 不以限定词开头的大写短语交给题库术语表兜底（New Year's Eve 在 t01 术语表里）
+        for word in ("New Year's Eve", "pay New Year greetings to",
+                     "the government has invested",
+                     "a powerful driving force",
+                     "financial support",
+                     "Schools should"):
+            with self.subTest(word=word):
+                self.assertFalse(lexical.is_proper_noun_shape(word))
+
 
 class SentenceCardTest(unittest.TestCase):
     PACK = {"id": "t99", "source_zh": "第一句。第二句。",
@@ -140,8 +179,8 @@ class SentenceCardTest(unittest.TestCase):
         self.assertIn("`also wrong` → **also incorrect**", second["answer"])
         self.assertIn("`wrong there` → **incorrect there**", second["answer"])
         self.assertEqual(second["note"], "2 处必改 · 整句重译")
-        self.assertEqual([row["word"] for row in result["vocab_cards"]],
-                         ["also incorrect", "minor issue"])
+        # 普通搭配改错只留在整句卡，不再进生词本
+        self.assertEqual(result["vocab_cards"], [])
 
     def test_sentence_card_uses_chinese_front_and_full_answer(self):
         item = {"id": "x999", "zh": "学校应为学生提供心理辅导。",
@@ -168,8 +207,8 @@ class SentenceCardTest(unittest.TestCase):
         self.assertIn("`School should` → **Schools should**", card["answer"])
         self.assertIn("`psychological instruction` → **psychological counselling**",
                       card["answer"])
-        self.assertEqual([row["word"] for row in result["vocab_cards"]],
-                         ["psychological counselling"])
+        # 普通搭配改错只留在整句卡，不再进生词本
+        self.assertEqual(result["vocab_cards"], [])
 
 
 if __name__ == "__main__":

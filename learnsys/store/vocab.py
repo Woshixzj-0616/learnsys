@@ -88,6 +88,8 @@ def add_vocab(conn: sqlite3.Connection, *, word: str, meaning: str = "",
             item = _vocab_dict(row)
             updates = {key: value for key, value in incoming.items()
                        if value and not item.get(key)}
+            if item.get("status") == "archived":
+                updates["status"] = "active"   # 手动/再次加入时恢复复习
             try:
                 wanted_sentence = int(sentence or 0)
             except (TypeError, ValueError):

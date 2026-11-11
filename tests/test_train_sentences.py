@@ -97,13 +97,9 @@ class SentenceServiceTest(unittest.TestCase):
             self.assertEqual(review["errors_dropped"], 1)
             self.assertEqual(len(review["cards"]), 1)
             self.assertEqual(data["cards_added"], 1)
-            self.assertEqual(data["vocab_added"], 1)
-            vocab = store.list_vocab(conn)["items"]
-            self.assertEqual(len(vocab), 1)
-            self.assertEqual(vocab[0]["word"], "the urban population")
-            self.assertEqual(vocab[0]["meaning"], "城市人口｜用词不准")
-            self.assertIn("一句一译", vocab[0]["context"])
-            self.assertIn("city people", vocab[0]["context"])
+            # 「the urban population」是普通搭配，只留在整句卡，不进生词本
+            self.assertEqual(data["vocab_added"], 0)
+            self.assertEqual(store.list_vocab(conn)["items"], [])
 
             attempted = store.sentence_attempted(conn)
             self.assertIn("x001", attempted)
@@ -144,6 +140,30 @@ class SentenceServiceTest(unittest.TestCase):
             again = service.review_sentence(conn, "x001", TEXT)
             self.assertEqual(again["cards_added"], 0, "同一错误不重复收卡")
             self.assertEqual(len(store.wrong_items(conn, source="translation")), 1)
+        finally:
+            conn.close()
+
+    def test_review_admits_proper_noun_to_vocab(self):
+        payload = dict(PAYLOAD)
+        payload["must_fix"] = [
+            {"type": "术语", "quote": "city people", "fix": "the Chinese Dream",
+             "why": "专有名词", "gloss": "中国梦"},
+        ]
+
+        def run(request, cfg=None, abort=None, **_kwargs):
+            yield AgentEvent("done", data={
+                "text": json.dumps(payload, ensure_ascii=False),
+                "usage": {"input_tokens": 1, "output_tokens": 1}})
+
+        conn = store.connect()
+        try:
+            with mock.patch.object(train_review.agent, "run", run):
+                data = service.review_sentence(conn, "x001", TEXT)
+            self.assertEqual(data["vocab_added"], 1)
+            vocab = store.list_vocab(conn)["items"]
+            self.assertEqual(len(vocab), 1)
+            self.assertEqual(vocab[0]["word"], "the Chinese Dream")
+            self.assertEqual(vocab[0]["meaning"], "中国梦｜专有名词")
         finally:
             conn.close()
 

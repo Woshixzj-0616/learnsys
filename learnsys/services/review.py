@@ -5,9 +5,11 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 
 from learnsys import store
 from learnsys.services import fsrs
+from learnsys.train import content as train_content
 
 ITEM_TYPES = store.REVIEW_ITEM_TYPES
 
@@ -101,6 +103,51 @@ def bump_review_stage(conn, item_ids: list[int]) -> None:
         review_wrong_item(conn, int(item_id), "remember")
 
 
+_TOPIC_SUFFIX = re.compile(r"（[^）]*）$")
+
+
+def _writing_topics() -> list[tuple[str, str]]:
+    """第 3 关换主题池：复用写作题库标题，去掉「（2025-12 第三套）」这类来源后缀。"""
+    rows: list[tuple[str, str]] = []
+    for row in train_content.writing_items():
+        title = _TOPIC_SUFFIX.sub("", str(row.get("title") or "").strip()).strip()
+        if title:
+            rows.append((str(row.get("id") or ""), title))
+    rows.sort(key=lambda row: (row[0], row[1]))
+    return rows
+
+
+def _cjk_bigrams(text: str) -> set[str]:
+    chars = [ch for ch in str(text or "") if 0x4E00 <= ord(ch) <= 0x9FFF]
+    return {chars[index] + chars[index + 1] for index in range(len(chars) - 1)}
+
+
+def _topic_is_distinct(title: str, example_zh: str) -> bool:
+    """主题和原例句太像就会泄题，至少隔开两个中文二字片段。"""
+    if not example_zh:
+        return True
+    return len(_cjk_bigrams(title) & _cjk_bigrams(example_zh)) < 2
+
+
+def _attach_topics(items: list[dict]) -> None:
+    """只给写作句型卡附换主题；主题随 reps 轮换，同一天重复读队列不变。"""
+    topics = _writing_topics()
+    if not topics:
+        return
+    for item in items:
+        if item.get("item_type") != "accum":
+            continue
+        if item.get("accum_kind") != "writing":
+            continue
+        example_zh = str(item.get("example_zh") or "").strip()
+        pool = [title for _, title in topics
+                if _topic_is_distinct(title, example_zh)]
+        if not pool:
+            continue
+        seed = int(item.get("item_id") or 0) + int(item.get("reps") or 0)
+        item["topic"] = pool[seed % len(pool)]
+
+
 def queue(conn, *, limit: int = 50, item_type: str = "",
           kind: str = "", today=None) -> dict:
     store.seed_review_states(conn)
@@ -116,11 +163,13 @@ def queue(conn, *, limit: int = 50, item_type: str = "",
             conn, limit=limit, today=day,
             item_types=spec["item_types"], sources=spec["sources"],
             accum_kinds=spec.get("accum_kinds", ()), max_new=new_left)
+        _attach_topics(items)
         return {"items": items, "count": len(items), "kind": kind,
                 "new_per_day": NEW_PER_DAY, "new_remaining": new_left,
                 "quota_types": list(spec.get("quota_types", spec["item_types"]))}
     items = store.due_review_items(conn, limit=limit, item_type=item_type,
                                    today=day)
+    _attach_topics(items)
     return {"items": items, "count": len(items)}
 
 

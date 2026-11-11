@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import datetime as dt
 import pathlib
+import re
 import tempfile
 import unittest
 from unittest import mock
 
 from learnsys import store
 from learnsys.services import review
+from learnsys.train import content as train_content
 
 EPOCH = store.DAILY_REVIEW_EPOCH.isoformat()
 BEFORE = (store.DAILY_REVIEW_EPOCH - dt.timedelta(days=1)).isoformat()
@@ -117,6 +119,42 @@ class ReviewAccumTest(unittest.TestCase):
         word = review.queue(self.conn, kind="word", today=TODAY)
         self.assertEqual(sentence["quota_types"], ["wrong"])
         self.assertEqual(word["quota_types"], ["vocab"])
+
+    def test_topic_skips_example_overlap(self):
+        self.assertFalse(review._topic_is_distinct(
+            "大学生该不该做兼职", "近年来，大学生是否应该兼职已成为热议话题。"))
+        self.assertTrue(review._topic_is_distinct(
+            "短视频对注意力的影响", "近年来，大学生是否应该兼职已成为热议话题。"))
+
+    def test_writing_card_gets_rotating_topic(self):
+        sentence = review.queue(self.conn, kind="sentence", today=TODAY)
+        card = next(item for item in sentence["items"]
+                    if item["item_type"] == "accum"
+                    and item.get("accum_kind") == "writing")
+        titles = {
+            re.sub(r"（[^）]*）$", "", str(row.get("title") or "").strip()).strip()
+            for row in train_content.writing_items()
+            if str(row.get("title") or "").strip()
+        }
+        self.assertTrue(card.get("topic"))
+        self.assertIn(card["topic"], titles)
+
+        first = card["topic"]
+        self.conn.execute(
+            "UPDATE review_state SET reps = 1 "
+            "WHERE item_type = 'accum' AND item_id = ?", (self.writing_id,))
+        self.conn.commit()
+        again = review.queue(self.conn, kind="sentence", today=TODAY)
+        card2 = next(item for item in again["items"]
+                     if item["item_type"] == "accum"
+                     and item.get("accum_kind") == "writing")
+        self.assertNotEqual(first, card2["topic"])
+
+        word = review.queue(self.conn, kind="word", today=TODAY)
+        phrase = next(item for item in word["items"]
+                      if item["item_type"] == "accum"
+                      and item.get("accum_kind") == "translation")
+        self.assertNotIn("topic", phrase)
 
     def test_rating_accum_card(self):
         result = review.review(self.conn, "accum", self.phrase_id, 3)

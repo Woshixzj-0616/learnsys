@@ -83,6 +83,15 @@ class VocabStoreTest(unittest.TestCase):
         archived = store.list_vocab(self.conn, status="archived")
         self.assertEqual(archived["items"][0]["meaning"], "租约；租赁")
 
+    def test_add_reactivates_archived(self):
+        item, _ = store.add_vocab(self.conn, word="lease", meaning="租约")
+        store.update_vocab(self.conn, item["id"], status="archived")
+        again, created = store.add_vocab(
+            self.conn, word="lease", meaning="租约")
+        self.assertFalse(created)
+        self.assertEqual(again["status"], "active")
+        self.assertEqual(store.list_vocab(self.conn)["count"], 1)
+
     def test_delete(self):
         item, _ = store.add_vocab(self.conn, word="tenant")
         self.assertTrue(store.delete_vocab(self.conn, item["id"]))

@@ -173,7 +173,8 @@ def _translation(item: dict, errors: list[str]) -> None:
     if missing:
         errors.append(f"{where}：信息点没有被任何段落覆盖：{'、'.join(sorted(missing))}")
     terms = item.get("terms")
-    if _rows(terms, "terms", 8, 12, errors, where):
+    # 2025-12 第三套（t25）术语密度高，上限放到 15；下限与结构要求不变。
+    if _rows(terms, "terms", 8, 15, errors, where):
         for index, row in enumerate(terms, start=1):
             if not isinstance(row, dict) or not all(
                     str(row.get(key) or "").strip() for key in ("zh", "en")):

@@ -5,8 +5,9 @@ import { renderInto } from "../markdown.js";
 import { escapeHtml, toast } from "../ui.js";
 import {
   ROUND_SIZE, cardKey, clearRound, loadRound, localDay, matchesAnswer,
-  saveRound, shouldDecrementQuota, wordPrompt,
+  saveRound, shouldDecrementQuota, wordPrompt, writingStage,
 } from "./english-review-round.js";
+import { writingCardHtml } from "./english-review-writing.js";
 
 const RATING_LABELS = { 1: "忘了", 2: "模糊", 3: "记得", 4: "简单" };
 const SOURCE_LABELS = {
@@ -27,6 +28,7 @@ let queue = [];
 let index = 0;
 let revealed = false;
 let typed = "";
+let hintUsed = false;
 let counts = { sentence: {}, word: {} };
 let reviewed = { sentence: 0, word: 0 };
 let countsLoaded = false;
@@ -60,6 +62,11 @@ function sourceLabel(card) {
   return SOURCE_LABELS[card?.source] || "英语";
 }
 
+function cardStage(card) {
+  return card?.item_type === "accum" && card?.accum_kind === "writing"
+    ? writingStage(card) : 0;
+}
+
 function hashTab() {
   const query = (location.hash.split("?")[1] || "");
   return new URLSearchParams(query).get("tab") || "";
@@ -75,6 +82,7 @@ export async function mount(ctx) {
   index = 0;
   revealed = false;
   typed = "";
+  hintUsed = false;
   roundDone = 0;
   counts = { sentence: {}, word: {} };
   reviewed = { sentence: 0, word: 0 };
@@ -178,6 +186,7 @@ async function startRound({ reset = false } = {}) {
   index = 0;
   revealed = false;
   typed = "";
+  hintUsed = false;
   if (reset) clearRound(storage(), kind, localDay());
   const saved = reset ? null : loadState();
   if (saved) {
@@ -210,10 +219,13 @@ async function startRound({ reset = false } = {}) {
     queue = Array.isArray(data.items) ? data.items : [];
     quotaTypes = Array.isArray(data.quota_types) ? data.quota_types : [];
     newRemaining = Number(data.new_remaining ?? 0);
+    const firstStage = queue.length ? cardStage(queue[0]) : 0;
     if (saved?.current && queue.length
-        && cardKey(queue[0]) === saved.current.key) {
+        && cardKey(queue[0]) === saved.current.key
+        && Number(saved.current.stage ?? firstStage) === firstStage) {
       typed = String(saved.current.typed || "");
       revealed = !!saved.current.revealed;
+      hintUsed = !!saved.current.hintUsed;
     }
     paintHint();
     renderCard();
@@ -272,10 +284,18 @@ function meta(card) {
     ${tags ? `<span>${escapeHtml(tags)}</span>` : ""}</div>`;
 }
 
-function ratings() {
-  return `<div class="er-ratings">${[1, 2, 3, 4].map((rating) => `
+const RATING_HINTS = {
+  1: ["几乎没写出来", "写出大意，句型没套上", "句型用上，个别词不同", "准确，还能换说法"],
+  2: ["想不起来", "只想起一半", "基本还原", "完整准确"],
+  3: ["写不出", "写了但句型没用对", "句型用对", "句型表达自然"],
+};
+
+function ratings(stage = 0) {
+  const hints = RATING_HINTS[stage] || [];
+  return `<div class="er-ratings${hints.length ? " anchors" : ""}">${[1, 2, 3, 4].map((rating) => `
     <button class="btn ${rating === 3 ? "btn-primary" : ""}" type="button"
-      data-rating="${rating}">${RATING_LABELS[rating]}</button>`).join("")}</div>`;
+      data-rating="${rating}"><span class="er-rating-main">${RATING_LABELS[rating]}</span>
+      ${hints[rating - 1] ? `<small>${escapeHtml(hints[rating - 1])}</small>` : ""}</button>`).join("")}</div>`;
 }
 
 function typedBlock() {
@@ -323,31 +343,13 @@ function renderSentence(card) {
 }
 
 function renderWritingPattern(card) {
-  const pattern = card.pattern || card.answer || "";
-  const example = String(card.example || "").trim();
-  nodes.body.innerHTML = `
-    <div class="er-card">
-      ${meta(card)}
-      <div class="er-label">中文用途</div>
-      <div class="er-prompt">${escapeHtml(card.question || "")}</div>
-      <div class="er-label">句型</div>
-      <div class="er-pattern">${escapeHtml(pattern || "（这条没有句型）")}</div>
-      ${revealed ? "" : `<textarea class="er-typed" id="er-typed"
-        autocomplete="off" autocapitalize="off" spellcheck="false"
-        placeholder="用这个句型自己写一句英文，再对照参考例句">${escapeHtml(typed)}</textarea>`}
-      <div class="er-reveal"><button class="btn btn-primary" type="button" id="er-show">
-        ${revealed ? "收起例句" : "看参考例句"}</button></div>
-      <div class="er-answer" ${revealed ? "" : "hidden"}>
-        <div class="er-block">
-          <div class="er-label">参考例句</div>
-          <div class="er-example">${example ? escapeHtml(example) : "（这条没有例句）"}</div>
-          ${card.example_zh ? `<div class="er-example-zh">${escapeHtml(card.example_zh)}</div>` : ""}
-        </div>
-        ${typed ? typedBlock() : ""}
-        ${card.note ? `<div class="er-note">${escapeHtml(card.note)}</div>` : ""}
-        ${ratings()}
-      </div>
-    </div>`;
+  const stage = writingStage(card);
+  nodes.body.innerHTML = writingCardHtml(card, {
+    stage, typed, revealed, hintUsed,
+  }, {
+    metaHtml: meta(card),
+    ratingsHtml: ratings(stage),
+  });
 }
 
 function renderWord(card) {
@@ -394,7 +396,9 @@ function persistDraft() {
   const card = queue[index];
   saveState({
     done: roundDone,
-    current: card ? { key: cardKey(card), typed, revealed } : null,
+    current: card ? {
+      key: cardKey(card), stage: cardStage(card), typed, revealed, hintUsed,
+    } : null,
   });
 }
 
@@ -407,6 +411,14 @@ async function onClick(event) {
   }
   if (event.target.closest("#er-more")) {
     await startRound({ reset: true });
+    return;
+  }
+  if (event.target.closest("#er-hint")) {
+    hintUsed = true;
+    clearTimeout(draftTimer);
+    persistDraft();
+    renderCard();
+    nodes.body.querySelector("#er-typed")?.focus();
     return;
   }
   if (event.target.closest("#er-show")) {
@@ -460,6 +472,7 @@ async function rateCard(button, rating) {
     index += 1;
     revealed = false;
     typed = "";
+    hintUsed = false;
     renderCard();
   } catch (error) {
     if (seq === mountSeq && kind === ratedKind) button.disabled = false;

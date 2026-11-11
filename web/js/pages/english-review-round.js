@@ -116,6 +116,54 @@ export function matchesAnswer(answer, typed) {
   return "different";
 }
 
+// 写作句型卡的三关：0 = 缺内容不进入三关；1 例句回译；2 句型默写；3 换主题造句。
+// 只看 reps 会把「连评忘了」的卡也推进下一关，所以同时要求 FSRS 稳定度达标。
+export function writingStage(card) {
+  const pattern = String(card?.pattern || card?.answer || "").trim();
+  if (!pattern) return 0;
+  const example = String(card?.example || "").trim();
+  const exampleZh = String(card?.example_zh || "").trim();
+  if (!example || !exampleZh) return 2;
+  const state = String(card?.state || "");
+  const reps = Number(card?.reps || 0);
+  const lapses = Number(card?.lapses || 0);
+  const progress = Math.max(0, reps - lapses);   // 评 1 也算一次 reps，不能拿来升级
+  const stability = Number(card?.stability || 0);
+  if (state === "review" && progress >= 3 && stability >= 5) return 3;
+  if (state === "review" && progress >= 2 && stability >= 2.5) return 2;
+  return 1;
+}
+
+// 只留固定词，把 ... / … / 下划线统一成可填的空。
+export function patternHint(pattern) {
+  return String(pattern || "").replace(/(?:\.{2,}|…+|__+)/g, "____");
+}
+
+export function patternSlots(pattern) {
+  const matches = String(pattern || "").match(/\.{2,}|…+|__+/g);
+  return matches ? matches.length : 0;
+}
+
+const WRITING_STOPWORDS = new Set(
+  "a an the of to in on at for and or but as by with from".split(" "));
+
+// 参考句/句型里的关键词：保留 be 动词、代词和 that/which，它们是句型骨架。
+export function contentWords(text) {
+  const plain = String(text || "").replace(/(?:\.{2,}|…+|__+)/g, " ");
+  return [...new Set(normalizeAnswer(plain).split(" ").filter(Boolean)
+    .filter((word) => !WRITING_STOPWORDS.has(word)))];
+}
+
+// 软对照：只数参考里的关键词写到了几个，不判对错。
+export function keywordCoverage(reference, typed) {
+  const words = contentWords(reference);
+  const said = normalizeAnswer(typed);
+  if (!said || !words.length) return { hit: 0, total: 0, missing: [] };
+  const typedWords = new Set(said.split(" ").filter(Boolean));
+  const missing = words.filter((word) => !typedWords.has(word));
+  return { hit: words.length - missing.length, total: words.length, missing };
+}
+
 export function shouldDecrementQuota(card, quotaTypes) {
   if (!card || !Array.isArray(quotaTypes)) return false;
   return card.state === "new" && quotaTypes.includes(card.item_type);

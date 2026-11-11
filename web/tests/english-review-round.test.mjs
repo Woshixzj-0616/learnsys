@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  ROUND_SIZE, cardKey, chineseGloss, clearRound, loadRound, localDay,
-  matchesAnswer, normalizeAnswer, saveRound, shouldDecrementQuota, wordPrompt,
+  ROUND_SIZE, cardKey, chineseGloss, clearRound, contentWords, keywordCoverage,
+  loadRound, localDay, matchesAnswer, normalizeAnswer, patternHint, patternSlots,
+  saveRound, shouldDecrementQuota, wordPrompt, writingStage,
 } from "../js/pages/english-review-round.js";
 
 function fakeStorage() {
@@ -85,4 +86,53 @@ test("只有新卡且属于本 tab 配额才扣新卡数", () => {
     { item_type: "wrong", state: "review" }, ["wrong"]), false);
   assert.equal(shouldDecrementQuota(
     { item_type: "accum", state: "new" }, ["wrong"]), false);
+});
+
+test("写作句型三关：按复习次数和稳定度升级，连错不升级", () => {
+  const base = {
+    item_type: "accum", accum_kind: "writing",
+    pattern: "It is ... that makes ... possible.",
+    example: "It is constant practice that makes fluent writing possible.",
+    example_zh: "持之以恒的练习能使流畅的写作成为可能。",
+  };
+  assert.equal(writingStage({ ...base, state: "new", reps: 0, stability: 1 }), 1);
+  assert.equal(writingStage({ ...base, state: "review", reps: 2, lapses: 0, stability: 3 }), 2);
+  assert.equal(writingStage({ ...base, state: "review", reps: 3, lapses: 0, stability: 5 }), 3);
+  assert.equal(writingStage({ ...base, state: "review", reps: 3, lapses: 1, stability: 5 }), 2);
+  assert.equal(writingStage({ ...base, state: "review", reps: 3, lapses: 0, stability: 1 }), 1);
+  assert.equal(writingStage({ ...base, state: "learning", reps: 3, lapses: 0, stability: 8 }), 1);
+  assert.equal(writingStage({ ...base, example_zh: "" }), 2);
+  assert.equal(writingStage({ ...base, pattern: "" }), 0);
+});
+
+test("句型提示只留骨架，占位统一成下划线", () => {
+  assert.equal(patternHint("It is ... that makes ... possible."),
+    "It is ____ that makes ____ possible.");
+  assert.equal(patternHint("So … is … that …"), "So ____ is ____ that ____");
+  assert.equal(patternHint(""), "");
+  assert.equal(patternSlots("It is ... that makes ... possible."), 2);
+  assert.equal(patternSlots("So … is … that …"), 3);
+  assert.equal(patternSlots("No slot here"), 0);
+});
+
+test("关键词提取与覆盖：忽略标点、大小写和占位符", () => {
+  assert.deepEqual(contentWords("In recent years, ... has become a topic of heated debate."),
+    ["recent", "years", "has", "become", "topic", "heated", "debate"]);
+
+  const full = keywordCoverage(
+    "It is constant practice that makes fluent writing possible.",
+    "It is constant practice, that makes fluent writing possible!");
+  assert.equal(full.total, 9);
+  assert.equal(full.hit, 9);
+  assert.deepEqual(full.missing, []);
+
+  const partial = keywordCoverage(
+    "In recent years, ... has become a topic of heated debate.",
+    "In recent years, online learning has become a hot topic.");
+  assert.equal(partial.total, 7);
+  assert.equal(partial.hit, 5);
+  assert.deepEqual(partial.missing, ["heated", "debate"]);
+
+  assert.deepEqual(keywordCoverage("It is ... that makes ... possible.", ""),
+    { hit: 0, total: 0, missing: [] });
 });
