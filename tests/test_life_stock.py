@@ -30,6 +30,33 @@ class _FakeResponse:
         return False
 
 
+class _FakeBytesResponse:
+    def __init__(self, body: bytes):
+        self._body = body
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+def _sina_line(symbol: str, name: str, price: float, pre_close: float,
+               day: str = "2026-11-13") -> str:
+    parts = [name, "0", str(pre_close), str(price), "0", "0"] + ["0"] * 24
+    parts += [day, "15:43:57", "00"]
+    return f'var hq_str_{symbol}="{",".join(parts)}";'
+
+
+SINA_BODY = "\n".join([
+    _sina_line("sh000001", "上证指数", 3634.3530, 3655.8295),
+    _sina_line("sz399001", "深证成指", 10968.787, 11197.977),
+]).encode("gbk")
+
+
 def _tushare_payload(code="600519.SH", close=1500.0):
     return {
         "code": 0, "msg": "", "data": {
@@ -125,6 +152,48 @@ class FetchTest(unittest.TestCase):
                                return_value=_FakeResponse(payload)):
             self.assertEqual(stock.fetch_quotes(["600519.SH"], "token", DAY), [])
 
+    def test_index_retries_eastmoney_once(self):
+        payload = {"rc": 0, "data": {"diff": [
+            {"f2": 359902, "f3": -144, "f4": -5241,
+             "f12": "000001", "f14": "上证指数"},
+        ]}}
+        calls = []
+
+        def fake_urlopen(request, timeout=10):
+            calls.append(request.full_url)
+            if len(calls) == 1:
+                raise ConnectionResetError("对端断开")
+            return _FakeResponse(payload)
+
+        with mock.patch.object(stock.urllib.request, "urlopen",
+                               side_effect=fake_urlopen), \
+                mock.patch.object(stock, "HTTP_RETRY_SLEEP", 0):
+            rows = stock.fetch_index_quotes(["000001.SH"], DAY)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(rows[0]["source"], "eastmoney")
+        self.assertEqual(rows[0]["close"], 3599.02)
+
+    def test_index_falls_back_to_sina(self):
+        calls = []
+
+        def fake_urlopen(request, timeout=10):
+            calls.append(request.full_url)
+            if "eastmoney" in request.full_url:
+                raise ConnectionResetError("对端断开")
+            return _FakeBytesResponse(SINA_BODY)
+
+        with mock.patch.object(stock.urllib.request, "urlopen",
+                               side_effect=fake_urlopen), \
+                mock.patch.object(stock, "HTTP_RETRY_SLEEP", 0), \
+                mock.patch.object(stock.diagnostics, "log_swallow"):
+            rows = stock.fetch_index_quotes(["000001.SH", "399001.SZ"], DAY)
+        self.assertEqual(len(calls), 3)          # 东财 2 次 + 新浪 1 次
+        self.assertEqual([row["source"] for row in rows], ["sina", "sina"])
+        self.assertAlmostEqual(rows[0]["close"], 3634.3530, places=4)
+        self.assertAlmostEqual(rows[0]["pct_chg"], -0.5877, places=3)
+        self.assertEqual(rows[0]["trade_date"], "2026-11-13")
+        self.assertIn("hq.sinajs.cn", calls[-1])
+
 
 class GenerateTest(unittest.TestCase):
     def setUp(self):
@@ -177,6 +246,16 @@ class GenerateTest(unittest.TestCase):
         self.assertEqual(card["content"]["source"], "eastmoney")
         self.assertIn("上证指数", card["content"]["summary"])
         self.assertIn("3599.02", card["content"]["summary"])
+
+    def test_index_fallback_source_in_card(self):
+        sub = self._sub(sources=["000001.SH"])
+        rows = [{"code": "000001.SH", "name": "上证指数",
+                 "trade_date": DAY, "close": 3634.35, "pct_chg": -0.59,
+                 "change": -21.48, "source": "sina"}]
+        with mock.patch.object(stock, "fetch_index_quotes", return_value=rows):
+            card = cards.generate(self.conn, sub, DAY)
+        self.assertEqual(card["content"]["source"], "sina")
+        self.assertEqual(card["content"]["items"][0]["source"], "新浪财经")
 
     def test_same_day_reuses_card(self):
         sub = self._sub()

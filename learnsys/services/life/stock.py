@@ -9,16 +9,22 @@ import datetime as dt
 import json
 import os
 import pathlib
+import re
+import time
 import urllib.request
 
-from learnsys import config
+from learnsys import config, diagnostics
 
 from .errors import LifeUnsupported
 
 TUSHARE_API = "https://api.tushare.pro"
 EASTMONEY_API = "https://push2.eastmoney.com/api/qt/ulist.np/get"
+SINA_API = "https://hq.sinajs.cn/list="
 FIELDS = ("ts_code,trade_date,close,pre_close,change,pct_chg,vol,amount")
 MAX_CODES = 5
+HTTP_ATTEMPTS = 2          # 东财瞬时断连很常见，请求内先重试一次
+HTTP_RETRY_SLEEP = 0.3     # 秒
+SOURCE_LABELS = {"eastmoney": "东方财富", "sina": "新浪财经", "tushare": "Tushare"}
 PROMPT_VERSION = "life-stock-v1"
 # 指数走东方财富公开行情（免费档的 index_daily 要 2000 积分）；个股走 Tushare daily。
 INDEX_CODES = {"000001.SH", "399001.SZ", "399006.SZ",
@@ -140,6 +146,7 @@ def fetch_quotes(codes: list[str], token: str, day: str) -> list[dict]:
             "pct_chg": _num(row.get("pct_chg")),
             "vol": _num(row.get("vol")),
             "amount": _num(row.get("amount")),
+            "source": "tushare",
         })
     return quotes
 
@@ -149,31 +156,97 @@ def _secid(code: str) -> str:
     return f"{'1' if market == 'SH' else '0'}.{number}"
 
 
-def fetch_index_quotes(codes: list[str], day: str) -> list[dict]:
-    """东方财富公开行情：一次请求拿多个指数，免 token、免积分。"""
+def _fetch_eastmoney_indices(codes: list[str], day: str) -> list[dict]:
     secids = [_secid(code) for code in codes]
     url = (f"{EASTMONEY_API}?secids={','.join(secids)}"
            "&fields=f2,f3,f4,f12,f14")
     request = urllib.request.Request(
         url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+    last_exc: Exception | None = None
+    for attempt in range(HTTP_ATTEMPTS):
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                data = json.loads(response.read().decode("utf-8") or "{}")
+            rows = (data.get("data") or {}).get("diff") or []
+            if isinstance(rows, dict):
+                rows = [rows]
+            quotes: list[dict] = []
+            for code, row in zip(codes, rows):
+                price = _num(row.get("f2")) / 100
+                if price <= 0:
+                    continue
+                quotes.append({
+                    "code": code,
+                    "name": str(row.get("f14") or ""),
+                    "trade_date": str(day),
+                    "close": price,
+                    "change": _num(row.get("f4")) / 100,
+                    "pct_chg": _num(row.get("f3")) / 100,
+                    "source": "eastmoney",
+                })
+            return quotes
+        except Exception as exc:  # noqa: BLE001 —— 瞬时断连才重试，最后一轮抛给上层
+            last_exc = exc
+            if attempt + 1 < HTTP_ATTEMPTS:
+                time.sleep(HTTP_RETRY_SLEEP)
+    raise last_exc or RuntimeError("东方财富指数行情失败")
+
+
+def _sina_symbol(code: str) -> str:
+    number, market = code.split(".", 1)
+    return f"{market.lower()}{number}"
+
+
+def _fetch_sina_indices(codes: list[str], day: str) -> list[dict]:
+    """新浪公开行情备用源；返回 GBK 文本，需要带 Referer。"""
+    url = SINA_API + ",".join(_sina_symbol(code) for code in codes)
+    request = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Referer": "https://finance.sina.com.cn",
+    })
     with urllib.request.urlopen(request, timeout=10) as response:
-        data = json.loads(response.read().decode("utf-8") or "{}")
-    rows = (data.get("data") or {}).get("diff") or []
-    if isinstance(rows, dict):
-        rows = [rows]
+        text = response.read().decode("gbk", errors="replace")
     quotes: list[dict] = []
-    for code, row in zip(codes, rows):
-        price = _num(row.get("f2")) / 100
+    for code in codes:
+        match = re.search(rf'hq_str_{_sina_symbol(code)}="([^"]*)"', text)
+        if not match:
+            continue
+        parts = match.group(1).split(",")
+        if len(parts) < 32:
+            continue
+        price = _num(parts[3])
+        pre_close = _num(parts[2])
         if price <= 0:
             continue
+        change = price - pre_close if pre_close > 0 else 0.0
+        pct_chg = (change / pre_close * 100) if pre_close > 0 else 0.0
         quotes.append({
             "code": code,
-            "name": str(row.get("f14") or ""),
-            "trade_date": str(day),
+            "name": str(parts[0] or ""),
+            "trade_date": str(parts[30] or day),
             "close": price,
-            "change": _num(row.get("f4")) / 100,
-            "pct_chg": _num(row.get("f3")) / 100,
+            "change": change,
+            "pct_chg": pct_chg,
+            "source": "sina",
         })
+    return quotes
+
+
+def fetch_index_quotes(codes: list[str], day: str) -> list[dict]:
+    """指数行情：东方财富优先（重试一次），失败或不全时切新浪。"""
+    try:
+        quotes = _fetch_eastmoney_indices(codes, day)
+        if len(quotes) >= len(codes):
+            return quotes
+        if quotes:
+            diagnostics.log_swallow(
+                "指数行情：东方财富返回不完整，改用新浪",
+                RuntimeError(f"请求 {len(codes)} 个指数，只返回 {len(quotes)} 个"))
+    except Exception as exc:  # noqa: BLE001 —— 备用源就是为这里兜底
+        diagnostics.log_swallow("指数行情：东方财富不可用，改用新浪", exc)
+    quotes = _fetch_sina_indices(codes, day)
+    if not quotes:
+        raise LifeUnsupported("指数行情暂时取不到（东方财富与新浪都失败）")
     return quotes
 
 
@@ -187,8 +260,10 @@ def card_content(conn, sub: dict, day: str) -> dict:
     quotes: list[dict] = []
     sources: list[str] = []
     if indices:
-        quotes += fetch_index_quotes(indices, day)
-        sources.append("eastmoney")
+        index_quotes = fetch_index_quotes(indices, day)
+        quotes += index_quotes
+        sources.append(index_quotes[0].get("source", "eastmoney")
+                       if index_quotes else "eastmoney")
     if stocks:
         token = configured_token()
         if not token:
@@ -207,7 +282,10 @@ def card_content(conn, sub: dict, day: str) -> dict:
         items = [{
             "title": label,
             "summary": f"代码 {row['code']} · 交易日 {row['trade_date']}",
-            "source": "东方财富" if row["code"] in indices else "Tushare",
+            "source": SOURCE_LABELS.get(
+                row.get("source") or ("eastmoney" if row["code"] in indices
+                                      else "tushare"),
+                "Tushare"),
         } for label, row in zip(labels, quotes)]
     return {
         "kind": "stock",
