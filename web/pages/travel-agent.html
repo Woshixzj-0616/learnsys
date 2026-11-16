@@ -1,0 +1,25 @@
+<style>
+  .ta-page{display:flex;flex-direction:column;gap:14px}
+  .ta-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:9px 12px;position:sticky;top:0;z-index:5}
+  .ta-tabs{display:flex;gap:6px;background:var(--bg-sunken);border:1px solid var(--line);border-radius:10px;padding:3px}
+  .ta-tab{border:0;background:transparent;color:var(--text-dim);font:inherit;font-size:13px;padding:6px 12px;border-radius:8px;cursor:pointer}
+  .ta-tab:hover{color:var(--text)}
+  .ta-tab.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  .ta-hint{font-size:12px;color:var(--text-faint);line-height:1.5}
+  .ta-panel{min-height:200px}
+  .ta-loading{padding:40px;text-align:center;color:var(--text-dim)}
+  @media (max-width:700px){.ta-bar{align-items:flex-start}.ta-hint{display:none}}
+</style>
+
+<div class="ta-page">
+  <div class="ta-bar">
+    <div class="ta-tabs" role="tablist" aria-label="智能旅行 Agent">
+      <button class="ta-tab on" type="button" role="tab" data-ta-tab="design">Agent 设计</button>
+      <button class="ta-tab" type="button" role="tab" data-ta-tab="trace">调用路径</button>
+    </div>
+    <span class="ta-hint">右下角「AI」可随时提问；它会带上你当前看的机制 / trace。</span>
+  </div>
+  <div class="ta-panel" id="ta-panel">
+    <div class="ta-loading">正在打开…</div>
+  </div>
+</div>

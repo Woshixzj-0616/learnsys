@@ -1,0 +1,15 @@
+{
+  "id": "travel-agent",
+  "name": "智能旅行 Agent",
+  "icon": "✈",
+  "type": "native-page",
+  "entry": "pages/travel-agent.html",
+  "script": "js/pages/travel-agent.js",
+  "order": 78,
+  "status": "ready",
+  "version": "0.1.0",
+  "category": "工具",
+  "home": false,
+  "tagline": "设计 + 调用路径 + 内置 AI",
+  "description": "智能旅行 agent 的统一入口：Agent 设计（机制与取舍）、调用路径（真实 trace / 直接对话），右下角内置 AI 圆圈可随时提问。"
+}

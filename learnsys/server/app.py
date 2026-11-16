@@ -22,7 +22,8 @@ from fastapi.staticfiles import StaticFiles
 from learnsys import config, product
 from learnsys.llm.config import load_config
 from learnsys.modules import web_dir
-from learnsys.server import (routes_agent, routes_agents, routes_briefing,
+from learnsys.server import (routes_agent, routes_agent_trace, routes_agents,
+                             routes_briefing,
                              routes_browser, routes_cet6, routes_cet6_chunk,
                              routes_cet6_drill, routes_cet6_exam, routes_code,
                              routes_daily, routes_data, routes_knowledge,
@@ -107,6 +108,7 @@ def create_app(token: str | None = None, port: int = DEFAULT_PORT) -> FastAPI:
         return response
 
     app.include_router(routes_agent.router)
+    app.include_router(routes_agent_trace.router)
     app.include_router(routes_agents.router)
     app.include_router(routes_briefing.router)
     app.include_router(routes_data.router)

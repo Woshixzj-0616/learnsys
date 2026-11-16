@@ -1,0 +1,162 @@
+<style>
+  .ad-page{display:flex;flex-direction:column;gap:16px}
+  .ad-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .ad-eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint);margin:0 0 6px}
+  .ad-head h2{margin:0;font-size:24px;letter-spacing:-.01em}
+  .ad-sub{margin:6px 0 0;color:var(--text-dim);font-size:13px;max-width:760px}
+  .ad-actions{display:flex;gap:8px;align-items:center}
+  .ad-map{display:flex;flex-wrap:wrap;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;align-items:center}
+  .ad-stage{display:flex;align-items:center;gap:8px}
+  .ad-stage a{font-size:12.5px;padding:6px 10px;border-radius:9px;border:1px solid var(--line);background:var(--bg-sunken);color:var(--text-dim);text-decoration:none}
+  .ad-stage a:hover{border-color:var(--accent-line);color:var(--accent)}
+  .ad-arrow{color:var(--text-faint);font-size:14px}
+  .ad-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+  .ad-main{display:flex;flex-direction:column;gap:14px;min-width:0}
+  .ad-subtabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:5px;align-self:flex-start}
+  .ad-subtab{border:0;background:transparent;color:var(--text-dim);font:inherit;font-size:13px;padding:6px 13px;border-radius:8px;cursor:pointer}
+  .ad-subtab:hover{color:var(--text)}
+  .ad-subtab.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+  .ad-panel{display:flex;flex-direction:column;gap:14px}
+  .ad-panel[hidden]{display:none}
+  .ad-card,.ad-principle,.ad-section{scroll-margin-top:84px}
+  .ad-section h3{font-size:16px;margin:0 0 4px}
+  .ad-section .ad-hint{margin:0 0 10px;font-size:12px;color:var(--text-faint)}
+  .ad-grid{display:flex;flex-direction:column;gap:10px}
+  .ad-group{font-size:12px;letter-spacing:.08em;color:var(--text-faint);margin:4px 0 7px;text-transform:uppercase}
+  .ad-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0;overflow:hidden}
+  .ad-card summary{cursor:pointer;padding:12px 14px;list-style:none}
+  .ad-card summary::-webkit-details-marker{display:none}
+  .ad-card summary .ad-t{font-weight:700;font-size:14px;color:var(--text)}
+  .ad-card summary .ad-o{font-size:12.5px;color:var(--text-dim);margin-top:3px;line-height:1.45}
+  .ad-card summary:hover{background:var(--surface-2)}
+  .ad-card[open] summary{border-bottom:1px solid var(--line)}
+  .ad-body{padding:11px 14px 14px;display:flex;flex-direction:column;gap:9px}
+  .ad-row{font-size:12.5px;line-height:1.55;color:var(--text-dim)}
+  .ad-row b{color:var(--text)}
+  .ad-row code{font-family:var(--mono,monospace);font-size:11.5px;background:var(--bg-sunken);border:1px solid var(--line);border-radius:5px;padding:0 4px}
+  .ad-code{display:flex;flex-wrap:wrap;gap:5px}
+  .ad-code span{font-family:var(--mono,monospace);font-size:11.5px;padding:2px 6px;border-radius:6px;background:var(--bg-sunken);border:1px solid var(--line);color:var(--text-dim)}
+  .ad-tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--text-dim);background:var(--bg-sunken)}
+  .ad-approaches{display:flex;flex-direction:column;gap:6px;margin-top:5px}
+  .ad-approach{border:1px solid var(--line);border-radius:9px;padding:7px 9px;background:var(--bg-sunken)}
+  .ad-approach b{color:var(--text);font-size:12px}
+  .ad-approach span{display:block;color:var(--text-dim);font-size:11.5px;line-height:1.5;margin-top:2px}
+  .ad-approach em{display:block;color:var(--text-faint);font-size:11px;font-style:normal;line-height:1.5;margin-top:3px}
+  .ad-principles{display:flex;flex-direction:column;gap:9px}
+  .ad-principle{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:0;overflow:hidden}
+  .ad-principle summary{cursor:pointer;padding:11px 13px;list-style:none}
+  .ad-principle summary::-webkit-details-marker{display:none}
+  .ad-principle summary b{display:block;color:var(--text);font-size:13.5px}
+  .ad-principle summary span{display:block;color:var(--text-dim);font-size:12px;line-height:1.5;margin-top:3px}
+  .ad-principle summary:hover{background:var(--surface-2)}
+  .ad-principle[open] summary{border-bottom:1px solid var(--line)}
+  .ad-principle .ad-body{padding:10px 13px 13px}
+  .ad-quiz{display:flex;flex-direction:column;gap:7px}
+  .ad-q{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:0}
+  .ad-q summary{cursor:pointer;padding:10px 12px;font-size:13px;color:var(--text);font-weight:600}
+  .ad-q div{padding:0 12px 11px;font-size:12.5px;line-height:1.55;color:var(--text-dim)}
+  .ad-side{display:flex;flex-direction:column;gap:10px;position:sticky;top:72px}
+  .ad-side-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+  .ad-side-card h4{margin:0 0 7px;font-size:12.5px;color:var(--text);letter-spacing:.02em}
+  .ad-side-card p,.ad-side-card li{font-size:11.5px;line-height:1.55;color:var(--text-dim)}
+  .ad-side-card ol,.ad-side-card ul{margin:0;padding-left:17px;display:flex;flex-direction:column;gap:4px}
+  .ad-side-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 8px;font-size:11.5px}
+  .ad-side-card dt{color:var(--text);font-weight:600;white-space:nowrap}
+  .ad-side-card dd{margin:0;color:var(--text-dim)}
+  .ad-side-now{color:var(--text);font-size:12px;line-height:1.55}
+  .ad-side-now .ad-tag{margin-top:4px}
+  .ad-foot{font-size:12px;color:var(--text-faint);line-height:1.55}
+  @media (max-width:1050px){.ad-layout{grid-template-columns:1fr}.ad-side{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media (max-width:700px){.ad-side{grid-template-columns:1fr}}
+</style>
+
+<div class="ad-page">
+  <section class="ad-head">
+    <div>
+      <p class="ad-eyebrow">智能旅行 · Agent Design</p>
+      <h2>Agent 是怎么设计的，不是怎么被调用的</h2>
+      <p class="ad-sub">先看设计原则，再看机制卡片；每张卡里都带「业内不同做法 + 举例」，不单开一张对照表。</p>
+    </div>
+    <div class="ad-actions">
+      <a class="btn" href="#/travel-agent?tab=trace">去「调用路径」</a>
+    </div>
+  </section>
+
+  <section class="ad-map" id="ad-map"></section>
+
+  <div class="ad-layout">
+    <div class="ad-main">
+      <div class="ad-subtabs" role="tablist" aria-label="Agent 设计">
+        <button class="ad-subtab on" type="button" role="tab" data-ad-tab="principles">设计原则</button>
+        <button class="ad-subtab" type="button" role="tab" data-ad-tab="mechanisms">机制卡片</button>
+        <button class="ad-subtab" type="button" role="tab" data-ad-tab="quiz">自测</button>
+      </div>
+
+      <div class="ad-panel" id="ad-panel-principles">
+        <section class="ad-section">
+          <h3>设计原则</h3>
+          <p class="ad-hint">这些不是口号；每条都写了「为什么 / 不这么做会怎样 / 业内不同做法」。</p>
+          <div class="ad-principles" id="ad-principles"></div>
+        </section>
+      </div>
+
+      <div class="ad-panel" id="ad-panel-mechanisms" hidden>
+        <section class="ad-section">
+          <h3>机制卡片</h3>
+          <p class="ad-hint">点开任意一张：问题 → 真实事故 → 代码落点 → trace 事件 → 取舍 → 业内不同做法。</p>
+          <div id="ad-cards"></div>
+        </section>
+      </div>
+
+      <div class="ad-panel" id="ad-panel-quiz" hidden>
+        <section class="ad-section">
+          <h3>自测</h3>
+          <p class="ad-hint">先自己答，再点开看参考答案；能用自己的话讲出来才算懂。</p>
+          <div class="ad-quiz" id="ad-quiz"></div>
+        </section>
+      </div>
+
+      <p class="ad-foot">读完这一页，再回「调用路径」看一条真实 trace：你会知道每个事件为什么存在，而不只是它长什么样。</p>
+    </div>
+
+    <aside class="ad-side">
+      <section class="ad-side-card">
+        <h4>先看哪</h4>
+        <ol>
+          <li>设计原则：知道为什么这样设计</li>
+          <li>机制卡片：知道具体怎么做</li>
+          <li>调用路径：看真实执行</li>
+          <li>自测：用自己的话讲一遍</li>
+        </ol>
+      </section>
+
+      <section class="ad-side-card">
+        <h4>当前展开</h4>
+        <div class="ad-side-now" id="ad-now">还没展开卡片。点开一张原则卡或机制卡。</div>
+      </section>
+
+      <section class="ad-side-card">
+        <h4>术语小抄</h4>
+        <dl>
+          <dt>Intent</dt><dd>这一轮要干什么</dd>
+          <dt>Evidence</dt><dd>模型看过什么</dd>
+          <dt>Nudge</dt><dd>代码认为还缺东西，让模型重来</dd>
+          <dt>Context rot</dt><dd>上下文越长，模型越容易漏</dd>
+          <dt>pass^k</dt><dd>同一题跑 k 次全过</dd>
+          <dt>HITL</dt><dd>人在回路 / 人工确认</dd>
+        </dl>
+      </section>
+
+      <section class="ad-side-card">
+        <h4>常见误区</h4>
+        <ul>
+          <li>工具越多越好</li>
+          <li>记忆 = 聊天记录</li>
+          <li>引用 = 文末挂链接</li>
+          <li>多 agent 一定更强</li>
+          <li>模型说完成 = 做对了</li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</div>

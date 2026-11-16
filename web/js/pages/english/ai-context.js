@@ -6,6 +6,7 @@ export const TAB_NAMES = {
   listening: "精听", drill: "专项", writing: "写作",
   translation: "翻译", review: "复习", stats: "统计",
   daily: "每日积累",
+  design: "Agent 设计", trace: "调用路径",
 };
 
 export function safeProvider(provider) {
@@ -22,17 +23,19 @@ export function safeProvider(provider) {
  * 组装九键信号；页面 provider 可覆盖 object_type / object_id / title /
  * surrounding / learning_state，surface 与来源固定为六级训练。
  */
-export function collectContext({ activeTab, tabNames, selection, recentActions, provider }) {
+export function collectContext({ activeTab, tabNames, selection, recentActions, provider,
+  surface = "cet6", titlePrefix = "六级训练", page = "cet6",
+  objectType = "cet6_tab" }) {
   const fields = {
-    surface: "cet6",
-    object_type: "cet6_tab",
+    surface,
+    object_type: objectType,
     object_id: activeTab,
-    title: `六级训练 · ${tabNames[activeTab] || "训练"}`,
+    title: `${titlePrefix} · ${tabNames[activeTab] || "训练"}`,
     selection: selection || "",
     surrounding: {},
     learning_state: {},
     recent_actions: (recentActions || []).slice(-10),
-    provenance: { page: "cet6", tab: activeTab },
+    provenance: { page, tab: activeTab },
   };
   const extra = safeProvider(provider);
   if (extra) {
@@ -54,9 +57,10 @@ export function snapshotOf(options) {
   return buildSnapshot(collectContext(options));
 }
 
-export function contextLine({ activeTab, tabNames, selection, provider }) {
+export function contextLine({ activeTab, tabNames, selection, provider,
+  titlePrefix = "六级训练" }) {
   const extra = safeProvider(provider);
-  const title = extra?.title || `六级训练 · ${tabNames[activeTab] || "训练"}`;
+  const title = extra?.title || `${titlePrefix} · ${tabNames[activeTab] || "训练"}`;
   const picked = String(selection || "").replace(/\s+/g, " ").trim();
   const tail = picked ? ` · 已带选中「${picked.length > 18 ? `${picked.slice(0, 18)}…` : picked}」` : "";
   return `正在看：${title}${tail}`;

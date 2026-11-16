@@ -16,6 +16,7 @@ let nodes = null;
 let floating = null;
 let enabled = true;
 let activeTab = "listening";
+let config = { title: "六级 AI", surface: "cet6", page: "cet6", titlePrefix: "六级训练" };
 let provider = null;
 let pendingSelection = "";
 let activeView = "chat";
@@ -38,6 +39,7 @@ function refreshContext() {
   if (!nodes?.ctx) return;
   const next = contextLine({
     activeTab, tabNames: TAB_NAMES, selection: pendingSelection, provider,
+    titlePrefix: config.titlePrefix,
   });
   if (nodes.ctx.textContent !== next) nodes.ctx.textContent = next;
 }
@@ -70,7 +72,7 @@ function clearSelection() {
 
 function welcome() {
   if (!nodes) return;
-  renderWelcome(nodes.messages);
+  renderWelcome(nodes.messages, config.title || "六级 AI");
   renderSuggest(nodes.suggest, SUGGESTS[activeTab] || FALLBACK_SUGGESTS);
   refreshContext();
   scrollBottom();
@@ -113,7 +115,8 @@ function openDock(view = "chat") {
   nodes.dock.hidden = false;
   nodes.fab.classList.add("on");
   nodes.fab.setAttribute("aria-expanded", "true");
-  host.classList.add("cet6-ai-open");
+  // 英语页默认「让出右侧宽度」；智能旅行页传 overlay=true，抽屉浮在上面、不压缩页面。
+  host.classList.add(config.overlay ? "cet6-ai-overlay" : "cet6-ai-open");
   floating?.hideSelection();
   watchContext();
   showView(view);
@@ -131,7 +134,7 @@ function closeDock() {
   nodes.dock.hidden = true;
   nodes.fab.classList.remove("on");
   nodes.fab.setAttribute("aria-expanded", "false");
-  host?.classList.remove("cet6-ai-open");
+  host?.classList.remove("cet6-ai-open", "cet6-ai-overlay");
   stopWatching();
 }
 
@@ -231,13 +234,19 @@ export function openAI(view = "chat") {
   openDock(view);
 }
 
-export function mount(root) {
+export function mount(root, options = {}) {
   if (nodes || !root) return () => {};
+  config = Object.assign({
+    title: "六级 AI", surface: "cet6", page: "cet6",
+    titlePrefix: "六级训练", module: "cet6", convKey: "learnsys_cet6_ai_conv",
+    overlay: false,
+  }, options);
   host = root;
-  nodes = buildDom(host);
+  nodes = buildDom(host, config);
   attachDock({
     nodes: () => nodes,
     context: () => ({ activeTab, selection: pendingSelection, provider }),
+    config: () => config,
     showView, welcome, paint, setStreaming, refreshContext, scrollBottom,
     clearSelection,
   });
@@ -263,7 +272,7 @@ export function mount(root) {
     for (const unbind of bindings.splice(0)) {
       try { unbind(); } catch { /* 忽略 */ }
     }
-    host?.classList.remove("cet6-ai-open");
+    host?.classList.remove("cet6-ai-open", "cet6-ai-overlay");
     nodes?.fab.remove();
     nodes?.sel.remove();
     nodes?.dock.remove();

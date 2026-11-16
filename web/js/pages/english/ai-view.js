@@ -10,6 +10,8 @@ export const SUGGESTS = {
   review: ["这张卡为什么我总忘？", "帮我讲清楚这个错误", "再给我一个同类例句"],
   stats: ["我最大的错误在哪？", "接下来两周先练什么？", "帮我排一个复习计划"],
   daily: ["今天这几组短语怎么用？", "帮我用这个句型造句", "这些短语有什么区别？"],
+  design: ["这些机制里最该先学哪个？", "为什么打回不是直接改答案？", "用一句话解释证据台账"],
+  trace: ["这条 trace 最慢的是哪一段？", "为什么模型调了两次？", "有没有打回？为什么"],
 };
 
 export const FALLBACK_SUGGESTS = ["我现在最该练什么？", "帮我解释一下这个概念"];
@@ -17,7 +19,7 @@ export const FALLBACK_SUGGESTS = ["我现在最该练什么？", "帮我解释�
 export const PANEL_HTML = `
   <div class="cet6-ai-head">
     <div class="cet6-ai-title">
-      <b>六级 AI</b><span class="cet6-ai-model" data-model>deepseek-flash</span>
+      <b data-ai-title>六级 AI</b><span class="cet6-ai-model" data-model>deepseek-flash</span>
     </div>
     <div class="cet6-ai-head-actions">
       <button type="button" data-ai="new">新对话</button>
@@ -45,11 +47,12 @@ export const PANEL_HTML = `
   </div>`;
 
 /** 在页面根节点里建出圆圈、划词浮钮和抽屉，返回所有节点引用。 */
-export function buildDom(host) {
+export function buildDom(host, config = {}) {
+  const title = String(config.title || "六级 AI");
   const fab = document.createElement("button");
   fab.type = "button";
   fab.className = "cet6-ai-fab";
-  fab.title = "六级 AI（Ctrl+J）";
+  fab.title = `${title}（Ctrl+J）`;
   fab.setAttribute("aria-expanded", "false");
   fab.textContent = "AI";
 
@@ -62,8 +65,10 @@ export function buildDom(host) {
   const dock = document.createElement("aside");
   dock.className = "cet6-ai-dock";
   dock.hidden = true;
-  dock.setAttribute("aria-label", "六级 AI 助手");
+  dock.setAttribute("aria-label", `${title}助手`);
   dock.innerHTML = PANEL_HTML;
+  const titleNode = dock.querySelector("[data-ai-title]");
+  if (titleNode) titleNode.textContent = title;
   host.append(fab, sel, dock);
 
   const q = (selector) => dock.querySelector(selector);
@@ -83,10 +88,10 @@ export function buildDom(host) {
   };
 }
 
-export function renderWelcome(messages) {
+export function renderWelcome(messages, title = "六级 AI") {
   messages.innerHTML = `<div class="cet6-ai-welcome">
-    <b>六级 AI</b>
-    <p>直接问。会自动带上你正在练的题、作文、译文或复习卡。</p>
+    <b>${escapeHtml(title)}</b>
+    <p>直接问。会自动带上你正在看的页面、选中的文字和当前对象。</p>
     <p class="hint">选中页面里的文字，还能把这句原文一起带过去问。</p>
   </div>`;
 }

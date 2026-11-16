@@ -45,6 +45,7 @@ const GROUP_OF = {
   practice: "实践",
   materials: "资料",
   settings: "工具",
+  "travel-agent": "工具",
 };
 // 旧 hash 仍可直达（#/daily、#/english-review、#/agents 等）；#/cet6 由 legacyEnglishHash 重定向。
 const HIDDEN_NAV = new Set([
@@ -68,7 +69,7 @@ function navItem(module, activeId) {
 function navGroup(label, items, activeId) {
   if (!items.length) return "";
   // P33 起每组通常只有一个入口；组名和入口重名时不重复显示。
-  const heading = items.length > 1
+  const heading = items.length > 1 && !items.some((item) => item.name === label)
     ? `<div class="nav-group-label">${escapeHtml(label)}</div>` : "";
   return heading + items.map((item) => navItem(item, activeId)).join("");
 }

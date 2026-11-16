@@ -5,7 +5,11 @@ import { escapeHtml } from "../../ui.js";
 import { TAB_NAMES, snapshotOf } from "./ai-context.js";
 import { addMessage, renderHistory, status } from "./ai-view.js";
 
-const CONV_KEY = "learnsys_cet6_ai_conv";
+let CONV_KEY = "learnsys_cet6_ai_conv";
+let moduleName = "cet6";
+let surfaceName = "cet6";
+let titlePrefix = "六级训练";
+let pageName = "cet6";
 
 // 由 ai-dock.js 注入的宿主接口，避免会话层反向依赖抽屉层。
 let dock = null;
@@ -35,6 +39,15 @@ function shorten(text, limit = 24) {
 /** 抽屉层注册宿主接口；所有渲染动作都从这里回调。 */
 export function attachDock(api) {
   dock = api;
+  const cfg = (typeof api?.config === "function" && api.config()) || {};
+  if (cfg.convKey) {
+    CONV_KEY = String(cfg.convKey);
+    conversationId = readNumber(CONV_KEY);
+  }
+  moduleName = String(cfg.module || "cet6");
+  surfaceName = String(cfg.surface || "cet6");
+  titlePrefix = String(cfg.titlePrefix || "六级训练");
+  pageName = String(cfg.page || "cet6");
 }
 
 export function currentConversation() {
@@ -141,7 +154,8 @@ export async function loadHistory() {
   historyLoading = true;
   nodes.historyList.innerHTML = status("正在翻历史…");
   try {
-    const data = await api.get("/api/conversations?limit=50&module=cet6");
+    const data = await api.get(
+      `/api/conversations?limit=50&module=${encodeURIComponent(moduleName)}`);
     historyRows = Array.isArray(data.items) ? data.items : [];
     renderHistoryNow();
   } catch (error) {
@@ -186,6 +200,7 @@ export async function send() {
   try {
     payload = snapshotOf({
       ...dock.context(), tabNames: TAB_NAMES, recentActions,
+      surface: surfaceName, titlePrefix, page: pageName,
     });
   } catch (error) {
     state.error = error.message || "上下文没组装好";
@@ -232,8 +247,8 @@ export async function send() {
     await streamChat({
       message,
       conversation_id: conversationId || null,
-      module: "cet6",
-      surface: "cet6",
+      module: moduleName,
+      surface: surfaceName,
       mode: "explain",
       context_snapshot: payload,
     }, onEvent, controller.signal);
