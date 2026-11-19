@@ -20,6 +20,7 @@ class ExamAttemptIn(BaseModel):
     section: str = Field(min_length=1, max_length=120)
     item: str = Field(min_length=1, max_length=120)
     wrong: list[int] = Field(default_factory=list)
+    numbers: list[int] = Field(default_factory=list)
     duration_s: int = Field(default=0, ge=0, le=3600)
 
 

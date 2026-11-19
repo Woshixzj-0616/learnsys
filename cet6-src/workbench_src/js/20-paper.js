@@ -24,6 +24,17 @@
     return itemId(currentSection(), currentItem());
   }
 
+  function quizForItem(){
+    const quiz = window.QUIZ;
+    if(!quiz || !quiz.items) return null;
+    return quiz.items[currentItemId()] || null;
+  }
+
+  function quizReason(){
+    const quiz = window.QUIZ;
+    return (quiz && quiz.reason) || "";
+  }
+
   function mapOf(name){
     const id = currentItemId();
     const group = state()[name] || {};
@@ -284,6 +295,8 @@
     currentItem: currentItem,
     itemId: itemId,
     currentItemId: currentItemId,
+    quizForItem: quizForItem,
+    quizReason: quizReason,
     doneMap: doneMap,
     errorMap: errorMap,
     startMap: startMap,

@@ -73,6 +73,24 @@ class FsrsTest(unittest.TestCase):
         self.assertLessEqual(state["scheduled_days"], fsrs.MAX_INTERVAL)
         self.assertGreaterEqual(state["scheduled_days"], 1)
 
+    def test_fuzz_is_deterministic_and_spreads_cards(self):
+        seed = "wrong:42:0"
+        first = fsrs.schedule(None, 3, NOW, seed=seed)
+        again = fsrs.schedule(None, 3, NOW, seed=seed)
+        self.assertEqual(first["scheduled_days"], again["scheduled_days"])
+        self.assertEqual(first["due"], again["due"])
+
+        spread = {fsrs.fuzz_interval(10, f"wrong:{index}:0")
+                  for index in range(40)}
+        self.assertGreater(len(spread), 1, "不同卡应该错开到相邻几天")
+        self.assertTrue(all(9 <= days <= 11 for days in spread))
+
+    def test_fuzz_keeps_short_intervals(self):
+        self.assertEqual(fsrs.fuzz_interval(1, "wrong:1:0"), 1)
+        self.assertEqual(fsrs.schedule(None, 1, NOW, seed="wrong:1:0")
+                         ["scheduled_days"], 1)
+        self.assertEqual(fsrs.fuzz_interval(7, ""), 7, "不传 seed 时保持原值")
+
 
 if __name__ == "__main__":
     unittest.main()

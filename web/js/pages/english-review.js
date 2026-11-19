@@ -163,8 +163,8 @@ function paintCounts() {
 function paintHint() {
   const quotaName = kind === "sentence" ? "旧错题新卡" : "旧生词新卡";
   nodes.hint.textContent = newRemaining > 0
-    ? `${quotaName}还剩 ${newRemaining} 张（每日积累另计）`
-    : `${quotaName}已用完（每日积累另计）`;
+    ? `${quotaName}今天还剩 ${newRemaining} 张（每轮最多 2 张，每日积累另计）`
+    : `${quotaName}今天已用完（每日积累另计）`;
 }
 
 async function switchKind(next) {
@@ -280,8 +280,12 @@ function renderRoundDone() {
 
 function meta(card) {
   const tags = String(card.tags || "").split(/[,\s]+/).filter(Boolean).join(" · ");
+  const risk = Number(card.forget_risk);
+  const riskText = Number.isFinite(risk)
+    ? `<span title="按 FSRS 稳定度估算的今天遗忘概率">预计遗忘 ${Math.round(risk * 100)}%</span>`
+    : "";
   return `<div class="er-meta"><span class="er-source">${escapeHtml(sourceLabel(card))}</span>
-    ${tags ? `<span>${escapeHtml(tags)}</span>` : ""}</div>`;
+    ${riskText}${tags ? `<span>${escapeHtml(tags)}</span>` : ""}</div>`;
 }
 
 const RATING_HINTS = {

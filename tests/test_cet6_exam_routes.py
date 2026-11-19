@@ -109,6 +109,17 @@ class Cet6ExamRoutesTest(unittest.TestCase):
         self.assertEqual(stats["items"], 1)
         self.assertEqual(stats["by_section"]["A"]["self_accuracy"], 0.5)
 
+    def test_attempt_with_numbers_counts_only_quiz_questions(self):
+        response = self.client.post("/api/cet6/exam/attempt", headers=AUTH, json={
+            "paper_id": "p1", "section": "Section A 长对话",
+            "item": "Conversation 1", "wrong": [1], "numbers": [1],
+            "duration_s": 15})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["question_count"], 1)
+        self.assertEqual(data["correct_count"], 0)
+        self.assertEqual([row["number"] for row in data["questions"]], [1])
+
     def test_attempt_rejects_unknown_question_number(self):
         response = self.client.post("/api/cet6/exam/attempt", headers=AUTH, json={
             "paper_id": "p1", "section": "Section A 长对话",

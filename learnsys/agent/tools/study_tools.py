@@ -4,7 +4,7 @@ from __future__ import annotations
 import datetime
 
 from learnsys import store
-from learnsys.services import knowledge
+from learnsys.services import knowledge, review as review_service
 from learnsys.services.train import plan as train_plan, stats as train_stats
 from .context import ToolContext, _one_line, _stamp
 
@@ -223,7 +223,8 @@ def due_reviews(limit: int = 20, item_type: str = "",
     conn = None
     try:
         conn = store.connect(ctx.db_path)
-        items = store.due_review_items(conn, limit=limit, item_type=item_type)
+        items = review_service.queue(
+            conn, limit=limit, item_type=item_type)["items"]
         stats = store.review_stats(conn, item_type=item_type)
     except Exception as exc:
         return f"读到复习队列失败：{exc}"

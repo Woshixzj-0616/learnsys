@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- WB-BUILD hash=8940cd6c5ad718fb built=2026-11-08 22:19:25 -->
+<!-- WB-BUILD hash=7aa764fc6eede36a built=2026-11-19 21:30:12 -->
 
 <html lang="zh-CN">
 <head>
@@ -573,6 +573,45 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
   .ai-dock{right:8px;left:8px;top:8px;bottom:88px;width:auto}
 }
 
+/* 做题面板：A-D 选项、判分与解析 */
+.quiz-head{display:flex;align-items:center;gap:10px;padding:2px 2px 8px;
+  border-bottom:1px solid var(--line);margin-bottom:8px}
+.quiz-head b{font-size:14px}
+.quiz-progress{font-size:12px;color:var(--muted)}
+.quiz-score{margin-left:auto;font-size:14px;font-weight:700;color:var(--accent)}
+.quiz-q{border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+  margin:0 0 10px;background:var(--field)}
+.quiz-q-head{display:flex;align-items:center;gap:8px}
+.quiz-q-head b{font-size:12.5px;color:var(--accent)}
+.quiz-q-head button{font-size:11px;padding:2px 8px}
+.quiz-stem{margin:6px 0 8px;font-size:13.5px;line-height:1.55}
+.quiz-option{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);
+  border-radius:9px;padding:7px 9px;margin:5px 0;cursor:pointer;
+  background:var(--card);font-size:13px;line-height:1.45}
+.quiz-option:hover{border-color:var(--accent-line);background:var(--accent-soft)}
+.quiz-option input{margin-top:2px;accent-color:var(--accent)}
+.quiz-option.chosen{border-color:var(--accent);background:var(--accent-soft)}
+.quiz-option.correct{border-color:var(--done-strong-line);
+  background:var(--done-strong-bg);color:var(--done-strong-ink)}
+.quiz-option.wrong{border-color:var(--danger-line);
+  background:var(--danger-soft);color:var(--danger)}
+.quiz-opt-label{font-weight:700;color:var(--muted);flex:none;width:14px}
+.quiz-option.correct .quiz-opt-label,.quiz-option.wrong .quiz-opt-label{color:inherit}
+.quiz-opt-text{flex:1}
+.quiz-result{margin-top:8px;font-size:12.5px;color:var(--muted)}
+.quiz-result .ok{color:var(--done-strong-ink);font-weight:700}
+.quiz-result .bad{color:var(--danger);font-weight:700}
+.quiz-expl{margin-top:6px}
+.quiz-expl summary{cursor:pointer;color:var(--accent);font-size:12px}
+.quiz-expl p{white-space:pre-wrap;margin:6px 0 0;font-size:12.5px;line-height:1.6;
+  color:var(--ink);background:var(--field-alt);border-radius:8px;padding:8px}
+.quiz-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:4px}
+.quiz-actions button{font-size:13px;padding:6px 14px;
+  background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.quiz-note{font-size:11px;color:var(--muted)}
+.quiz-empty{margin:8px 0 0;font-size:12.5px;color:var(--muted);
+  background:var(--field-alt);border-radius:9px;padding:8px 10px}
+
 </style>
 </head>
 <body>
@@ -643,6 +682,7 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
           <span class="tool-label">本段</span>
           <button id="playItem" title="连续播放本段正文和题目；界面会跟着当前句滚动">整段播放</button>
           <button id="playQuestions">播放题目</button>
+          <button id="quizBtn" title="打开本段题目，做 A-D 选择题并看答案解析">做题</button>
         </div>
         <div class="tool-group">
           <span class="tool-label">工具</span>
@@ -1368,7 +1408,7 @@ function showLaunchError(message){
   function emptyState(){
     return {
       done:{}, errors:{}, starts:{}, notes:{}, analysis:{}, daily:{},
-      pos:null, loopCfg:{}, loopStats:{}, ab:{}, translation:{},
+      pos:null, loopCfg:{}, loopStats:{}, ab:{}, translation:{}, quiz:{},
       cet6ConversationId:0, transcriptFixSig:"", textSig:""
     };
   }
@@ -1386,6 +1426,7 @@ function showLaunchError(message){
     out.loopStats = obj(s.loopStats);
     out.ab = obj(s.ab);
     out.translation = obj(s.translation);
+    out.quiz = obj(s.quiz);
     out.cet6ConversationId = Number(s.cet6ConversationId) || 0;
     out.transcriptFixSig = String(s.transcriptFixSig || "");
     out.textSig = String(s.textSig || "");
@@ -1658,6 +1699,17 @@ function showLaunchError(message){
     return itemId(currentSection(), currentItem());
   }
 
+  function quizForItem(){
+    const quiz = window.QUIZ;
+    if(!quiz || !quiz.items) return null;
+    return quiz.items[currentItemId()] || null;
+  }
+
+  function quizReason(){
+    const quiz = window.QUIZ;
+    return (quiz && quiz.reason) || "";
+  }
+
   function mapOf(name){
     const id = currentItemId();
     const group = state()[name] || {};
@@ -1918,6 +1970,8 @@ function showLaunchError(message){
     currentItem: currentItem,
     itemId: itemId,
     currentItemId: currentItemId,
+    quizForItem: quizForItem,
+    quizReason: quizReason,
     doneMap: doneMap,
     errorMap: errorMap,
     startMap: startMap,
@@ -2846,12 +2900,15 @@ function showLaunchError(message){
     const c = cur.content;
     const q = cur.questions;
     const reviewN = cur.sentences.filter(function(s){ return s.review; }).length;
+    const quiz = WB.paper.quizForItem();
+    const quizN = quiz ? Object.keys(quiz.questions || {}).length : 0;
     WB.dom.itemHeader.innerHTML =
       "<h2>" + U.escapeHtml(cur.title) + "</h2>" +
       '<p class="meta">' + U.escapeHtml(sec.name) +
       " · 正文 " + U.fmt(c.start) + "–" + U.fmt(c.end) +
       " · " + cur.sentences.length + " 句" +
       " · 题目 " + cur.question_items.length + " 题" +
+      (quizN ? " · 可做题 " + quizN + " 题" : "") +
       " · 待校对 " + reviewN + " 句</p>";
 
     warnings();
@@ -2991,21 +3048,109 @@ function showLaunchError(message){
     miniPlayer();
   }
 
+  function cleanStem(text){
+    return String(text || "").replace(/^\s*Question\s*\d+\s*[.:：]?\s*/i, "").trim();
+  }
+
+  function quizOptions(q, qnum, state, submitted){
+    const answers = state.answers || {};
+    return (q.options || []).map(function(opt){
+      const chosen = answers[String(qnum)] === opt.label;
+      let cls = "quiz-option";
+      if(submitted){
+        if(opt.label === q.answer) cls += " correct";
+        else if(chosen) cls += " wrong";
+      }else if(chosen){
+        cls += " chosen";
+      }
+      return '<label class="' + cls + '">' +
+        '<input type="radio" name="quiz-' + qnum + '" value="' +
+          U.escapeHtml(opt.label) + '" data-quiz-opt data-qnum="' + qnum + '"' +
+          (chosen ? " checked" : "") + (submitted ? " disabled" : "") + ">" +
+        '<span class="quiz-opt-label">' + U.escapeHtml(opt.label) + "</span>" +
+        '<span class="quiz-opt-text">' + U.escapeHtml(opt.text) + "</span>" +
+      "</label>";
+    }).join("");
+  }
+
   function questions(){
     const cur = WB.paper.currentItem();
-    if(!cur.question_items.length){
+    const quiz = WB.paper.quizForItem();
+    const panel = document.getElementById("questionsPanel");
+    const summary = panel ? panel.querySelector("summary") : null;
+    if(summary){
+      summary.textContent = quiz ? "本段题目 · 做题（点开）" : "本段题目文本（点开）";
+    }
+    if(!cur.question_items.length && !quiz){
       WB.dom.questions.innerHTML = '<p class="status">本段没有识别到题目文本。</p>';
       return;
     }
-    WB.dom.questions.innerHTML = cur.question_items.map(function(q){
-      return '<div class="q-row">' +
-        '<div class="q-head">' +
-          '<button data-q="' + q.i + '">播放</button>' +
-          "<span>Q" + (q.number || q.i) + " · " + U.fmtPrecise(q.start) + "</span>" +
-        "</div>" +
-        "<p>" + U.escapeHtml(q.en || "（未识别到题目文本）") + "</p>" +
-      "</div>";
-    }).join("");
+    if(!quiz){
+      const reason = WB.paper.quizReason();
+      WB.dom.questions.innerHTML = cur.question_items.map(function(q){
+        return '<div class="q-row">' +
+          '<div class="q-head">' +
+            '<button data-q="' + q.i + '">播放</button>' +
+            "<span>Q" + (q.number || q.i) + " · " + U.fmtPrecise(q.start) + "</span>" +
+          "</div>" +
+          "<p>" + U.escapeHtml(q.en || "（未识别到题目文本）") + "</p>" +
+        "</div>";
+      }).join("") +
+      '<p class="quiz-empty">暂无做题数据' +
+        (reason ? "（" + U.escapeHtml(reason) + "）"
+                : "（题库覆盖 2019 年及以后）") + "。</p>";
+      return;
+    }
+    const itemId = WB.paper.currentItemId();
+    const state = (WB.state.quiz && WB.state.quiz[itemId]) || {answers:{}};
+    const submitted = !!state.submitted;
+    const total = Object.keys(quiz.questions).length;
+    const answers = state.answers || {};
+    const answered = Object.keys(answers).filter(function(key){
+      return !!answers[key];
+    }).length;
+    const head = '<div class="quiz-head"><b>做题 · ' + total + " 题</b>" +
+      '<span class="quiz-progress">已答 ' + answered + " / " + total + "</span>" +
+      (submitted ? '<span class="quiz-score">' + (state.correct || 0) +
+        " / " + total + "</span>" : "") + "</div>";
+    const rows = Object.keys(quiz.questions)
+      .sort(function(a, b){ return Number(a) - Number(b); })
+      .map(function(key){
+        const q = quiz.questions[key];
+        const num = Number(key);
+        const local = cur.question_items.find(function(x){
+          return Number(x.number) === num;
+        });
+        const stem = cleanStem(local && local.en) || ("第 " + num + " 题");
+        const result = submitted
+          ? '<div class="quiz-result">' +
+              (answers[key] === q.answer
+                ? '<span class="ok">答对</span>'
+                : '<span class="bad">答错</span>') +
+              " · 正确答案 " + U.escapeHtml(q.answer) +
+              (q.explanation
+                ? '<details class="quiz-expl"><summary>看解析</summary><p>' +
+                  U.escapeHtml(q.explanation) + "</p></details>"
+                : "") +
+            "</div>"
+          : "";
+        return '<div class="quiz-q" data-qnum="' + key + '">' +
+          '<div class="quiz-q-head"><b>Q' + num + "</b>" +
+            (local ? '<button data-q="' + local.i + '">播放</button>' : "") +
+          "</div>" +
+          '<p class="quiz-stem">' + U.escapeHtml(stem) + "</p>" +
+          quizOptions(q, key, state, submitted) +
+          result +
+        "</div>";
+      }).join("");
+    const actions = submitted
+      ? '<div class="quiz-actions"><button type="button" data-quiz-redo>' +
+        "重做本题组</button>" +
+        '<span class="quiz-note">选项/答案来自开源题库，OCR 可能有小错。</span></div>'
+      : '<div class="quiz-actions"><button type="button" data-quiz-submit>' +
+        "提交答案</button>" +
+        '<span class="quiz-note">未作答按错处理；选项/答案来自开源题库。</span></div>';
+    WB.dom.questions.innerHTML = head + rows + actions;
   }
 
   function progress(){
@@ -3429,7 +3574,17 @@ function showLaunchError(message){
     WB.dom.sentences.addEventListener("input", onCardInput);
     WB.dom.sentences.addEventListener("change", onCardChange);
 
+    WB.dom.questions.addEventListener("change", function(e){
+      const input = e.target.closest("input[data-quiz-opt]");
+      if(!input || !WB.quiz) return;
+      WB.quiz.choose(input.dataset.qnum, input.value);
+    });
+
     WB.dom.questions.addEventListener("click", function(e){
+      if(WB.quiz){
+        if(e.target.closest("[data-quiz-submit]")){ WB.quiz.submit(); return; }
+        if(e.target.closest("[data-quiz-redo]")){ WB.quiz.redo(); return; }
+      }
       const btn = e.target.closest("button[data-q]");
       if(!btn) return;
       const cur = WB.paper.currentItem();
@@ -3437,6 +3592,23 @@ function showLaunchError(message){
       if(!q) return;
       WB.audio.playRange(Math.max(0, q.start - 0.1), q.end + 0.1, null, {kind:"questions"});
     });
+
+    const quizBtn = document.getElementById("quizBtn");
+    if(quizBtn){
+      quizBtn.addEventListener("click", function(){
+        const quiz = WB.paper.quizForItem();
+        const panel = document.getElementById("questionsPanel");
+        if(!quiz){
+          const reason = WB.paper.quizReason();
+          WB.status("这份卷暂无做题数据" + (reason ? "：" + reason : "（题库覆盖 2019 年及以后）"));
+          return;
+        }
+        if(panel){
+          panel.open = true;
+          panel.scrollIntoView({behavior:"smooth", block:"start"});
+        }
+      });
+    }
 
     WB.audio.onFollowItem = followSwitch;
 
@@ -5385,6 +5557,107 @@ function showLaunchError(message){
 
 </script>
 <script>
+// ---- 67-quiz.js ----
+// @requires: 00-core.js, 10-storage.js, 20-paper.js, 40-render.js, 55-api.js
+// 本题组做 A-D 选择题：本地判分，HTTP 模式下把错题号写进六级做题统计。
+(function(WB){
+  "use strict";
+
+  const U = WB.util;
+
+  function itemId(){
+    return WB.paper.currentItemId();
+  }
+
+  function quizData(){
+    return WB.paper.quizForItem();
+  }
+
+  function state(){
+    WB.state.quiz = WB.state.quiz || {};
+    WB.state.quiz[itemId()] = WB.state.quiz[itemId()] || {answers:{}};
+    return WB.state.quiz[itemId()];
+  }
+
+  function paperId(){
+    if(WB.cet6Sync && WB.cet6Sync.paperId) return WB.cet6Sync.paperId();
+    return WB.session.paperDir ||
+      (WB.session.paper && WB.session.paper.title) || "";
+  }
+
+  function grade(questions, answers){
+    const wrong = [];
+    const keys = Object.keys(questions || {});
+    keys.forEach(function(key){
+      if(!answers || answers[key] !== questions[key].answer) wrong.push(Number(key));
+    });
+    wrong.sort(function(a, b){ return a - b; });
+    return {wrong:wrong, correct:keys.length - wrong.length, total:keys.length};
+  }
+
+  function choose(qnum, label){
+    const st = state();
+    st.answers = st.answers || {};
+    st.answers[String(qnum)] = String(label || "").toUpperCase();
+    st.startedAt = st.startedAt || Date.now();
+    WB.store.saveState();
+    if(WB.render && WB.render.questions) WB.render.questions();
+  }
+
+  async function submit(){
+    const quiz = quizData();
+    if(!quiz) return;
+    const st = state();
+    const result = grade(quiz.questions, st.answers);
+    st.submitted = true;
+    st.correct = result.correct;
+    st.total = result.total;
+    st.wrong = result.wrong;
+    st.at = Date.now();
+    st.duration = Math.max(0, Math.round((Date.now() - (st.startedAt || Date.now())) / 1000));
+    WB.store.saveState();
+    if(WB.render && WB.render.questions) WB.render.questions();
+    WB.status("本题组：" + result.correct + " / " + result.total + " 题。");
+
+    if(!WB.api || !WB.api.ready){
+      st.synced = false;
+      WB.store.saveState();
+      return;
+    }
+    const sec = WB.paper.currentSection();
+    const item = WB.paper.currentItem();
+    try{
+      if(WB.cet6Sync && WB.cet6Sync.syncPaper) await WB.cet6Sync.syncPaper();
+      await WB.api.post("/api/cet6/exam/attempt", {
+        paper_id: paperId(),
+        section: sec.name,
+        item: item.title,
+        wrong: result.wrong,
+        duration_s: st.duration,
+        numbers: Object.keys(quiz.questions).map(Number)
+      });
+      st.synced = true;
+      WB.status("做题成绩已写入统计：" + result.correct + " / " + result.total + " 题。");
+    }catch(e){
+      st.synced = false;
+      WB.status("本地已判分，但未同步到统计：" + (e.message || "请求失败"));
+    }
+    WB.store.saveState();
+  }
+
+  function redo(){
+    if(WB.state.quiz) delete WB.state.quiz[itemId()];
+    WB.store.saveState();
+    if(WB.render && WB.render.questions) WB.render.questions();
+    WB.status("已清空本题组答案，可以重做。");
+  }
+
+  WB.quiz = {choose: choose, submit: submit, redo: redo, grade: grade,
+             itemId: itemId, state: state};
+})(WB);
+
+</script>
+<script>
 // ---- 68-translate.js ----
 // @requires: 00-core.js, 10-storage.js, 20-paper.js, 40-render.js, 55-api.js
 // 翻译层：划词查词（含音标/释义，可一键进生词本）+ 逐句译文开关。
@@ -6450,6 +6723,13 @@ function showLaunchError(message){
     if(!window.PAPER){
       fail("data.js 已加载，但没有 window.PAPER。");
       return;
+    }
+
+    window.QUIZ = null;
+    try{
+      await loadScript(withCacheBust(base + "quiz.js"));
+    }catch(e){
+      // 没有做题数据不影响精听；有桩文件时 window.QUIZ 会带 reason。
     }
 
     WB.store.setLast(current);

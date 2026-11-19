@@ -65,10 +65,11 @@ from .cet6_chunk import (add_chunk_attempt, chunk_attempts, chunk_candidates)
 from .cet6_exam import (add_exam_attempt, exam_attempts, exam_candidates,
                        exam_item)
 from .daily_accum import (accum_counts, accum_days, accum_item,
-                          accum_items, add_accum, delete_accum_kind,
-                          mark_pron_used, note_rows, pron_candidates,
-                          pron_item, pron_upsert, set_accum_status,
-                          set_all_accum_status, set_pron_status)
+                          accum_items, accum_payloads, add_accum,
+                          delete_accum_kind, mark_pron_used, note_rows,
+                          pron_candidates, pron_item, pron_upsert,
+                          set_accum_status, set_all_accum_status,
+                          set_pron_status)
 from .conversations import (add_message, conversation_messages, create_conversation,
                             get_conversation, list_conversations,
                             set_conversation_summary, touch_conversation)
@@ -140,9 +141,10 @@ from .recordings import (default_title as recording_title,
                          update_video)
 from .review import (ACCUM_REVIEW_KINDS, DAILY_REVIEW_EPOCH,
                      REVIEW_ITEM_TYPES, add_review_log, count_introduced,
-                     due_review_count, due_review_items, get_review_state,
-                     recent_review_log, review_counts, review_stats,
-                     save_review_state, seed_review_states)
+                     delete_review_state, due_review_count, due_review_items,
+                     get_review_state, recent_review_log, review_counts,
+                     review_stats, save_review_state, seed_review_states,
+                     suppress_accum_vocab_duplicates)
 from .train import (STATUSES as TRAIN_STATUSES, activity_counts,
                     create_submission, delete_submission, duration_rows,
                     find_draft_rewrite, get_submission,
@@ -157,9 +159,11 @@ from .study import (add_frame_text, add_transcript, add_window_event,
                     start_session, transcript_ranges, window_titles)
 from .practice import (add_note, archive_note, counts_by_project as practice_project_counts,
                        delete_note, get_note, list_notes, update_note, use_note)
-from .vocab import (add_vocab, delete_vocab, export_vocab, find_active_word,
-                    get_vocab, import_vocab, list_vocab, normalize_pair,
-                    reorient_vocab, update_vocab)
+from .vocab import (active_vocab_aliases, add_vocab, delete_vocab,
+                    export_vocab, find_active_word, find_vocab_match, get_vocab,
+                    import_vocab, list_vocab, normalize_pair, reorient_vocab,
+                    update_vocab, variant_groups)
+from .wordkey import aliases_match, word_aliases
 from .wrongbook import (WRONG_SOURCES, add_wrong_item, delete_wrong_item,
                         due_starred, get_wrong_item, recent_wrong_items,
                         rewrite_wrong_item, set_wrong_mastered,
@@ -196,7 +200,8 @@ __all__ = [
     "drill_coverage_candidates", "drill_sentence",
     "add_exam_attempt", "exam_attempts", "exam_candidates", "exam_item",
     "add_chunk_attempt", "chunk_attempts", "chunk_candidates",
-    "accum_counts", "accum_days", "accum_item", "accum_items", "add_accum",
+    "accum_counts", "accum_days", "accum_item", "accum_items", "accum_payloads",
+    "add_accum",
     "delete_accum_kind", "mark_pron_used", "note_rows", "pron_candidates",
     "pron_item",
     "pron_upsert", "set_accum_status", "set_all_accum_status",
@@ -242,7 +247,8 @@ __all__ = [
     "recording_transcript", "update_video",
     "REVIEW_ITEM_TYPES", "add_review_log", "due_review_count", "due_review_items",
     "get_review_state", "recent_review_log", "review_counts", "review_stats",
-    "save_review_state", "seed_review_states",
+    "delete_review_state", "save_review_state", "seed_review_states",
+    "suppress_accum_vocab_duplicates",
     "TRAIN_STATUSES", "activity_counts", "create_submission", "delete_submission",
     "get_submission", "latest_train_by_prompt", "list_submissions",
     "reviewed_rows", "sentence_attempted", "set_submission_review",
@@ -254,8 +260,10 @@ __all__ = [
     "window_titles",
     "add_note", "archive_note", "delete_note", "get_note", "list_notes",
     "update_note", "use_note",
-    "add_vocab", "delete_vocab", "export_vocab", "get_vocab", "import_vocab",
-    "list_vocab", "normalize_pair", "reorient_vocab", "update_vocab",
+    "active_vocab_aliases", "add_vocab", "aliases_match", "delete_vocab",
+    "export_vocab", "find_active_word", "find_vocab_match", "get_vocab",
+    "import_vocab", "list_vocab", "normalize_pair", "reorient_vocab",
+    "update_vocab", "variant_groups", "word_aliases",
     "WRONG_SOURCES", "add_wrong_item", "delete_wrong_item", "due_starred",
     "get_wrong_item", "recent_wrong_items", "rewrite_wrong_item",
     "set_wrong_mastered",

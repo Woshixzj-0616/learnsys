@@ -182,3 +182,42 @@ footer{color:var(--muted);font-size:13px;text-align:center;margin-top:24px}
   .ai-fab{right:14px;bottom:92px;width:52px;height:52px}
   .ai-dock{right:8px;left:8px;top:8px;bottom:88px;width:auto}
 }
+
+/* 做题面板：A-D 选项、判分与解析 */
+.quiz-head{display:flex;align-items:center;gap:10px;padding:2px 2px 8px;
+  border-bottom:1px solid var(--line);margin-bottom:8px}
+.quiz-head b{font-size:14px}
+.quiz-progress{font-size:12px;color:var(--muted)}
+.quiz-score{margin-left:auto;font-size:14px;font-weight:700;color:var(--accent)}
+.quiz-q{border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+  margin:0 0 10px;background:var(--field)}
+.quiz-q-head{display:flex;align-items:center;gap:8px}
+.quiz-q-head b{font-size:12.5px;color:var(--accent)}
+.quiz-q-head button{font-size:11px;padding:2px 8px}
+.quiz-stem{margin:6px 0 8px;font-size:13.5px;line-height:1.55}
+.quiz-option{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);
+  border-radius:9px;padding:7px 9px;margin:5px 0;cursor:pointer;
+  background:var(--card);font-size:13px;line-height:1.45}
+.quiz-option:hover{border-color:var(--accent-line);background:var(--accent-soft)}
+.quiz-option input{margin-top:2px;accent-color:var(--accent)}
+.quiz-option.chosen{border-color:var(--accent);background:var(--accent-soft)}
+.quiz-option.correct{border-color:var(--done-strong-line);
+  background:var(--done-strong-bg);color:var(--done-strong-ink)}
+.quiz-option.wrong{border-color:var(--danger-line);
+  background:var(--danger-soft);color:var(--danger)}
+.quiz-opt-label{font-weight:700;color:var(--muted);flex:none;width:14px}
+.quiz-option.correct .quiz-opt-label,.quiz-option.wrong .quiz-opt-label{color:inherit}
+.quiz-opt-text{flex:1}
+.quiz-result{margin-top:8px;font-size:12.5px;color:var(--muted)}
+.quiz-result .ok{color:var(--done-strong-ink);font-weight:700}
+.quiz-result .bad{color:var(--danger);font-weight:700}
+.quiz-expl{margin-top:6px}
+.quiz-expl summary{cursor:pointer;color:var(--accent);font-size:12px}
+.quiz-expl p{white-space:pre-wrap;margin:6px 0 0;font-size:12.5px;line-height:1.6;
+  color:var(--ink);background:var(--field-alt);border-radius:8px;padding:8px}
+.quiz-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:4px}
+.quiz-actions button{font-size:13px;padding:6px 14px;
+  background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.quiz-note{font-size:11px;color:var(--muted)}
+.quiz-empty{margin:8px 0 0;font-size:12.5px;color:var(--muted);
+  background:var(--field-alt);border-radius:9px;padding:8px 10px}

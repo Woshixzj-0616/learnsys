@@ -35,7 +35,7 @@ export function context() {
       严重错误: stats.totals?.serious || 0,
       错误画像: (stats.error_types || []).slice(0, 6)
         .map((row) => `${row.type || "未分类"} ${row.count || 0}`).join("、"),
-      真题自评: exam
+      听力做题: exam
         ? `${exam.items || 0} 段 · ${exam.self_accuracy == null ? "—" : percent(exam.self_accuracy)}`
         : "无",
       意群长句: chunk
@@ -77,13 +77,13 @@ function examCard(exam) {
     return statRow(label, percent(row.self_accuracy), ` ${row.attempts} 段`);
   }).join("");
   return `<section class="cet6-stat-card">
-    <div class="cet6-section-head"><h3>真题自评</h3></div>
+    <div class="cet6-section-head"><h3>听力做题</h3></div>
     ${statRow("完成", String(exam?.items || 0), " 段")}
     ${statRow("题数", String(exam?.questions || 0), " 题")}
-    ${statRow("自评正确率", percent(exam?.self_accuracy))}
+    ${statRow("正确率", percent(exam?.self_accuracy))}
     ${rows}
-    <a class="btn btn-small" href="#/english?tab=listening">去练真题</a>
-    <p class="hint">按段听完整真题后逐题自评；不是机器判分。</p>
+    <a class="btn btn-small" href="#/english?tab=listening">去做题</a>
+    <p class="hint">2019 年及以后有真实选项与答案；历史自评记录也计入这里。</p>
   </section>`;
 }
 

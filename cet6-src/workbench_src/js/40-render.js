@@ -33,12 +33,15 @@
     const c = cur.content;
     const q = cur.questions;
     const reviewN = cur.sentences.filter(function(s){ return s.review; }).length;
+    const quiz = WB.paper.quizForItem();
+    const quizN = quiz ? Object.keys(quiz.questions || {}).length : 0;
     WB.dom.itemHeader.innerHTML =
       "<h2>" + U.escapeHtml(cur.title) + "</h2>" +
       '<p class="meta">' + U.escapeHtml(sec.name) +
       " · 正文 " + U.fmt(c.start) + "–" + U.fmt(c.end) +
       " · " + cur.sentences.length + " 句" +
       " · 题目 " + cur.question_items.length + " 题" +
+      (quizN ? " · 可做题 " + quizN + " 题" : "") +
       " · 待校对 " + reviewN + " 句</p>";
 
     warnings();
@@ -178,21 +181,109 @@
     miniPlayer();
   }
 
+  function cleanStem(text){
+    return String(text || "").replace(/^\s*Question\s*\d+\s*[.:：]?\s*/i, "").trim();
+  }
+
+  function quizOptions(q, qnum, state, submitted){
+    const answers = state.answers || {};
+    return (q.options || []).map(function(opt){
+      const chosen = answers[String(qnum)] === opt.label;
+      let cls = "quiz-option";
+      if(submitted){
+        if(opt.label === q.answer) cls += " correct";
+        else if(chosen) cls += " wrong";
+      }else if(chosen){
+        cls += " chosen";
+      }
+      return '<label class="' + cls + '">' +
+        '<input type="radio" name="quiz-' + qnum + '" value="' +
+          U.escapeHtml(opt.label) + '" data-quiz-opt data-qnum="' + qnum + '"' +
+          (chosen ? " checked" : "") + (submitted ? " disabled" : "") + ">" +
+        '<span class="quiz-opt-label">' + U.escapeHtml(opt.label) + "</span>" +
+        '<span class="quiz-opt-text">' + U.escapeHtml(opt.text) + "</span>" +
+      "</label>";
+    }).join("");
+  }
+
   function questions(){
     const cur = WB.paper.currentItem();
-    if(!cur.question_items.length){
+    const quiz = WB.paper.quizForItem();
+    const panel = document.getElementById("questionsPanel");
+    const summary = panel ? panel.querySelector("summary") : null;
+    if(summary){
+      summary.textContent = quiz ? "本段题目 · 做题（点开）" : "本段题目文本（点开）";
+    }
+    if(!cur.question_items.length && !quiz){
       WB.dom.questions.innerHTML = '<p class="status">本段没有识别到题目文本。</p>';
       return;
     }
-    WB.dom.questions.innerHTML = cur.question_items.map(function(q){
-      return '<div class="q-row">' +
-        '<div class="q-head">' +
-          '<button data-q="' + q.i + '">播放</button>' +
-          "<span>Q" + (q.number || q.i) + " · " + U.fmtPrecise(q.start) + "</span>" +
-        "</div>" +
-        "<p>" + U.escapeHtml(q.en || "（未识别到题目文本）") + "</p>" +
-      "</div>";
-    }).join("");
+    if(!quiz){
+      const reason = WB.paper.quizReason();
+      WB.dom.questions.innerHTML = cur.question_items.map(function(q){
+        return '<div class="q-row">' +
+          '<div class="q-head">' +
+            '<button data-q="' + q.i + '">播放</button>' +
+            "<span>Q" + (q.number || q.i) + " · " + U.fmtPrecise(q.start) + "</span>" +
+          "</div>" +
+          "<p>" + U.escapeHtml(q.en || "（未识别到题目文本）") + "</p>" +
+        "</div>";
+      }).join("") +
+      '<p class="quiz-empty">暂无做题数据' +
+        (reason ? "（" + U.escapeHtml(reason) + "）"
+                : "（题库覆盖 2019 年及以后）") + "。</p>";
+      return;
+    }
+    const itemId = WB.paper.currentItemId();
+    const state = (WB.state.quiz && WB.state.quiz[itemId]) || {answers:{}};
+    const submitted = !!state.submitted;
+    const total = Object.keys(quiz.questions).length;
+    const answers = state.answers || {};
+    const answered = Object.keys(answers).filter(function(key){
+      return !!answers[key];
+    }).length;
+    const head = '<div class="quiz-head"><b>做题 · ' + total + " 题</b>" +
+      '<span class="quiz-progress">已答 ' + answered + " / " + total + "</span>" +
+      (submitted ? '<span class="quiz-score">' + (state.correct || 0) +
+        " / " + total + "</span>" : "") + "</div>";
+    const rows = Object.keys(quiz.questions)
+      .sort(function(a, b){ return Number(a) - Number(b); })
+      .map(function(key){
+        const q = quiz.questions[key];
+        const num = Number(key);
+        const local = cur.question_items.find(function(x){
+          return Number(x.number) === num;
+        });
+        const stem = cleanStem(local && local.en) || ("第 " + num + " 题");
+        const result = submitted
+          ? '<div class="quiz-result">' +
+              (answers[key] === q.answer
+                ? '<span class="ok">答对</span>'
+                : '<span class="bad">答错</span>') +
+              " · 正确答案 " + U.escapeHtml(q.answer) +
+              (q.explanation
+                ? '<details class="quiz-expl"><summary>看解析</summary><p>' +
+                  U.escapeHtml(q.explanation) + "</p></details>"
+                : "") +
+            "</div>"
+          : "";
+        return '<div class="quiz-q" data-qnum="' + key + '">' +
+          '<div class="quiz-q-head"><b>Q' + num + "</b>" +
+            (local ? '<button data-q="' + local.i + '">播放</button>' : "") +
+          "</div>" +
+          '<p class="quiz-stem">' + U.escapeHtml(stem) + "</p>" +
+          quizOptions(q, key, state, submitted) +
+          result +
+        "</div>";
+      }).join("");
+    const actions = submitted
+      ? '<div class="quiz-actions"><button type="button" data-quiz-redo>' +
+        "重做本题组</button>" +
+        '<span class="quiz-note">选项/答案来自开源题库，OCR 可能有小错。</span></div>'
+      : '<div class="quiz-actions"><button type="button" data-quiz-submit>' +
+        "提交答案</button>" +
+        '<span class="quiz-note">未作答按错处理；选项/答案来自开源题库。</span></div>';
+    WB.dom.questions.innerHTML = head + rows + actions;
   }
 
   function progress(){

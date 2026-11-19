@@ -84,7 +84,8 @@ class TestWrongbookStore(unittest.TestCase):
         item = review_service.review_wrong_item(self.conn, item_id, "remember")
         self.assertEqual(item["review_reps"], 1)
         self.assertFalse(item["mastered"])
-        self.assertEqual(item["scheduled_days"], 3, "新卡「记得」= 3 天")
+        # 新卡「记得」约 3 天；间隔抖动 ±1 天，避免同批卡永远同一天回来。
+        self.assertTrue(2 <= item["scheduled_days"] <= 4)
         self.assertEqual(store.wrong_due_items(self.conn), [])
 
         # 把到期日拨回今天，模拟 3 天后再复习

@@ -29,7 +29,7 @@
   function emptyState(){
     return {
       done:{}, errors:{}, starts:{}, notes:{}, analysis:{}, daily:{},
-      pos:null, loopCfg:{}, loopStats:{}, ab:{}, translation:{},
+      pos:null, loopCfg:{}, loopStats:{}, ab:{}, translation:{}, quiz:{},
       cet6ConversationId:0, transcriptFixSig:"", textSig:""
     };
   }
@@ -47,6 +47,7 @@
     out.loopStats = obj(s.loopStats);
     out.ab = obj(s.ab);
     out.translation = obj(s.translation);
+    out.quiz = obj(s.quiz);
     out.cet6ConversationId = Number(s.cet6ConversationId) || 0;
     out.transcriptFixSig = String(s.transcriptFixSig || "");
     out.textSig = String(s.textSig || "");

@@ -83,16 +83,21 @@ class DailyAccumTest(unittest.TestCase):
             self.assertFalse(before & after)
 
     def test_theme_terms_rotate_without_overlap(self):
-        def theme_keys(day):
-            return {row["ref_key"] for row in daily_accum._translation_payloads(day)
-                    if row["payload"]["tag"] == "主题词"}
-
         days = ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05"]
+        keys = []
         for day in days:
-            self.assertEqual(len(theme_keys(day)), 4)
-        for before, after in zip(days, days[1:]):
-            self.assertFalse(theme_keys(before) & theme_keys(after),
-                             f"{before} 和 {after} 的主题词重复")
+            rows = daily_accum._translation_payloads(self.conn, day)
+            keys.append({row["ref_key"] for row in rows
+                         if row["payload"]["tag"] == "主题词"})
+            # 模拟当天已生成：第二天生成时必须跳过这些词。
+            for row in rows:
+                store.add_accum(self.conn, day=day, kind="translation",
+                                ref_key=row["ref_key"], payload=row["payload"])
+        for key in keys:
+            self.assertEqual(len(key), 4)
+        for before, after in zip(keys, keys[1:]):
+            self.assertFalse(before & after,
+                             "相邻两天的主题词重复")
 
     def test_writing_payload_is_pattern_with_example(self):
         rows = daily_accum._writing_payloads("2026-10-31")
@@ -106,7 +111,7 @@ class DailyAccumTest(unittest.TestCase):
             self.assertNotIn("en", payload)
 
     def test_translation_mixes_phrases_and_themes(self):
-        rows = daily_accum._translation_payloads("2026-11-02")
+        rows = daily_accum._translation_payloads(self.conn, "2026-11-02")
         self.assertEqual(len(rows), 8)
         tags = [row["payload"]["tag"] for row in rows]
         self.assertEqual(tags.count("高频短语"), 4)
@@ -117,6 +122,34 @@ class DailyAccumTest(unittest.TestCase):
         self.assertEqual(len(set(theme_ids)), 4)
         self.assertIn("红包", [row["zh"] for row in
                                train_content.translation_phrases()])
+
+    def test_translation_skips_active_vocab(self):
+        store.add_vocab(self.conn, word="red envelopes", meaning="红包")
+        rows = daily_accum._translation_payloads(self.conn, "2026-11-18")
+        self.assertEqual(len(rows), 8)
+        words = {row["payload"]["en"] for row in rows}
+        self.assertNotIn("red envelopes", words)
+
+    def test_translation_skips_history(self):
+        first = daily_accum._translation_payloads(self.conn, "2026-11-18")
+        for row in first:
+            store.add_accum(self.conn, day="2026-11-18", kind="translation",
+                            ref_key=row["ref_key"], payload=row["payload"])
+        second = daily_accum._translation_payloads(self.conn, "2026-11-18")
+        self.assertEqual(len(second), 8)
+        self.assertFalse({row["ref_key"] for row in first}
+                         & {row["ref_key"] for row in second})
+
+    def test_add_term_to_vocab_removes_accum_state(self):
+        today = daily_accum._today()
+        daily_accum.ensure_day(self.conn, today)
+        item = next(row for row in store.accum_items(self.conn, today)
+                    if row["kind"] == "translation")
+        self.assertIsNotNone(
+            store.get_review_state(self.conn, "accum", item["id"]))
+        daily_accum.add_term_to_vocab(self.conn, item["id"])
+        self.assertIsNone(
+            store.get_review_state(self.conn, "accum", item["id"]))
 
     def test_mark_and_streak(self):
         data = daily_accum.list_day(self.conn)

@@ -11,19 +11,20 @@ from __future__ import annotations
 import hashlib
 
 from . import lexical, rubric
+from .card_text import CARD_SEVERITIES, NON_CARD_TYPES, error_lines
 from .punctuation import with_mechanical
 from .textnorm import clip as _text
 from .textnorm import loose as _loose
-from .textnorm import quote_in_text, sentence_around
+from .textnorm import quote_in_text
+from .textnorm import sentence_around  # noqa: F401  测试与旧调用需要
+from .translation_cards import translation_cards as _translation_cards
+from .translation_cards import translation_sentence_card  # noqa: F401
 
 MAX_ERRORS = 12
 # 一条错误/一段对齐的引用都应是一两个片段；超长说明模型在复制整段，
 # 截断会留下半截词，直接丢弃并计数更诚实。
 MAX_QUOTE_CHARS = 300
 MAX_ALIGN_CHARS = 360
-CARD_SEVERITIES = ("严重",)
-# 审题/结构问题无法“独立重练”成一张卡，只留在提交记录里（施工单 §3 铁律 3）。
-NON_CARD_TYPES = ("结构", "审题")
 _SENTENCE_CONCLUSIONS = ("准确", "基本准确", "有偏差", "误译")
 
 
@@ -101,16 +102,6 @@ def _priorities(raw) -> list[str]:
     return rows
 
 
-def error_lines(errors: list[dict]) -> str:
-    lines = []
-    for row in errors:
-        line = f"- `{row['quote']}` → **{row['fix']}**"
-        if row.get("why"):
-            line += f"：{row['why']}"
-        lines.append(line)
-    return "\n".join(lines)
-
-
 def _writing_cards(pack: dict, errors: list[dict]) -> list[dict]:
     """写作仍按错误点建卡：作文的错误多在半句/短语，独立重练更有效。"""
     rows = []
@@ -132,42 +123,6 @@ def _writing_cards(pack: dict, errors: list[dict]) -> list[dict]:
             "auto": True,
         })
     return rows
-
-
-def translation_sentence_card(source_prefix: str, sentence: str,
-                              rows: list[dict], my_answer: str = "") -> dict:
-    """整篇翻译的整句卡；迁移脚本与批改落库共用这一种形状。"""
-    digest = hashlib.sha1(sentence.encode("utf-8")).hexdigest()[:10]
-    return {
-        "source": "translation",
-        "source_id": f"{source_prefix}:{digest}",
-        "question": sentence,
-        "answer": "**必改**\n" + error_lines(rows),
-        "my_answer": my_answer,
-        "tags": "翻译 整句",
-        "note": f"{len(rows)} 处必改 · 整句重译",
-        "auto": True,
-    }
-
-
-def _translation_cards(pack: dict, text: str, errors: list[dict]) -> list[dict]:
-    """整篇翻译：一个完整句子一张卡，该句全部错误点放在背面。
-
-    只有句子里至少有一处“严重”错误才建卡；一般错误仍列在背面，
-    让复习时能看到完整语境，但不额外增加卡量。
-    """
-    groups: dict[str, list[dict]] = {}
-    for row in errors:
-        if row["type"] in NON_CARD_TYPES:
-            continue
-        groups.setdefault(sentence_around(text, row["quote"]), []).append(row)
-    cards = []
-    for sentence, rows in groups.items():
-        if not any(row["severity"] in CARD_SEVERITIES for row in rows):
-            continue
-        cards.append(translation_sentence_card(
-            f"translation:{pack.get('id')}", sentence, rows))
-    return cards
 
 
 def sentence_card(item: dict, text: str, must_fix: list[dict],
@@ -349,7 +304,7 @@ def validate_translation(obj: dict, text: str, pack: dict,
         "rewrite_task": _text(obj.get("rewrite_task"), 600),
         "template": hard.get("template") or rubric.template_check(text),
         "hard_rules": hard,
-        "cards": _translation_cards(pack, text, errors),
+        "cards": _translation_cards(pack, text, errors, alignment),
         "vocab_cards": _vocab_cards(errors, pack.get("terms")),
     }
 

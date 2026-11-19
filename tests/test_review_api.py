@@ -57,7 +57,8 @@ class ReviewApiTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(body["state"]["reps"], 1)
-        self.assertEqual(body["state"]["scheduled_days"], 3)
+        # 新卡「记得」约 3 天，FSRS 间隔抖动 ±1 天，避免同批卡永远同一天回来。
+        self.assertTrue(2 <= body["state"]["scheduled_days"] <= 4)
         conn = self._orig(self.db_path)
         self.addCleanup(conn.close)
         self.assertEqual(conn.execute(

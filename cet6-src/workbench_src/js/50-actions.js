@@ -294,7 +294,17 @@
     WB.dom.sentences.addEventListener("input", onCardInput);
     WB.dom.sentences.addEventListener("change", onCardChange);
 
+    WB.dom.questions.addEventListener("change", function(e){
+      const input = e.target.closest("input[data-quiz-opt]");
+      if(!input || !WB.quiz) return;
+      WB.quiz.choose(input.dataset.qnum, input.value);
+    });
+
     WB.dom.questions.addEventListener("click", function(e){
+      if(WB.quiz){
+        if(e.target.closest("[data-quiz-submit]")){ WB.quiz.submit(); return; }
+        if(e.target.closest("[data-quiz-redo]")){ WB.quiz.redo(); return; }
+      }
       const btn = e.target.closest("button[data-q]");
       if(!btn) return;
       const cur = WB.paper.currentItem();
@@ -302,6 +312,23 @@
       if(!q) return;
       WB.audio.playRange(Math.max(0, q.start - 0.1), q.end + 0.1, null, {kind:"questions"});
     });
+
+    const quizBtn = document.getElementById("quizBtn");
+    if(quizBtn){
+      quizBtn.addEventListener("click", function(){
+        const quiz = WB.paper.quizForItem();
+        const panel = document.getElementById("questionsPanel");
+        if(!quiz){
+          const reason = WB.paper.quizReason();
+          WB.status("这份卷暂无做题数据" + (reason ? "：" + reason : "（题库覆盖 2019 年及以后）"));
+          return;
+        }
+        if(panel){
+          panel.open = true;
+          panel.scrollIntoView({behavior:"smooth", block:"start"});
+        }
+      });
+    }
 
     WB.audio.onFollowItem = followSwitch;
 

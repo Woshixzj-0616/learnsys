@@ -131,6 +131,22 @@ class ExamServiceTest(unittest.TestCase):
                 "paper_id": "p1", "section": "Section A 长对话",
                 "item": "Conversation 1", "wrong": [99]})
 
+    def test_attempt_numbers_subset_counts_only_answered(self):
+        data = cet6_exam.attempt(self.conn, {
+            "paper_id": "p1", "section": "Section A 长对话",
+            "item": "Conversation 1", "wrong": [1], "numbers": [1],
+            "duration_s": 20})
+        self.assertEqual(data["question_count"], 1)
+        self.assertEqual(data["correct_count"], 0)
+        self.assertEqual(data["self_accuracy"], 0.0)
+        self.assertEqual([q["number"] for q in data["questions"]], [1])
+
+    def test_attempt_rejects_number_outside_valid(self):
+        with self.assertRaises(ValueError):
+            cet6_exam.attempt(self.conn, {
+                "paper_id": "p1", "section": "Section A 长对话",
+                "item": "Conversation 1", "numbers": [99]})
+
     def test_attempt_requires_synced_item(self):
         with self.assertRaises(LookupError):
             cet6_exam.attempt(self.conn, {

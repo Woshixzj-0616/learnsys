@@ -25,8 +25,178 @@ KINDS = {
 NEW_PER_DAY = 10   # 每个 tab 每天最多进 10 张新卡
 
 
+NEW_SHARE = 0.2        # 每轮最多 20% 给新卡（10 张一轮 = 2 张）
+OLD_ACCUM_SHARE = 0.5  # 旧每日积累最多占复习位的一半，别再把错题/生词挤掉
+QUEUE_POOL = 500       # 先取多少到期候选再排序/混排
+
+
 def _kind_spec(kind: str) -> dict:
     return KINDS.get(str(kind or "").strip(), {})
+
+
+def _day_of(value) -> dt.date | None:
+    try:
+        return dt.date.fromisoformat(str(value or "")[:10])
+    except ValueError:
+        return None
+
+
+def _forget_risk(item: dict, day: dt.date) -> float:
+    """0~1：按 FSRS 稳定度估算「今天已经想不起来」的概率；越大越先复习。
+
+    从没复习过的新卡没有稳定度，按最高风险处理（但仍受每轮新卡配额限制）。
+    """
+    if str(item.get("state") or "") == "new":
+        return 1.0
+    stability = float(item.get("stability") or 0)
+    last = _day_of(item.get("last_review"))
+    if stability <= 0 or last is None:
+        return 1.0
+    elapsed = max(0, (day - last).days)
+    return 1.0 - fsrs.retrievability(elapsed, stability)
+
+
+def _risk_key(item: dict, day: dt.date) -> tuple:
+    return (-_forget_risk(item, day), str(item.get("due") or ""),
+            str(item.get("item_type") or ""), int(item.get("item_id") or 0))
+
+
+def _is_today_accum(item: dict, day: str) -> bool:
+    return (item.get("item_type") == "accum"
+            and str(item.get("accum_day") or "")[:10] == day)
+
+
+def _interleave(primary: list[dict], extras: list[dict]) -> list[dict]:
+    """把新卡均匀插进复习卡，不再永远堆在末尾。"""
+    if not extras:
+        return list(primary)
+    if not primary:
+        return list(extras)
+    total = len(primary) + len(extras)
+    positions = [((index + 1) * total) // (len(extras) + 1)
+                 for index in range(len(extras))]
+    out: list[dict] = []
+    extra_index = primary_index = 0
+    for slot in range(total):
+        if extra_index < len(extras) and slot == positions[extra_index]:
+            out.append(extras[extra_index])
+            extra_index += 1
+        elif primary_index < len(primary):
+            out.append(primary[primary_index])
+            primary_index += 1
+        else:
+            out.append(extras[extra_index])
+            extra_index += 1
+    return out
+
+
+def _drop_word_duplicates(conn, items: list[dict]) -> list[dict]:
+    """词 tab 去重：生词卡优先，同一 alias 的 accum 卡让位。
+
+    `seed_review_states` 已经会清理历史重叠；这里保证即使状态还在，
+    同一英文也不会以「生词卡 + 每日积累卡」出现两次。
+    """
+    vocab_aliases = store.active_vocab_aliases(conn)
+    seen: list[set[str]] = []
+    kept: list[dict] = []
+    for item in items:
+        if item.get("item_type") != "vocab":
+            continue
+        aliases = store.word_aliases(item.get("word"))
+        if any(aliases & other for other in seen):
+            continue
+        seen.append(aliases)
+        kept.append(item)
+    for item in items:
+        if item.get("item_type") == "vocab":
+            continue
+        if (item.get("item_type") == "accum"
+                and item.get("accum_kind") == "translation"):
+            aliases = store.word_aliases(item.get("meaning"))
+            if aliases & vocab_aliases:
+                continue
+            if any(aliases & other for other in seen):
+                continue
+            seen.append(aliases)
+        kept.append(item)
+    return kept
+
+
+def _compose_queue(items: list[dict], *, day: str, limit: int,
+                   new_left: int | None, has_kind: bool) -> list[dict]:
+    """一轮复习的取卡规则（唯一落点）。
+
+    1. 当天生成的每日积累排最前（写作 2 / 翻译 8）；
+    2. 其余卡按 FSRS 遗忘风险从高到低混排，旧积累最多占复习位一半；
+    3. 新词/新错题按每轮 20% 插入，且不超过当天剩余新卡配额。
+    """
+    size = max(1, int(limit or 10))
+    day_text = str(day or "")[:10]
+    day_date = _day_of(day_text) or dt.date.today()
+    if not has_kind:
+        # 错题本 / MCP 的通用队列没有两个 tab 的配额规则，保持到期日顺序。
+        ordered = sorted(items, key=lambda item: (
+            str(item.get("due") or ""), str(item.get("item_type") or ""),
+            int(item.get("item_id") or 0)))
+        return ordered[:size]
+
+    today_accum = [item for item in items if _is_today_accum(item, day_text)]
+    rest = [item for item in items if not _is_today_accum(item, day_text)]
+    today_accum.sort(key=lambda item: (str(item.get("due") or ""),
+                                       int(item.get("item_id") or 0)))
+    selection = today_accum[:size]
+    remaining = size - len(selection)
+    if remaining <= 0:
+        return selection
+
+    review_pool: list[dict] = []
+    new_pool: list[dict] = []
+    for item in rest:
+        if item.get("item_type") == "accum":
+            review_pool.append(item)      # 旧积累降级为普通复习卡
+        elif str(item.get("state") or "") == "new":
+            new_pool.append(item)
+        else:
+            review_pool.append(item)
+    review_pool.sort(key=lambda item: _risk_key(item, day_date))
+    new_pool.sort(key=lambda item: (str(item.get("due") or ""),
+                                    str(item.get("item_type") or ""),
+                                    int(item.get("item_id") or 0)))
+
+    new_slots = min(max(1, round(size * NEW_SHARE)), remaining,
+                    max(0, int(new_left or 0)), len(new_pool))
+    review_slots = remaining - new_slots
+    picked: list[dict] = []
+    seen: set[tuple[str, int]] = set()
+    accum_used = 0
+    accum_cap = max(1, round(review_slots * OLD_ACCUM_SHARE)) if review_slots else 0
+    for item in review_pool:
+        if len(picked) >= review_slots:
+            break
+        key = (str(item.get("item_type") or ""), int(item.get("item_id") or 0))
+        if key in seen:
+            continue
+        if item.get("item_type") == "accum":
+            if accum_used >= accum_cap:
+                continue
+            accum_used += 1
+        picked.append(item)
+        seen.add(key)
+    if len(picked) < review_slots:
+        # 没有别的卡可补时，再用剩下的旧积累填满这一轮。
+        for item in review_pool:
+            if len(picked) >= review_slots:
+                break
+            key = (str(item.get("item_type") or ""), int(item.get("item_id") or 0))
+            if key in seen:
+                continue
+            picked.append(item)
+            seen.add(key)
+    result = selection + _interleave(picked, new_pool[:new_slots])
+    for item in result:
+        if str(item.get("state") or "") != "new":
+            item["forget_risk"] = round(_forget_risk(item, day_date), 3)
+    return result
 
 
 def _introduced_today(conn, item_types: tuple, day: str,
@@ -70,7 +240,9 @@ def review(conn, item_type: str, item_id: int, rating: int,
         raise LookupError("卡片不存在")
     store.seed_review_states(conn)
     old = store.get_review_state(conn, item_type, int(item_id)) or _new_state()
-    new = fsrs.schedule(old, int(rating), now)
+    # 同一张卡、同一步的间隔抖动结果固定；不同卡错开到相邻几天。
+    seed = f"{item_type}:{int(item_id)}:{int(old.get('reps') or 0)}"
+    new = fsrs.schedule(old, int(rating), now, seed=seed)
     store.save_review_state(conn, item_type, int(item_id), **new)
     store.add_review_log(
         conn, item_type=item_type, item_id=int(item_id), rating=int(rating),
@@ -160,17 +332,23 @@ def queue(conn, *, limit: int = 50, item_type: str = "",
             sources=spec.get("sources", ()))
         new_left = max(0, NEW_PER_DAY - introduced)
         items = store.due_review_items(
-            conn, limit=limit, today=day,
+            conn, limit=QUEUE_POOL, today=day,
             item_types=spec["item_types"], sources=spec["sources"],
-            accum_kinds=spec.get("accum_kinds", ()), max_new=new_left)
-        _attach_topics(items)
-        return {"items": items, "count": len(items), "kind": kind,
+            accum_kinds=spec.get("accum_kinds", ()))
+        if kind == "word":
+            items = _drop_word_duplicates(conn, items)
+        picked = _compose_queue(items, day=day, limit=limit,
+                                new_left=new_left, has_kind=True)
+        _attach_topics(picked)
+        return {"items": picked, "count": len(picked), "kind": kind,
                 "new_per_day": NEW_PER_DAY, "new_remaining": new_left,
                 "quota_types": list(spec.get("quota_types", spec["item_types"]))}
     items = store.due_review_items(conn, limit=limit, item_type=item_type,
                                    today=day)
-    _attach_topics(items)
-    return {"items": items, "count": len(items)}
+    picked = _compose_queue(items, day=day, limit=limit, new_left=None,
+                            has_kind=False)
+    _attach_topics(picked)
+    return {"items": picked, "count": len(picked)}
 
 
 def due_counts(conn, today=None) -> dict:

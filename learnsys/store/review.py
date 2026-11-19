@@ -9,6 +9,10 @@ import json
 import sqlite3
 
 from ._base import _LOCK, now
+from .review_accum import (_accum_english, _active_vocab_alias_set,
+                           _suppress_duplicate_accum,
+                           suppress_accum_vocab_duplicates)
+from .wordkey import word_aliases
 
 
 def _next_review(ts: str, last_review: str, stage: int) -> str:
@@ -107,6 +111,17 @@ def save_review_state(conn: sqlite3.Connection, item_type: str, item_id: int,
     return _review_state_dict(row)
 
 
+def delete_review_state(conn: sqlite3.Connection, item_type: str,
+                        item_id: int) -> bool:
+    """删掉一张卡的复习状态；用于「每日积累词已进生词本」这类去重场景。"""
+    with _LOCK:
+        cur = conn.execute(
+            "DELETE FROM review_state WHERE item_type = ? AND item_id = ?",
+            (item_type, int(item_id)))
+        conn.commit()
+        return bool(cur.rowcount)
+
+
 def add_review_log(conn: sqlite3.Connection, *, item_type: str, item_id: int,
                    rating: int, state_before: str = "", due_before: str = "",
                    due_after: str = "", stability: float = 0,
@@ -161,18 +176,31 @@ def seed_review_states(conn: sqlite3.Connection, today=None) -> int:
             scheduled_days=0, elapsed_days=0)
         seeded += 1
     # 每日积累：只收启用日之后的写作句型与翻译短语，历史条目不回填。
+    # 翻译词如果已经进了生词本，或同一英文以前已经推过，就不再单独产卡。
+    vocab_aliases = _active_vocab_alias_set(conn)
     accum_rows = conn.execute(
-        "SELECT a.id, a.day FROM cet6_accum_items a LEFT JOIN review_state r "
-        "ON r.item_type = 'accum' AND r.item_id = a.id "
-        "WHERE r.item_id IS NULL AND a.day >= ? AND a.kind IN (?, ?)",
+        "SELECT a.id, a.day, a.kind, a.payload_json FROM cet6_accum_items a "
+        "LEFT JOIN review_state r ON r.item_type = 'accum' AND r.item_id = a.id "
+        "WHERE r.item_id IS NULL AND a.day >= ? AND a.kind IN (?, ?) "
+        "ORDER BY a.day, a.id",
         (DAILY_REVIEW_EPOCH.isoformat(), *ACCUM_REVIEW_KINDS)).fetchall()
-    for item_id, item_day in accum_rows:
+    kept_accum: list[set[str]] = []
+    for item_id, item_day, kind, payload_json in accum_rows:
+        if kind == "translation":
+            aliases = word_aliases(_accum_english(payload_json))
+            if aliases and aliases & vocab_aliases:
+                continue
+            if aliases and any(aliases & seen for seen in kept_accum):
+                continue
+            if aliases:
+                kept_accum.append(aliases)
         due = max(str(item_day or day)[:10], day)
         save_review_state(
             conn, "accum", int(item_id), state="new", due=due, stability=1.0,
             difficulty=5.0, reps=0, lapses=0, last_review="",
             scheduled_days=0, elapsed_days=0)
         seeded += 1
+    _suppress_duplicate_accum(conn, vocab_aliases)
     return seeded
 
 
@@ -182,7 +210,7 @@ def _review_join_sql() -> str:
         "r.reps, r.lapses, r.last_review, r.scheduled_days, "
         "w.question, w.answer, w.my_answer, w.tags, w.note, w.material_id, w.source, "
         "v.word, v.meaning, v.context, v.paper_title, v.source, "
-        "a.kind, a.payload_json "
+        "a.kind, a.payload_json, a.day "
         "FROM review_state r "
         "LEFT JOIN wrong_items w ON r.item_type = 'wrong' AND w.id = r.item_id "
         "LEFT JOIN vocab_items v ON r.item_type = 'vocab' AND v.id = r.item_id "
@@ -202,6 +230,7 @@ def _review_card(row) -> dict:
         "source": row[16] or row[21] or "",
         "word": row[17] or "", "meaning": row[18] or "",
         "context": row[19] or "", "paper_title": row[20] or "",
+        "accum_day": str(row[24] or "")[:10] if len(row) > 24 else "",
     }
     if item["item_type"] == "accum":
         _fill_accum_card(item, row[22] or "", row[23] or "")
@@ -274,37 +303,22 @@ def _review_where(day: str, item_types: tuple, sources: tuple,
 def due_review_items(conn: sqlite3.Connection, *, limit: int = 50,
                      today=None, item_type: str = "",
                      item_types: tuple = (), sources: tuple = (),
-                     accum_kinds: tuple = (),
-                     max_new: int | None = None) -> list[dict]:
-    """到期卡队列。
+                     accum_kinds: tuple = ()) -> list[dict]:
+    """到期卡候选池。
 
-    `item_types` / `sources` 是英语复习的过滤条件；`max_new` 限制新卡张数
-    （英语复习每天 10 张），不会影响已进入复习的卡。
+    这里只回答「哪些卡到期、属于哪个来源」，不决定展示顺序、新卡配额和
+    每日积累优先级；这些业务规则统一在 `services/review.py::queue`。
     """
     day = str(today or dt.date.today().isoformat())[:10]
     types = (item_type,) if item_type in REVIEW_ITEM_TYPES else tuple(item_types)
     where, args = _review_where(day, types, sources, accum_kinds)
-    # 多取一些，给新卡限流留出替换空间；最终仍按 due 顺序返回。
-    fetch = max(1, min(int(limit or 50), 500))
-    # 每日积累当天生成，排在同一轮的最前面；旧错题/生词按到期日排在后面。
+    fetch = max(1, min(int(limit or 50), 1000))
     sql = (_review_join_sql() + "WHERE " + where
-           + " ORDER BY CASE WHEN r.item_type = 'accum' THEN 0 ELSE 1 END, "
-             "r.due, r.item_type, r.item_id LIMIT ?")
-    args.append(fetch if max_new is None else min(fetch * 4, 500))
+           + " ORDER BY r.due, r.item_type, r.item_id LIMIT ?")
+    args.append(fetch)
     with _LOCK:
         rows = conn.execute(sql, args).fetchall()
-    items = [_review_card(row) for row in rows]
-    if max_new is not None:
-        left = max(0, int(max_new))
-        kept: list[dict] = []
-        for item in items:
-            if item["state"] == "new" and item["item_type"] != "accum":
-                if left <= 0:
-                    continue
-                left -= 1
-            kept.append(item)
-        items = kept
-    return items[:fetch]
+    return [_review_card(row) for row in rows]
 
 
 def due_review_count(conn: sqlite3.Connection, *, today=None,
@@ -404,7 +418,7 @@ def review_stats(conn: sqlite3.Connection, today=None, item_type: str = "") -> d
             "AND (r.item_type <> 'vocab' OR (v.id IS NOT NULL AND v.status = 'active')) "
             + join_filter + " ORDER BY r.due LIMIT 1",
             [day, *join_args]).fetchone()
-    due = len(due_review_items(conn, limit=500, today=day, item_type=item_type))
+    due = due_review_count(conn, today=day, item_type=item_type)
     return {"due": due, "new": int(new or 0), "total": int(total or 0),
             "reviewed_today": int(reviewed or 0),
             "next_due": (next_row[3] if next_row else "") or ""}

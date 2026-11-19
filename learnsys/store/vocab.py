@@ -7,6 +7,8 @@ import sqlite3
 
 from ._base import _LOCK, now
 from .review import get_review_state, save_review_state
+from .review_accum import active_vocab_aliases
+from .wordkey import meanings_compatible, variant_groups, word_aliases
 
 
 # ---------------------------------------------------------------------------
@@ -56,14 +58,71 @@ def _clip(value, cap: int) -> str:
     return str(value or "").strip()[:cap]
 
 
+def _find_match_locked(conn: sqlite3.Connection, word: str,
+                       aliases: set[str], *, include_archived: bool = True,
+                       meaning: str = ""):
+    """调用方必须已持 `_LOCK`：先精确 normalized，再按 alias 找变体。
+
+    archived 行可以作为「桥」：如果用户先合并了 remote medicine 和
+    telemedicine，只留下 telemedicine，之后再加 remote medicine，
+    仍能通过归档的斜杠条目找回 active 的 telemedicine。
+    """
+    normalized = _normalize_word(word)
+    status_sql = "" if include_archived else " AND status = 'active'"
+    row = conn.execute(
+        f"SELECT {_VOCAB_SELECT} FROM vocab_items "
+        f"WHERE normalized = ?{status_sql}", (normalized,)).fetchone()
+    if row is not None:
+        return _vocab_dict(row)
+    if not aliases:
+        return None
+    where = "" if include_archived else "WHERE status = 'active'"
+    rows = [_vocab_dict(candidate) for candidate in conn.execute(
+        f"SELECT {_VOCAB_SELECT} FROM vocab_items {where} "
+        "ORDER BY CASE WHEN status = 'active' THEN 0 ELSE 1 END, id").fetchall()]
+
+    def compatible(item: dict) -> bool:
+        return not meaning or meanings_compatible(meaning, item.get("meaning"))
+
+    active_rows = [item for item in rows if item.get("status") == "active"]
+    for item in active_rows:
+        if word_aliases(item.get("word")) & aliases and compatible(item):
+            return item
+    if not include_archived:
+        return None
+    for bridge in [item for item in rows if item.get("status") != "active"]:
+        bridge_aliases = word_aliases(bridge.get("word"))
+        if not (bridge_aliases & aliases):
+            continue
+        for item in active_rows:
+            if word_aliases(item.get("word")) & bridge_aliases and compatible(item):
+                return item
+        if compatible(bridge):
+            return bridge
+    return None
+
+
+def find_vocab_match(conn: sqlite3.Connection, word: str, *,
+                     include_archived: bool = True,
+                     meaning: str = "") -> dict | None:
+    """按词形找一条生词；active 优先，archived 可恢复。"""
+    aliases = word_aliases(word)
+    with _LOCK:
+        return _find_match_locked(conn, word, aliases,
+                                  include_archived=include_archived,
+                                  meaning=meaning)
+
+
 def add_vocab(conn: sqlite3.Connection, *, word: str, meaning: str = "",
               phonetic: str = "", context: str = "", paper_id: str = "",
               paper_title: str = "", sentence: int = 0,
               source: str = "cet6") -> tuple[dict, bool]:
-    """加一个生词；同词（忽略大小写/空白）已存在时只补空字段。
+    """加一个生词；同词或明显变体已存在时只补空字段。
 
     词头统一为英文、释义为中文；中文词头 + 英文释义时会自动交换，
     这样翻译页/每日积累/精听工作台从两个方向加同一个词也只会落一条。
+    「明显变体」的口径在 `store/wordkey.py`：大小写/标点、the、单复数、
+    斜杠同义项、括号缩写；同义词（high-speed rail / railway）不合并。
     返回 `(item, created)`；不覆盖已有释义——用户手填的内容优先。
     """
     word, meaning = normalize_pair(word, meaning)
@@ -71,6 +130,7 @@ def add_vocab(conn: sqlite3.Connection, *, word: str, meaning: str = "",
     if not word:
         raise ValueError("单词不能为空")
     normalized = _normalize_word(word)
+    aliases = word_aliases(word)
     stamp = now()
     incoming = {
         "meaning": _clip(meaning, 1000),
@@ -81,11 +141,9 @@ def add_vocab(conn: sqlite3.Connection, *, word: str, meaning: str = "",
     }
     created = False
     with _LOCK:
-        row = conn.execute(
-            f"SELECT {_VOCAB_SELECT} FROM vocab_items WHERE normalized = ?",
-            (normalized,)).fetchone()
-        if row is not None:
-            item = _vocab_dict(row)
+        item = _find_match_locked(conn, word, aliases, include_archived=True,
+                                  meaning=incoming["meaning"])
+        if item is not None:
             updates = {key: value for key, value in incoming.items()
                        if value and not item.get(key)}
             if item.get("status") == "archived":
@@ -196,15 +254,14 @@ def _attach_vocab_review(conn: sqlite3.Connection, items: list[dict]) -> list[di
 
 
 def find_active_word(conn: sqlite3.Connection, word: str) -> dict | None:
-    """按归一后的词头查一条在册生词；查词本地优先用。"""
-    row = conn.execute(
-        "SELECT id, meaning, phonetic FROM vocab_items "
-        "WHERE normalized = ? AND status = 'active'",
-        (_normalize_word(word),)).fetchone()
-    if row is None:
+    """按归一后的词头或明显变体查一条在册生词；查词本地优先用。"""
+    aliases = word_aliases(word)
+    with _LOCK:
+        item = _find_match_locked(conn, word, aliases, include_archived=False)
+    if item is None or item.get("status") != "active":
         return None
-    return {"id": int(row[0]), "meaning": str(row[1] or ""),
-            "phonetic": str(row[2] or "")}
+    return {"id": int(item["id"]), "meaning": str(item.get("meaning") or ""),
+            "phonetic": str(item.get("phonetic") or "")}
 
 
 def get_vocab(conn: sqlite3.Connection, item_id: int) -> dict | None:

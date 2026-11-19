@@ -203,6 +203,13 @@
       return;
     }
 
+    window.QUIZ = null;
+    try{
+      await loadScript(withCacheBust(base + "quiz.js"));
+    }catch(e){
+      // 没有做题数据不影响精听；有桩文件时 window.QUIZ 会带 reason。
+    }
+
     WB.store.setLast(current);
     WB.boot({paper: window.PAPER, paperDir: current, audioBase: base});
   }

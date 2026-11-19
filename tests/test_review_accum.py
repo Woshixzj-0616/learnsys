@@ -54,6 +54,33 @@ class ReviewAccumTest(unittest.TestCase):
         self.assertIn(self.phrase_id, ids)
         self.assertNotIn(self.old_id, ids)
 
+    def test_seed_skips_accum_word_already_in_vocab(self):
+        store.add_vocab(self.conn, word="high-speed rails", meaning="高铁")
+        store.seed_review_states(self.conn, today=TODAY)
+        self.assertIsNone(
+            store.get_review_state(self.conn, "accum", self.phrase_id))
+
+    def test_seed_keeps_earliest_duplicate_accum(self):
+        second = store.add_accum(
+            self.conn, day=TODAY, kind="translation", ref_key="phrase:t1b",
+            payload={"zh": "高铁", "en": "high-speed rail"})
+        store.seed_review_states(self.conn, today=TODAY)
+        self.assertIsNotNone(
+            store.get_review_state(self.conn, "accum", self.phrase_id))
+        self.assertIsNone(
+            store.get_review_state(self.conn, "accum", second))
+
+    def test_word_queue_hides_accum_word_already_in_vocab(self):
+        store.seed_review_states(self.conn, today=TODAY)
+        self.assertIsNotNone(
+            store.get_review_state(self.conn, "accum", self.phrase_id))
+        store.add_vocab(self.conn, word="high-speed rail", meaning="高铁")
+        data = review.queue(self.conn, kind="word", today=TODAY)
+        self.assertNotIn(
+            self.phrase_id,
+            [item["item_id"] for item in data["items"]
+             if item["item_type"] == "accum"])
+
     def test_queue_splits_writing_and_translation(self):
         sentence = review.queue(self.conn, kind="sentence", today=TODAY)
         self.assertEqual([item["item_id"] for item in sentence["items"]
@@ -79,7 +106,7 @@ class ReviewAccumTest(unittest.TestCase):
         self.assertGreaterEqual(counts["sentence"], 1)
         self.assertGreaterEqual(counts["word"], 1)
 
-    def test_accum_not_blocked_by_wrong_backlog(self):
+    def test_old_accum_mixes_with_wrong_backlog(self):
         for index in range(10):
             store.add_wrong_item(
                 self.conn, question=f"旧错题 {index}", answer="参考",
@@ -90,8 +117,10 @@ class ReviewAccumTest(unittest.TestCase):
         self.conn.commit()
 
         data = review.queue(self.conn, kind="sentence", limit=10, today=TODAY)
-        self.assertEqual(data["count"], 10)
-        self.assertEqual(data["items"][0]["item_type"], "accum")
+        kinds = [item["item_type"] for item in data["items"]]
+        self.assertIn("accum", kinds)          # 旧积累仍然排得到
+        self.assertIn("wrong", kinds)          # 但不许把错题挤掉
+        self.assertLessEqual(data["count"], 10)
         self.assertEqual(data["new_remaining"], 10)   # 每日积累不占旧错题配额
 
     def test_ensure_day_seeds_today_cards(self):

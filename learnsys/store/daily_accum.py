@@ -170,6 +170,19 @@ def accum_items(conn: sqlite3.Connection, day: str) -> list[dict]:
     return [_accum_dict(row) for row in rows]
 
 
+def accum_payloads(conn: sqlite3.Connection, kind: str = "") -> list[dict]:
+    """历史条目的 payload，按天/ id 顺序；生成每日积累时查重用。"""
+    sql = f"SELECT {_ACCUM_COLUMNS} FROM cet6_accum_items"
+    args: list = []
+    if kind:
+        sql += " WHERE kind = ?"
+        args.append(str(kind))
+    sql += " ORDER BY day, id"
+    with _LOCK:
+        rows = conn.execute(sql, args).fetchall()
+    return [_accum_dict(row) for row in rows]
+
+
 def accum_item(conn: sqlite3.Connection, item_id: int) -> dict | None:
     with _LOCK:
         row = conn.execute(

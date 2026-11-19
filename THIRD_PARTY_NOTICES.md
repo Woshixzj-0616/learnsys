@@ -27,6 +27,15 @@
 
 > PyMuPDF 是 AGPL-3.0：如果分发修改版并对外提供服务，请先确认合规；本项目默认只在本地个人使用。
 
+## 题库数据
+
+| 来源 | 用途 | 许可证 |
+| --- | --- | --- |
+| [ShepiTT/CET_practice_questions](https://github.com/ShepiTT/CET_practice_questions) | 六级听力 2019–2026 真题的 A-D 选项、标准答案与解析，提取为 `learnsys/train/content/cet6_listening_quiz.json` | Apache-2.0 |
+
+仓库只包含从该项目 SQLite 中提取的六级听力选项/答案/解析文本，
+不包含其 PDF、音频或程序代码；原项目版权归其作者所有。
+
 ## 不随仓库分发
 
 - Whisper 模型、六级真题音频、`learning.db`、设置文件、截图/录音。

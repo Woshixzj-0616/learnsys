@@ -31,7 +31,7 @@ PHRASE_EPOCH = dt.date(2026, 11, 2)
 # 旧实现每天只平移 1 条，今天的第一条正好是昨天的第二条，相邻两天必重复。
 WRITING_EPOCH = dt.date(2026, 11, 4)
 # 内容结构 / 轮换口径变了就升这个号：当天已生成的写作/翻译会重新生成，往期历史不动。
-ACCUM_VERSION = 4
+ACCUM_VERSION = 5
 
 
 def _today() -> str:
@@ -95,66 +95,104 @@ def _theme_term_groups() -> list[tuple[dict, list[dict]]]:
     return groups
 
 
-def _translation_payloads(day: str) -> list[dict]:
+def _history_translation_aliases(conn) -> set[str]:
+    """历次每日积累里已经推过的英文（按 alias），用于避免跨天重复。"""
+    aliases: set[str] = set()
+    for item in store.accum_payloads(conn, kind="translation"):
+        aliases |= store.word_aliases(str(item["payload"].get("en") or ""))
+    return aliases
+
+
+def _translation_payloads(conn, day: str) -> list[dict]:
+    """4 条高频短语 + 4 条主题词。
+
+    跳过三类：已经在生词本里的、今天已经选过的、以前每日积累推过的；
+    如果三轮下来凑不满 8 条，最后允许重复历史词，但**永不**重复生词本里的词。
+    """
     result: list[dict] = []
-    chosen: set[str] = set()
+    chosen_zh: set[str] = set()
+    chosen_en: set[str] = set()
+    vocab_aliases = store.active_vocab_aliases(conn)
+    history_aliases = _history_translation_aliases(conn)
     ordinal = _ordinal(day)
+
+    def pickable(zh: str, en: str, allow_history: bool) -> bool:
+        if not zh:
+            return False
+        aliases = store.word_aliases(en)
+        if not aliases or aliases & vocab_aliases:
+            return False
+        if zh in chosen_zh or aliases & chosen_en:
+            return False
+        if not allow_history and aliases & history_aliases:
+            return False
+        return True
+
+    def take(zh: str, en: str) -> None:
+        chosen_zh.add(zh)
+        chosen_en.update(store.word_aliases(en))
 
     phrases = [row for row in train_content.translation_phrases()
                if isinstance(row, dict) and str(row.get("zh") or "").strip()]
     if phrases:
         size = len(phrases)
         start = _daily_start(day, PHRASE_PER_DAY, size, PHRASE_EPOCH)
-        for offset in range(min(PHRASE_PER_DAY, size)):
-            phrase = phrases[(start + offset) % size]
-            zh = str(phrase.get("zh") or "").strip()
-            if zh in chosen:
-                continue
-            chosen.add(zh)
-            result.append({
-                "ref_key": f"phrase:{phrase.get('id')}",
-                "payload": {
-                    "zh": zh,
-                    "en": str(phrase.get("en") or "").strip(),
-                    "note": str(phrase.get("note") or "").strip(),
-                    "theme": str(phrase.get("theme") or "").strip(),
-                    "tag": "高频短语",
-                    "source_id": str(phrase.get("id") or ""),
-                    "v": ACCUM_VERSION,
-                },
-            })
+        for allow_history in (False, True):
+            for offset in range(size):
+                if len(result) >= PHRASE_PER_DAY:
+                    break
+                phrase = phrases[(start + offset) % size]
+                zh = str(phrase.get("zh") or "").strip()
+                en = str(phrase.get("en") or "").strip()
+                if not pickable(zh, en, allow_history):
+                    continue
+                take(zh, en)
+                result.append({
+                    "ref_key": f"phrase:{phrase.get('id')}",
+                    "payload": {
+                        "zh": zh,
+                        "en": en,
+                        "note": str(phrase.get("note") or "").strip(),
+                        "theme": str(phrase.get("theme") or "").strip(),
+                        "tag": "高频短语",
+                        "source_id": str(phrase.get("id") or ""),
+                        "v": ACCUM_VERSION,
+                    },
+                })
 
     groups = _theme_term_groups()
     need = max(0, TERMS_PER_DAY - len(result))
     if groups and need:
         size = len(groups)
         start = ordinal % size
-        for offset in range(size):
-            if need <= 0:
-                break
-            item, terms = groups[(start + offset) % size]
-            for pick in range(len(terms)):
-                # 只跟日期走，不再加 offset：offset 每天减 1 会和日期的 +1
-                # 互相抵消，导致同一组主题词在相邻两天挑到同一个词。
-                term = terms[(ordinal + pick) % len(terms)]
-                zh = str(term.get("zh") or "").strip()
-                if not zh or zh in chosen:
-                    continue
-                chosen.add(zh)
-                result.append({
-                    "ref_key": f"term:{item.get('id')}:{zh}",
-                    "payload": {
-                        "zh": zh,
-                        "en": str(term.get("en") or "").strip(),
-                        "note": str(term.get("note") or "").strip(),
-                        "theme": str(item.get("theme") or "").strip(),
-                        "tag": "主题词",
-                        "source_id": f"{item.get('id')}:{zh}",
-                        "v": ACCUM_VERSION,
-                    },
-                })
-                need -= 1
-                break
+        for allow_history in (False, True):
+            for offset in range(size):
+                if need <= 0:
+                    break
+                item, terms = groups[(start + offset) % size]
+                for pick in range(len(terms)):
+                    # 只跟日期走，不再加 offset：offset 每天减 1 会和日期的 +1
+                    # 互相抵消，导致同一组主题词在相邻两天挑到同一个词。
+                    term = terms[(ordinal + pick) % len(terms)]
+                    zh = str(term.get("zh") or "").strip()
+                    en = str(term.get("en") or "").strip()
+                    if not pickable(zh, en, allow_history):
+                        continue
+                    take(zh, en)
+                    result.append({
+                        "ref_key": f"term:{item.get('id')}:{zh}",
+                        "payload": {
+                            "zh": zh,
+                            "en": en,
+                            "note": str(term.get("note") or "").strip(),
+                            "theme": str(item.get("theme") or "").strip(),
+                            "tag": "主题词",
+                            "source_id": f"{item.get('id')}:{zh}",
+                            "v": ACCUM_VERSION,
+                        },
+                    })
+                    need -= 1
+                    break
     return result
 
 
@@ -216,7 +254,7 @@ def ensure_day(conn, day: str | None = None) -> None:
             store.add_accum(conn, day=day, kind="writing",
                             ref_key=row["ref_key"], payload=row["payload"])
     if "translation" not in kinds:
-        for row in _translation_payloads(day):
+        for row in _translation_payloads(conn, day):
             store.add_accum(conn, day=day, kind="translation",
                             ref_key=row["ref_key"], payload=row["payload"])
     if "pron" not in kinds:
@@ -334,6 +372,8 @@ def add_term_to_vocab(conn, item_id: int) -> dict:
         conn, word=str(payload.get("en") or "").strip(),
         meaning=meaning, source="daily")
     store.set_accum_status(conn, int(item_id), "read")
+    # 同一个词已经在生词本里复习，当天这张 accum 卡不再单独出现。
+    store.delete_review_state(conn, "accum", int(item_id))
     return {"vocab": vocab, "created": created,
             "summary": summary(conn, item["day"])}
 

@@ -61,14 +61,16 @@ class EnglishReviewTest(unittest.TestCase):
         body = self.client.get(
             "/api/review/queue?kind=word&limit=20", headers=AUTH).json()
         self.assertTrue(all(item["item_type"] == "vocab" for item in body["items"]))
-        self.assertEqual(len(body["items"]), 10)
+        # 每轮最多 20% 新卡：limit=20 → 4 张，不再一次倒 10 张新词。
+        self.assertEqual(len(body["items"]), 4)
         self.assertEqual(body["new_remaining"], 10)
         self.assertEqual(body["quota_types"], ["vocab"])
 
     def test_new_card_limit_counts_reviewed_today(self):
         first = self.client.get(
             "/api/review/queue?kind=word&limit=10", headers=AUTH).json()
-        self.assertEqual(len(first["items"]), 10)
+        # 10 张一轮最多 2 张新卡，其余位置留给到期复习。
+        self.assertEqual(len(first["items"]), 2)
         card = first["items"][0]
         self.client.post(
             f"/api/review/vocab/{card['item_id']}", json={"rating": 3},
@@ -76,7 +78,7 @@ class EnglishReviewTest(unittest.TestCase):
         second = self.client.get(
             "/api/review/queue?kind=word&limit=10", headers=AUTH).json()
         self.assertEqual(second["new_remaining"], 9)
-        self.assertEqual(len(second["items"]), 9)
+        self.assertEqual(len(second["items"]), 2)
 
     def test_manual_wrong_cards_do_not_consume_sentence_quota(self):
         conn = self._orig(self.db_path)

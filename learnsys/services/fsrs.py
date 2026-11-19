@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import math
 
 # FSRS-5 默认权重（19 个）
@@ -64,8 +65,27 @@ def next_interval(stability: float, retention: float = TARGET_RETENTION) -> int:
     return int(min(MAX_INTERVAL, max(MIN_INTERVAL, round(days))))
 
 
+def fuzz_interval(interval: int, seed: str = "") -> int:
+    """把同一天、同样评分的卡错开到相邻几天（FSRS 的 interval fuzz）。
+
+    `seed` 由调用方用「卡类型 + 卡 id + 已复习次数」拼成：同一张卡同一步
+    永远得到同一个结果（刷新/重算不变），不同卡之间分散，避免一坨卡
+    永远同一天一起出现。没有 seed 时保持原间隔（纯函数测试用）。
+    """
+    interval = int(interval)
+    if not seed or interval < 2:
+        return interval
+    if interval <= 3:
+        span = 1
+    else:
+        span = max(1, int(round(interval * 0.1)))
+    digest = hashlib.sha256(str(seed).encode("utf-8")).digest()
+    offset = int.from_bytes(digest[:4], "big") % (2 * span + 1) - span
+    return max(MIN_INTERVAL, min(MAX_INTERVAL, interval + offset))
+
+
 def schedule(state: dict | None, rating: int, now: dt.datetime | None = None,
-             weights=DEFAULT_W) -> dict:
+             weights=DEFAULT_W, seed: str = "") -> dict:
     """算下一次状态。`state` 是旧 `review_state` 行（None = 新卡）。"""
     if rating not in (1, 2, 3, 4):
         raise ValueError("评分必须是 1–4")
@@ -113,6 +133,7 @@ def schedule(state: dict | None, rating: int, now: dt.datetime | None = None,
             + (1 - w[7]) * (difficulty - w[6] * (rating - 3)))
         interval = 1 if rating == 1 else next_interval(stability)
 
+    interval = fuzz_interval(interval, seed)
     reps += 1
     due = (now + dt.timedelta(days=interval)).date().isoformat()
     return {

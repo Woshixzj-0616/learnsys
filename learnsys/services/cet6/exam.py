@@ -1,9 +1,11 @@
-"""六级真题自评：按段听完整真题，逐题自评对/错，算 A/B/C 分段正确率。
+"""六级听力做题/自评：按段记录对错，算 A/B/C 分段正确率。
 
 口径：
-- 试卷里没有 A/B/C/D 选项，也没有标准答案，所以这里记的是**自评**；
+- 工作台做题面板用开源题库的真实选项/答案，提交时带 `numbers`，
+  只按实际挂了选项的题数计分；
+- 老的「真题自评」调用不带 `numbers`，行为不变（按整段题干计分）；
 - 题干和音频只从试卷 `data.js` 读，不复制进数据库；
-- 自评不建错题卡：没有选项/答案，硬建会污染 FSRS，本轮只做测量。
+- 做题/自评都不自动建错题卡，避免误建污染 FSRS，本轮只做测量。
 """
 from __future__ import annotations
 
@@ -101,6 +103,20 @@ def attempt(conn, payload: dict) -> dict:
         raise LookupError("这一段没有题干，换一段或用逐句听写")
 
     valid = {int(q["number"]) for q in questions}
+    # 做题面板只挂了有选项的题；numbers 用它计分，未挂选项的题不算答对。
+    raw_numbers = payload.get("numbers") or []
+    if raw_numbers:
+        numbers: set[int] = set()
+        for value in raw_numbers:
+            try:
+                number = int(value)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"题号不是整数：{value}") from exc
+            if number not in valid:
+                raise ValueError(f"这一段没有第 {number} 题")
+            numbers.add(number)
+    else:
+        numbers = set(valid)
     raw_wrong = payload.get("wrong") or []
     if not isinstance(raw_wrong, (list, tuple)):
         raise ValueError("wrong 必须是题号列表")
@@ -110,17 +126,17 @@ def attempt(conn, payload: dict) -> dict:
             number = int(value)
         except (TypeError, ValueError) as exc:
             raise ValueError(f"题号不是整数：{value}") from exc
-        if number not in valid:
+        if number not in numbers:
             raise ValueError(f"这一段没有第 {number} 题")
         if number not in wrong:
             wrong.append(number)
     wrong.sort()
 
-    correct = len(valid) - len(wrong)
+    correct = len(numbers) - len(wrong)
     duration = max(0, min(int(payload.get("duration_s") or 0), 3600))
     attempt_id = store.add_exam_attempt(
         conn, paper_id=paper_id, paper_title=paper_title, section=section,
-        item=item_name, question_count=len(valid), correct_count=correct,
+        item=item_name, question_count=len(numbers), correct_count=correct,
         wrong=wrong, duration_s=duration)
 
     transcript = [sent["en"] for sent in store.cet6_progress_item(
@@ -132,11 +148,12 @@ def attempt(conn, payload: dict) -> dict:
         "section": section,
         "section_letter": section_letter(section),
         "item": item_name,
-        "question_count": len(valid),
+        "question_count": len(numbers),
         "correct_count": correct,
         "wrong": wrong,
-        "self_accuracy": _accuracy(correct, len(valid)),
-        "questions": questions,
+        "self_accuracy": _accuracy(correct, len(numbers)),
+        "questions": [q for q in questions
+                      if int(q["number"]) in numbers],
         "transcript": transcript,
     }
 
