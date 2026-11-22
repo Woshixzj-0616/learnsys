@@ -7,7 +7,7 @@ import { loadConversations, newConversation, openConversation } from "./conversa
 import { closeMaterialPicker, loadMaterialPicker, onPickerKey, openMaterialPicker } from "./materials.js";
 import { pickFile, renderAttachments, updateSendButton } from "./attachments.js";
 import { loadDeepStatus, runDeepAnalysis } from "./deep.js";
-import { sendMessage } from "./composer.js";
+import { sendDeep, sendMessage } from "./composer.js";
 import { resumeStreamingView, stopStreaming } from "./stream.js";
 
 
@@ -52,6 +52,7 @@ export async function mount(ctx) {
     materialList: ctx.root.querySelector("#material-list"),
     materialSearch: ctx.root.querySelector("#material-search"),
     materialClose: ctx.root.querySelector("#material-close"),
+    deepChat: ctx.root.querySelector("#deep-chat"),
     deepRun: ctx.root.querySelector("#deep-run"),
   });
 
@@ -171,6 +172,7 @@ export function bindEvents() {
   ctxRef.root.querySelector("#attach-image").addEventListener("click", () => dom.fileImage.click());
   ctxRef.root.querySelector("#attach-doc").addEventListener("click", () => dom.fileDoc.click());
   ctxRef.root.querySelector("#attach-material").addEventListener("click", openMaterialPicker);
+  dom.deepChat?.addEventListener("click", sendDeep);
   dom.deepRun?.addEventListener("click", runDeepAnalysis);
 
   dom.fileImage.addEventListener("change", () => pickFile(dom.fileImage, "image"));

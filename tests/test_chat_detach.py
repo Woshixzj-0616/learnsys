@@ -74,6 +74,20 @@ class ChatDetachTest(unittest.TestCase):
         self.assertEqual(len(runs), 1)
         self.assertEqual(runs[0]["stop_reason"], "end_turn")
 
+    def test_deep_flag_reaches_agent_request(self):
+        seen = {}
+
+        def fake_run(request, cfg=None, abort=None, **_kwargs):
+            seen["deep"] = request.deep
+            yield AgentEvent("done", data={"text": "好", "steps": 1,
+                                           "stop_reason": "end_turn"})
+
+        req = chat_module.ChatRequest(message="深入题", deep=True)
+        with mock.patch("learnsys.server.routes_agent.agent.run", fake_run):
+            chat_module.chat(req, mock.Mock(), mock.Mock())
+        self._wait_assistant()
+        self.assertTrue(seen.get("deep"))
+
     def test_title_takes_first_nonempty_line(self):
         self.assertEqual(chat_module._title_for("1. (程序题, 17分)\n\n基于栈"),
                          "1. (程序题, 17分)")

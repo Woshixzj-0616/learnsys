@@ -63,6 +63,7 @@ class ChatRequest(BaseModel):
     surface: str = "ask"         # ask / cet6 / materials ...
     context_snapshot: dict | None = None   # 结构化上下文，<= 20KB
     result_id: int = 0               # 引用已有结果资产（分析/翻译），不复制正文
+    deep: bool = False               # 用户点「深入讲」：本轮强模型/思考档
 
 
 class StopRequest(BaseModel):
@@ -316,6 +317,7 @@ def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
                 conversation_key=str(conv_id),
                 material_id=material_id or 0,
                 auto_run_code=auto_run_code,
+                deep=bool(req.deep),
             )
             for event in agent.run(agent_request, cfg=cfg, abort=abort,
                                    confirm=ask_confirm):
