@@ -6,6 +6,7 @@ import json
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from learnsys import config
+from . import math_text
 from .common import (BAR_OUTER_TOP, BAR_OUTER_X, MOVE_SLOP, PILL_H,
                      _LINE_HEIGHT_PROPORTIONAL)
 
@@ -208,7 +209,7 @@ class LayoutMixin:
         self._place_default()
 
     def _set_answer(self, text: str) -> None:
-        self.answer.setPlainText(text)
+        self.answer.setPlainText(math_text.render(text))
         fmt = QtGui.QTextBlockFormat()
         fmt.setLineHeight(165.0, _LINE_HEIGHT_PROPORTIONAL)
         cursor = self.answer.textCursor()

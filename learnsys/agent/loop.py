@@ -107,14 +107,14 @@ def _plan_config(cfg: AgentConfig, request: AgentRequest,
                  ) -> tuple[AgentConfig, bool, router.RouteDecision]:
     """定这一轮的模型 / 思考 / 提示词档，并把决策原样带出来写流水。
 
-    规则全部在 `agent/router.py`（单一落点）：手动速度档 > 手动 routes > 自动路由。
+    规则全部在 `agent/router.py`（单一落点）：显式深入 > 手动速度档 > 手动 routes > 自动路由。
     """
     decision = router.decide(
         cfg, mode=request.mode, message=request.message, context=request.context,
         attachment_text=request.attachment_text,
         history_len=len(request.history or []),
         has_image=bool(request.image_path or request.extra_images),
-        ops=ops_intent)
+        ops=ops_intent, force_deep=bool(request.deep))
     return router.apply(cfg, decision), decision.concise, decision
 
 
@@ -181,10 +181,12 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
                                 ops=ops_intent.ops, ops_gate=gate_mode)
     gate_apply = bool(gate_mode == "on" and ops_active)
     if ((cfg.auto_route or "off").lower() in ("shadow", "on")
-            or (ops_intent.ops and ops_mode != "off")):
+            or (ops_intent.ops and ops_mode != "off") or request.deep):
         route_data = decision.trace()
         route_data["auto"] = cfg.auto_route
-        if forced_debug:
+        if request.deep:
+            route_data["forced"] = "request_deep"
+        elif forced_debug:
             route_data["forced"] = "code_debug"
         yield AgentEvent("route", data=route_data)
     if ops_intent.ops and gate_mode in ("shadow", "on"):
@@ -230,8 +232,11 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
         yield AgentEvent("done", data={"text": "", "stop_reason": "aborted"})
         return None
 
+    # 深入轮统一按讲解口径：速答的「150 字」、测验的「一次只出一题」会和深入档冲突。
+    effective_mode = ("explain" if request.deep and request.mode in ("quick", "quiz")
+                      else request.mode)
     system = (request.system_override.strip()
-              or prompts.build_system(request.mode, has_image=bool(image_paths),
+              or prompts.build_system(effective_mode, has_image=bool(image_paths),
                                       profile=profile, memories=memory_text,
                                       summary=request.history_summary,
                                       code_debug=code_debug,
@@ -239,7 +244,7 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
                                       personal_state=request.personal_state,
                                       ops=ops_active))
     # 工具清单也要算进输入预算：34 个 schema 是实打实发给模型的 token。
-    tool_schemas = tools.schemas_for(request.mode, use_tools=request.use_tools,
+    tool_schemas = tools.schemas_for(effective_mode, use_tools=request.use_tools,
                                      surface=request.surface)
     if gate_apply:
         # 取证轮只留只读工具；用户已经给了原文时不裁剪（不必强制联网）。

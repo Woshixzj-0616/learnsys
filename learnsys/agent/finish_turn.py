@@ -108,6 +108,8 @@ def apply(turn, *, abort) -> Generator[AgentEvent, None, None]:
     yield AgentEvent("done", data={
         "text": final_text,
         "thinking": state.thinking,
+        # 实际跑完这一轮的模型（降级/强模型/请求级深入都以这里为准）。
+        "model": str(turn.cfg_holder[0].model or ""),
         "usage": state.usage,
         "usage_by_model": {name: dict(value)
                            for name, value in state.usage_by_model.items()},

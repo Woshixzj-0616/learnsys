@@ -6,10 +6,20 @@ import uuid
 
 from PySide6 import QtCore, QtGui
 
-from learnsys import config
-from .common import (CARD_PAD_X, STATE_DONE, STATE_HISTORY, STATE_IDLE,
-                     STATE_STREAMING, STATE_THINKING, _ANSWER_STATES, _STATES,
-                     _USAGE_TTL_SECONDS, _thumb, THUMB_H, THUMB_W)
+from .common import (
+    _ANSWER_STATES,
+    _STATES,
+    _USAGE_TTL_SECONDS,
+    CARD_PAD_X,
+    STATE_DONE,
+    STATE_HISTORY,
+    STATE_IDLE,
+    STATE_STREAMING,
+    STATE_THINKING,
+    THUMB_H,
+    THUMB_W,
+    _thumb,
+)
 from .workers import _UsageWorker
 
 
@@ -184,6 +194,9 @@ class StateMixin:
         self._last_thinking = ""
         self._answer_view = "answer"
         self._view_pinned = False
+        self._last_turn = None     # 清空/新会话后没有「上一题」可深入
+        self._deep_hint = ""
+        self._current_deep = False
         if self._render_timer.isActive():
             self._render_timer.stop()
         self._showing_history = False

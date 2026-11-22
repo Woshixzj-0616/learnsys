@@ -6,8 +6,15 @@ import uuid
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from .common import (MODE_LABELS, STATE_DONE, STATE_HISTORY, _answer_char,
-                     _gap_block, render_qss)
+from . import math_text
+from .common import (
+    MODE_LABELS,
+    STATE_DONE,
+    STATE_HISTORY,
+    _answer_char,
+    _gap_block,
+    render_qss,
+)
 
 
 class ActionsMixin:
@@ -36,6 +43,9 @@ class ActionsMixin:
             action.triggered.connect(lambda checked=False, m=key: self._set_mode(m))
         menu.addSeparator()
         menu.addAction("测验（5 道题）", self.quiz_btn.click)
+        deep = menu.addAction("深入讲上一题")
+        deep.setEnabled(bool(getattr(self, "_last_turn", None)) and self._worker is None)
+        deep.triggered.connect(self._start_deep)
         menu.addAction("历史", self.history_btn.click)
         menu.addSeparator()
         menu.addAction("学习报告（Markdown）", self.report_requested.emit)
@@ -138,8 +148,8 @@ class ActionsMixin:
         self.star_toggled.emit((db_path, ask_id))     # 改库归 app —— 改完回 set_star_label
 
     def _copy_answer(self) -> None:
-        # 只复制答案，不带上面「我：」那一行
-        text = (self._last_answer or self.answer.toPlainText()).strip()
+        # 只复制答案，不带上面「我：」那一行；和界面上看到的一样（公式已转 Unicode）。
+        text = math_text.render(self._last_answer or self.answer.toPlainText()).strip()
         if not text:
             return
         QtWidgets.QApplication.clipboard().setText(text)

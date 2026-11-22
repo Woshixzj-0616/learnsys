@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import functools
 import html as html_mod
+import pathlib
 import time
 import uuid
 
@@ -10,10 +11,20 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from ..qt import style
 from ..qt import tokens as token_source
-from .common import (BAR_MOOD, STATE_DONE, STATE_ERROR, STATE_HISTORY,
-                     STATE_STREAMING, STATE_THINKING, _STREAM_RENDER_SECONDS,
-                     _SCROLL_SLACK, _answer_char, _ask_char, _gap_block,
-                     _markdown_bold_for_qt)
+from . import math_text
+from .common import (
+    _SCROLL_SLACK,
+    _STREAM_RENDER_SECONDS,
+    BAR_MOOD,
+    STATE_DONE,
+    STATE_ERROR,
+    STATE_STREAMING,
+    STATE_THINKING,
+    _answer_char,
+    _ask_char,
+    _gap_block,
+    _markdown_bold_for_qt,
+)
 from .workers import _AskWorker
 
 
@@ -127,12 +138,19 @@ class StreamMixin:
 
     def _begin_turn(self, send_text: str, display_text: str, context: str,
                     images: list[str] | None = None, mode: str = "",
-                    system_override: str = "", use_tools: bool = True) -> None:
-        """开一轮问答：显示 display_text，问 AI 的是 send_text（可带转写上下文）。"""
+                    system_override: str = "", use_tools: bool = True,
+                    image_path: str | None = None, deep: bool = False) -> None:
+        """开一轮问答：显示 display_text，问 AI 的是 send_text（可带转写上下文）。
+
+        `deep=True` 是用户的「深入讲」：用强模型 + 思考，按讲解口径回答；
+        复用的截图只给模型看、不重复归档。
+        """
         self._started_at = time.monotonic()
         self._dots = 0
         self._streaming = False
         self._activity = ""
+        self._deep_hint = ""
+        self._current_deep = bool(deep)
         self._start_turn(display_text)
         self.set_state(STATE_THINKING, status="在想…")
         self._timer = QtCore.QTimer(self)
@@ -142,15 +160,25 @@ class StreamMixin:
         seq = self._turn_seq
         # 这一轮的图/文身份**当场拍死**：答案回来时界面可能已经换过图、甚至清过空，
         # 再读 self._image_path 会把图问答错记成纯文字、连归档截图都丢掉。
-        kind = "image" if self._image_path else "text"
-        image_path = self._image_path or ""
-        self._worker = _AskWorker(self._image_path, send_text, list(self._turns), self,
+        worker_image = self._image_path if image_path is None else image_path
+        kind = "text" if deep else ("image" if worker_image else "text")
+        record_image = "" if deep else (worker_image or "")
+        worker_mode = mode or ("quiz" if self.quiz_mode else self.ask_mode)
+        if not system_override and not deep:
+            # 深入讲只复用「上一道真正的用户问题」，不把深入轮自己当成下一轮的来源。
+            self._last_turn = {
+                "send_text": send_text, "display_text": display_text,
+                "context": context, "image_path": worker_image or "",
+                "extra_images": list(images or []), "mode": worker_mode,
+            }
+        self._worker = _AskWorker(worker_image or "", send_text, list(self._turns), self,
                                   context=context, extra_images=images)
         # 模式用属性给，不放进构造参数：旧测试里替换的 FakeWorker 只认旧签名，
         # 传 `mode=` 会直接 TypeError。属性赋值对新旧 worker 都无害。
-        self._worker._mode = mode or ("quiz" if self.quiz_mode else self.ask_mode)
+        self._worker._mode = worker_mode
         self._worker._system_override = system_override
         self._worker._use_tools = use_tools
+        self._worker._deep = bool(deep)
         self._worker._conversation_key = self._thread
         self._workers.append(self._worker)       # 留着，退出时要 wait（shutdown）
         self._worker.finished.connect(self._reap_workers)
@@ -158,18 +186,55 @@ class StreamMixin:
             self._worker.activity.connect(self._on_activity)
         if hasattr(self._worker, "confirm_needed"):
             self._worker.confirm_needed.connect(self._on_confirm_write)
+        if hasattr(self._worker, "deep_suggested"):
+            self._worker.deep_suggested.connect(
+                lambda reason, s=seq: self._on_deep_suggested(reason, s))
         self._worker.chunk.connect(lambda piece, replace, s=seq: self._on_chunk(piece, replace, s))
         if hasattr(self._worker, "thinking"):
             self._worker.thinking.connect(lambda piece, s=seq: self._on_thinking(piece, s))
         self._worker.done.connect(
-            lambda text, s=seq, k=kind, p=image_path: self._finish(display_text, text, None, s, k, p))
+            lambda text, s=seq, k=kind, p=record_image: self._finish(
+                display_text, text, None, s, k, p))
         self._worker.failed.connect(
-            lambda message, s=seq, k=kind, p=image_path: self._finish(display_text, "", message, s, k, p))
+            lambda message, s=seq, k=kind, p=record_image: self._finish(
+                display_text, "", message, s, k, p))
         self._worker.start()
 
     def _on_activity(self, text: str) -> None:
         """后台线程发来的一句话：看图 / 查记录 / 推理中。只更新状态行，不动布局。"""
         self._activity = str(text or "")
+
+    def _on_deep_suggested(self, reason, seq: int = 0) -> None:
+        """这一题值得深入讲：在答案底部挂一个入口，不改写已有答案。"""
+        if seq != self._turn_seq or getattr(self, "_current_deep", False):
+            return
+        self._deep_hint = str(reason or "complex")
+        if self._answer_start is not None and self._stream_text.strip():
+            self._render_answer_view()
+
+    def _start_deep(self) -> None:
+        """对上一道真正的用户问题再跑一轮：强模型 + 思考，按讲解口径。"""
+        if self._worker is not None:
+            self.show_message("等这一轮写完再深入讲。")
+            return
+        turn = getattr(self, "_last_turn", None)
+        if not turn:
+            self.show_message("先问一道题，再点「深入讲」。")
+            return
+        image = str(turn.get("image_path") or "")
+        if image and not pathlib.Path(image).exists():
+            image = ""          # 临时截图没了；历史里的图注还在，别让视觉调用报错
+        label = str(turn.get("display_text") or "").strip()[:40] or "上一题"
+        self._begin_turn(
+            "请把上一个问题讲得更透、更稳，重点补上我可能没懂的卡点；"
+            "不要重复已经说过的内容。",
+            f"［深入讲］{label}",
+            str(turn.get("context") or ""),
+            images=turn.get("extra_images") or [],
+            mode="explain",
+            image_path=image,
+            deep=True,
+        )
 
     def _on_confirm_write(self, payload) -> None:
         """写操作确认：横栏弹一个原生对话框；后台线程正卡在同一个 slot 上等。"""
@@ -244,9 +309,9 @@ class StreamMixin:
         self._render_answer_view()
         self._last_render_at = time.monotonic()
 
-    def _header_link(self, target: str, label: str) -> str:
+    def _header_link(self, target: str, label: str, scheme: str = "think") -> str:
         return ('<p style="margin:0 0 6px 0">'
-                f'<a href="think:{target}" style="color:{_hex("--accent-strong")};'
+                f'<a href="{scheme}:{target}" style="color:{_hex("--accent-strong")};'
                 'text-decoration:none">'
                 f'{html_mod.escape(label)}</a></p>')
 
@@ -290,8 +355,16 @@ class StreamMixin:
                 f"a {{ color: {_hex('--accent-strong')}; }}"
                 f"blockquote {{ color: {_hex('--text-dim')}; }}"
             )
-            document.setMarkdown(_markdown_bold_for_qt(self._stream_text))
+            document.setMarkdown(_markdown_bold_for_qt(
+                math_text.render(self._stream_text)))
             cursor.insertHtml(document.toHtml())
+            if (not self._streaming and not getattr(self, "_current_deep", False)
+                    and getattr(self, "_deep_hint", "") and self._stream_text.strip()):
+                label = ("答案中途改过口 · 点此深入复核"
+                         if self._deep_hint == "audit"
+                         else "这题可以深入讲（更稳，可能要几十秒）")
+                cursor.insertHtml(self._header_link(
+                    str(self._turn_seq), label, scheme="deep"))
             if self._thinking_text.strip():
                 # 流式时视图跟着底部走，顶部的开关会滚出屏幕 —— 底部再放一个
                 cursor.insertHtml(self._header_link(
@@ -310,6 +383,13 @@ class StreamMixin:
                 self._answer_view = target
                 self._view_pinned = True
                 self._render_answer_view()
+            return
+        if text.startswith("deep:"):
+            # 链接带轮次号：旧答案上的入口不能深入新题。
+            seq = text.split(":", 1)[1]
+            if seq != str(self._turn_seq):
+                return
+            self._start_deep()
             return
         if text.startswith("#/"):
             self.open_link_requested.emit(text)   # 屏内深链 → 交给 app 打开工作台页面
@@ -343,13 +423,16 @@ class StreamMixin:
         # 中途点 ✕ / 清空会把图丢掉，再读就会把图问答错记成纯文字。
         if seq != self._turn_seq:
             return
+        # 后台线程在 done 之前已经把 _run_info 写好；这里先取，再清 _worker。
+        info = (getattr(self._worker, "_run_info", {})
+                if self._worker is not None else {})
         self._activity = ""
         if self._timer is not None:
             self._timer.stop()
             self._timer = None
         self._worker = None
         self._streaming = False
-        ms = int((time.monotonic() - self._started_at) * 1000)
+        ms = int(info.get("total_ms") or (time.monotonic() - self._started_at) * 1000)
         if error:
             # 只看「答案那一段」有没有写出来的 —— 上面那行「我：」不算
             partial = self._last_answer.strip()
@@ -372,15 +455,21 @@ class StreamMixin:
                 self._answer_view = "answer"
             self._set_answer_markdown(text)      # 最后一帧：保证完整答案用 Markdown 渲染
             self._turns.append((question, text))
+            prefix = "深入 · " if info.get("deep") else ""
             if kind == "image":
-                status = f"用了 {ms / 1000:.1f} 秒 · 还想追问就直接再打字（看的还是这张图）"
+                status = (f"{prefix}用了 {ms / 1000:.1f} 秒 · "
+                          "还想追问就直接再打字（看的还是这张图）")
             else:
-                status = f"用了 {ms / 1000:.1f} 秒 · 还想追问就直接再打字"
+                status = f"{prefix}用了 {ms / 1000:.1f} 秒 · 还想追问就直接再打字"
             self.set_state(STATE_DONE, status=status)
             self.answered.emit({
                 "question": question,
                 "answer": text,
                 "ms": ms,
+                "first_ms": info.get("first_ms"),
+                "model": info.get("model") or "",
+                "run_id": info.get("run_id") or "",
+                "deep": bool(info.get("deep")),
                 "kind": kind,
                 "image_path": image_path,
                 "thread": self._thread,

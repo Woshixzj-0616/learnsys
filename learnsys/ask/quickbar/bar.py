@@ -64,6 +64,9 @@ class AskBar(BuildMixin, LayoutMixin, StateMixin, StreamMixin, ActionsMixin,
         self.quiz_mode = False        # 托盘点「测验」后粘住，直到新会话/清空/换模式
         self._answer_start = None     # 答案区里「答案」从第几个字符开始（None = 这一轮还没开始）
         self._turn_seq = 0            # 第几轮（被掐掉的旧那一轮回来时靠它认出来，别写回界面）
+        self._last_turn = None        # 上一道真正的用户问题（深入讲复用它的图/上下文）
+        self._deep_hint = ""          # 这题值得深入：complex / audit
+        self._current_deep = False    # 当前这一轮是不是「深入讲」
         self._last_answer = ""        # 最近一次的**答案**原文（复制按钮只复制它，不带问题）
         self._stream_text = ""        # 这一轮流式累积的答案原文
         self._thinking_text = ""      # 这一轮流式累积的思考原文

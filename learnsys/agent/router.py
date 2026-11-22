@@ -122,17 +122,24 @@ def _auto_tier(cfg: AgentConfig, *, mode: str, message: str, context: str,
 
 def decide(cfg: AgentConfig, *, mode: str, message: str = "", context: str = "",
            attachment_text: str = "", history_len: int = 0,
-           has_image: bool = False, ops: intent.OpsIntent | None = None) -> RouteDecision:
+           has_image: bool = False, ops: intent.OpsIntent | None = None,
+           force_deep: bool = False) -> RouteDecision:
     """给出这一轮实际使用的档位；shadow 时保留原行为，只带出 recommended。
 
     ops 是独立的一道开关：off 忽略；shadow 只写 trace；on 在 balanced 档强制深入。
-    手动速度档（fast / deep）和手动 routes 仍然优先。
+    `force_deep=True` 是用户显式点的「深入讲」：优先级最高，用强模型 + 思考。
+    手动速度档（fast / deep）和手动 routes 次之。
     """
     speed = _base_speed(cfg, mode)
     routed = cfg.model_for(mode)
     ops_mode = str(getattr(cfg, "ops_mode", "shadow") or "shadow").strip().lower()
     ops_trace = (_ops_trace(cfg, ops)
                  if ops is not None and ops.ops and ops_mode != "off" else None)
+    if force_deep:
+        # 用户显式动作压过手动档与自动路由；strong_model 空时退回主模型开思考。
+        return RouteDecision(tier="deep", model=cfg.strong_model or cfg.model,
+                             thinking=True, concise=False,
+                             reason="用户点了深入讲", ops=ops_trace)
     if routed:
         return RouteDecision(
             tier="manual", model=routed, thinking=speed == "deep",

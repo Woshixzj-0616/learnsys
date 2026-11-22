@@ -135,6 +135,7 @@ from .schemas_learning import (DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
                                GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA)
 from .schemas_life import LIFE_CARDS_SCHEMA, LIFE_ITEMS_SCHEMA
 from .schemas_local import READ_LOCAL_FILE_SCHEMA, SEARCH_LOCAL_FILES_SCHEMA
+from .schemas_travel import TRAVEL_TRACE_SCHEMA
 from .schemas_web import WEB_SCHEMAS
 from .schemas_write import (ADD_VOCAB_SCHEMA, CET6_WRITE_SCHEMAS,
                             RUN_CODE_SCHEMA, WRITE_LABELS_EXTRA,
@@ -142,7 +143,8 @@ from .schemas_write import (ADD_VOCAB_SCHEMA, CET6_WRITE_SCHEMAS,
                             WRITING_WRITE_TOOLS, extra_write_summary)
 
 TOOL_SCHEMAS.extend([DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
-                     GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA])
+                     GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA,
+                     TRAVEL_TRACE_SCHEMA])
 
 
 OPEN_FILE_SCHEMA = {
@@ -383,6 +385,7 @@ TOOL_LABELS = {
     "get_train_summary": "看训练概况",
     "list_recordings": "查录像",
     "get_cet6_context": "看六级进度",
+    "travel_trace": "查智能旅行路径",
     "search_materials": "查资料",
     "search_local_files": "搜本机文件",
     "read_local_file": "读本机文件",

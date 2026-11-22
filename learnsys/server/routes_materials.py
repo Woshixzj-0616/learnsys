@@ -36,6 +36,7 @@ class NoteIn(BaseModel):
     body: str = Field(default="", max_length=MAX_TEXT_CHARS)
     course: str = Field(default="", max_length=80)
     tags: str = Field(default="", max_length=200)
+    sha256: str = Field(default="", max_length=64)   # 导入工具用：同内容不重复入库
 
 
 class ImportDirIn(BaseModel):
@@ -166,7 +167,8 @@ def create_note(req: NoteIn, _=Depends(require_token)):
     try:
         item_id, created = store.add_material(
             conn, title=req.title, kind="note", source="note", body=req.body,
-            course=req.course, tags=req.tags)
+            course=req.course, tags=req.tags,
+            sha256=req.sha256.strip() or None)
         return {"ok": True, "created": created,
                 "item": store.get_material(conn, item_id)}
     finally:

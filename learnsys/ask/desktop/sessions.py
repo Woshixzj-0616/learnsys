@@ -251,10 +251,12 @@ class SessionsMixin:
                 record.get("question", ""),
                 record.get("answer", ""),
                 int(record.get("ms") or 0),
-                config.ASK_API_MODEL or "codex",   # 真正答话的那个模型，别写死
+                str(record.get("model") or "").strip()
+                or config.ASK_API_MODEL or "codex",   # 本轮实际路由到的模型
                 kind=kind,
                 image_path=archived,
                 thread=record.get("thread") or "",
+                first_ms=record.get("first_ms"),
             )
         except Exception as exc:
             print(f"写库失败：{exc}", file=sys.stderr)

@@ -47,6 +47,7 @@ class AgentRequest:
     conversation_key: str = ""           # 快捷栏一轮对话的稳定 key
     material_id: int = 0                 # 从资料出题时，错题按资料归档
     auto_run_code: bool = False          # 用户明确要求跑 / 代码调试：run_code 不再弹确认
+    deep: bool = False                   # 用户显式点「深入讲」：本轮用强模型 + 思考
 
 
 @dataclass

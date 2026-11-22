@@ -16,6 +16,7 @@ from .study_tools import (due_reviews, forget_memory, get_cet6_context,
                           recent_wrong_items, save_memory, save_wrongbook)
 from .system_tools import (browser_history, browser_status, launch_app, open_file,
                            open_url)
+from .travel import travel_trace_summary
 from .web_tools import fetch_url, web_search
 
 
@@ -80,6 +81,14 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
             text = list_recordings(str(args.get("query") or ""),
                                    int(args.get("limit") or 10), ctx=ctx)
             return text, "查了录像列表", not text.startswith("读录像列表失败")
+        if name == "travel_trace":
+            text = travel_trace_summary(
+                int(args.get("limit") or 10),
+                str(args.get("trace_id") or ""),
+                bool(args.get("slow_only")))
+            ok = not text.startswith(("读智能旅行 trace 失败",
+                                      "没有找到智能旅行 trace"))
+            return text, "查了智能旅行调用路径", ok
         if name == "read_attachment":
             return read_attachment(int(args.get("offset") or 0), ctx=ctx), "读了挂载文档", True
         if name == "ocr_image":

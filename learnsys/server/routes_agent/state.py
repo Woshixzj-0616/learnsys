@@ -18,6 +18,5 @@ _CONFIRM: dict[str, dict] = {}
 _CONFIRM_LOCK = threading.Lock()
 CONFIRM_WAIT_SECONDS = 120
 
-_TRACE_KINDS = {"plan", "plan_update", "tool_start", "tool_end", "confirm",
-                "check", "rewrite", "activity", "error", "route", "gate",
-                "memory"}
+# 唯一落点在 agent/run_record.py；这里保留旧名字给路由包和测试。
+from learnsys.agent.run_record import TRACE_KINDS as _TRACE_KINDS

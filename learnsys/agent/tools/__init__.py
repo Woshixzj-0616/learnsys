@@ -26,14 +26,15 @@ from .schemas import (ART_WORKS_SCHEMA,
                       RECENT_WRONG_ITEMS_SCHEMA, RUN_CODE_SCHEMA,
                       SAVE_MATERIAL_NOTE_SCHEMA, SAVE_MEMORY_SCHEMA,
                       SAVE_WRONGBOOK_SCHEMA, SEARCH_LOCAL_FILES_SCHEMA,
-                      TOOL_LABELS, TOOL_SCHEMAS, WRITE_LABELS,
-                      WRITE_TOOLS, WRITE_STUDY_FILE_SCHEMA, label_for,
-                      schemas_for, write_summary)
+                      TOOL_LABELS, TOOL_SCHEMAS, TRAVEL_TRACE_SCHEMA,
+                      WRITE_LABELS, WRITE_TOOLS, WRITE_STUDY_FILE_SCHEMA,
+                      label_for, schemas_for, write_summary)
 from .study_tools import (due_reviews, forget_memory, get_cet6_context,
                           get_mastery, get_train_summary, list_recordings,
                           recent_wrong_items, save_memory, save_wrongbook)
 from .system_tools import (browser_history, browser_status, launch_app, open_file,
                            open_url)
+from .travel import travel_trace_summary
 
 __all__ = [
     "ToolContext", "execute", "schemas_for", "write_summary", "needs_confirm",
@@ -41,6 +42,7 @@ __all__ = [
     "TOOL_LABELS", "label_for",
     "MAKE_PLAN_SCHEMA", "RECENT_WRONG_ITEMS_SCHEMA", "GET_CET6_CONTEXT_SCHEMA",
     "DUE_REVIEWS_SCHEMA", "GET_MASTERY_SCHEMA", "GET_TRAIN_SUMMARY_SCHEMA",
+    "TRAVEL_TRACE_SCHEMA", "travel_trace_summary",
     "ART_WORKS_SCHEMA",
     "LIFE_CARDS_SCHEMA", "LIFE_ITEMS_SCHEMA", "LIST_RECORDINGS_SCHEMA",
     "OPEN_FILE_SCHEMA", "LAUNCH_APP_SCHEMA", "OPEN_URL_SCHEMA",

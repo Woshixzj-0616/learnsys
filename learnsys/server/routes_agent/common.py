@@ -4,60 +4,13 @@ from __future__ import annotations
 import json
 
 from learnsys import store
-from learnsys.agent import tools as agent_tools
-
-from .state import _TRACE_KINDS
+from learnsys.agent.run_record import clip as _clip
+from learnsys.agent.run_record import trace_event as _trace_event
 
 
 def _sse(kind: str, text: str = "", data: dict | None = None) -> str:
     return "data: " + json.dumps(
         {"kind": kind, "text": text, "data": data or {}}, ensure_ascii=False) + "\n\n"
-
-
-def _clip(value, cap: int = 600, depth: int = 0):
-    """流水里的参数/结果摘要：截断，不把整份资料或隐私正文写进去。"""
-    if depth > 4:
-        return "…"
-    if isinstance(value, str):
-        return value if len(value) <= cap else value[:cap] + "…"
-    if isinstance(value, dict):
-        return {str(key): _clip(item, cap, depth + 1)
-                for key, item in list(value.items())[:20]}
-    if isinstance(value, (list, tuple)):
-        return [_clip(item, cap, depth + 1) for item in list(value)[:20]]
-    return value
-
-
-def _trace_event(event) -> dict | None:
-    # 记忆审计挂在 done 上，不新增事件，避免打乱既有事件顺序断言。
-    if event.kind == "done":
-        data = event.data if isinstance(event.data, dict) else {}
-        memory = data.get("memory")
-        prompt = data.get("prompt")
-        if memory or prompt:
-            payload = {}
-            if memory:
-                payload.update(_clip(memory))
-            if prompt:
-                payload["prompt"] = _clip(prompt)
-            if data.get("tool_tokens"):
-                payload["tool_tokens"] = int(data["tool_tokens"])
-            return {"kind": "memory", "text": "", "data": _clip(payload)}
-        return None
-    if event.kind not in _TRACE_KINDS:
-        return None
-    data = _clip(event.data or {})
-    # 写入/运行类工具的参数可能含正文或代码：流水里只留一句摘要，不存全文。
-    if event.kind == "tool_start" and isinstance(event.data, dict):
-        name = str(event.data.get("name") or "")
-        if name in agent_tools.CONFIRM_TOOLS:
-            data["input"] = {"摘要": agent_tools.write_summary(
-                name, event.data.get("input") or {})}
-    # 代码运行的输出是审计证据，单独放宽到 8KB（其余参数仍按 600 字截断）。
-    if isinstance(event.data, dict) and event.data.get("output"):
-        data["output"] = str(event.data["output"])[:8000]
-    return {"kind": event.kind, "text": _clip(event.text or "", 400),
-            "data": data}
 
 
 def _load_history(conn, conversation_id: int, turns: int = 4) -> list[tuple[str, str]]:

@@ -107,6 +107,24 @@ class RouterTest(unittest.TestCase):
         self.assertEqual(decision.tier, "standard")
         self.assertIsNone(decision.recommended)
 
+    def test_force_deep_wins_over_manual_and_speed(self):
+        decision = router.decide(
+            make_cfg(self.root, speed="fast", auto_route="off",
+                     routes={"explain": "route-model"}),
+            mode="explain", message="一句话", force_deep=True)
+        self.assertEqual(decision.tier, "deep")
+        self.assertEqual(decision.model, "deepseek-v4-pro")
+        self.assertTrue(decision.thinking)
+        self.assertFalse(decision.concise)
+        self.assertIsNone(decision.recommended)
+
+    def test_force_deep_falls_back_to_main_model(self):
+        decision = router.decide(
+            make_cfg(self.root, strong_model=""), mode="explain",
+            message="一句话", force_deep=True)
+        self.assertEqual(decision.model, "deepseek-flash")
+        self.assertTrue(decision.thinking)
+
 
 class _CapturingProvider:
     def __init__(self):
@@ -152,6 +170,19 @@ class LoopRouteEventTest(unittest.TestCase):
         events = list(loop.run(loop.AgentRequest("RBAC 是什么？"),
                                provider=provider, cfg=cfg))
         self.assertFalse([event for event in events if event.kind == "route"])
+
+    def test_request_deep_switches_model_and_emits_route(self):
+        cfg = make_cfg(self.root, auto_route="off")
+        provider = _CapturingProvider()
+        events = list(loop.run(
+            loop.AgentRequest("RBAC 是什么？", deep=True),
+            provider=provider, cfg=cfg))
+        routes = [event for event in events if event.kind == "route"]
+        self.assertEqual(len(routes), 1)
+        self.assertEqual(routes[0].data["tier"], "deep")
+        self.assertEqual(routes[0].data["forced"], "request_deep")
+        self.assertEqual(provider.model, "deepseek-v4-pro")
+        self.assertIn("回答长度：深入", provider.system)
 
 
 if __name__ == "__main__":
