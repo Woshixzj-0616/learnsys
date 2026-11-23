@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "kind": "writing_patterns",
   "items": [
     {
@@ -433,6 +433,438 @@
       "example": "Were it not for the support of my teachers, I could not have overcome those difficulties.",
       "example_zh": "要不是老师们的支持，我无法克服那些困难。",
       "note": "Were it not for = If it were not for；主句用 would / could + have done。"
+    },
+    {
+      "id": "p49",
+      "group": "开头",
+      "pattern": "It is universally acknowledged that ... plays an indispensable role in ...",
+      "zh": "开头用公认观点引出重要性",
+      "example": "It is universally acknowledged that physical exercise plays an indispensable role in maintaining good health.",
+      "example_zh": "众所周知，体育锻炼对保持健康起着不可或缺的作用。",
+      "note": "indispensable 前用 an；role 常用单数。"
+    },
+    {
+      "id": "p50",
+      "group": "开头",
+      "pattern": "With the rapid development of ..., ... has become increasingly common.",
+      "zh": "开头交代背景和发展趋势",
+      "example": "With the rapid development of the Internet, online shopping has become increasingly common among young people.",
+      "example_zh": "随着互联网的快速发展，网购在年轻人中越来越普遍。",
+      "note": "development 前用 the rapid；common 前用 increasingly。"
+    },
+    {
+      "id": "p51",
+      "group": "开头",
+      "pattern": "Recently, a growing number of people are beginning to realize that ...",
+      "zh": "开头引出逐渐觉醒的共识",
+      "example": "Recently, a growing number of people are beginning to realize that mental health matters as much as physical health.",
+      "example_zh": "最近，越来越多的人开始意识到心理健康和身体健康同样重要。",
+      "note": "a growing number of 后接可数名词复数。"
+    },
+    {
+      "id": "p52",
+      "group": "开头",
+      "pattern": "When it comes to ..., opinions vary from person to person.",
+      "zh": "开头点出话题并说明观点分歧",
+      "example": "When it comes to choosing a major, opinions vary from person to person.",
+      "example_zh": "说到选择专业，人们的观点因人而异。",
+      "note": "when it comes to 后接名词或动名词。"
+    },
+    {
+      "id": "p53",
+      "group": "开头",
+      "pattern": "The past few decades have witnessed a remarkable shift in ...",
+      "zh": "开头用时间跨度描述变化",
+      "example": "The past few decades have witnessed a remarkable shift in the way people communicate.",
+      "example_zh": "过去几十年见证了人们交流方式的显著变化。",
+      "note": "witness 用完成时；shift 可数。"
+    },
+    {
+      "id": "p54",
+      "group": "开头",
+      "pattern": "As society moves forward, ... has attracted increasing attention.",
+      "zh": "开头把话题放进社会发展背景",
+      "example": "As society moves forward, the protection of personal information has attracted increasing attention.",
+      "example_zh": "随着社会向前发展，个人信息保护受到越来越多的关注。",
+      "note": "attention 不可数。"
+    },
+    {
+      "id": "p55",
+      "group": "开头",
+      "pattern": "It is often said that ..., and this is particularly true when it comes to ...",
+      "zh": "开头引用常见说法并缩小到具体领域",
+      "example": "It is often said that practice makes perfect, and this is particularly true when it comes to learning a language.",
+      "example_zh": "常言道熟能生巧，在学习语言这件事上尤其如此。",
+      "note": "this is particularly true 后接 when it comes to。"
+    },
+    {
+      "id": "p56",
+      "group": "开头",
+      "pattern": "There is no denying that ... has brought about profound changes to our lives.",
+      "zh": "开头承认某事物的深远影响",
+      "example": "There is no denying that artificial intelligence has brought about profound changes to our lives.",
+      "example_zh": "不可否认，人工智能给我们的生活带来了深刻变化。",
+      "note": "bring about 后接 changes；profound 深层。"
+    },
+    {
+      "id": "p57",
+      "group": "原因与举例",
+      "pattern": "Several factors contribute to this phenomenon, among which ... is the most important.",
+      "zh": "主体段列举多因素并突出主因",
+      "example": "Several factors contribute to this phenomenon, among which the lack of sleep is the most important.",
+      "example_zh": "多种因素导致了这一现象，其中睡眠不足是最重要的。",
+      "note": "among which 引导非限制性定语从句。"
+    },
+    {
+      "id": "p58",
+      "group": "原因与举例",
+      "pattern": "One reason why ... is that ...",
+      "zh": "主体段给出单一原因",
+      "example": "One reason why students feel stressed is that they are under constant pressure to perform well.",
+      "example_zh": "学生感到压力的一个原因是他们一直承受着取得好成绩的压力。",
+      "note": "why 后接完整从句；that 后也是完整从句。"
+    },
+    {
+      "id": "p59",
+      "group": "原因与举例",
+      "pattern": "This can be explained by the fact that ...",
+      "zh": "主体段用同位语从句解释原因",
+      "example": "This can be explained by the fact that many people lack basic financial knowledge.",
+      "example_zh": "这可以用许多人缺乏基本理财知识这一事实来解释。",
+      "note": "the fact that 后接完整从句，不能省 that。"
+    },
+    {
+      "id": "p60",
+      "group": "原因与举例",
+      "pattern": "A typical example is ..., which shows that ...",
+      "zh": "主体段用典型例子支撑观点",
+      "example": "A typical example is the widespread use of mobile payment, which shows that convenience drives innovation.",
+      "example_zh": "一个典型例子是移动支付的广泛使用，这表明便利推动创新。",
+      "note": "which 指代前面整件事，用非限制性从句。"
+    },
+    {
+      "id": "p61",
+      "group": "原因与举例",
+      "pattern": "For instance, ... has demonstrated how ... can ...",
+      "zh": "主体段用实例说明机制",
+      "example": "For instance, online education has demonstrated how technology can make quality resources accessible to more people.",
+      "example_zh": "例如，在线教育已经证明技术如何让更多人获得优质资源。",
+      "note": "demonstrate 后可接 how 从句。"
+    },
+    {
+      "id": "p62",
+      "group": "原因与举例",
+      "pattern": "Another factor that cannot be ignored is ...",
+      "zh": "主体段补充不可忽视的因素",
+      "example": "Another factor that cannot be ignored is the influence of social media.",
+      "example_zh": "另一个不可忽视的因素是社交媒体的影响。",
+      "note": "that 引导定语从句修饰 factor。"
+    },
+    {
+      "id": "p63",
+      "group": "原因与举例",
+      "pattern": "It is mainly because ... that ...",
+      "zh": "主体段用强调句点出主因",
+      "example": "It is mainly because of the high cost that many families give up traveling abroad.",
+      "example_zh": "主要是因为费用高昂，许多家庭放弃了出国旅行。",
+      "note": "强调句结构 It is ... that ...，去掉后句子仍完整。"
+    },
+    {
+      "id": "p64",
+      "group": "原因与举例",
+      "pattern": "The root cause of ... lies in ...",
+      "zh": "主体段追到根本原因",
+      "example": "The root cause of the problem lies in the imbalance between economic growth and environmental protection.",
+      "example_zh": "问题的根源在于经济增长与环境保护之间的失衡。",
+      "note": "lie in 后接名词短语。"
+    },
+    {
+      "id": "p65",
+      "group": "对比与让步",
+      "pattern": "On the contrary, ... may bring about negative effects.",
+      "zh": "转折指出反面影响",
+      "example": "On the contrary, excessive use of smartphones may bring about negative effects on sleep quality.",
+      "example_zh": "相反，过度使用智能手机可能对睡眠质量产生负面影响。",
+      "note": "on the contrary 用于强转折，不是简单并列。"
+    },
+    {
+      "id": "p66",
+      "group": "对比与让步",
+      "pattern": "While ... has its merits, it also gives rise to ...",
+      "zh": "先承认优点再指出问题",
+      "example": "While online learning has its merits, it also gives rise to concerns about students' eyesight.",
+      "example_zh": "虽然在线学习有其优点，但也引发了对学生视力的担忧。",
+      "note": "while 引导让步状语从句。"
+    },
+    {
+      "id": "p67",
+      "group": "对比与让步",
+      "pattern": "Some people prefer ..., whereas others are more inclined to ...",
+      "zh": "对比两类人的选择倾向",
+      "example": "Some people prefer working from home, whereas others are more inclined to work in an office.",
+      "example_zh": "有些人喜欢居家办公，另一些人则更倾向于在办公室工作。",
+      "note": "whereas 表对比；be inclined to 后接动词原形。"
+    },
+    {
+      "id": "p68",
+      "group": "对比与让步",
+      "pattern": "Compared with the past, people today ...",
+      "zh": "今昔对比展开论证",
+      "example": "Compared with the past, people today have more access to information but less time to digest it.",
+      "example_zh": "与过去相比，今天的人获得信息的渠道更多，但消化信息的时间更少。",
+      "note": "compared with 作状语，逻辑主语要一致。"
+    },
+    {
+      "id": "p69",
+      "group": "对比与让步",
+      "pattern": "Even though ..., we should not overlook ...",
+      "zh": "让步后提醒不要忽视另一面",
+      "example": "Even though technology has made life easier, we should not overlook its potential risks.",
+      "example_zh": "尽管科技让生活更便利，我们也不应忽视其潜在风险。",
+      "note": "even though 引导让步从句，主句用情态动词。"
+    },
+    {
+      "id": "p70",
+      "group": "对比与让步",
+      "pattern": "It is true that ..., but it does not mean that ...",
+      "zh": "承认事实但反驳推论",
+      "example": "It is true that competition is fierce, but it does not mean that we should give up trying.",
+      "example_zh": "竞争激烈是事实，但这并不意味着我们应该放弃努力。",
+      "note": "it does not mean that 后接完整从句。"
+    },
+    {
+      "id": "p71",
+      "group": "对比与让步",
+      "pattern": "The advantages of ... far outweigh its disadvantages.",
+      "zh": "权衡后明确倾向",
+      "example": "The advantages of cycling to work far outweigh its disadvantages.",
+      "example_zh": "骑自行车上班的优点远大于缺点。",
+      "note": "far 修饰 outweigh，加强程度。"
+    },
+    {
+      "id": "p72",
+      "group": "对比与让步",
+      "pattern": "Rather than ..., we should ...",
+      "zh": "用替代方案表达立场",
+      "example": "Rather than complaining about the problem, we should take practical steps to solve it.",
+      "example_zh": "与其抱怨问题，我们不如采取实际步骤解决它。",
+      "note": "rather than 后接动名词，保持前后结构一致。"
+    },
+    {
+      "id": "p73",
+      "group": "建议与措施",
+      "pattern": "It is imperative that the government take measures to ...",
+      "zh": "建议段要求政府采取行动",
+      "example": "It is imperative that the government take measures to improve public transport.",
+      "example_zh": "政府必须采取措施改善公共交通。",
+      "note": "imperative 后从句用虚拟语气，take 用原形。"
+    },
+    {
+      "id": "p74",
+      "group": "建议与措施",
+      "pattern": "Schools should attach greater importance to ...",
+      "zh": "建议学校加强某方面教育",
+      "example": "Schools should attach greater importance to students' mental health.",
+      "example_zh": "学校应更加重视学生的心理健康。",
+      "note": "attach importance to 后接名词或动名词。"
+    },
+    {
+      "id": "p75",
+      "group": "建议与措施",
+      "pattern": "Individuals are advised to ...",
+      "zh": "建议个人采取行动",
+      "example": "Individuals are advised to develop the habit of reading every day.",
+      "example_zh": "建议个人养成每天阅读的习惯。",
+      "note": "be advised to 后接动词原形，语气比 should 委婉。"
+    },
+    {
+      "id": "p76",
+      "group": "建议与措施",
+      "pattern": "One effective way to ... is to ...",
+      "zh": "提出一种具体做法",
+      "example": "One effective way to reduce stress is to take regular exercise.",
+      "example_zh": "减轻压力的一个有效方法是经常锻炼。",
+      "note": "to 后接动词原形，前后保持平行。"
+    },
+    {
+      "id": "p77",
+      "group": "建议与措施",
+      "pattern": "We should raise public awareness of ...",
+      "zh": "建议提升公众意识",
+      "example": "We should raise public awareness of environmental protection.",
+      "example_zh": "我们应该提高公众的环保意识。",
+      "note": "awareness 不可数；of 后接名词。"
+    },
+    {
+      "id": "p78",
+      "group": "建议与措施",
+      "pattern": "Relevant departments should strengthen the supervision of ...",
+      "zh": "建议加强监管",
+      "example": "Relevant departments should strengthen the supervision of online food delivery.",
+      "example_zh": "相关部门应加强对网络外卖的监管。",
+      "note": "supervision of 后接监管对象。"
+    },
+    {
+      "id": "p79",
+      "group": "建议与措施",
+      "pattern": "Only through ... can we ...",
+      "zh": "用倒装强调唯一途径",
+      "example": "Only through continuous learning can we keep pace with the times.",
+      "example_zh": "只有通过不断学习，我们才能跟上时代。",
+      "note": "only + 状语置句首，主句部分倒装。"
+    },
+    {
+      "id": "p80",
+      "group": "结尾",
+      "pattern": "In conclusion, ... is of great significance to ...",
+      "zh": "结尾点明重要意义",
+      "example": "In conclusion, environmental protection is of great significance to the sustainable development of society.",
+      "example_zh": "总之，环境保护对社会的可持续发展具有重要意义。",
+      "note": "be of great significance to 后接名词。"
+    },
+    {
+      "id": "p81",
+      "group": "结尾",
+      "pattern": "Therefore, it is high time that we took action to ...",
+      "zh": "结尾呼吁立即行动",
+      "example": "Therefore, it is high time that we took action to reduce food waste.",
+      "example_zh": "因此，我们该采取行动减少食物浪费了。",
+      "note": "it is high time that 后从句用过去式。"
+    },
+    {
+      "id": "p82",
+      "group": "结尾",
+      "pattern": "With joint efforts, ... will surely ...",
+      "zh": "结尾表达对未来结果的信心",
+      "example": "With joint efforts, our city will surely become cleaner and more livable.",
+      "example_zh": "在共同努力下，我们的城市一定会变得更清洁、更宜居。",
+      "note": "with joint efforts 作状语。"
+    },
+    {
+      "id": "p83",
+      "group": "结尾",
+      "pattern": "It is our shared responsibility to ...",
+      "zh": "结尾强调共同责任",
+      "example": "It is our shared responsibility to protect the environment.",
+      "example_zh": "保护环境是我们共同的责任。",
+      "note": "it 作形式主语，真正主语是 to 不定式。"
+    },
+    {
+      "id": "p84",
+      "group": "结尾",
+      "pattern": "As long as we ..., we will be able to ...",
+      "zh": "结尾提出条件并展望结果",
+      "example": "As long as we persist in our efforts, we will be able to overcome these difficulties.",
+      "example_zh": "只要我们坚持不懈，就一定能够克服这些困难。",
+      "note": "as long as 引导条件状语从句。"
+    },
+    {
+      "id": "p85",
+      "group": "结尾",
+      "pattern": "The key lies in whether we can ...",
+      "zh": "结尾把结论落到关键问题上",
+      "example": "The key lies in whether we can balance economic growth with environmental protection.",
+      "example_zh": "关键在于我们能否平衡经济增长与环境保护。",
+      "note": "whether 引导从句作 in 的宾语。"
+    },
+    {
+      "id": "p86",
+      "group": "结尾",
+      "pattern": "There is every reason to believe that ...",
+      "zh": "结尾表达有充分理由的乐观",
+      "example": "There is every reason to believe that China's high-speed rail will continue to lead the world.",
+      "example_zh": "我们有充分理由相信，中国高铁将继续领先世界。",
+      "note": "there is every reason to believe 后接完整从句。"
+    },
+    {
+      "id": "p87",
+      "group": "高级结构",
+      "pattern": "What impresses me most is that ...",
+      "zh": "主语从句强调最深印象",
+      "example": "What impresses me most is that volunteers worked tirelessly during the flood.",
+      "example_zh": "给我印象最深的是，志愿者们在洪灾期间不知疲倦地工作。",
+      "note": "what 引导主语从句，is 后接表语从句。"
+    },
+    {
+      "id": "p88",
+      "group": "高级结构",
+      "pattern": "It is not ... but ... that ...",
+      "zh": "用强调句对比真正的原因",
+      "example": "It is not talent but perseverance that leads to success.",
+      "example_zh": "导致成功的不是天赋，而是毅力。",
+      "note": "not ... but ... 结构保持前后对称。"
+    },
+    {
+      "id": "p89",
+      "group": "高级结构",
+      "pattern": "The more ..., the more ...",
+      "zh": "比较级连用表示递进",
+      "example": "The more we read, the more we understand the world.",
+      "example_zh": "我们读得越多，对世界的理解就越深。",
+      "note": "两边都用比较级，结构对称。"
+    },
+    {
+      "id": "p90",
+      "group": "高级结构",
+      "pattern": "No sooner had ... than ...",
+      "zh": "倒装表示两件事紧接发生",
+      "example": "No sooner had the bell rung than the students rushed out of the classroom.",
+      "example_zh": "铃声一响，学生们就冲出了教室。",
+      "note": "no sooner 置句首，主句倒装，than 后接一般过去时。"
+    },
+    {
+      "id": "p91",
+      "group": "高级结构",
+      "pattern": "Such is ... that ...",
+      "zh": "倒装强调程度和结果",
+      "example": "Such is the importance of teamwork that no project can succeed without it.",
+      "example_zh": "团队合作如此重要，没有它任何项目都无法成功。",
+      "note": "such 置句首，主句完全倒装；that 引导结果从句。"
+    },
+    {
+      "id": "p92",
+      "group": "高级结构",
+      "pattern": "It goes without saying that ...",
+      "zh": "用固定句式表达不言而喻",
+      "example": "It goes without saying that education is the foundation of a nation's development.",
+      "example_zh": "不言而喻，教育是国家发展的基础。",
+      "note": "that 后接完整从句。"
+    },
+    {
+      "id": "p93",
+      "group": "高级结构",
+      "pattern": "There is no denying that ...",
+      "zh": "用双重否定加强肯定",
+      "example": "There is no denying that the Internet has changed the way we live.",
+      "example_zh": "不可否认，互联网改变了我们的生活方式。",
+      "note": "there is no denying 后接 that 从句。"
+    },
+    {
+      "id": "p94",
+      "group": "高级结构",
+      "pattern": "Not until ... did ...",
+      "zh": "倒装强调时间条件",
+      "example": "Not until we lost our health did we realize its value.",
+      "example_zh": "直到失去健康，我们才意识到它的价值。",
+      "note": "not until 置句首，主句倒装，用 did。"
+    },
+    {
+      "id": "p95",
+      "group": "建议与措施",
+      "pattern": "To solve this problem, joint efforts from all sides are required to ...",
+      "zh": "建议段总起多方协作",
+      "example": "To solve this problem, joint efforts from all sides are required to improve public transport and reduce private car use.",
+      "example_zh": "要解决这个问题，需要各方共同努力改善公共交通、减少私家车使用。",
+      "note": "required to 后接动词原形；各方努力用 joint efforts。"
+    },
+    {
+      "id": "p96",
+      "group": "结尾",
+      "pattern": "Only in this way can we build a better future for ...",
+      "zh": "结尾用倒装收束并点出受益者",
+      "example": "Only in this way can we build a better future for the next generation.",
+      "example_zh": "只有这样，我们才能为下一代创造更美好的未来。",
+      "note": "only in this way 置句首，主句倒装。"
     }
   ]
 }

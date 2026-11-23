@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "kind": "translation_phrases",
   "items": [
     {
@@ -449,6 +449,1742 @@
       "en": "tell China's story well",
       "note": "也可 share China's stories；官方常用 tell China's story well。",
       "theme": "文化"
+    },
+    {
+      "id": "ph65",
+      "theme": "科技",
+      "zh": "无人机",
+      "en": "drone",
+      "note": "2026-06 六级真题主题；复数 drones。"
+    },
+    {
+      "id": "ph66",
+      "theme": "科技",
+      "zh": "无人机产业",
+      "en": "the drone industry",
+      "note": "描述产业发展时用。"
+    },
+    {
+      "id": "ph67",
+      "theme": "科技",
+      "zh": "低空经济",
+      "en": "the low-altitude economy",
+      "note": "无人机、飞行汽车等产业的总称。"
+    },
+    {
+      "id": "ph68",
+      "theme": "科技",
+      "zh": "战略性新兴产业",
+      "en": "strategic emerging industries",
+      "note": "真题高频提法，常与“培育”搭配。"
+    },
+    {
+      "id": "ph69",
+      "theme": "科技",
+      "zh": "为……注入新动能",
+      "en": "inject new momentum into",
+      "note": "真题原文表达；momentum 不可数。"
+    },
+    {
+      "id": "ph70",
+      "theme": "科技",
+      "zh": "高清图像",
+      "en": "high-definition images",
+      "note": "也可说 HD images。"
+    },
+    {
+      "id": "ph71",
+      "theme": "科技",
+      "zh": "喷洒农药",
+      "en": "spray pesticides",
+      "note": "农业无人机用途。"
+    },
+    {
+      "id": "ph72",
+      "theme": "科技",
+      "zh": "识别病虫害",
+      "en": "identify pests and diseases",
+      "note": "pest 单数指害虫。"
+    },
+    {
+      "id": "ph73",
+      "theme": "科技",
+      "zh": "配送生鲜",
+      "en": "deliver fresh food",
+      "note": "生鲜也可说 fresh produce。"
+    },
+    {
+      "id": "ph74",
+      "theme": "科技",
+      "zh": "民用领域",
+      "en": "the civilian sector",
+      "note": "与 military 相对。"
+    },
+    {
+      "id": "ph75",
+      "theme": "科技",
+      "zh": "位居全球首位",
+      "en": "rank first in the world",
+      "note": "也可说 top the world。"
+    },
+    {
+      "id": "ph76",
+      "theme": "科技",
+      "zh": "人形机器人",
+      "en": "humanoid robots",
+      "note": "humanoid 读 /ˈhjuːmənɔɪd/。"
+    },
+    {
+      "id": "ph77",
+      "theme": "科技",
+      "zh": "工业机器人",
+      "en": "industrial robots",
+      "note": "制造业场景。"
+    },
+    {
+      "id": "ph78",
+      "theme": "科技",
+      "zh": "智能制造",
+      "en": "smart manufacturing",
+      "note": "也常与 advanced manufacturing 并列。"
+    },
+    {
+      "id": "ph79",
+      "theme": "科技",
+      "zh": "芯片",
+      "en": "semiconductor chips",
+      "note": "chip 可数；semiconductor 半导体。"
+    },
+    {
+      "id": "ph80",
+      "theme": "科技",
+      "zh": "集成电路",
+      "en": "integrated circuits",
+      "note": "缩写 IC。"
+    },
+    {
+      "id": "ph81",
+      "theme": "科技",
+      "zh": "量子计算",
+      "en": "quantum computing",
+      "note": "quantum 复数为 quanta，不常用。"
+    },
+    {
+      "id": "ph82",
+      "theme": "科技",
+      "zh": "区块链",
+      "en": "blockchain",
+      "note": "常与数字金融一起考。"
+    },
+    {
+      "id": "ph83",
+      "theme": "科技",
+      "zh": "物联网",
+      "en": "the Internet of Things (IoT)",
+      "note": "注意 the 与缩写。"
+    },
+    {
+      "id": "ph84",
+      "theme": "科技",
+      "zh": "虚拟现实",
+      "en": "virtual reality (VR)",
+      "note": "与 augmented reality 对照。"
+    },
+    {
+      "id": "ph85",
+      "theme": "科技",
+      "zh": "增强现实",
+      "en": "augmented reality (AR)",
+      "note": "常与 VR 并列。"
+    },
+    {
+      "id": "ph86",
+      "theme": "科技",
+      "zh": "智能家居",
+      "en": "smart homes",
+      "note": "home 用复数更自然。"
+    },
+    {
+      "id": "ph87",
+      "theme": "科技",
+      "zh": "可穿戴设备",
+      "en": "wearable devices",
+      "note": "wearable 作名词也可。"
+    },
+    {
+      "id": "ph88",
+      "theme": "科技",
+      "zh": "智能手表",
+      "en": "smartwatches",
+      "note": "一个词，不加连字符。"
+    },
+    {
+      "id": "ph89",
+      "theme": "科技",
+      "zh": "算法",
+      "en": "algorithms",
+      "note": "algorithm 可数。"
+    },
+    {
+      "id": "ph90",
+      "theme": "科技",
+      "zh": "数据中心",
+      "en": "data centers",
+      "note": "注意 data 本身是复数。"
+    },
+    {
+      "id": "ph91",
+      "theme": "科技",
+      "zh": "算力",
+      "en": "computing power",
+      "note": "数字经济的核心概念。"
+    },
+    {
+      "id": "ph92",
+      "theme": "科技",
+      "zh": "超级计算机",
+      "en": "supercomputers",
+      "note": "supercomputer 可数。"
+    },
+    {
+      "id": "ph93",
+      "theme": "科技",
+      "zh": "6G网络",
+      "en": "6G networks",
+      "note": "与 5G networks 平行。"
+    },
+    {
+      "id": "ph94",
+      "theme": "科技",
+      "zh": "卫星互联网",
+      "en": "satellite internet",
+      "note": "常与低轨卫星一起考。"
+    },
+    {
+      "id": "ph95",
+      "theme": "科技",
+      "zh": "北斗卫星导航系统",
+      "en": "the BeiDou Navigation Satellite System",
+      "note": "官方译名；口语可简称 BeiDou。"
+    },
+    {
+      "id": "ph96",
+      "theme": "科技",
+      "zh": "空间站",
+      "en": "space station",
+      "note": "中国空间站 the China Space Station。"
+    },
+    {
+      "id": "ph97",
+      "theme": "科技",
+      "zh": "载人航天",
+      "en": "manned spaceflight",
+      "note": "spaceflight 一个词。"
+    },
+    {
+      "id": "ph98",
+      "theme": "科技",
+      "zh": "探月工程",
+      "en": "the lunar exploration program",
+      "note": "嫦娥工程 the Chang'e program。"
+    },
+    {
+      "id": "ph99",
+      "theme": "科技",
+      "zh": "火星探测",
+      "en": "Mars exploration",
+      "note": "天问一号 Tianwen-1。"
+    },
+    {
+      "id": "ph100",
+      "theme": "科技",
+      "zh": "运载火箭",
+      "en": "launch vehicles",
+      "note": "也可说 carrier rockets。"
+    },
+    {
+      "id": "ph101",
+      "theme": "科技",
+      "zh": "卫星",
+      "en": "satellites",
+      "note": "satellite 可数。"
+    },
+    {
+      "id": "ph102",
+      "theme": "科技",
+      "zh": "新能源",
+      "en": "new energy",
+      "note": "与新能源车 new energy vehicles 区分。"
+    },
+    {
+      "id": "ph103",
+      "theme": "生态",
+      "zh": "光伏发电",
+      "en": "photovoltaic power generation",
+      "note": "光伏 photovoltaic，缩写 PV。"
+    },
+    {
+      "id": "ph104",
+      "theme": "生态",
+      "zh": "风力发电",
+      "en": "wind power generation",
+      "note": "wind farm 风电场。"
+    },
+    {
+      "id": "ph105",
+      "theme": "生态",
+      "zh": "储能",
+      "en": "energy storage",
+      "note": "储能电池 energy storage batteries。"
+    },
+    {
+      "id": "ph106",
+      "theme": "科技",
+      "zh": "动力电池",
+      "en": "power batteries",
+      "note": "电动车核心部件。"
+    },
+    {
+      "id": "ph107",
+      "theme": "科技",
+      "zh": "超级快充",
+      "en": "ultra-fast charging",
+      "note": "也可说 fast charging。"
+    },
+    {
+      "id": "ph108",
+      "theme": "科技",
+      "zh": "充电网络",
+      "en": "charging networks",
+      "note": "充电桩 charging piles 已有单独条目。"
+    },
+    {
+      "id": "ph109",
+      "theme": "科技",
+      "zh": "智能网联汽车",
+      "en": "intelligent connected vehicles",
+      "note": "缩写 ICV。"
+    },
+    {
+      "id": "ph110",
+      "theme": "科技",
+      "zh": "自动驾驶出租车",
+      "en": "robotaxis",
+      "note": "robotaxi 可数。"
+    },
+    {
+      "id": "ph111",
+      "theme": "科技",
+      "zh": "无人驾驶",
+      "en": "driverless driving",
+      "note": "也可说 autonomous driving（已有）。"
+    },
+    {
+      "id": "ph112",
+      "theme": "科技",
+      "zh": "生物医药",
+      "en": "biomedicine",
+      "note": "生物医药产业 the biomedicine industry。"
+    },
+    {
+      "id": "ph113",
+      "theme": "科技",
+      "zh": "基因编辑",
+      "en": "gene editing",
+      "note": "CRISPR 是常用技术名。"
+    },
+    {
+      "id": "ph114",
+      "theme": "科技",
+      "zh": "3D打印",
+      "en": "3D printing",
+      "note": "3D 读 three-D。"
+    },
+    {
+      "id": "ph115",
+      "theme": "科技",
+      "zh": "新材料",
+      "en": "new materials",
+      "note": "常与新能源、高端制造并列。"
+    },
+    {
+      "id": "ph116",
+      "theme": "经济",
+      "zh": "数字经济",
+      "en": "the digital economy",
+      "note": "与实体经济 the real economy 对照。"
+    },
+    {
+      "id": "ph117",
+      "theme": "社会",
+      "zh": "数字鸿沟",
+      "en": "the digital divide",
+      "note": "常与老年人、农村话题一起考。"
+    },
+    {
+      "id": "ph118",
+      "theme": "科技",
+      "zh": "数据安全",
+      "en": "data security",
+      "note": "与个人信息保护并列。"
+    },
+    {
+      "id": "ph119",
+      "theme": "社会",
+      "zh": "个人信息保护",
+      "en": "personal information protection",
+      "note": "相关法律译名。"
+    },
+    {
+      "id": "ph120",
+      "theme": "科技",
+      "zh": "网络空间",
+      "en": "cyberspace",
+      "note": "网络空间治理 cyberspace governance。"
+    },
+    {
+      "id": "ph121",
+      "theme": "科技",
+      "zh": "科技自立自强",
+      "en": "self-reliance in science and technology",
+      "note": "官方提法，self-reliance 不可数。"
+    },
+    {
+      "id": "ph122",
+      "theme": "科技",
+      "zh": "技术转移",
+      "en": "technology transfer",
+      "note": "技术成果转化 commercialization of research results。"
+    },
+    {
+      "id": "ph123",
+      "theme": "经济",
+      "zh": "创新驱动发展",
+      "en": "innovation-driven development",
+      "note": "innovation-driven 作定语。"
+    },
+    {
+      "id": "ph124",
+      "theme": "社会",
+      "zh": "农产品",
+      "en": "agricultural products",
+      "note": "也可说 farm produce。"
+    },
+    {
+      "id": "ph125",
+      "theme": "经济",
+      "zh": "电商平台",
+      "en": "e-commerce platforms",
+      "note": "platform 可数。"
+    },
+    {
+      "id": "ph126",
+      "theme": "经济",
+      "zh": "通过直播销售",
+      "en": "sell products through livestreaming",
+      "note": "2026-06 真题表达。"
+    },
+    {
+      "id": "ph127",
+      "theme": "经济",
+      "zh": "产销对接",
+      "en": "match production with sales",
+      "note": "常与农产品一起考。"
+    },
+    {
+      "id": "ph128",
+      "theme": "经济",
+      "zh": "拓宽销售渠道",
+      "en": "expand sales channels",
+      "note": "也可说 broaden sales channels。"
+    },
+    {
+      "id": "ph129",
+      "theme": "社会",
+      "zh": "增加农民收入",
+      "en": "increase farmers' income",
+      "note": "income 用单数。"
+    },
+    {
+      "id": "ph130",
+      "theme": "经济",
+      "zh": "县域经济",
+      "en": "the county-level economy",
+      "note": "county-level 作定语。"
+    },
+    {
+      "id": "ph131",
+      "theme": "经济",
+      "zh": "农村电商",
+      "en": "rural e-commerce",
+      "note": "与乡村振兴高频搭配。"
+    },
+    {
+      "id": "ph132",
+      "theme": "社会",
+      "zh": "数字乡村",
+      "en": "digital villages",
+      "note": "官方提法。"
+    },
+    {
+      "id": "ph133",
+      "theme": "社会",
+      "zh": "城乡融合",
+      "en": "urban-rural integration",
+      "note": "与城乡差距 the urban-rural gap 区分。"
+    },
+    {
+      "id": "ph134",
+      "theme": "社会",
+      "zh": "信息壁垒",
+      "en": "information barriers",
+      "note": "打破信息壁垒 break down information barriers。"
+    },
+    {
+      "id": "ph135",
+      "theme": "经济",
+      "zh": "消费升级",
+      "en": "consumption upgrading",
+      "note": "也可说 upgrading of consumption。"
+    },
+    {
+      "id": "ph136",
+      "theme": "经济",
+      "zh": "内需",
+      "en": "domestic demand",
+      "note": "扩大内需 expand domestic demand。"
+    },
+    {
+      "id": "ph137",
+      "theme": "经济",
+      "zh": "以旧换新",
+      "en": "trade-in programs",
+      "note": "家电以旧换新 trade-in of home appliances。"
+    },
+    {
+      "id": "ph138",
+      "theme": "社会",
+      "zh": "灵活就业",
+      "en": "flexible employment",
+      "note": "新就业形态的常见搭配。"
+    },
+    {
+      "id": "ph139",
+      "theme": "社会",
+      "zh": "新就业形态",
+      "en": "new forms of employment",
+      "note": "外卖骑手、网约车司机等。"
+    },
+    {
+      "id": "ph140",
+      "theme": "教育",
+      "zh": "职业教育",
+      "en": "vocational education",
+      "note": "与普通教育 general education 对照。"
+    },
+    {
+      "id": "ph141",
+      "theme": "教育",
+      "zh": "高等教育",
+      "en": "higher education",
+      "note": "高等教育普及化 the popularization of higher education。"
+    },
+    {
+      "id": "ph142",
+      "theme": "教育",
+      "zh": "教育公平",
+      "en": "educational equity",
+      "note": "也可说 equal access to education。"
+    },
+    {
+      "id": "ph143",
+      "theme": "教育",
+      "zh": "双减政策",
+      "en": "the \"double reduction\" policy",
+      "note": "官方提法，注意引号。"
+    },
+    {
+      "id": "ph144",
+      "theme": "教育",
+      "zh": "素质教育",
+      "en": "quality-oriented education",
+      "note": "与应试教育 exam-oriented education 对照。"
+    },
+    {
+      "id": "ph145",
+      "theme": "医疗",
+      "zh": "医疗保障",
+      "en": "medical security",
+      "note": "医疗保障体系 the medical security system。"
+    },
+    {
+      "id": "ph146",
+      "theme": "医疗",
+      "zh": "基本医疗保险",
+      "en": "basic medical insurance",
+      "note": "覆盖 cover；参保人 the insured。"
+    },
+    {
+      "id": "ph147",
+      "theme": "医疗",
+      "zh": "分级诊疗",
+      "en": "tiered medical services",
+      "note": "官方提法。"
+    },
+    {
+      "id": "ph148",
+      "theme": "医疗",
+      "zh": "家庭医生",
+      "en": "family doctors",
+      "note": "家庭医生签约服务 contracted family doctor services。"
+    },
+    {
+      "id": "ph149",
+      "theme": "医疗",
+      "zh": "在线问诊",
+      "en": "online consultation",
+      "note": "2026-06 真题表达。"
+    },
+    {
+      "id": "ph150",
+      "theme": "医疗",
+      "zh": "电子健康记录",
+      "en": "electronic health records",
+      "note": "缩写 EHR。"
+    },
+    {
+      "id": "ph151",
+      "theme": "医疗",
+      "zh": "辅助诊断",
+      "en": "assisted diagnosis",
+      "note": "人工智能辅助诊断 AI-assisted diagnosis。"
+    },
+    {
+      "id": "ph152",
+      "theme": "医疗",
+      "zh": "优质医疗资源",
+      "en": "high-quality medical resources",
+      "note": "常与下沉、共享搭配。"
+    },
+    {
+      "id": "ph153",
+      "theme": "社会",
+      "zh": "养老服务",
+      "en": "elderly care services",
+      "note": "养老也可说 care for the elderly。"
+    },
+    {
+      "id": "ph154",
+      "theme": "社会",
+      "zh": "社区养老",
+      "en": "community-based elderly care",
+      "note": "居家社区机构相协调。"
+    },
+    {
+      "id": "ph155",
+      "theme": "社会",
+      "zh": "居家养老",
+      "en": "home-based elderly care",
+      "note": "与社区养老、机构养老并列。"
+    },
+    {
+      "id": "ph156",
+      "theme": "社会",
+      "zh": "适老化改造",
+      "en": "age-friendly renovations",
+      "note": "无障碍设施 barrier-free facilities。"
+    },
+    {
+      "id": "ph157",
+      "theme": "社会",
+      "zh": "智慧养老",
+      "en": "smart elderly care",
+      "note": "科技+养老的结合。"
+    },
+    {
+      "id": "ph158",
+      "theme": "社会",
+      "zh": "志愿服务",
+      "en": "voluntary services",
+      "note": "志愿者 volunteers。"
+    },
+    {
+      "id": "ph159",
+      "theme": "社会",
+      "zh": "社区治理",
+      "en": "community governance",
+      "note": "基层治理的组成部分。"
+    },
+    {
+      "id": "ph160",
+      "theme": "社会",
+      "zh": "基层治理",
+      "en": "grassroots governance",
+      "note": "grassroots 作定语。"
+    },
+    {
+      "id": "ph161",
+      "theme": "社会",
+      "zh": "公共服务",
+      "en": "public services",
+      "note": "均等化 equal access to public services。"
+    },
+    {
+      "id": "ph162",
+      "theme": "社会",
+      "zh": "民生",
+      "en": "people's wellbeing",
+      "note": "保障和改善民生 improve people's wellbeing。"
+    },
+    {
+      "id": "ph163",
+      "theme": "社会",
+      "zh": "获得感",
+      "en": "a sense of gain",
+      "note": "常与幸福感、安全感并列。"
+    },
+    {
+      "id": "ph164",
+      "theme": "社会",
+      "zh": "幸福感",
+      "en": "a sense of happiness",
+      "note": "也可说 sense of fulfillment。"
+    },
+    {
+      "id": "ph165",
+      "theme": "社会",
+      "zh": "安全感",
+      "en": "a sense of security",
+      "note": "三感并列时保持冠词一致。"
+    },
+    {
+      "id": "ph166",
+      "theme": "经济",
+      "zh": "高质量发展",
+      "en": "high-quality development",
+      "note": "官方高频提法。"
+    },
+    {
+      "id": "ph167",
+      "theme": "经济",
+      "zh": "新发展格局",
+      "en": "the new development paradigm",
+      "note": "以国内大循环为主体。"
+    },
+    {
+      "id": "ph168",
+      "theme": "经济",
+      "zh": "国内国际双循环",
+      "en": "domestic and international dual circulation",
+      "note": "官方提法。"
+    },
+    {
+      "id": "ph169",
+      "theme": "经济",
+      "zh": "区域协调发展",
+      "en": "coordinated regional development",
+      "note": "京津冀、长三角等是例子。"
+    },
+    {
+      "id": "ph170",
+      "theme": "社会",
+      "zh": "城镇化率",
+      "en": "the urbanization rate",
+      "note": "2023-12 六级真题主题相关。"
+    },
+    {
+      "id": "ph171",
+      "theme": "社会",
+      "zh": "人口流动",
+      "en": "population mobility",
+      "note": "流动人口 the floating population。"
+    },
+    {
+      "id": "ph172",
+      "theme": "社会",
+      "zh": "户籍制度改革",
+      "en": "reform of the household registration system",
+      "note": "户口 household registration。"
+    },
+    {
+      "id": "ph173",
+      "theme": "经济",
+      "zh": "共享经济",
+      "en": "the sharing economy",
+      "note": "2024-06 六级真题主题。"
+    },
+    {
+      "id": "ph174",
+      "theme": "文化",
+      "zh": "春节",
+      "en": "the Spring Festival",
+      "note": "也可说 Chinese New Year；注意 the。"
+    },
+    {
+      "id": "ph175",
+      "theme": "文化",
+      "zh": "中秋节",
+      "en": "the Mid-Autumn Festival",
+      "note": "月饼是标志性食物。"
+    },
+    {
+      "id": "ph176",
+      "theme": "文化",
+      "zh": "端午节",
+      "en": "the Dragon Boat Festival",
+      "note": "纪念屈原 commemorate Qu Yuan。"
+    },
+    {
+      "id": "ph177",
+      "theme": "文化",
+      "zh": "元宵节",
+      "en": "the Lantern Festival",
+      "note": "正月十五 the 15th day of the first lunar month。"
+    },
+    {
+      "id": "ph178",
+      "theme": "文化",
+      "zh": "清明节",
+      "en": "the Qingming Festival",
+      "note": "扫墓 sweep tombs。"
+    },
+    {
+      "id": "ph179",
+      "theme": "文化",
+      "zh": "重阳节",
+      "en": "the Double Ninth Festival",
+      "note": "敬老 respect the elderly。"
+    },
+    {
+      "id": "ph180",
+      "theme": "文化",
+      "zh": "七夕节",
+      "en": "the Qixi Festival",
+      "note": "中国情人节 China's Valentine's Day。"
+    },
+    {
+      "id": "ph181",
+      "theme": "文化",
+      "zh": "年夜饭",
+      "en": "the reunion dinner",
+      "note": "除夕 Chinese New Year's Eve。"
+    },
+    {
+      "id": "ph182",
+      "theme": "文化",
+      "zh": "饺子",
+      "en": "dumplings",
+      "note": "也可音译 jiaozi。"
+    },
+    {
+      "id": "ph183",
+      "theme": "文化",
+      "zh": "月饼",
+      "en": "mooncakes",
+      "note": "一个词。"
+    },
+    {
+      "id": "ph184",
+      "theme": "文化",
+      "zh": "粽子",
+      "en": "zongzi (sticky rice dumplings)",
+      "note": "先音译再解释。"
+    },
+    {
+      "id": "ph185",
+      "theme": "文化",
+      "zh": "汤圆",
+      "en": "tangyuan (sweet rice balls)",
+      "note": "元宵节食物。"
+    },
+    {
+      "id": "ph186",
+      "theme": "文化",
+      "zh": "茶文化",
+      "en": "tea culture",
+      "note": "茶道 the art of tea。"
+    },
+    {
+      "id": "ph187",
+      "theme": "文化",
+      "zh": "八大菜系",
+      "en": "the eight major cuisines",
+      "note": "cuisine 可数。"
+    },
+    {
+      "id": "ph188",
+      "theme": "文化",
+      "zh": "中餐",
+      "en": "Chinese cuisine",
+      "note": "也可说 Chinese food。"
+    },
+    {
+      "id": "ph189",
+      "theme": "文化",
+      "zh": "筷子",
+      "en": "chopsticks",
+      "note": "常用复数。"
+    },
+    {
+      "id": "ph190",
+      "theme": "文化",
+      "zh": "陶瓷",
+      "en": "ceramics",
+      "note": "景德镇 Jingdezhen 是瓷都。"
+    },
+    {
+      "id": "ph191",
+      "theme": "文化",
+      "zh": "青花瓷",
+      "en": "blue-and-white porcelain",
+      "note": "porcelain 不可数。"
+    },
+    {
+      "id": "ph192",
+      "theme": "文化",
+      "zh": "丝绸",
+      "en": "silk",
+      "note": "丝绸之路 the Silk Road 已有。"
+    },
+    {
+      "id": "ph193",
+      "theme": "文化",
+      "zh": "刺绣",
+      "en": "embroidery",
+      "note": "不可数。"
+    },
+    {
+      "id": "ph194",
+      "theme": "文化",
+      "zh": "苏绣",
+      "en": "Su embroidery",
+      "note": "中国四大名绣之一。"
+    },
+    {
+      "id": "ph195",
+      "theme": "文化",
+      "zh": "蜀绣",
+      "en": "Shu embroidery",
+      "note": "四川传统工艺。"
+    },
+    {
+      "id": "ph196",
+      "theme": "文化",
+      "zh": "中国画",
+      "en": "traditional Chinese painting",
+      "note": "与油画 oil painting 对照。"
+    },
+    {
+      "id": "ph197",
+      "theme": "文化",
+      "zh": "水墨画",
+      "en": "ink and wash painting",
+      "note": "也可说 ink painting。"
+    },
+    {
+      "id": "ph198",
+      "theme": "文化",
+      "zh": "书法家",
+      "en": "calligrapher",
+      "note": "书法 calligraphy。"
+    },
+    {
+      "id": "ph199",
+      "theme": "文化",
+      "zh": "京剧",
+      "en": "Peking Opera",
+      "note": "脸谱 facial makeup。"
+    },
+    {
+      "id": "ph200",
+      "theme": "文化",
+      "zh": "昆曲",
+      "en": "Kunqu Opera",
+      "note": "世界非物质文化遗产。"
+    },
+    {
+      "id": "ph201",
+      "theme": "文化",
+      "zh": "越剧",
+      "en": "Yue Opera",
+      "note": "浙江地方戏曲。"
+    },
+    {
+      "id": "ph202",
+      "theme": "文化",
+      "zh": "民乐",
+      "en": "traditional Chinese music",
+      "note": "民族乐器 traditional instruments。"
+    },
+    {
+      "id": "ph203",
+      "theme": "文化",
+      "zh": "古琴",
+      "en": "the guqin",
+      "note": "七弦琴 seven-stringed zither。"
+    },
+    {
+      "id": "ph204",
+      "theme": "文化",
+      "zh": "二胡",
+      "en": "the erhu",
+      "note": "二胡演奏家 erhu player。"
+    },
+    {
+      "id": "ph205",
+      "theme": "文化",
+      "zh": "琵琶",
+      "en": "the pipa",
+      "note": "四弦琵琶 four-stringed lute。"
+    },
+    {
+      "id": "ph206",
+      "theme": "文化",
+      "zh": "京剧脸谱",
+      "en": "Peking Opera facial makeup",
+      "note": "不同颜色代表不同性格。"
+    },
+    {
+      "id": "ph207",
+      "theme": "文化",
+      "zh": "中国结",
+      "en": "Chinese knots",
+      "note": "常用复数。"
+    },
+    {
+      "id": "ph208",
+      "theme": "文化",
+      "zh": "灯笼",
+      "en": "lanterns",
+      "note": "元宵节挂灯笼 hang lanterns。"
+    },
+    {
+      "id": "ph209",
+      "theme": "文化",
+      "zh": "龙舟",
+      "en": "dragon boats",
+      "note": "赛龙舟 dragon boat racing。"
+    },
+    {
+      "id": "ph210",
+      "theme": "文化",
+      "zh": "舞龙",
+      "en": "dragon dance",
+      "note": "与舞狮 lion dance 并列。"
+    },
+    {
+      "id": "ph211",
+      "theme": "文化",
+      "zh": "舞狮",
+      "en": "lion dance",
+      "note": "春节常见表演。"
+    },
+    {
+      "id": "ph212",
+      "theme": "文化",
+      "zh": "武术",
+      "en": "martial arts",
+      "note": "常用复数。"
+    },
+    {
+      "id": "ph213",
+      "theme": "文化",
+      "zh": "少林功夫",
+      "en": "Shaolin kung fu",
+      "note": "少林寺 the Shaolin Temple。"
+    },
+    {
+      "id": "ph214",
+      "theme": "文化",
+      "zh": "气功",
+      "en": "qigong",
+      "note": "养生练习 health practice。"
+    },
+    {
+      "id": "ph215",
+      "theme": "文化",
+      "zh": "中药",
+      "en": "Chinese herbal medicine",
+      "note": "草药 herbal medicine。"
+    },
+    {
+      "id": "ph216",
+      "theme": "文化",
+      "zh": "穴位",
+      "en": "acupuncture points",
+      "note": "针灸 acupuncture 已有。"
+    },
+    {
+      "id": "ph217",
+      "theme": "文化",
+      "zh": "推拿",
+      "en": "tuina (Chinese massage therapy)",
+      "note": "先音译再解释。"
+    },
+    {
+      "id": "ph218",
+      "theme": "文化",
+      "zh": "养生",
+      "en": "health preservation",
+      "note": "也可说 keeping fit。"
+    },
+    {
+      "id": "ph219",
+      "theme": "文化",
+      "zh": "道家",
+      "en": "Taoism",
+      "note": "道家思想 Taoist thought。"
+    },
+    {
+      "id": "ph220",
+      "theme": "文化",
+      "zh": "佛教",
+      "en": "Buddhism",
+      "note": "佛教传入中国 Buddhism spread to China。"
+    },
+    {
+      "id": "ph221",
+      "theme": "文化",
+      "zh": "四书五经",
+      "en": "the Four Books and the Five Classics",
+      "note": "儒家经典 Confucian classics。"
+    },
+    {
+      "id": "ph222",
+      "theme": "文化",
+      "zh": "唐诗",
+      "en": "Tang poetry",
+      "note": "唐诗宋词 Tang and Song poetry。"
+    },
+    {
+      "id": "ph223",
+      "theme": "文化",
+      "zh": "宋词",
+      "en": "Song ci poetry",
+      "note": "ci 是词，斜体或音译。"
+    },
+    {
+      "id": "ph224",
+      "theme": "文化",
+      "zh": "诗经",
+      "en": "the Book of Songs",
+      "note": "中国最早的诗歌总集。"
+    },
+    {
+      "id": "ph225",
+      "theme": "文化",
+      "zh": "四大名著",
+      "en": "the four great classical novels",
+      "note": "也可说 the Four Masterpieces。"
+    },
+    {
+      "id": "ph226",
+      "theme": "文化",
+      "zh": "红楼梦",
+      "en": "A Dream of Red Mansions",
+      "note": "杨宪益译本用此名。"
+    },
+    {
+      "id": "ph227",
+      "theme": "文化",
+      "zh": "西游记",
+      "en": "Journey to the West",
+      "note": "注意不加 the。"
+    },
+    {
+      "id": "ph228",
+      "theme": "文化",
+      "zh": "水浒传",
+      "en": "Water Margin",
+      "note": "也可译 Outlaws of the Marsh。"
+    },
+    {
+      "id": "ph229",
+      "theme": "文化",
+      "zh": "三国演义",
+      "en": "Romance of the Three Kingdoms",
+      "note": "注意 Three Kingdoms 复数。"
+    },
+    {
+      "id": "ph230",
+      "theme": "文化",
+      "zh": "生肖",
+      "en": "the Chinese zodiac",
+      "note": "十二生肖 the twelve zodiac signs。"
+    },
+    {
+      "id": "ph231",
+      "theme": "文化",
+      "zh": "中国龙",
+      "en": "the Chinese dragon",
+      "note": "与西方 dragon 内涵不同。"
+    },
+    {
+      "id": "ph232",
+      "theme": "文化",
+      "zh": "凤凰",
+      "en": "the phoenix",
+      "note": "吉祥的象征 a symbol of good fortune。"
+    },
+    {
+      "id": "ph233",
+      "theme": "文化",
+      "zh": "麒麟",
+      "en": "the qilin",
+      "note": "音译加解释 a mythical creature。"
+    },
+    {
+      "id": "ph234",
+      "theme": "文化",
+      "zh": "四合院",
+      "en": "the courtyard house",
+      "note": "北京传统民居。"
+    },
+    {
+      "id": "ph235",
+      "theme": "文化",
+      "zh": "苏州园林",
+      "en": "the classical gardens of Suzhou",
+      "note": "世界文化遗产。"
+    },
+    {
+      "id": "ph236",
+      "theme": "文化",
+      "zh": "徽派建筑",
+      "en": "Huizhou-style architecture",
+      "note": "白墙黑瓦 white walls and black tiles。"
+    },
+    {
+      "id": "ph237",
+      "theme": "文化",
+      "zh": "客家土楼",
+      "en": "Hakka earthen buildings",
+      "note": "福建土楼 Fujian tulou。"
+    },
+    {
+      "id": "ph238",
+      "theme": "文化",
+      "zh": "布达拉宫",
+      "en": "the Potala Palace",
+      "note": "位于拉萨 in Lhasa。"
+    },
+    {
+      "id": "ph239",
+      "theme": "文化",
+      "zh": "丽江古城",
+      "en": "the Old Town of Lijiang",
+      "note": "世界文化遗产。"
+    },
+    {
+      "id": "ph240",
+      "theme": "文化",
+      "zh": "平遥古城",
+      "en": "the Ancient City of Pingyao",
+      "note": "保存完整的明清古城。"
+    },
+    {
+      "id": "ph241",
+      "theme": "文化",
+      "zh": "敦煌壁画",
+      "en": "the Dunhuang murals",
+      "note": "2025-12 数字敦煌相关。"
+    },
+    {
+      "id": "ph242",
+      "theme": "文化",
+      "zh": "数字敦煌",
+      "en": "Digital Dunhuang",
+      "note": "用数字技术保护壁画。"
+    },
+    {
+      "id": "ph243",
+      "theme": "文化",
+      "zh": "佛像",
+      "en": "Buddhist statues",
+      "note": "statue 可数。"
+    },
+    {
+      "id": "ph244",
+      "theme": "文化",
+      "zh": "石窟",
+      "en": "grottoes",
+      "note": "莫高窟 the Mogao Caves 已有。"
+    },
+    {
+      "id": "ph245",
+      "theme": "文化",
+      "zh": "世界文化遗产",
+      "en": "World Cultural Heritage",
+      "note": "列入名录 be inscribed on the list。"
+    },
+    {
+      "id": "ph246",
+      "theme": "文化",
+      "zh": "非物质文化遗产传承人",
+      "en": "inheritors of intangible cultural heritage",
+      "note": "非遗已有单独条目。"
+    },
+    {
+      "id": "ph247",
+      "theme": "文化",
+      "zh": "传统手工艺",
+      "en": "traditional handicrafts",
+      "note": "handicraft 可数。"
+    },
+    {
+      "id": "ph248",
+      "theme": "文化",
+      "zh": "年画",
+      "en": "New Year paintings",
+      "note": "春节张贴 put up。"
+    },
+    {
+      "id": "ph249",
+      "theme": "文化",
+      "zh": "皮影戏",
+      "en": "shadow puppetry",
+      "note": "也可说 shadow play。"
+    },
+    {
+      "id": "ph250",
+      "theme": "文化",
+      "zh": "风筝",
+      "en": "kites",
+      "note": "潍坊风筝 Weifang kites。"
+    },
+    {
+      "id": "ph251",
+      "theme": "文化",
+      "zh": "扇子",
+      "en": "folding fans",
+      "note": "折扇；团扇 round fans。"
+    },
+    {
+      "id": "ph252",
+      "theme": "文化",
+      "zh": "竹子",
+      "en": "bamboo",
+      "note": "不可数；竹子象征坚韧。"
+    },
+    {
+      "id": "ph253",
+      "theme": "文化",
+      "zh": "梅花",
+      "en": "plum blossoms",
+      "note": "岁寒三友之一。"
+    },
+    {
+      "id": "ph254",
+      "theme": "地理",
+      "zh": "长江",
+      "en": "the Yangtze River",
+      "note": "中国第一长河。"
+    },
+    {
+      "id": "ph255",
+      "theme": "地理",
+      "zh": "黄河",
+      "en": "the Yellow River",
+      "note": "中华文明的摇篮 the cradle of Chinese civilization。"
+    },
+    {
+      "id": "ph256",
+      "theme": "地理",
+      "zh": "青藏高原",
+      "en": "the Qinghai-Tibet Plateau",
+      "note": "世界屋脊 the roof of the world。"
+    },
+    {
+      "id": "ph257",
+      "theme": "工程",
+      "zh": "青藏铁路",
+      "en": "the Qinghai-Tibet Railway",
+      "note": "世界海拔最高的高原铁路。"
+    },
+    {
+      "id": "ph258",
+      "theme": "工程",
+      "zh": "南水北调工程",
+      "en": "the South-to-North Water Diversion Project",
+      "note": "跨流域调水 inter-basin water transfer。"
+    },
+    {
+      "id": "ph259",
+      "theme": "工程",
+      "zh": "西气东输工程",
+      "en": "the West-East Gas Pipeline Project",
+      "note": "注意连字符。"
+    },
+    {
+      "id": "ph260",
+      "theme": "工程",
+      "zh": "三峡大坝",
+      "en": "the Three Gorges Dam",
+      "note": "世界最大的水电站。"
+    },
+    {
+      "id": "ph261",
+      "theme": "工程",
+      "zh": "港珠澳大桥",
+      "en": "the Hong Kong-Zhuhai-Macao Bridge",
+      "note": "跨海大桥 sea-crossing bridge。"
+    },
+    {
+      "id": "ph262",
+      "theme": "交通",
+      "zh": "高速铁路网",
+      "en": "the high-speed railway network",
+      "note": "八纵八横 the \"eight vertical and eight horizontal\" network。"
+    },
+    {
+      "id": "ph263",
+      "theme": "交通",
+      "zh": "运营里程",
+      "en": "operating mileage",
+      "note": "高铁运营里程突破……公里。"
+    },
+    {
+      "id": "ph264",
+      "theme": "交通",
+      "zh": "八纵八横",
+      "en": "the \"eight vertical and eight horizontal\" railway network",
+      "note": "官方提法，注意引号。"
+    },
+    {
+      "id": "ph265",
+      "theme": "区域",
+      "zh": "长三角",
+      "en": "the Yangtze River Delta",
+      "note": "长三角一体化 integration of the Yangtze River Delta。"
+    },
+    {
+      "id": "ph266",
+      "theme": "区域",
+      "zh": "京津冀",
+      "en": "the Beijing-Tianjin-Hebei region",
+      "note": "协同发展 coordinated development。"
+    },
+    {
+      "id": "ph267",
+      "theme": "区域",
+      "zh": "成渝地区",
+      "en": "the Chengdu-Chongqing area",
+      "note": "成渝双城经济圈 the Chengdu-Chongqing economic circle。"
+    },
+    {
+      "id": "ph268",
+      "theme": "经济",
+      "zh": "海南自由贸易港",
+      "en": "the Hainan Free Trade Port",
+      "note": "自由贸易港 free trade port。"
+    },
+    {
+      "id": "ph269",
+      "theme": "经济",
+      "zh": "中国国际进口博览会",
+      "en": "the China International Import Expo (CIIE)",
+      "note": "简称进博会。"
+    },
+    {
+      "id": "ph270",
+      "theme": "交通",
+      "zh": "中欧班列",
+      "en": "the China-Europe freight trains",
+      "note": "freight train 货运列车。"
+    },
+    {
+      "id": "ph271",
+      "theme": "历史",
+      "zh": "海上丝绸之路",
+      "en": "the Maritime Silk Road",
+      "note": "与陆上丝绸之路对照。"
+    },
+    {
+      "id": "ph272",
+      "theme": "历史",
+      "zh": "张骞出使西域",
+      "en": "Zhang Qian's mission to the Western Regions",
+      "note": "西汉 the Western Han Dynasty。"
+    },
+    {
+      "id": "ph273",
+      "theme": "历史",
+      "zh": "郑和下西洋",
+      "en": "Zheng He's voyages to the Western Seas",
+      "note": "明代 the Ming Dynasty。"
+    },
+    {
+      "id": "ph274",
+      "theme": "历史",
+      "zh": "隋唐大运河",
+      "en": "the Sui-Tang Grand Canal",
+      "note": "京杭大运河 the Beijing-Hangzhou Grand Canal。"
+    },
+    {
+      "id": "ph275",
+      "theme": "历史",
+      "zh": "都江堰",
+      "en": "the Dujiangyan Irrigation System",
+      "note": "无坝引水 without a dam。"
+    },
+    {
+      "id": "ph276",
+      "theme": "历史",
+      "zh": "赵州桥",
+      "en": "the Zhaozhou Bridge",
+      "note": "世界现存最古老的石拱桥。"
+    },
+    {
+      "id": "ph277",
+      "theme": "历史",
+      "zh": "天坛",
+      "en": "the Temple of Heaven",
+      "note": "明清皇帝祭天之处。"
+    },
+    {
+      "id": "ph278",
+      "theme": "历史",
+      "zh": "颐和园",
+      "en": "the Summer Palace",
+      "note": "皇家园林 imperial garden。"
+    },
+    {
+      "id": "ph279",
+      "theme": "历史",
+      "zh": "秦始皇陵",
+      "en": "the Mausoleum of the First Qin Emperor",
+      "note": "兵马俑 the Terracotta Warriors 已有。"
+    },
+    {
+      "id": "ph280",
+      "theme": "历史",
+      "zh": "云冈石窟",
+      "en": "the Yungang Grottoes",
+      "note": "山西大同 in Datong, Shanxi。"
+    },
+    {
+      "id": "ph281",
+      "theme": "地理",
+      "zh": "泰山",
+      "en": "Mount Tai",
+      "note": "五岳之首 the first of the Five Great Mountains。"
+    },
+    {
+      "id": "ph282",
+      "theme": "地理",
+      "zh": "黄山",
+      "en": "Mount Huang",
+      "note": "奇松、怪石、云海。"
+    },
+    {
+      "id": "ph283",
+      "theme": "地理",
+      "zh": "桂林山水",
+      "en": "the landscapes of Guilin",
+      "note": "桂林山水甲天下。"
+    },
+    {
+      "id": "ph284",
+      "theme": "地理",
+      "zh": "西湖",
+      "en": "the West Lake",
+      "note": "杭州 Hangzhou。"
+    },
+    {
+      "id": "ph285",
+      "theme": "地理",
+      "zh": "九寨沟",
+      "en": "Jiuzhaigou Valley",
+      "note": "世界自然遗产。"
+    },
+    {
+      "id": "ph286",
+      "theme": "地理",
+      "zh": "张家界",
+      "en": "Zhangjiajie",
+      "note": "奇峰异石 unique peaks and rocks。"
+    },
+    {
+      "id": "ph287",
+      "theme": "生态",
+      "zh": "国家公园",
+      "en": "national parks",
+      "note": "三江源国家公园 the Sanjiangyuan National Park。"
+    },
+    {
+      "id": "ph288",
+      "theme": "生态",
+      "zh": "生物多样性",
+      "en": "biodiversity",
+      "note": "不可数。"
+    },
+    {
+      "id": "ph289",
+      "theme": "生态",
+      "zh": "湿地保护",
+      "en": "wetland protection",
+      "note": "湿地 wetland 可数。"
+    },
+    {
+      "id": "ph290",
+      "theme": "生态",
+      "zh": "荒漠化治理",
+      "en": "desertification control",
+      "note": "防沙治沙 sand prevention and control。"
+    },
+    {
+      "id": "ph291",
+      "theme": "生态",
+      "zh": "植树造林",
+      "en": "afforestation",
+      "note": "不可数；也可说 planting trees。"
+    },
+    {
+      "id": "ph292",
+      "theme": "生态",
+      "zh": "塞罕坝",
+      "en": "the Saihanba forest farm",
+      "note": "荒漠变林海的典型。"
+    },
+    {
+      "id": "ph293",
+      "theme": "生态",
+      "zh": "三江源",
+      "en": "the Sanjiangyuan region",
+      "note": "长江、黄河、澜沧江源头。"
+    },
+    {
+      "id": "ph294",
+      "theme": "生态",
+      "zh": "长江十年禁渔",
+      "en": "the ten-year fishing ban on the Yangtze River",
+      "note": "禁渔 fishing ban。"
+    },
+    {
+      "id": "ph295",
+      "theme": "生态",
+      "zh": "海绵城市",
+      "en": "sponge cities",
+      "note": "吸收雨水的城市设计。"
+    },
+    {
+      "id": "ph296",
+      "theme": "生态",
+      "zh": "绿色出行",
+      "en": "green travel",
+      "note": "公共交通 public transport。"
+    },
+    {
+      "id": "ph297",
+      "theme": "生态",
+      "zh": "低碳生活",
+      "en": "a low-carbon lifestyle",
+      "note": "碳足迹 carbon footprint。"
+    },
+    {
+      "id": "ph298",
+      "theme": "生态",
+      "zh": "循环经济",
+      "en": "the circular economy",
+      "note": "与线性经济相对。"
+    },
+    {
+      "id": "ph299",
+      "theme": "生态",
+      "zh": "绿色转型",
+      "en": "green transformation",
+      "note": "经济社会发展全面绿色转型。"
+    },
+    {
+      "id": "ph300",
+      "theme": "生态",
+      "zh": "环境治理",
+      "en": "environmental governance",
+      "note": "也可说 environmental protection。"
+    },
+    {
+      "id": "ph301",
+      "theme": "生态",
+      "zh": "污染防治",
+      "en": "pollution prevention and control",
+      "note": "蓝天、碧水、净土保卫战。"
+    },
+    {
+      "id": "ph302",
+      "theme": "生态",
+      "zh": "空气质量",
+      "en": "air quality",
+      "note": "空气质量指数 air quality index (AQI)。"
+    },
+    {
+      "id": "ph303",
+      "theme": "生态",
+      "zh": "碳排放",
+      "en": "carbon emissions",
+      "note": "常用复数。"
+    },
+    {
+      "id": "ph304",
+      "theme": "生态",
+      "zh": "碳交易",
+      "en": "carbon trading",
+      "note": "碳排放权交易 carbon emission trading。"
+    },
+    {
+      "id": "ph305",
+      "theme": "生态",
+      "zh": "绿色金融",
+      "en": "green finance",
+      "note": "绿色债券 green bonds。"
+    },
+    {
+      "id": "ph306",
+      "theme": "生态",
+      "zh": "清洁能源",
+      "en": "clean energy",
+      "note": "与化石能源 fossil fuels 对照。"
+    },
+    {
+      "id": "ph307",
+      "theme": "生态",
+      "zh": "氢能",
+      "en": "hydrogen energy",
+      "note": "氢燃料 hydrogen fuel。"
+    },
+    {
+      "id": "ph308",
+      "theme": "生态",
+      "zh": "核电",
+      "en": "nuclear power",
+      "note": "核电站 nuclear power plants。"
+    },
+    {
+      "id": "ph309",
+      "theme": "生态",
+      "zh": "能源转型",
+      "en": "energy transition",
+      "note": "从化石能源转向可再生能源。"
+    },
+    {
+      "id": "ph310",
+      "theme": "生态",
+      "zh": "生态补偿",
+      "en": "ecological compensation",
+      "note": "生态补偿机制 ecological compensation mechanisms。"
+    },
+    {
+      "id": "ph311",
+      "theme": "生态",
+      "zh": "人与自然和谐共生",
+      "en": "harmony between humanity and nature",
+      "note": "官方提法。"
+    },
+    {
+      "id": "ph312",
+      "theme": "生态",
+      "zh": "美丽中国",
+      "en": "Beautiful China",
+      "note": "美丽中国建设 the building of a Beautiful China。"
     }
   ]
 }

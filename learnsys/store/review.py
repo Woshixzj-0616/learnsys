@@ -144,6 +144,12 @@ def add_review_log(conn: sqlite3.Connection, *, item_type: str, item_id: int,
 def seed_review_states(conn: sqlite3.Connection, today=None) -> int:
     """把旧 1/3/7 错题转成 FSRS 初始状态；幂等。"""
     day = str(today or dt.date.today().isoformat())[:10]
+    # 旧版升级积累内容时只删了 cet6_accum_items，没删挂在它上面的复习卡，
+    # 留下孤儿。这里顺手清掉；新删除路径已在 delete_accum_kind 一起删。
+    conn.execute(
+        "DELETE FROM review_state WHERE item_type = 'accum' AND item_id NOT IN "
+        "(SELECT id FROM cet6_accum_items)")
+    conn.commit()
     rows = conn.execute(
         "SELECT w.id, w.ts, w.review_stage, w.last_review, w.mastered "
         "FROM wrong_items w LEFT JOIN review_state r "

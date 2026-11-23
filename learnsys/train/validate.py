@@ -14,7 +14,8 @@ MIN_PATTERNS = 40
 MIN_PHRASES = 50
 _ID = re.compile(r"^(w|t)\d{2}$")
 _PATTERN_ID = re.compile(r"^p\d{2}$")
-_PHRASE_ID = re.compile(r"^ph\d{2}$")
+# 短语库会持续扩容，id 允许 2~4 位数字（ph01…ph312）。
+_PHRASE_ID = re.compile(r"^ph\d{2,4}$")
 _XID = re.compile(r"^x\d{3}$")
 _IPID = re.compile(r"^ip\d+$")
 

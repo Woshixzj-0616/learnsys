@@ -2,6 +2,7 @@
 """每日积累：生成、冻结、轮换、状态、连续天数、翻译词入生词本。"""
 from __future__ import annotations
 
+import datetime as dt
 import pathlib
 import tempfile
 import unittest
@@ -76,9 +77,11 @@ class DailyAccumTest(unittest.TestCase):
                              f"{before} 和 {after} 的写作句型重复")
 
     def test_writing_covers_all_patterns_in_one_cycle(self):
-        days = [f"2026-11-{number:02d}" for number in range(1, 25)]
+        start = dt.date(2026, 11, 1)
+        days = [(start + dt.timedelta(days=number)).isoformat()
+                for number in range(48)]
         keys = [self._writing_keys(day) for day in days]
-        self.assertEqual(len(set().union(*keys)), 48)
+        self.assertEqual(len(set().union(*keys)), 96)
         for before, after in zip(keys, keys[1:]):
             self.assertFalse(before & after)
 
@@ -123,12 +126,48 @@ class DailyAccumTest(unittest.TestCase):
         self.assertIn("红包", [row["zh"] for row in
                                train_content.translation_phrases()])
 
+    def test_translation_not_repeated_within_30_days(self):
+        """连续 40 天生成：30 天内不得出现同一个英文条目。"""
+        start = dt.date(2026, 12, 1)
+        recent: dict[str, str] = {}
+        for offset in range(40):
+            day = (start + dt.timedelta(days=offset)).isoformat()
+            rows = daily_accum._translation_payloads(self.conn, day)
+            self.assertEqual(len(rows), 8, f"{day} 只生成了 {len(rows)} 条")
+            for row in rows:
+                en = row["payload"]["en"]
+                aliases = store.word_aliases(en)
+                hits = {alias: recent[alias] for alias in aliases
+                        if alias in recent}
+                self.assertFalse(hits, f"{day} 的 {en} 与近期重复：{hits}")
+                recent.update({alias: day for alias in aliases})
+            for row in rows:
+                store.add_accum(self.conn, day=day, kind="translation",
+                                ref_key=row["ref_key"],
+                                payload=row["payload"])
+
     def test_translation_skips_active_vocab(self):
         store.add_vocab(self.conn, word="red envelopes", meaning="红包")
         rows = daily_accum._translation_payloads(self.conn, "2026-11-18")
         self.assertEqual(len(rows), 8)
         words = {row["payload"]["en"] for row in rows}
         self.assertNotIn("red envelopes", words)
+
+    def test_group_eaten_by_vocab_does_not_repeat_daily(self):
+        """一个主题组只剩一个没用过的词时，不能天天推它。"""
+        spring = next(item for item in train_content.library()["translation"]
+                      if item["id"] == "t01")
+        for term in spring["terms"]:
+            if term["zh"] == "春节":
+                continue
+            store.add_vocab(self.conn, word=term["en"], meaning=term["zh"])
+        first = daily_accum._translation_payloads(self.conn, "2026-11-24")
+        for row in first:
+            store.add_accum(self.conn, day="2026-11-24", kind="translation",
+                            ref_key=row["ref_key"], payload=row["payload"])
+        second = daily_accum._translation_payloads(self.conn, "2026-11-25")
+        self.assertNotIn("the Spring Festival",
+                         {row["payload"]["en"] for row in second})
 
     def test_translation_skips_history(self):
         first = daily_accum._translation_payloads(self.conn, "2026-11-18")

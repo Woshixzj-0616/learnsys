@@ -140,11 +140,20 @@ def add_accum(conn: sqlite3.Connection, *, day: str, kind: str,
 
 
 def delete_accum_kind(conn: sqlite3.Connection, day: str, kind: str) -> int:
-    """删掉某天某一类条目；只给「当天内容升级后重新生成」用。"""
+    """删掉某天某一类条目；只给「当天内容升级后重新生成」用。
+
+    条目删了，挂在它上面的 review_state 也必须一起删，否则会留下孤儿复习卡。
+    """
+    day = str(day or "")[:10]
+    kind = str(kind or "")
     with _LOCK:
+        conn.execute(
+            "DELETE FROM review_state WHERE item_type = 'accum' AND item_id IN "
+            "(SELECT id FROM cet6_accum_items WHERE day = ? AND kind = ?)",
+            (day, kind))
         cur = conn.execute(
             "DELETE FROM cet6_accum_items WHERE day = ? AND kind = ?",
-            (str(day or "")[:10], str(kind or "")))
+            (day, kind))
         conn.commit()
         return int(cur.rowcount or 0)
 
