@@ -24,11 +24,33 @@ CLAIM_RE = re.compile(
     r"(资料|记录|错题本)[^。！？\n]{0,10}(说|提到|显示|写着|有|记载|表明|指出|说法)")
 URL_RE = re.compile(r"https?://[^\s<>\"'（）()【】\[\]，。；、一-鿿]+")
 WEB_CLAIM_RE = re.compile(r"(网上|网页|官网|官方文档|搜索|搜到|查到|链接|来源)")
+ISO_DATE_RE = re.compile(r"(20\d{2}-\d{2}-\d{2})")
 
 
 def _urls(text: str) -> set[str]:
     return {match.group(0).rstrip(".,;:!?'\"。，；：、")
             for match in URL_RE.finditer(str(text or ""))}
+
+
+def urls_in(text: str) -> set[str]:
+    """文本里的 http(s) 链接（与证据台账同一套正则）。"""
+    return _urls(text)
+
+
+def cited_web_dates(text: str, window: int = 40) -> set[str]:
+    """答案里紧挨着 http(s) 链接的 ISO 日期。
+
+    施工单 §12：网页引用必须是「URL + 读取日期」。只认贴近链接的日期，
+    避免把正文里「2025-12 真题」这类无关日期算成引用日期。
+    """
+    text = str(text or "")
+    found: set[str] = set()
+    for match in URL_RE.finditer(text):
+        start = max(0, match.start() - window)
+        end = min(len(text), match.end() + window)
+        found.update(ISO_DATE_RE.findall(text[start:end]))
+    return found
+
 
 REWRITE_SYSTEM = """你是学习工作台的校对员。用户会给你一份草稿、以及本轮工具实际返回的证据。
 你的任务：只修正草稿里**无法由证据支持**的引用和说法，其余内容、结构、语气尽量保持原样。
@@ -64,6 +86,7 @@ class Evidence:
     material_titles: dict[int, str] = field(default_factory=dict)
     wrong_ids: set[int] = field(default_factory=set)
     stamps: set[str] = field(default_factory=set)
+    web_dates: set[str] = field(default_factory=set)
 
     def add(self, name: str, args: dict, content: str) -> None:
         text = str(content or "")
@@ -98,6 +121,10 @@ class Evidence:
                 self.wrong_ids.add(int(match.group(1)))
         for match in STAMP_RE.finditer(text):
             self.stamps.add(match.group(1))
+        if name in ("web_search", "fetch_url"):
+            # 联网工具输出带「读取日期：YYYY-MM-DD」与结果发布日期；
+            # 答案里的网页日期必须能在这一轮的联网结果里找到。
+            self.web_dates.update(ISO_DATE_RE.findall(text))
 
     def urls(self) -> set[str]:
         """本轮证据里出现过的 http(s) 链接（claims.audit 用同一份台账）。"""
@@ -178,6 +205,11 @@ def verify(answer: str, evidence: Evidence) -> list[str]:
             for url in sorted(answer_urls):
                 if url not in known_urls:
                     add(f"引用了本轮没读过的网页链接 {url}")
+        if web_used:
+            # 链接后面的日期同样要能核对；编一个「读取日期」就是编造来源。
+            for date in sorted(cited_web_dates(text)):
+                if date not in evidence.web_dates:
+                    add(f"网页引用的日期 {date} 不在本轮联网结果里")
 
     if not evidence.results and CLAIM_RE.search(text):
         add("回答声称来自本地资料/记录，但本轮没有调用任何工具")

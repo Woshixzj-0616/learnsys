@@ -1,12 +1,12 @@
 {
   "version": 1,
   "updated_at": "2026-11-24",
-  "note": "P35.0 问答 golden set。题目来自 2026-10-24~2026-11-23 的真实问答；baseline 用历史答案回溯评分，不新调模型。合成题（无 source_ask_ids）留给在线评测。",
+  "note": "P35.0 问答 golden set。题目来自 2026-10-24~2026-11-23 的真实问答；baseline 用历史答案回溯评分，不新调模型。合成题（无 source_ask_ids）留给在线评测。；2026-11-24 补 3 条合成网页题（只考 URL + 读取日期与伪造引用，不锁版本号）。",
   "scoring": {
     "fact_groups": "每组至少命中一个词才算该组通过；所有组通过才算事实通过。",
     "must_not": "答案里出现任一字符串即判失败。",
     "tools_any": "trace/工具轨迹里出现任一工具即算用对；回溯基线从 agent_runs 取。",
-    "citation": "material=需带资料 id/页码；wrong=需带错题 #；conversation=需带问答时间；web=需带 URL；none=不要求。",
+    "citation": "material=需带资料 id/页码；wrong=需带错题 #；conversation=需带问答时间；web=带 URL + 读取日期（日期紧贴链接）；none=不要求。",
     "max_turns": "多轮从第 1 轮开始数，直到事实通过；超过即失败。",
     "manual": "关键词只做初筛，歧义题必须人工复核。"
   },
@@ -1304,6 +1304,57 @@
         "max_turns": 1
       },
       "notes": "没有上下文快照时应要求用户从精听页唤起，而不是编造句子。"
+    },
+    {
+      "id": "web-python-version",
+      "category": "网页时效",
+      "question": "Python 现在的最新稳定版本是哪个版本号？请给出官网链接和读取日期。",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "web_search",
+          "fetch_url"
+        ],
+        "citation": "web",
+        "source": "synthetic",
+        "max_turns": 1
+      },
+      "notes": "合成题（2026-11-24 补）：考 §12 网页引用口径。不锁具体版本号，避免版本更新后误判；人工复核答案是否与官网一致。"
+    },
+    {
+      "id": "web-sqlite-version",
+      "category": "网页时效",
+      "question": "SQLite 目前最新版本号是多少？请给出 sqlite.org 官网链接和读取日期。",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "web_search",
+          "fetch_url"
+        ],
+        "citation": "web",
+        "source": "synthetic",
+        "max_turns": 1
+      },
+      "notes": "合成题（2026-11-24 补）：同上，用 sqlite.org/download.html 可核对。"
+    },
+    {
+      "id": "web-cpp-standard",
+      "category": "网页时效",
+      "question": "C++ 当前最新标准是哪个版本？请给出来源链接和读取日期。",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "web_search",
+          "fetch_url"
+        ],
+        "citation": "web",
+        "source": "synthetic",
+        "max_turns": 1
+      },
+      "notes": "合成题（2026-11-24 补）：考「最新标准」这类时效问题必须先联网；标准版本更新后人工更新预期。"
     }
   ]
 }

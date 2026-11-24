@@ -28,6 +28,8 @@ if str(ROOT) not in sys.path:
 
 from learnsys import store
 from learnsys.agent import debug_intent, loop
+from learnsys.agent import tools as agent_tools
+from learnsys.agent.selfcheck import Evidence, cited_web_dates, urls_in
 from learnsys.agent.turn import AgentRequest
 from learnsys.llm.config import load_config
 from learnsys.services import home as home_service
@@ -158,6 +160,7 @@ def skipped_result(case: dict, reason: str) -> dict:
         "score": {
             "status": "跳过", "first_pass_turn": None, "must_not_hit": False,
             "tools": [], "tools_ok": None, "citation_ok": None,
+            "fake_urls": [], "fake_dates": [],
             "turn_facts": [], "model_calls": 0, "cost": 0.0, "reason": reason,
         },
         "turns": [],
@@ -204,18 +207,40 @@ def run_turn(cfg, question: str, history: list[tuple[str, str]],
     def deny(_request_id, _name, _args):
         return False
 
-    for event in loop.run(request, cfg=cfg, confirm=deny):
-        if event.kind == "tool_start":
-            name = str((event.data or {}).get("name") or "")
-            if name:
-                tools.append(name)
-        elif event.kind == "error":
-            errors.append(event.text)
-        elif event.kind == "route":
-            route = dict(event.data or {})
-        elif event.kind == "done":
-            done = dict(event.data or {})
+    # 包一层 tools.execute，留下本轮工具原文：伪造链接 / 伪造读取日期
+    # 只能拿本轮证据来核对（done 事件里没有工具正文）。
+    captured: list[tuple[str, dict, str]] = []
+    original_execute = agent_tools.execute
+
+    def _capture(name, raw_input, ctx):
+        raw, preview, ok = original_execute(name, raw_input, ctx)
+        captured.append((str(name), dict(raw_input or {}), str(raw or "")))
+        return raw, preview, ok
+
+    agent_tools.execute = _capture
+    try:
+        for event in loop.run(request, cfg=cfg, confirm=deny):
+            if event.kind == "tool_start":
+                name = str((event.data or {}).get("name") or "")
+                if name:
+                    tools.append(name)
+            elif event.kind == "error":
+                errors.append(event.text)
+            elif event.kind == "route":
+                route = dict(event.data or {})
+            elif event.kind == "done":
+                done = dict(event.data or {})
+    finally:
+        agent_tools.execute = original_execute
+
+    evidence = Evidence()
+    for name, args, content in captured:
+        evidence.add(name, args, content)
     answer = str(done.get("text") or "")
+    known_urls = evidence.urls() | urls_in(question)
+    fake_urls = sorted(url for url in urls_in(answer) if url not in known_urls)
+    fake_dates = sorted(date for date in cited_web_dates(answer)
+                        if date not in evidence.web_dates)
     return {
         "question": question[:200],
         "answer": answer,
@@ -229,6 +254,10 @@ def run_turn(cfg, question: str, history: list[tuple[str, str]],
         "cost": float(done.get("cost") or 0.0),
         "ms": int((time.monotonic() - started) * 1000),
         "prompt": done.get("prompt") or {},
+        "evidence_urls": sorted(evidence.urls()),
+        "web_dates": sorted(evidence.web_dates),
+        "fake_urls": fake_urls,
+        "fake_dates": fake_dates,
     }
 
 
@@ -258,9 +287,13 @@ def score_case(case: dict, turns: list[dict]) -> dict:
     last = turns[-1]["answer"] if turns else ""
     citation_ok = check_citation(last, citation) if citation != "none" else None
     tools_ok = any(name in used for name in tools_any) if tools_any else None
+    fake_urls = sorted({url for turn in turns for url in turn.get("fake_urls") or []})
+    fake_dates = sorted({date for turn in turns for date in turn.get("fake_dates") or []})
+    citation_clean = not fake_urls and not fake_dates
 
     if ((groups and first_pass is not None and first_pass <= max_turns and not must_hit)
-            or (tools_any and tools_ok and (citation_ok is not False))):
+            or (tools_any and tools_ok and (citation_ok is not False))) \
+            and citation_clean:
         status = "通过"
     elif case.get("manual_review"):
         status = "人工复核"
@@ -275,6 +308,8 @@ def score_case(case: dict, turns: list[dict]) -> dict:
         "tools": used,
         "tools_ok": tools_ok,
         "citation_ok": citation_ok,
+        "fake_urls": fake_urls,
+        "fake_dates": fake_dates,
         "turn_facts": turn_facts,
         "model_calls": sum(turn["model_calls"] for turn in turns),
         "cost": sum(turn["cost"] for turn in turns),
@@ -320,22 +355,32 @@ def render(results: list[dict], generated: str, cfg) -> str:
         f"> 临时库每日上限：{cfg.daily_call_limit} 次",
         "> 多轮用例：有 `conversation_id` 的会先回放第一句受测问题之前的原会话前文，再把 `turns` 作为受测轮次。",
         "",
-        "| 用例 | 类别 | 结果 | 轮数 | 首次通过 | 工具 | 引用 | 调用 | 花费 |",
-        "|---|---|---|---:|---:|---|---|---:|---:|",
+        "| 用例 | 类别 | 结果 | 轮数 | 首次通过 | 工具 | 引用 | 伪造 | 调用 | 花费 |",
+        "|---|---|---|---:|---:|---|---|---|---:|---:|",
     ]
     for item in results:
         score = item["score"]
         citation = "—" if score["citation_ok"] is None else ("是" if score["citation_ok"] else "否")
+        fake = []
+        if score.get("fake_urls"):
+            fake.append(f"链接 {len(score['fake_urls'])} 个")
+        if score.get("fake_dates"):
+            fake.append(f"日期 {len(score['fake_dates'])} 个")
         lines.append(
             f"| {item['id']} | {item['category']} | {score['status']} | "
             f"{item['turns_run']} | {score['first_pass_turn'] or '—'} | "
             f"{'、'.join(score['tools']) or '—'} | {citation} | "
+            f"{'、'.join(fake) or '0'} | "
             f"{score['model_calls']} | {score['cost']:.4f} |")
     lines += ["", "## 逐条回答（前 400 字）", ""]
     for item in results:
         lines.append(f"### {item['id']} · {item['score']['status']}")
         if item["score"].get("reason"):
             lines.append(f"- **跳过原因**：{item['score']['reason']}")
+        for url in item["score"].get("fake_urls") or []:
+            lines.append(f"- **伪造链接**：{url}")
+        for date in item["score"].get("fake_dates") or []:
+            lines.append(f"- **伪造日期**：{date}")
         for turn in item["turns"]:
             answer = " ".join(str(turn["answer"]).split())[:400]
             lines.append(f"- **问**：{turn['question']}")

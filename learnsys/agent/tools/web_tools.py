@@ -1,7 +1,14 @@
 """联网工具：搜索结果 / 网页正文 → 给模型看的中文文本。"""
 from __future__ import annotations
 
+import datetime as dt
+
 from learnsys.services import web
+
+
+def _read_date() -> str:
+    """本轮读取网页的日期（唯一落点）：答案引用网页必须写它。"""
+    return dt.date.today().isoformat()
 
 
 def web_search(query: str, count: int = 6) -> str:
@@ -21,7 +28,8 @@ def web_search(query: str, count: int = 6) -> str:
         lines.append(f"    {hit.get('url')}")
         if hit.get("snippet"):
             lines.append(f"    {hit['snippet']}")
-    lines.append("引用时用 [编号] + 网址；需要原文细节就用 fetch_url 打开对应网址。")
+    lines.append(f"引用时用 [编号] + 网址 + 读取日期（{_read_date()}）；"
+                 "需要原文细节就用 fetch_url 打开对应网址。")
     return "\n".join(lines)
 
 
@@ -36,7 +44,8 @@ def fetch_url(url: str, max_chars: int = 8000) -> str:
     title = page.get("title") or "（无标题）"
     final = page.get("final_url") or url
     lines = [f"网页：{title}",
-             f"地址：{final}"]
+             f"地址：{final}",
+             f"读取日期：{_read_date()}"]
     if page.get("via") == "deepseek":
         lines.append("（直连没取到正文，这里用的是 DeepSeek 的抓取结果）")
     lines.append("")

@@ -19,6 +19,11 @@ import sqlite3
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from learnsys.agent.selfcheck import cited_web_dates
+
 GOLDEN = ROOT / "docs" / "golden" / "qa-golden-50.json"
 REPORT_DIR = ROOT / "eval" / "qa"
 MARKDOWN = ROOT / "docs" / "施工单" / "P35-基线报告.md"
@@ -126,7 +131,8 @@ def check_citation(text: str, kind: str) -> bool:
     if kind == "conversation":
         return bool(re.search(r"\[问答\s*20\d\d|问答\s*20\d\d", text))
     if kind == "web":
-        return bool(re.search(r"https?://", text))
+        # 施工单 §12：网页类回答必须带 URL + 读取日期（日期要紧贴链接）。
+        return bool(re.search(r"https?://", text)) and bool(cited_web_dates(text))
     return True
 
 

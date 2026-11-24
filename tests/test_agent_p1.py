@@ -2,9 +2,12 @@
 """P1 接线：摘要注入、8 轮历史、联网工具只出现在 ask/quickbar。"""
 from __future__ import annotations
 
+import datetime
 import unittest
+from unittest import mock
 
 from learnsys.agent import loop, prompts, tools
+from learnsys.agent.tools import web_tools
 
 
 class PromptSummaryTest(unittest.TestCase):
@@ -57,6 +60,25 @@ class WebToolSurfaceTest(unittest.TestCase):
         from learnsys import agent as agent_pkg
         names = {schema["name"] for schema in agent_pkg.tools.TOOL_SCHEMAS}
         self.assertNotIn("web_search", names)            # 不进全量清单，只按入口追加
+
+
+class WebToolReadDateTest(unittest.TestCase):
+    """§12 网页引用：工具必须把「读取日期」交给模型，日期才有唯一来源。"""
+
+    def test_search_output_carries_read_date(self):
+        payload = {"query": "python", "results": [{
+            "title": "Python", "url": "https://www.python.org/downloads/",
+            "snippet": "下载", "date": "2026-10-01"}]}
+        with mock.patch.object(web_tools.web, "web_search", return_value=payload):
+            text = web_tools.web_search("python")
+        self.assertIn(f"读取日期（{datetime.date.today().isoformat()}）", text)
+
+    def test_fetch_output_carries_read_date(self):
+        page = {"title": "Python", "text": "正文",
+                "final_url": "https://www.python.org/downloads/"}
+        with mock.patch.object(web_tools.web, "fetch_page", return_value=page):
+            text = web_tools.fetch_url("https://www.python.org/downloads/")
+        self.assertIn(f"读取日期：{datetime.date.today().isoformat()}", text)
 
 
 if __name__ == "__main__":

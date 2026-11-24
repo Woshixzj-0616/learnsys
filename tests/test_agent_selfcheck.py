@@ -52,5 +52,30 @@ class VerifyUrlTest(unittest.TestCase):
         self.assertEqual(verify("示例见 https://example.com/", evidence), [])
 
 
+class VerifyWebDateTest(unittest.TestCase):
+    def _evidence(self, date: str = "2026-11-24") -> Evidence:
+        evidence = Evidence()
+        evidence.add("web_search", {},
+                     f"搜索「python」共 1 条：\n[1] Python\n"
+                     f"    https://www.python.org/downloads/\n"
+                     f"引用时用 [编号] + 网址 + 读取日期（{date}）。")
+        return evidence
+
+    def test_known_web_date_passes(self):
+        self.assertEqual(
+            verify("来源：https://www.python.org/downloads/"
+                   "（读取日期：2026-11-24）", self._evidence()), [])
+
+    def test_fabricated_web_date_is_flagged(self):
+        issues = verify("来源：https://www.python.org/downloads/"
+                        "（读取日期：2026-11-20）", self._evidence())
+        self.assertTrue(any("日期" in item for item in issues))
+
+    def test_date_without_web_tools_is_not_checked(self):
+        evidence = Evidence()
+        evidence.add("run_code", {}, "ok")
+        self.assertEqual(verify("2026-11-24 学了 TCP", evidence), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
