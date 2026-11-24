@@ -14,7 +14,7 @@ from __future__ import annotations
 import pathlib
 
 from learnsys import knowledge, prompt_budget
-from learnsys.agent import correction, prompt_ops
+from learnsys.agent import prompt_ops
 from learnsys.context import clip_personal_state
 
 PROMPTS_DIR = pathlib.Path(__file__).resolve().parent / "prompts"
@@ -56,24 +56,11 @@ def subject_for(text: str) -> str:
     return ""
 
 
-NEGATION_RULE = """【本轮是纠错/否定轮】
-- 第一行先写「已排除：…」，列出用户本轮和之前明确否定的事实。
-- 这些项不得再出现在建议、验证步骤、候选解释里；换角度也必须先说明为什么不是旧方案。
-- 缺唯一关键信息时只问那一条，不要给排查清单。"""
-
-
 def _assistant_system(mode: str, *, has_image: bool, user_profile: str,
                       memories: str, summary: str, code_debug: bool,
-                      personal_state: str, ops: bool, message: str,
-                      history=None) -> str:
+                      personal_state: str, ops: bool, message: str) -> str:
     """学习助手的短内核：core + 当前风格 + 学科片段 + 动态上下文。"""
     parts = [_read("core.md")]
-    if correction.negation(message):
-        parts.append(NEGATION_RULE)
-    excluded = correction.exclusions(history, message)
-    if excluded:
-        parts.append("【用户已明确否定过的原话（不得再建议、不得换说法重提）】\n"
-                     + "\n".join(f"- {item}" for item in excluded))
     style = _read_optional(f"styles/{mode}.md")
     if style:
         parts.append(style)
@@ -320,8 +307,7 @@ def build_system(mode: str = "explain", has_image: bool = False,
                  profile: str = "", *, memories: str = "", summary: str = "",
                  code_debug: bool = False, concise: bool = True,
                  personal_state: str = "", ops: bool = False,
-                 agent_profile: str = "", message: str = "",
-                 history=None) -> str:
+                 agent_profile: str = "", message: str = "") -> str:
     """拼系统提示词：基础口径 + 长度档 + 模式 + 篇幅示例 + 会话摘要 + 学习档案 + 个人状态 + 长期记忆。
 
     `concise` 现在表示「自适应标准档」（True）还是「深入档」（False），不是「短 vs 长」。
@@ -334,8 +320,7 @@ def build_system(mode: str = "explain", has_image: bool = False,
         return _assistant_system(
             mode, has_image=has_image, user_profile=profile,
             memories=memories, summary=summary, code_debug=code_debug,
-            personal_state=personal_state, ops=ops, message=message,
-            history=history)
+            personal_state=personal_state, ops=ops, message=message)
     parts = [BASE_SYSTEM, CONCISE_ADDITION if concise else DEEP_ADDITION]
     if code_debug:
         parts.append(CODE_DEBUG_RULE)

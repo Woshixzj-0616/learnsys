@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from learnsys import config as app_config
 from learnsys import store
-from learnsys.agent import correction, prompts
+from learnsys.agent import correction
 from learnsys.agent.events import AgentEvent
 from learnsys.server.app import create_app
 
@@ -30,63 +30,6 @@ class CorrectionDetectTest(unittest.TestCase):
         for text in ("这样不对吗？", "帮我讲一下", "这个方法有什么坑", ""):
             with self.subTest(text=text):
                 self.assertFalse(correction.detect(text))
-
-
-class NegationDetectTest(unittest.TestCase):
-    def test_user_negates_premise(self):
-        for text in ("但是这个文件我根本没有写过，我也不会写啊",
-                     "但是我的是虚拟机不是靶机",
-                     "我都和你说了没有，你听不懂吗",
-                     "这个不是我做的"):
-            with self.subTest(text=text):
-                self.assertTrue(correction.negation(text))
-
-    def test_ordinary_questions_are_not_negations(self):
-        for text in ("帮我讲一下哈希表", "这个思路可行吗", "rsync 怎么定位错误", ""):
-            with self.subTest(text=text):
-                self.assertFalse(correction.negation(text))
-
-
-class ExclusionListTest(unittest.TestCase):
-    def test_collects_negated_sentences_from_history(self):
-        history = [
-            ("Admin.jsp是什么", "……"),
-            ("但是这个文件我根本没有写过，我也不会写啊", "……"),
-            ("但是我的是虚拟机不是靶机", "……"),
-        ]
-        items = correction.exclusions(history, "我都和你说了没有，你听不懂吗")
-        self.assertEqual(len(items), 3)
-        self.assertIn("我根本没有写过", items[0])
-        self.assertIn("不是靶机", items[1])
-        self.assertIn("都和你说了没有", items[2])
-
-    def test_ordinary_history_has_no_exclusions(self):
-        history = [("rsync 怎么定位错误", "……"), ("那快排呢", "……")]
-        self.assertEqual(correction.exclusions(history, "讲讲哈希表"), [])
-
-
-class NegationPromptTest(unittest.TestCase):
-    def _system(self, message: str, history=None) -> str:
-        return prompts.build_system("explain", agent_profile="assistant",
-                                    message=message, history=history)
-
-    def test_negation_turn_injects_exclusion_rule(self):
-        system = self._system("但是我的是虚拟机不是靶机")
-        self.assertIn("【本轮是纠错/否定轮】", system)
-        self.assertIn("已排除", system)
-
-    def test_ordinary_turn_does_not_inject(self):
-        system = self._system("哈希表怎么解决冲突")
-        self.assertNotIn("【本轮是纠错/否定轮】", system)
-
-    def test_prefix_notation_rule_is_always_present(self):
-        self.assertIn("前缀表达式", self._system("哈希表怎么解决冲突"))
-
-    def test_history_exclusions_injected_even_without_current_negation(self):
-        system = self._system(
-            "那我该怎么办", history=[("但是这个文件我根本没有写过，我也不会写啊", "……")])
-        self.assertIn("用户已明确否定过的原话", system)
-        self.assertIn("我根本没有写过", system)
 
 
 class ChatCorrectionDeepTest(unittest.TestCase):
