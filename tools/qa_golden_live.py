@@ -138,8 +138,11 @@ def case_skip_reason(conn: sqlite3.Connection, case: dict) -> str:
     """图片提问且没有可用文字题干时，离线 harness 不带图，不能算模型答错。
 
     截图类提问常常同时存了 OCR 文本（例如「为什么分块查找…」）；那种情况
-    仍可当文字题跑。只有「这题咋做」这种离开截图就没有题干的才跳过。
+    仍可当文字题跑。只有题干/公式确实只在截图里的才跳过——
+    显式标 `needs_image` 的用例优先按这条处理。
     """
+    if case.get("needs_image"):
+        return "题干或公式只在截图里（needs_image），离线 harness 不带图"
     ids = case.get("source_ask_ids") or []
     if not ids:
         return ""

@@ -28,6 +28,15 @@ class QAGoldenTest(unittest.TestCase):
             self.assertTrue(item.get("question"))
             self.assertIn("expected", item)
 
+    def test_image_dependent_case_is_marked(self):
+        # 原题公式只在截图里：标 needs_image，离线跳过；文字版保留同一考点。
+        image_case = next(c for c in self.cases if c["id"] == "fact-algo-block-plus1")
+        self.assertTrue(image_case.get("needs_image"))
+        text_case = next(c for c in self.cases if c["id"] == "fact-algo-block-plus1-text")
+        self.assertTrue(text_case["question"].startswith("分块查找里"))
+        self.assertTrue({"折半", "判定树", "log"}
+                        & set(text_case["expected"]["fact_groups"][1]))
+
     def test_web_citation_cases_exist(self):
         # 施工单 §12：必须有用例证明「网页类回答带 URL + 日期」。
         web = [item for item in self.cases
@@ -66,6 +75,13 @@ class QAGoldenTest(unittest.TestCase):
                             "life_cards", "life_items", "art_works",
                             "travel_trace", "write_study_file", "delete_vocab"):
                 self.assertNotIn(removed, names, case["id"])
+
+
+class SkipReasonTest(unittest.TestCase):
+    def test_needs_image_skips_without_db(self):
+        from tools.qa_golden_live import case_skip_reason
+        reason = case_skip_reason(None, {"needs_image": True})
+        self.assertIn("截图", reason)
 
 
 class LiveScoreTest(unittest.TestCase):
