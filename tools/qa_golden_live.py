@@ -67,17 +67,61 @@ def ask_question(conn: sqlite3.Connection, ask_id: int) -> str:
     return str(row[0]) if row else ""
 
 
+_ASK_COLS = ("question", "answer", "conversation_id", "thread", "kind",
+             "image_path")
+
+
+def _ask_row(conn: sqlite3.Connection, ask_id: int) -> dict:
+    row = conn.execute(
+        f"select {', '.join(_ASK_COLS)} from asks where id=?",
+        (int(ask_id),)).fetchone()
+    if not row:
+        return {}
+    return dict(zip(_ASK_COLS, row))
+
+
+def _thread_pairs(conn: sqlite3.Connection, thread, ask_id: int
+                  ) -> list[tuple[str, str]]:
+    """同一 thread 里、受测提问之前的问答对（ask 行没写 conversation_id 时用）。"""
+    anchor = conn.execute("select ts from asks where id=?", (int(ask_id),)).fetchone()
+    if not anchor:
+        return []
+    rows = conn.execute(
+        "select question, answer from asks where thread=?"
+        " and (ts < ? or (ts = ? and id < ?)) order by ts, id",
+        (str(thread), anchor[0], anchor[0], int(ask_id))).fetchall()
+    return [(str(question or ""), str(answer or ""))
+            for question, answer in rows
+            if str(question or "").strip() and str(answer or "").strip()]
+
+
 def case_history(conn: sqlite3.Connection, case: dict) -> list[tuple[str, str]]:
     """从原会话回放第一句受测问题之前的前文。
 
     多轮用例常是「对话中段」的切片（例如「那怎么定位错误」）；冷启动会人为
     制造歧义，测不出模型在真实上下文里的收敛速度。只回放前文，不计入受测轮次。
+
+    会话来源优先 `case.conversation_id`；老用例只记了 `source_ask_ids`，
+    就从 ask 行补 `conversation_id`，再退回同一 thread 的问答对。
     """
     conversation_id = int(case.get("conversation_id") or 0)
     turns = case.get("turns") or []
-    if not conversation_id or not turns:
+    ids = case.get("source_ask_ids") or []
+    first_row = _ask_row(conn, ids[0]) if ids else {}
+    if first_row and not conversation_id:
+        conversation_id = int(first_row.get("conversation_id") or 0)
+    if not conversation_id:
+        # 没有会话记录：同 thread 的旧问答就是当时的前文。
+        if ids and first_row.get("thread"):
+            return _thread_pairs(conn, first_row["thread"], ids[0])
         return []
-    first = " ".join(str(turns[0]).split())
+    first = " ".join(str(turns[0]).split()) if turns else ""
+    if not first:
+        first = " ".join(str(case.get("question") or "").split())
+    if not first and first_row:
+        first = " ".join(str(first_row.get("question") or "").split())
+    if not first:
+        return []
     try:
         pairs = store.conversation_pairs(conn, conversation_id)
     except Exception:
@@ -86,6 +130,39 @@ def case_history(conn: sqlite3.Connection, case: dict) -> list[tuple[str, str]]:
         if " ".join(str(question).split()) == first:
             return pairs[:index]
     return []
+
+
+def case_skip_reason(conn: sqlite3.Connection, case: dict) -> str:
+    """图片提问且没有可用文字题干时，离线 harness 不带图，不能算模型答错。
+
+    截图类提问常常同时存了 OCR 文本（例如「为什么分块查找…」）；那种情况
+    仍可当文字题跑。只有「这题咋做」这种离开截图就没有题干的才跳过。
+    """
+    ids = case.get("source_ask_ids") or []
+    if not ids:
+        return ""
+    row = _ask_row(conn, ids[0])
+    question = " ".join(str(row.get("question") or "").split())
+    if (row.get("kind") == "image" and row.get("image_path")
+            and len(question) < 8):
+        return "图片题：题干只在截图里（文字过短），离线 harness 不带图，无法复现"
+    return ""
+
+
+def skipped_result(case: dict, reason: str) -> dict:
+    return {
+        "id": case["id"],
+        "category": case["category"],
+        "question": case.get("question") or "",
+        "turns_run": 0,
+        "score": {
+            "status": "跳过", "first_pass_turn": None, "must_not_hit": False,
+            "tools": [], "tools_ok": None, "citation_ok": None,
+            "turn_facts": [], "model_calls": 0, "cost": 0.0, "reason": reason,
+        },
+        "turns": [],
+        "work_root": "",
+    }
 
 
 def case_questions(conn: sqlite3.Connection, case: dict) -> list[str]:
@@ -257,6 +334,8 @@ def render(results: list[dict], generated: str, cfg) -> str:
     lines += ["", "## 逐条回答（前 400 字）", ""]
     for item in results:
         lines.append(f"### {item['id']} · {item['score']['status']}")
+        if item["score"].get("reason"):
+            lines.append(f"- **跳过原因**：{item['score']['reason']}")
         for turn in item["turns"]:
             answer = " ".join(str(turn["answer"]).split())[:400]
             lines.append(f"- **问**：{turn['question']}")
@@ -307,6 +386,11 @@ def main(argv: list[str] | None = None) -> int:
             results = []
             for index, case in enumerate(cases, 1):
                 print(f"[{index}/{len(cases)}] {case['id']} ...", flush=True)
+                reason = case_skip_reason(conn, case)
+                if reason:
+                    print(f"  -> 跳过 · {reason}", flush=True)
+                    results.append(skipped_result(case, reason))
+                    continue
                 result = run_case(conn, cfg, case, root)
                 results.append(result)
                 score = result["score"]

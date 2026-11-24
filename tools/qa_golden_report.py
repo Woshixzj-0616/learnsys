@@ -117,6 +117,9 @@ def check_fact(text: str, groups: list[list[str]], must_not: list[str]) -> tuple
 def check_citation(text: str, kind: str) -> bool:
     text = str(text or "")
     if kind == "material":
+        # 施工单 §12：资料类回答要么带 id/页码，要么明确说「资料里没有」。
+        if re.search(r"资料[^。\n]{0,24}(?:没有|没找到|未找到|查不到|无相关|暂无)", text):
+            return True
         return bool(re.search(r"【资料|资料\s*id|第\s*\d+\s*页|《[^》]+》", text))
     if kind == "wrong":
         return bool(re.search(r"错题\s*#\d+", text))

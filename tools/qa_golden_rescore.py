@@ -31,7 +31,7 @@ def main(argv: list[str] | None = None) -> int:
     results = pilot.get("results") or []
     for result in results:
         case = cases.get(result.get("id"))
-        if case is None:
+        if case is None or (result.get("score") or {}).get("status") == "跳过":
             continue
         result["score"] = score_case(case, result.get("turns") or [])
     generated = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
