@@ -40,7 +40,7 @@ app.selectMaterial = selectMaterial;
 
 export async function mount(ctx) {
   ctx.setSub("课件、笔记、术语表；本机目录可直接问，导入用于精读与批注");
-  ctx.setActions('<a class="btn" href="#/ask">去问一问</a>');
+  ctx.setActions('<a class="btn" href="#/ask">问助手</a>');
   app.nodes = {
     stats: ctx.root.querySelector("#mat-stats"),
     list: ctx.root.querySelector("#mat-list"),

@@ -8,7 +8,7 @@ let busy = false;
 
 export async function mount(ctx) {
   ctx.setSub("独立窗口 + 本机浏览记录；只记录 URL、标题和域名");
-  ctx.setActions('<a class="btn" href="#/ask">去问一问</a>');
+  ctx.setActions('<a class="btn" href="#/ask">问助手</a>');
   nodes = {
     dot: ctx.root.querySelector("#browser-dot"),
     state: ctx.root.querySelector("#browser-state"),

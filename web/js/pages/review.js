@@ -9,7 +9,7 @@ let reportSent = false;
 
 export async function mount(ctx) {
   ctx.setSub("把今天的记录收成一张能带走的卡片");
-  ctx.setActions('<a class="btn" href="#/ask">去问一问</a>');
+  ctx.setActions('<a class="btn" href="#/ask">问助手</a>');
   const root = ctx.root;
   const runBtn = root.querySelector("#review-run");
   try {

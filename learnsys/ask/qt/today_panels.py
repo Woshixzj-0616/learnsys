@@ -368,7 +368,7 @@ class TimelineSection(QtWidgets.QWidget):
         box.addLayout(self.list_box)
 
         self.empty = _label(
-            "今天还没有问答\n从问一问开始，每个问题都会自动记进这条时间线。",
+            "今天还没有问答\n从助手开始，每个问题都会自动记进这条时间线。",
             "EmptyState")
         self.empty.setWordWrap(True)
         self.empty.hide()

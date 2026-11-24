@@ -5,7 +5,7 @@ import { escapeHtml, toast } from "../ui.js";
 
 const KIND_LABEL = { pitfall: "踩坑", good_practice: "有效做法" };
 const SOURCE_LABEL = {
-  ask: "问一问", agent_task: "派活", code: "代码调试", manual: "手动",
+  ask: "助手", agent_task: "派活", code: "代码调试", manual: "手动",
 };
 
 let items = [];

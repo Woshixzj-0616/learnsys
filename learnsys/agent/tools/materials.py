@@ -87,5 +87,5 @@ def save_material_note(title: str, content: str, tags: str = "",
             conn.close()
     if created:
         return (f"已保存进资料库（资料 #{item_id}：{title}，{len(body)} 字）。"
-                "用户可以在「资料」页看到、检索和挂到问一问。")
+                "用户可以在「资料」页看到、检索和挂到助手。")
     return f"资料库里已经存在这份内容（资料 #{item_id}），没有重复保存。"

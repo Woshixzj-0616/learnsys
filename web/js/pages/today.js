@@ -400,7 +400,7 @@ function renderTimeline(asks, askCount) {
   }
   if (!shown.length) {
     root.innerHTML = `<div class="empty"><strong>今天还没有问答</strong>
-      从问一问开始，每个问题都会自动记进这条时间线。</div>`;
+      从助手开始，每个问题都会自动记进这条时间线。</div>`;
     return;
   }
 

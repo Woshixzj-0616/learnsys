@@ -146,5 +146,5 @@ class StudyOpsMixin:
             return
         day = config.day_dir()
         dest = day / f"对话笔记_{day.name}.md"
-        count = study.export_day_notes_md(asks, dest, f"问一问对话笔记 · {day.name}")
+        count = study.export_day_notes_md(asks, dest, f"助手对话笔记 · {day.name}")
         self._warn(f"导出 {count} 条问答到 {dest}")

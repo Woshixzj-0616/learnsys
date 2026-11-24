@@ -1,4 +1,4 @@
-// 网工训练场：按 TCP/IP 分层组织训练卡；开练 = 记一条事件 + 把题目送进问一问。
+// 网工训练场：按 TCP/IP 分层组织训练卡；开练 = 记一条事件 + 把题目送进助手。
 import { api } from "../api.js";
 import { buildSnapshot, openAssistant } from "../context.js";
 import { escapeHtml, toast } from "../ui.js";
@@ -149,7 +149,7 @@ let doneTitles = new Set();
 let doneToday = 0;
 
 export async function mount(ctx) {
-  ctx.setSub("子网、路由、抓包 —— 每天练一格，题目直接送进问一问");
+  ctx.setSub("子网、路由、抓包 —— 每天练一格，题目直接送进助手");
   ctx.setActions('<a class="btn" href="#/plugins">插件中心</a>');
   const data = await api.get("/api/events?module=netlab&limit=200").catch(() => ({ items: [] }));
   const items = Array.isArray(data.items) ? data.items : [];

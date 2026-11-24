@@ -36,8 +36,8 @@ function moduleById(id) {
   return registry.find((item) => item.id === id) || null;
 }
 
-// 侧栏分组：只在这里定义一次。今日单列，不归任何组。
-// P33 起一级入口只有 5 个：今日 / 英语 / 实践 / 资料 / 工具；其余模块收进聚合页或页内入口。
+// 侧栏分组：只在这里定义一次。助手与今日单列（助手在前），不归任何组。
+// P35 起一级入口 6 个：助手 / 今日 / 英语 / 实践 / 资料 / 工具；其余模块收进聚合页或页内入口。
 const GROUP_ORDER = ["英语", "实践", "资料", "工具"];
 const WORK_ORDER = ["工具", "资料", "实践", "英语"];
 const GROUP_OF = {
@@ -51,7 +51,7 @@ const GROUP_OF = {
 const HIDDEN_NAV = new Set([
   "daily", "english-review", "wrongbook", "vocab", "review",
   "quiz", "knowledge", "netlab", "briefing", "life", "art", "browser",
-  "recordings", "agents", "agentruns", "plugins", "projects", "ask",
+  "recordings", "agents", "agentruns", "plugins", "projects",
 ]);
 const byOrder = (a, b) => Number(a.order || 999) - Number(b.order || 999);
 
@@ -77,8 +77,10 @@ function navGroup(label, items, activeId) {
 function renderNav(activeId) {
   const visible = registry.filter(
     (module) => prefs[module.id] !== false && !HIDDEN_NAV.has(module.id));
+  // 助手是一等入口，排在今日前面；两者都不进下面的分组。
+  const ask = visible.find((m) => m.id === "ask");
   const today = visible.find((m) => m.id === "today");
-  let html = today ? navItem(today, activeId) : "";
+  let html = (ask ? navItem(ask, activeId) : "") + (today ? navItem(today, activeId) : "");
   const order = getModes().scene === "work" ? WORK_ORDER : GROUP_ORDER;
   for (const label of order) {
     const items = visible
@@ -86,7 +88,7 @@ function renderNav(activeId) {
       .sort(byOrder);
     html += navGroup(label, items, activeId);
   }
-  const known = new Set([...Object.keys(GROUP_OF), "today"]);
+  const known = new Set([...Object.keys(GROUP_OF), "today", "ask"]);
   const rest = visible.filter((m) => !known.has(m.id)).sort(byOrder);
   html += navGroup("其他", rest, activeId);
   nav.innerHTML = html;

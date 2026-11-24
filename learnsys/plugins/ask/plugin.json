@@ -1,6 +1,6 @@
 {
   "id": "ask",
-  "name": "问一问",
+  "name": "助手",
   "icon": "✎",
   "type": "native-page",
   "entry": "pages/ask.html",

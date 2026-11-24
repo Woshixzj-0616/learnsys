@@ -244,10 +244,10 @@ function renderDetail(item) {
       <button class="btn danger" type="button" id="rec-delete">删除这段</button>
     </div>
     <section class="rec-ai" id="rec-ai">
-      <div class="rec-ai-head"><strong>问一问 · 这段录像</strong>
+      <div class="rec-ai-head"><strong>助手 · 这段录像</strong>
         <span class="rec-ai-head-actions">
           <button class="rec-ai-link" type="button" id="rec-ai-new">新对话</button>
-          <button class="rec-ai-link" type="button" id="rec-ai-open">在问一问里打开</button>
+          <button class="rec-ai-link" type="button" id="rec-ai-open">在助手里打开</button>
         </span></div>
       <div class="rec-ai-history" id="rec-ai-history" hidden></div>
       <div class="rec-ai-thread" id="rec-ai-thread" hidden></div>

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
 import sys
 import unittest
 
@@ -18,7 +19,7 @@ from learnsys.modules import web_dir  # noqa: E402
 class ProductNameTest(unittest.TestCase):
     def test_product_name_once(self):
         self.assertEqual(product.PRODUCT_NAME, "学习工作台")
-        self.assertEqual(product.QNA_NAME, "问一问")
+        self.assertEqual(product.QNA_NAME, "助手")
 
     def test_window_mark_matches_web_title(self):
         """focus_window 靠标题后缀找窗口 —— Python 和 JS 必须同一个串。"""
@@ -51,6 +52,21 @@ class ProductNameTest(unittest.TestCase):
         ask = json.loads((pathlib.Path(config.ROOT) / "learnsys" / "plugins" / "ask"
                           / "plugin.json").read_text(encoding="utf-8"))
         self.assertEqual(ask["name"], product.QNA_NAME)
+
+    def test_assistant_is_first_class_nav(self):
+        """P35 §12：助手不能再被 HIDDEN_NAV 藏起来，且排在今日前面。"""
+        shell = (web_dir() / "js" / "shell.js").read_text(encoding="utf-8")
+        block = re.search(r"HIDDEN_NAV = new Set\(\[(.*?)\]\);", shell, re.S)
+        self.assertIsNotNone(block)
+        self.assertNotIn('"ask"', block.group(1))
+        self.assertIn('ask ? navItem(ask, activeId) : ""', shell)
+        self.assertLess(shell.index('const ask = visible.find'),
+                        shell.index('const today = visible.find'))
+
+    def test_ask_page_has_no_dispatch_button(self):
+        """P35：派活收进项目卡，助手页不再放「派活」按钮。"""
+        page = (web_dir() / "pages" / "ask.html").read_text(encoding="utf-8")
+        self.assertNotIn("dispatch-agent", page)
 
     def test_spec_uses_new_names(self):
         spec = (pathlib.Path(config.ROOT) / f"{product.PRODUCT_NAME}.spec").read_text(

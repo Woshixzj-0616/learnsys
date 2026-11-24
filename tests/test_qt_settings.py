@@ -64,7 +64,7 @@ SETTINGS = {
 MODULES = {
     "schema": 2,
     "modules": [
-        {"id": "ask", "name": "问一问", "status": "ready"},
+        {"id": "ask", "name": "助手", "status": "ready"},
         {"id": "cet6", "name": "六级精听", "status": "ready"},
         {"id": "future", "name": "待建页", "status": "planned"},
     ],
