@@ -256,6 +256,7 @@ class SessionsMixin:
                 kind=kind,
                 image_path=archived,
                 thread=record.get("thread") or "",
+                conversation_id=record.get("conversation_id") or None,
                 first_ms=record.get("first_ms"),
             )
         except Exception as exc:
@@ -295,6 +296,31 @@ class SessionsMixin:
         except Exception as exc:
             print(f"读历史失败：{exc}", file=sys.stderr)
             return []
+
+    def _recent_conversations(self):
+        """快捷栏「继续会话」：与 Web 工作台同一份 conversations 真相。"""
+        try:
+            return store.list_conversations(self._conn(), limit=8, module="ask")
+        except Exception as exc:
+            print(f"读会话列表失败：{exc}", file=sys.stderr)
+            return []
+
+    def _load_conversation(self, conversation_id: int):
+        """按 id 读会话摘要 + 完整问答对，供快捷栏回灌上下文。"""
+        try:
+            conn = self._conn()
+            row = store.get_conversation(conn, int(conversation_id))
+            if row is None:
+                return None
+            return {
+                "id": int(row[0]),
+                "title": str(row[1] or ""),
+                "summary": str(row[4] or ""),
+                "pairs": store.conversation_pairs(conn, int(conversation_id)),
+            }
+        except Exception as exc:
+            print(f"读会话失败：{exc}", file=sys.stderr)
+            return None
 
     def _history_days(self):
         """更早有问答的日子（新→旧，最多 7 天）—— 历史菜单里「更早的日子」用。

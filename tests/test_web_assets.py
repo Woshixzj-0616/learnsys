@@ -32,11 +32,20 @@ class WebAssetTest(unittest.TestCase):
         self.assertEqual(sorted(on_disk - linked), [],
                          "web/css 下有样式没被 index.html 引用")
 
-    def test_english_shell_mounts_the_ai_drawer(self):
-        self.assertIn("mount as mountAI", ENGLISH)
-        self.assertIn("mountAI(root)", ENGLISH)
-        self.assertIn("setEnabled(tab !== \"listening\")", ENGLISH)
+    def test_english_shell_retires_ai_drawer(self):
+        self.assertNotIn("mount as mountAI", ENGLISH)
+        self.assertNotIn("mountAI(root)", ENGLISH)
+        self.assertIn("contextSnapshot", ENGLISH)
+        self.assertIn("openAssistant", ENGLISH)
+        self.assertIn("english-ask-fab", ENGLISH)
         self.assertIn("setPage", ENGLISH)
+
+    def test_cet6_iframe_hides_legacy_ai(self):
+        listening = (ROOT / "web/js/pages/english/listening.js").read_text(
+            encoding="utf-8")
+        self.assertIn("learnsys-hide-legacy-ai", listening)
+        self.assertIn("#askBtn", listening)
+        self.assertIn("stopImmediatePropagation", listening)
 
     def test_english_shell_has_stats_and_legacy_redirect(self):
         html = (ROOT / "web/pages/english.html").read_text(encoding="utf-8")

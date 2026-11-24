@@ -39,7 +39,8 @@ class QuickbarPersonalStateTest(unittest.TestCase):
 
     def test_worker_request_carries_personal_state(self):
         source = pathlib.Path(workers.__file__).read_text(encoding="utf-8")
-        self.assertIn("personal_state=personal_state()", source)
+        self.assertIn("personal_state=personal_state(", source)
+        self.assertIn("query=self._display_text or self._question", source)
 
 
 if __name__ == "__main__":

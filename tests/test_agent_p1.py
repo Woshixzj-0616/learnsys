@@ -37,12 +37,16 @@ class WebToolSurfaceTest(unittest.TestCase):
                 self.assertIn("web_search", names)
                 self.assertIn("fetch_url", names)
 
-    def test_learning_surfaces_do_not(self):
-        for surface in ("cet6", "video"):
-            with self.subTest(surface=surface):
-                names = self.names("explain", surface)
-                self.assertNotIn("web_search", names)
-                self.assertNotIn("fetch_url", names)
+    def test_video_surface_does_not(self):
+        names = self.names("explain", "video")
+        self.assertNotIn("web_search", names)
+        self.assertNotIn("fetch_url", names)
+
+    def test_cet6_now_uses_assistant_tools(self):
+        # P35.3：CET6 只是外部 App，不再有专属工具裁剪，联网工具随 assistant 白名单。
+        names = self.names("explain", "cet6")
+        self.assertIn("web_search", names)
+        self.assertIn("fetch_url", names)
 
     def test_quiz_does_not(self):
         names = self.names("quiz", "ask")

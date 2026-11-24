@@ -132,19 +132,20 @@ TOOL_SCHEMAS.append(GET_CET6_CONTEXT_SCHEMA)
 
 from .schemas_art import ART_WORKS_SCHEMA
 from .schemas_learning import (DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
-                               GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA)
+                               GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA,
+                               LIST_VOCAB_SCHEMA)
 from .schemas_life import LIFE_CARDS_SCHEMA, LIFE_ITEMS_SCHEMA
 from .schemas_local import READ_LOCAL_FILE_SCHEMA, SEARCH_LOCAL_FILES_SCHEMA
 from .schemas_travel import TRAVEL_TRACE_SCHEMA
 from .schemas_web import WEB_SCHEMAS
-from .schemas_write import (ADD_VOCAB_SCHEMA, CET6_WRITE_SCHEMAS,
+from .schemas_write import (ADD_VOCAB_SCHEMA,
                             RUN_CODE_SCHEMA, WRITE_LABELS_EXTRA,
                             WRITE_STUDY_FILE_SCHEMA, WRITING_WRITE_SCHEMAS,
                             WRITING_WRITE_TOOLS, extra_write_summary)
 
 TOOL_SCHEMAS.extend([DUE_REVIEWS_SCHEMA, GET_MASTERY_SCHEMA,
                      GET_TRAIN_SUMMARY_SCHEMA, LIST_RECORDINGS_SCHEMA,
-                     TRAVEL_TRACE_SCHEMA])
+                     LIST_VOCAB_SCHEMA, TRAVEL_TRACE_SCHEMA])
 
 
 OPEN_FILE_SCHEMA = {
@@ -380,6 +381,7 @@ TOOL_LABELS = {
     "search_records": "查学习记录",
     "today_summary": "看今日概况",
     "recent_wrong_items": "读最近错题",
+    "list_vocab": "查生词本",
     "due_reviews": "查到期复习",
     "get_mastery": "查掌握度",
     "get_train_summary": "看训练概况",
@@ -408,48 +410,9 @@ def label_for(name: str) -> str:
     return TOOL_LABELS.get(str(name or ""), str(name or ""))
 
 
-def schemas_for(mode: str = "explain", *, use_tools: bool = True,
-                surface: str = "ask"):
-    """按入口和模式给工具清单。
-
-    - 速答（quick）只留记忆工具：一两句话的任务不该带 20 多个工具；
-    - 快捷栏 / 六级 / 录像：只给学习读取工具，不放本机文件、程序、代码执行；
-    - 工作台问答页：完整清单（仍是唯一能打开文件/启动程序/跑代码的入口）；
-    - 测验模式不暴露系统工具；错题本写工具只在测验里出现。
-    """
-    if not use_tools:
-        return None
-    surface = str(surface or "ask").lower()
-    memory = [SAVE_MEMORY_SCHEMA, FORGET_MEMORY_SCHEMA]
-    if mode == "quick":
-        return list(memory)
-
-    learning = [MAKE_PLAN_SCHEMA, RECENT_WRONG_ITEMS_SCHEMA]
-    core = learning + list(TOOL_SCHEMAS)
-    if surface == "cet6":
-        return core + memory + [SAVE_MATERIAL_NOTE_SCHEMA] + CET6_WRITE_SCHEMAS
-    if surface == "video":
-        # 录像里只加词：收训练错题、评档都回六级/工作台做。
-        return core + memory + [SAVE_MATERIAL_NOTE_SCHEMA, ADD_VOCAB_SCHEMA]
-    if surface == "quickbar":
-        # 课上只给「记一下这个词」；删除/评档会打断听讲。
-        return core + memory + list(WEB_SCHEMAS) + [ADD_VOCAB_SCHEMA]
-
-    schemas = list(core) + list(memory)
-    if mode != "quiz":
-        # 测验页不该顺手打开本机文件 / 程序 / 网页；只在工作台问答页暴露。
-        schemas += (WEB_SCHEMAS
-                    + [OPEN_FILE_SCHEMA, LAUNCH_APP_SCHEMA,
-                       OPEN_URL_SCHEMA, BROWSER_STATUS_SCHEMA, BROWSER_HISTORY_SCHEMA,
-                       SEARCH_LOCAL_FILES_SCHEMA, READ_LOCAL_FILE_SCHEMA])
-        schemas += WRITING_WRITE_SCHEMAS
-        # 生活数据只给工作台问答，不给快速栏 / 六级 / 录像 / 测验。
-        schemas += [LIFE_CARDS_SCHEMA, LIFE_ITEMS_SCHEMA, ART_WORKS_SCHEMA]
-    schemas += [SAVE_MATERIAL_NOTE_SCHEMA, WRITE_STUDY_FILE_SCHEMA, RUN_CODE_SCHEMA]
-    # 收进复习是学习闭环的共用写入口：测验判错、问答收题、代码调试都走它。
-    # quick 模式在前面已提前返回，cet6 / video / quickbar 也不会走到这里。
-    schemas.append(SAVE_WRONGBOOK_SCHEMA)
-    return schemas
+# 工具清单的「按入口/模式裁剪」统一在 `profiles.py`；这里只保留 schema 定义，
+# 避免 schemas.py 贴着 500 行红线继续长。
+from .profiles import schemas_for  # noqa: E402  （必须在 schema 定义之后导入）
 
 
 def write_summary(name: str, args: dict) -> str:

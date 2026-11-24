@@ -15,6 +15,8 @@ from .agent_approvals import (STATUSES as AGENT_APPROVAL_STATUSES,
                               pending_approvals as pending_agent_approvals)
 from .agent_runs import (add_agent_run, get_agent_run, list_agent_runs,
                          recent_memory_injections, route_stats)
+from .qa_feedback import (VERDICTS as QA_FEEDBACK_VERDICTS,
+                          add_qa_feedback, list_qa_feedback)
 from .agent_tasks import (STATUSES as AGENT_TASK_STATUSES,
                           add_event as add_agent_task_event,
                           add_queued as add_agent_queued_task,
@@ -70,7 +72,8 @@ from .daily_accum import (accum_counts, accum_days, accum_item,
                           pron_candidates, pron_item, pron_upsert,
                           set_accum_status, set_all_accum_status,
                           set_pron_status)
-from .conversations import (add_message, conversation_messages, create_conversation,
+from .conversations import (add_message, conversation_messages,
+                            conversation_pairs, create_conversation,
                             get_conversation, list_conversations,
                             set_conversation_summary, touch_conversation)
 from .events import add_event, event_days, event_kind_counts, list_events
@@ -174,6 +177,7 @@ from .wrongbook import (WRONG_SOURCES, add_wrong_item, delete_wrong_item,
 __all__ = [
     "SCHEMA", "connect", "now", "stamp",
     "add_agent_run", "get_agent_run", "list_agent_runs",
+    "QA_FEEDBACK_VERDICTS", "add_qa_feedback", "list_qa_feedback",
     "recent_memory_injections", "route_stats",
     "AGENT_TASK_STATUSES", "add_agent_task_event", "add_agent_task",
     "add_agent_queued_task", "claim_agent_task", "cancel_agent_queued_task",

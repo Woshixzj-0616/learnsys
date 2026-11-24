@@ -64,4 +64,13 @@ CREATE INDEX IF NOT EXISTS idx_agent_approvals_task
     ON agent_approvals (task_id, id);
 CREATE INDEX IF NOT EXISTS idx_agent_approvals_status
     ON agent_approvals (status, task_id);
+CREATE TABLE IF NOT EXISTS qa_feedback (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id  TEXT NOT NULL,
+    verdict TEXT NOT NULL,                 -- ok / off / source
+    note    TEXT NOT NULL DEFAULT '',
+    ts      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_qa_feedback_run
+    ON qa_feedback (run_id, id DESC);
 """

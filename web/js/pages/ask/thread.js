@@ -61,7 +61,10 @@ export function renderThread() {
         }
         dom.inner.appendChild(block.wrap);
         attachExperience(block, lastUser, text);
-        if (message.content?.run_id) attachReplay(block, message.content.run_id);
+        if (message.content?.run_id) {
+          attachReplay(block, message.content.run_id);
+          attachFeedback(block, message.content.run_id);
+        }
       } else if (message.content?.error) {
         const block = createAssistantBlock();
         block.error.hidden = false;
@@ -125,6 +128,11 @@ export function createAssistantBlock() {
   const sources = document.createElement("div");
   sources.className = "sources";
 
+  // 答对 / 答偏 / 资料不对：挂在这次 run 上，给后续评测留反馈。
+  const feedback = document.createElement("div");
+  feedback.className = "ask-feedback";
+  feedback.hidden = true;
+
   // 问完一个问题，把这次结论起草成一条经验；人只做判断和改一句话。
   const experience = document.createElement("button");
   experience.type = "button";
@@ -133,12 +141,48 @@ export function createAssistantBlock() {
   experience.hidden = true;
 
   wrap.append(status, planEl, thinkingEl, toolsEl, body, checkEl, error, sources,
-    experience);
+    feedback, experience);
   dom.inner.appendChild(wrap);
   return {
     wrap, status, planEl, thinkingEl, thinkingPre, toolsEl, toolsSummary, toolsBody,
-    body, checkEl, error, sources, experience,
+    body, checkEl, error, sources, feedback, experience,
   };
+}
+
+const FEEDBACK_LABELS = { ok: "答对", off: "答偏", source: "资料不对" };
+
+export function attachFeedback(block, runId) {
+  if (!block?.feedback || !runId) return;
+  if (block.feedback.dataset.runId === String(runId)) return;
+  block.feedback.dataset.runId = String(runId);
+  block.feedback.hidden = false;
+  block.feedback.innerHTML = "";
+
+  const status = document.createElement("span");
+  status.className = "ask-feedback-status";
+  for (const [verdict, label] of Object.entries(FEEDBACK_LABELS)) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn-small";
+    button.textContent = label;
+    button.addEventListener("click", async () => {
+      for (const item of block.feedback.querySelectorAll("button")) {
+        item.disabled = true;
+      }
+      status.textContent = "记录中…";
+      try {
+        await api.post("/api/agent/qa_feedback", { run_id: String(runId), verdict });
+        status.textContent = `已记录：${label}`;
+      } catch (error) {
+        status.textContent = `没记上：${error.message || error}`;
+        for (const item of block.feedback.querySelectorAll("button")) {
+          item.disabled = false;
+        }
+      }
+    });
+    block.feedback.appendChild(button);
+  }
+  block.feedback.appendChild(status);
 }
 
 export function attachExperience(block, question, answer) {

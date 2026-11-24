@@ -74,6 +74,24 @@ class AgentContextTest(unittest.TestCase):
         self.assertEqual(content["surface"], "cet6")
         self.assertEqual(content["context_snapshot"]["object_id"], "A-1")
 
+    def test_ask_snapshot_gets_a_real_context_title(self):
+        snapshot = {
+            "surface": "ask", "object_type": "drill_card", "object_id": "cidr",
+            "title": "CIDR 速算",
+            "learning_state": {"track": "addr", "level": "基础"},
+        }
+        with mock.patch("learnsys.server.routes_agent.agent.run", self._fake_run):
+            res = self.client.post("/api/agent/chat", headers=AUTH, json={
+                "message": "这题怎么做", "surface": "ask",
+                "context_snapshot": snapshot,
+            })
+        self.assertEqual(res.status_code, 200)
+        request = self.seen[0]
+        self.assertIn("当前学习上下文", request.context_title)
+        self.assertIn("界面快照", request.context_title)
+        self.assertIn("CIDR 速算", request.context)
+        self.assertNotIn("课堂转写片段", request.context_title)
+
     def test_oversized_snapshot_is_rejected(self):
         big = {
             "surface": "cet6", "object_type": "item", "object_id": "A-1",
@@ -175,18 +193,20 @@ class AgentContextTest(unittest.TestCase):
         finally:
             conn.close()
 
-    def test_cet6_surface_uses_fast_model(self):
+    def test_cet6_uses_main_model_and_assistant_profile(self):
         seen = {}
 
         def fake_run(request, cfg=None, abort=None, **_kwargs):
             seen["model"] = cfg.model
+            seen["profile"] = request.profile
             yield AgentEvent("done", data={"text": "答"})
 
         with mock.patch("learnsys.server.routes_agent.agent.run", fake_run):
             res = self.client.post("/api/agent/chat", headers=AUTH, json={
                 "message": "这一句怎么听", "surface": "cet6"})
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(seen["model"], load_config().fast_model)
+        self.assertEqual(seen["model"], load_config().model)
+        self.assertEqual(seen["profile"], "assistant")
 
 
 if __name__ == "__main__":

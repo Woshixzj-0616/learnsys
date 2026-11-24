@@ -585,3 +585,7 @@
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .ask-experience { margin-top: 10px; }
+.ask-feedback {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+}
+.ask-feedback-status { color: var(--text-dim); font-size: 12px; }

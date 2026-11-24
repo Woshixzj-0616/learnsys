@@ -11,5 +11,9 @@
   "category": "语言",
   "home": true,
   "tagline": "精听 · 写作翻译 · 每日积累 · 复习 · 统计",
-  "description": "英语聚合页：精听 iframe、写作/翻译、每日积累、英语复习与统计收在一页；旧 #/cet6 由壳层重定向到这里。"
+  "description": "英语聚合页：精听 iframe、写作/翻译、每日积累、英语复习与统计收在一页；旧 #/cet6 由壳层重定向到这里。",
+  "agent_entry": "floating",
+  "context_providers": ["english.current_tab", "cet6.current_item", "train.current_question", "review.current_card"],
+  "read_services": ["cet6.context", "train.summary", "review.due"],
+  "write_services": ["save_training_error", "add_vocab", "rate_review"]
 }

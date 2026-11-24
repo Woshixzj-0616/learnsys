@@ -90,6 +90,8 @@ class AskApp(TrayMixin, WebServiceMixin, SessionsMixin, AssistantOpsMixin,
         self.bar.history_provider = self._recent_asks
         self.bar.history_days_provider = self._history_days
         self.bar.history_db_path_provider = lambda: str(self._conn_path or config.db_path())
+        self.bar.conversation_provider = self._recent_conversations
+        self.bar.conversation_loader = self._load_conversation
         self._backup_worker = None
         self._web_server = None                  # FastAPI/uvicorn 后台线程（P2）
         self._web_port = 0                       # 8765，占了就退 8766

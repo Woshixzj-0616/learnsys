@@ -93,13 +93,16 @@ class ToolPruningTest(unittest.TestCase):
         for name in ("run_code", "open_file", "launch_app", "write_study_file"):
             self.assertNotIn(name, names)
 
-    def test_cet6_has_learning_reads_only(self):
+    def test_cet6_uses_assistant_profile(self):
         names = self.names(surface="cet6")
-        for name in ("due_reviews", "get_mastery", "get_train_summary",
-                     "list_recordings", "save_material_note"):
+        for name in ("search_materials", "read_material", "run_code",
+                     "due_reviews", "list_vocab", "save_memory"):
             self.assertIn(name, names)
-        for name in ("run_code", "open_file", "save_wrongbook"):
+        for name in ("open_file", "life_cards", "delete_vocab"):
             self.assertNotIn(name, names)
+        intent = {schema["name"] for schema in tools.schemas_for(
+            "explain", surface="cet6", message="六级精听这段怎么练")}
+        self.assertIn("get_cet6_context", intent)
 
     def test_ask_has_full_tools(self):
         names = self.names("explain", "ask")

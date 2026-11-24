@@ -1,0 +1,1309 @@
+{
+  "version": 1,
+  "updated_at": "2026-11-24",
+  "note": "P35.0 问答 golden set。题目来自 2026-10-24~2026-11-23 的真实问答；baseline 用历史答案回溯评分，不新调模型。合成题（无 source_ask_ids）留给在线评测。",
+  "scoring": {
+    "fact_groups": "每组至少命中一个词才算该组通过；所有组通过才算事实通过。",
+    "must_not": "答案里出现任一字符串即判失败。",
+    "tools_any": "trace/工具轨迹里出现任一工具即算用对；回溯基线从 agent_runs 取。",
+    "citation": "material=需带资料 id/页码；wrong=需带错题 #；conversation=需带问答时间；web=需带 URL；none=不要求。",
+    "max_turns": "多轮从第 1 轮开始数，直到事实通过；超过即失败。",
+    "manual": "关键词只做初筛，歧义题必须人工复核。"
+  },
+  "cases": [
+    {
+      "id": "fact-cpp-pair-header",
+      "category": "事实题",
+      "question": "c++ pair定义在哪个头",
+      "source_ask_ids": [
+        696
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "utility",
+            "<utility>"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "fact-cpp-intmax-header",
+      "category": "事实题",
+      "question": "INT_MAX是定义在哪里",
+      "source_ask_ids": [
+        697
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "climits",
+            "limits.h"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "fact-cpp-emplace-header",
+      "category": "事实题",
+      "question": "emplace定义在哪个头",
+      "source_ask_ids": [
+        699
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "成员",
+            "member",
+            "容器"
+          ],
+          [
+            "vector",
+            "map",
+            "set"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      },
+      "notes": "要点：没有独立的 emplace 头，是容器成员。"
+    },
+    {
+      "id": "fact-cpp-stack-empty",
+      "category": "事实题",
+      "question": "stack的empty是怎么返回的",
+      "source_ask_ids": [
+        707
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "bool",
+            "true",
+            "false"
+          ],
+          [
+            "size",
+            "empty",
+            "top"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "fact-net-rsync-algo",
+      "category": "事实题",
+      "question": "rsync的算法是什么",
+      "source_ask_ids": [
+        678
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "滚动",
+            "rolling"
+          ],
+          [
+            "弱校验",
+            "强校验",
+            "checksum"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "fact-net-mtu-1472",
+      "category": "事实题",
+      "question": "为什么我的mtu只有1472，28B的头开销在哪",
+      "source_ask_ids": [
+        265
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "28"
+          ],
+          [
+            "20"
+          ],
+          [
+            "8"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "fact-algo-block-plus1",
+      "category": "事实题",
+      "question": "为什么这个分块查找平均查找长度里面还要加1",
+      "source_ask_ids": [
+        269
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "块间",
+            "索引表"
+          ],
+          [
+            "折半",
+            "判定树",
+            "log"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "fact-algo-quicksort-worst",
+      "category": "事实题",
+      "question": "请用三句话解释：为什么快速排序最坏是 O(n^2)，以及怎样避免。",
+      "source_run_id": 79,
+      "expected": {
+        "fact_groups": [
+          [
+            "有序",
+            "逆序",
+            "已排序"
+          ],
+          [
+            "随机",
+            "三数取中",
+            "median"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      },
+      "notes": "唯一一次 v4-pro 运行的题，用作强模型对照。"
+    },
+    {
+      "id": "fact-net-tcp-fin",
+      "category": "事实题",
+      "question": "客户端在tcp连接发送FIN时ack会置为0吗",
+      "source_ask_ids": [
+        342
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "FIN"
+          ],
+          [
+            "ACK"
+          ],
+          [
+            "序号",
+            "序列号"
+          ]
+        ],
+        "must_not": [
+          "ACK 置 0",
+          "ack 会置为 0",
+          "ACK 标志变成 0"
+        ],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "fact-net-nginx-80-8080",
+      "category": "事实题",
+      "question": "为什么我nginx设置两个server一个是80一个是8080，给的html不一样，但是在本机浏览器看是一个html",
+      "source_ask_ids": [
+        295
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "端口",
+            "port"
+          ],
+          [
+            "默认",
+            "default",
+            "Host",
+            "server_name"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "fact-english-8",
+      "category": "事实题",
+      "question": "8分的英语翻译是什么水平，六级里面多少分",
+      "source_ask_ids": [
+        271
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "7-9",
+            "7–9",
+            "7~9"
+          ],
+          [
+            "710",
+            "106.5",
+            "55",
+            "60"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "fact-net-tcp-handshake",
+      "category": "事实题",
+      "question": "用一句话解释 TCP 三次握手",
+      "source_ask_ids": [
+        653
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "SYN",
+            "初始序号",
+            "seq"
+          ],
+          [
+            "ACK",
+            "确认",
+            "双向通道"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "multi-cpp-emplace",
+      "category": "多轮纠错",
+      "question": "res.emplace(poi[minpoi], min) 报错；res 是 vector<pair<char,int>>。错在哪？",
+      "source_ask_ids": [
+        701,
+        702,
+        703,
+        704,
+        705
+      ],
+      "turns": [
+        "res.emplace(poi[minpoi], min);我这个报错了，其中minpoi，和min是int，poi是vector<char>,res是vector<char,int>",
+        "vector<pair<char, int>>res;",
+        "（贴出完整代码）",
+        "就是emplace有问题，你听不懂吗",
+        "那emplace要怎么写"
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "第一个参数",
+            "位置参数",
+            "迭代器",
+            "const_iterator"
+          ],
+          [
+            "emplace_back",
+            "插入位置",
+            "C++11"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 3
+      },
+      "notes": "正确事实：vector 有 emplace(pos, args...)，第一个参数是位置迭代器；用户只传了 (char,int)，所以编译失败。前两轮可能说错，第 3 轮 run_code 后应纠正。"
+    },
+    {
+      "id": "multi-rsync-locate",
+      "category": "多轮纠错",
+      "question": "rsync 是怎么定位错误的？",
+      "conversation_id": 144,
+      "turns": [
+        "那怎么定位错误",
+        "我想问你是怎么定位错误的",
+        "我说的是rsync是怎么定位错误的",
+        "那你不是说他会窗口移动吗，这个不就是定位错误的",
+        "是有错的块才会定位错误吗",
+        "他难道不会识别文件中是哪个地方改动了吗"
+      ],
+      "manual_review": true,
+      "expected": {
+        "fact_groups": [
+          [
+            "滑动窗口",
+            "滚动",
+            "rolling",
+            "块"
+          ],
+          [
+            "字节",
+            "行",
+            "diff",
+            "不输出",
+            "不告诉",
+            "第几行",
+            "第几字节",
+            "行号",
+            "位置"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 2
+      },
+      "notes": "正确口径：滑动窗口定位的是块级差异；rsync 不输出字节/行位置。基线/试点看第几轮才收敛，目标 ≤2。"
+    },
+    {
+      "id": "multi-rsync-window",
+      "category": "多轮纠错",
+      "question": "rsync 的滚动窗口和块匹配到底是什么关系？",
+      "conversation_id": 145,
+      "turns": [
+        "和我说说rsync",
+        "和我说说内部算法",
+        "不是有滚动窗口的机制吗",
+        "你和我整体说说",
+        "接收端只是按块给强弱校验，发送端怎么能通过L的窗口匹配",
+        "会不会出现块数新旧分割不相等的情况",
+        "窗口强弱校验都对上会发生什么",
+        "发送端重发的块应该会出现块大小不等的情况吧"
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "滚动",
+            "窗口"
+          ],
+          [
+            "块",
+            "L"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 2
+      },
+      "notes": "内容基本正确，但连续 38 条消息才收敛；检查是否在第 2 轮就给出整体框架。"
+    },
+    {
+      "id": "multi-quicksearch-key",
+      "category": "多轮纠错",
+      "question": "快速查找/快速排序里，key 的位置被分区移动了怎么办？",
+      "source_ask_ids": [
+        655,
+        656,
+        657,
+        658,
+        659,
+        660,
+        661
+      ],
+      "turns": [
+        "这题咋做",
+        "你这样还不如直接顺序查找呢",
+        "那不会在排的过程把值移动了吗",
+        "你直接给我代码",
+        "你这样要是把key的位置移动了怎么办",
+        "我说的是我们要找的key",
+        "我说的是他本来是在原来位置上，但是因为我们的排序而变了位置"
+      ],
+      "manual_review": true,
+      "expected": {
+        "fact_groups": [
+          [
+            "原位置",
+            "位置",
+            "下标"
+          ],
+          [
+            "移动",
+            "变",
+            "保留",
+            "排下标",
+            "pos",
+            "原数组"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 7
+      },
+      "notes": "完整题链：655–658 是上下文，659–661 是纠正。看是否在上下文中解决 key 指代；正确口径是「排数据本身会移位置，排下标/带 pos 可保留」。"
+    },
+    {
+      "id": "multi-siege-admin",
+      "category": "多轮纠错",
+      "question": "老师给的 siege 命令访问 Admin.jsp 一直 404，怎么排查？",
+      "conversation_id": 70,
+      "turns": [
+        "Admin.jsp是什么，我的老师给我这个命令让我输入，这个不是siege自己提供的吗",
+        "但是这个文件我根本没有写过，我也不会写啊",
+        "但是我的是虚拟机不是靶机",
+        "我都和你说了没有，你听不懂吗"
+      ],
+      "manual_review": true,
+      "expected": {
+        "fact_groups": [
+          [
+            "没有 Admin.jsp",
+            "文件不存在",
+            "靶机"
+          ],
+          [
+            "老师",
+            "部署包",
+            "地址"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 2
+      },
+      "notes": "核心失败：用户已排除本机文件，仍重复建议 ls/docker/ss；关键词容易误判，必须人工复核。"
+    },
+    {
+      "id": "multi-logic-or",
+      "category": "多轮纠错",
+      "question": "&(|(f),f) 里的 | 到底是什么意思？",
+      "conversation_id": 119,
+      "turns": [
+        "或运算还能只对一个表达式做吗",
+        "&(|(f),f)这个表达式的|不就是这样",
+        "什么意思，所以|（f）是什么意思",
+        "这是逻辑或，你是不是搞错了",
+        "就是一个|，这到底是什么意思"
+      ],
+      "manual_review": true,
+      "expected": {
+        "fact_groups": [
+          [
+            "二元",
+            "两个操作数"
+          ],
+          [
+            "||",
+            "逻辑或"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 3
+      },
+      "notes": "核心失败：没有先确认是宏/前缀表达式还是普通运算符，连续要求贴原文。"
+    },
+    {
+      "id": "multi-block-plus1",
+      "category": "多轮纠错",
+      "question": "分块查找的平均查找长度里，块间那部分的 +1 为什么存在？",
+      "source_ask_ids": [
+        269,
+        270
+      ],
+      "turns": [
+        "为什么这个分块查找平均查找长度里面还要加1",
+        "你还是没回答为什么在快间加一"
+      ],
+      "manual_review": true,
+      "expected": {
+        "fact_groups": [
+          [
+            "块间",
+            "索引表"
+          ],
+          [
+            "折半",
+            "判定树",
+            "log"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      },
+      "notes": "人工复核：269 已提到块间，但用户仍认为没答到；检查是否答到 +1 的来源。"
+    },
+    {
+      "id": "multi-curl-missing",
+      "category": "多轮纠错",
+      "question": "服务器上没有 curl 命令，怎么办？",
+      "source_ask_ids": [
+        555
+      ],
+      "turns": [
+        "我说的是没有curl这个命令"
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "安装",
+            "install",
+            "apt",
+            "yum",
+            "dnf",
+            "apk"
+          ],
+          [
+            "curl"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "multi-server-ip",
+      "category": "多轮纠错",
+      "question": "DHCP Request 为什么不直接单播给服务器 IP，而要广播？",
+      "source_ask_ids": [
+        255
+      ],
+      "turns": [
+        "我说的是给他服务器的ip地址"
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "广播",
+            "broadcast"
+          ],
+          [
+            "单播",
+            "unicast"
+          ],
+          [
+            "server identifier",
+            "服务器标识"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "multi-rsync-block-size",
+      "category": "多轮纠错",
+      "question": "发送端重发的块会出现块大小不等的情况吗？",
+      "source_ask_ids": [
+        695
+      ],
+      "turns": [
+        "发送端重发的块应该会出现块大小不等的情况吧"
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "字面量",
+            "literal"
+          ],
+          [
+            "块长",
+            "L"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "local-wrong-items",
+      "category": "本地数据",
+      "question": "我最近错了哪些题？",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "recent_wrong_items"
+        ],
+        "citation": "wrong",
+        "source": "local",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "local-due-reviews",
+      "category": "本地数据",
+      "question": "今天有哪些到期要复习的？",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "due_reviews"
+        ],
+        "citation": "none",
+        "source": "local",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "local-mastery",
+      "category": "本地数据",
+      "question": "我最弱的知识点是什么？",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "get_mastery"
+        ],
+        "citation": "none",
+        "source": "local",
+        "max_turns": 1
+      },
+      "notes": "样本不足时必须直说样本不足。"
+    },
+    {
+      "id": "local-train-summary",
+      "category": "本地数据",
+      "question": "我的写作/翻译练得怎么样？",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "get_train_summary"
+        ],
+        "citation": "none",
+        "source": "local",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "local-today",
+      "category": "本地数据",
+      "question": "我今天学了什么？",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "today_summary"
+        ],
+        "citation": "none",
+        "source": "local",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "local-materials-tcp",
+      "category": "本地数据",
+      "question": "课件里 TCP 三次握手是怎么讲的？",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "search_materials"
+        ],
+        "citation": "material",
+        "source": "local",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "local-materials-rsync",
+      "category": "本地数据",
+      "question": "资料库里关于 rsync 的内容有哪些？",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "search_materials"
+        ],
+        "citation": "material",
+        "source": "local",
+        "max_turns": 1
+      },
+      "notes": "如果资料库没有，必须直说没有，不能编造资料名/页码。"
+    },
+    {
+      "id": "local-records-python",
+      "category": "本地数据",
+      "question": "我之前问过什么关于 Python 的问题？",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "search_records"
+        ],
+        "citation": "conversation",
+        "source": "local",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "local-local-file",
+      "category": "本地数据",
+      "question": "我电脑上那份计算机网络 PDF 在哪？",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "search_local_files"
+        ],
+        "citation": "none",
+        "source": "local",
+        "max_turns": 1
+      },
+      "notes": "白名单外读取要确认；找不到就直说。"
+    },
+    {
+      "id": "local-vocab",
+      "category": "本地数据",
+      "question": "我生词本里有哪些词？",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "list_vocab"
+        ],
+        "citation": "none",
+        "source": "local",
+        "max_turns": 1
+      },
+      "notes": "P35.0 基线时是能力缺口（没有 list_vocab）；P35.1 已补，当前期望工具为 list_vocab。"
+    },
+    {
+      "id": "english-reunion-translation",
+      "category": "英语批改",
+      "question": "年夜饭的菜名也常带有吉祥的含义，例如鱼象征年年有余。给我译文",
+      "source_ask_ids": [
+        631
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "auspicious",
+            "吉祥"
+          ],
+          [
+            "symbol",
+            "象征"
+          ],
+          [
+            "surplus",
+            "abundance",
+            "有余"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "english-fish-correction",
+      "category": "英语批改",
+      "question": "The reunion dinner's dishes often have a happy meaning, for example, fish is symbol of abundance year after year.",
+      "conversation_id": 146,
+      "expected": {
+        "fact_groups": [
+          [
+            "a symbol of"
+          ],
+          [
+            "auspicious",
+            "carry"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "english-fireworks",
+      "category": "英语批改",
+      "question": "Recently, some cities was restricted with burning fireworks and firecrackers, but the reunion habit is never changed.",
+      "source_ask_ids": [
+        709
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "were"
+          ],
+          [
+            "restricted",
+            "banned"
+          ],
+          [
+            "tradition",
+            "habit"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "english-student-translation",
+      "category": "英语批改",
+      "question": "Despite the long distance to go home, people make their best efforts to go back and stay up late to see the old year out with their family.",
+      "source_ask_ids": [
+        633
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "journey home",
+            "distance home"
+          ],
+          [
+            "every effort",
+            "best efforts"
+          ],
+          [
+            "see out",
+            "see the old year out"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "english-abstract",
+      "category": "英语批改",
+      "question": "abstract 的意思是什么？",
+      "expected": {
+        "fact_groups": [
+          [
+            "抽象"
+          ],
+          [
+            "摘要",
+            "abstract"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "english-directory",
+      "category": "英语批改",
+      "question": "目录的英文",
+      "source_ask_ids": [
+        388
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "directory"
+          ],
+          [
+            "dir"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "english-ls",
+      "category": "英语批改",
+      "question": "ls是什么英文缩写",
+      "source_ask_ids": [
+        391
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "list"
+          ],
+          [
+            "列出",
+            "目录"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "code-prefix-expr",
+      "category": "代码调试",
+      "question": "前缀算术表达式求值：贴代码问哪里错。",
+      "source_ask_ids": [
+        457,
+        455,
+        454,
+        452
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "前缀"
+          ],
+          [
+            "栈"
+          ],
+          [
+            "输出",
+            "用例"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [
+          "run_code"
+        ],
+        "citation": "none",
+        "source": "local+model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "code-subip",
+      "category": "代码调试",
+      "question": "subip 字符串处理代码：贴代码问哪里错。",
+      "source_ask_ids": [
+        634,
+        635
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "subip",
+            "字符串"
+          ],
+          [
+            "越界",
+            "长度",
+            "bug"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [
+          "run_code"
+        ],
+        "citation": "none",
+        "source": "local+model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "code-infix-stack",
+      "category": "代码调试",
+      "question": "基于栈的中缀表达式求值：贴代码问哪里错。",
+      "source_ask_ids": [
+        201,
+        195
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "中缀",
+            "表达式"
+          ],
+          [
+            "栈"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [
+          "run_code"
+        ],
+        "citation": "none",
+        "source": "local+model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "code-quicksearch",
+      "category": "代码调试",
+      "question": "快速查找/快速排序代码：贴代码问哪里错。",
+      "source_ask_ids": [
+        655,
+        657,
+        658
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "Partition",
+            "分区"
+          ],
+          [
+            "key",
+            "查找"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [
+          "run_code"
+        ],
+        "citation": "none",
+        "source": "local+model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "code-bf",
+      "category": "代码调试",
+      "question": "基于 BF 算法的网络入侵检测：贴代码问哪里错。",
+      "source_ask_ids": [
+        628
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "BF",
+            "暴力"
+          ],
+          [
+            "匹配"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [
+          "run_code"
+        ],
+        "citation": "none",
+        "source": "local+model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "code-pattern",
+      "category": "代码调试",
+      "question": "模式匹配算法：贴代码问哪里错。",
+      "source_ask_ids": [
+        638,
+        637
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "模式匹配",
+            "KMP",
+            "next"
+          ],
+          [
+            "前缀",
+            "字符串"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [
+          "run_code"
+        ],
+        "citation": "none",
+        "source": "local+model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "code-structG",
+      "category": "代码调试",
+      "question": "struct G / int** 数组代码：贴代码问哪里错。",
+      "source_ask_ids": [
+        205
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "int**",
+            "二维"
+          ],
+          [
+            "delete",
+            "释放",
+            "越界"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [
+          "run_code"
+        ],
+        "citation": "none",
+        "source": "local+model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "fact-rsync-fullname",
+      "category": "事实题",
+      "question": "rsync全名",
+      "source_ask_ids": [
+        623
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "remote",
+            "远程"
+          ],
+          [
+            "sync",
+            "同步"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "fact-nginx-restart",
+      "category": "事实题",
+      "question": "nginx怎么重启",
+      "source_ask_ids": [
+        292
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "reload"
+          ],
+          [
+            "systemctl",
+            "restart",
+            "nginx -s"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      }
+    },
+    {
+      "id": "multi-cert-L",
+      "category": "多轮纠错",
+      "question": "我说的是证书签名里面的 L 是什么",
+      "source_ask_ids": [
+        591
+      ],
+      "turns": [
+        "我说的是证书签名里面的L是什么"
+      ],
+      "expected": {
+        "fact_groups": [
+          [
+            "长度",
+            "Length"
+          ],
+          [
+            "ASN.1",
+            "DER",
+            "TLV",
+            "签名"
+          ]
+        ],
+        "must_not": [],
+        "tools_any": [],
+        "citation": "none",
+        "source": "model",
+        "max_turns": 1
+      },
+      "notes": "问题本身歧义；合格行为是先给候选解释并要求原句，不是硬编一个答案。"
+    },
+    {
+      "id": "local-cet6-context",
+      "category": "本地数据",
+      "question": "我刚才循环的那句是什么？",
+      "expected": {
+        "fact_groups": [],
+        "must_not": [],
+        "tools_any": [
+          "get_cet6_context"
+        ],
+        "citation": "none",
+        "source": "local",
+        "max_turns": 1
+      },
+      "notes": "没有上下文快照时应要求用户从精听页唤起，而不是编造句子。"
+    }
+  ]
+}

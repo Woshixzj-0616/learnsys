@@ -189,8 +189,13 @@ class LearningWriteTest(unittest.TestCase):
         self.assertIn("add_vocab", quickbar)
         self.assertNotIn("delete_vocab", quickbar)
         self.assertNotIn("save_training_error", quickbar)
-        self.assertTrue({"add_vocab", "save_training_error", "rate_review"} <= cet6)
+        # P35.3：CET6 走 assistant 白名单，不再有专属写工具；按意图才挂写工具。
+        self.assertIn("run_code", cet6)
         self.assertNotIn("delete_vocab", cet6)
+        self.assertFalse({"add_vocab", "save_training_error", "rate_review"} & cet6)
+        cet6_intent = {s["name"] for s in tools.schemas_for(
+            "explain", surface="cet6", message="六级精听这句帮我记一下")}
+        self.assertIn("get_cet6_context", cet6_intent)
         self.assertIn("add_vocab", video)
         self.assertNotIn("rate_review", video)
         self.assertFalse({"add_vocab", "delete_vocab", "rate_review",

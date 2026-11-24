@@ -13,7 +13,8 @@ from .materials import read_material, save_material_note, search_materials
 from .records import ocr_image, read_attachment, search_records, today_summary
 from .study_tools import (due_reviews, forget_memory, get_cet6_context,
                           get_mastery, get_train_summary, list_recordings,
-                          recent_wrong_items, save_memory, save_wrongbook)
+                          list_vocab, recent_wrong_items, save_memory,
+                          save_wrongbook)
 from .system_tools import (browser_history, browser_status, launch_app, open_file,
                            open_url)
 from .travel import travel_trace_summary
@@ -55,6 +56,10 @@ def execute(name: str, args: dict, ctx: ToolContext) -> tuple[str, str, bool]:
                                        int(args.get("days") or 0),
                                        int(args.get("material_id") or 0), ctx=ctx),
                     "读了最近的错题", True)
+        if name == "list_vocab":
+            text = list_vocab(str(args.get("query") or ""),
+                              int(args.get("limit") or 20), ctx=ctx)
+            return text, "读了生词本", not text.startswith("读生词本失败")
         if name == "life_cards":
             text = life_cards(int(args.get("days") or 1),
                               int(args.get("limit") or 10), ctx=ctx)

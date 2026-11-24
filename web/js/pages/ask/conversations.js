@@ -49,6 +49,7 @@ export async function newConversation() {
   state.assistant = null;
   state.image = null;
   state.doc = null;
+  state.snapshot = null;
   state.recording = null;
   renderAttachments();
   dom.input.value = "";
@@ -74,6 +75,7 @@ export async function openConversation(id, options = {}) {
     const data = await api.get(`/api/conversations/${id}`);
     if (!state.mounted) return;
     state.convId = data.id;
+    state.snapshot = null;       // 打开已有会话 ⇒ 不沿用上一页带来的快照
     if (!options.allowStreaming) state.assistant = null;
     state.messages = Array.isArray(data.messages) ? data.messages : [];
     if (data.origin === "video" && data.recording_id) {

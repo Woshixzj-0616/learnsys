@@ -1,9 +1,8 @@
 // 英语聚合页：精听 / 写作·翻译 / 每日积累 / 复习。
 // 旧 #/cet6 由壳层重定向到这里；#/daily、#/english-review 仍可直达。这里只做收口，不改数据口径。
 import { mountListening } from "./listening.js";
-import {
-  clearContextProvider, mount as mountAI, setEnabled, setPage,
-} from "./ai.js";
+import { clearContextProvider, contextSnapshot, setPage } from "./ai.js";
+import { openAssistant } from "../../context.js";
 import { toast } from "../../ui.js";
 
 const TABS = {
@@ -26,7 +25,6 @@ let root = null;
 let panel = null;
 let cleanup = null;
 let subCleanup = null;
-let cleanupAI = null;
 let active = "";
 let subActive = "";
 let reviewKind = "sentence";
@@ -66,11 +64,10 @@ function setReviewKind(kind) {
   rememberTab("review");
 }
 
-// 便捷 AI：精听 iframe 自带一份，外层在这一页隐藏；其余标签共用外层抽屉。
+// 外层 AI 抽屉已退役；各 tab 只把当前题/选中文本登记给全局「问助手」。
 function syncAI(tab) {
   clearContextProvider();
   setPage(tab);
-  setEnabled(tab !== "listening");
 }
 
 function teardown() {
@@ -212,12 +209,42 @@ function initialSub(ctx) {
   return SUBTABS[requested] ? requested : "writing";
 }
 
+function selectionText() {
+  let text = String(window.getSelection?.()?.toString() || "");
+  if (!text && panel) {
+    const frame = panel.querySelector("iframe.cet6-frame");
+    try {
+      text = String(frame?.contentWindow?.getSelection?.()?.toString() || "");
+    } catch {
+      text = "";
+    }
+  }
+  return text.trim().slice(0, 2000);
+}
+
+function openEnglishAssistant() {
+  const snapshot = contextSnapshot({
+    surface: "english",
+    titlePrefix: "英语",
+    page: "english",
+    objectType: "english_tab",
+    selection: selectionText(),
+  });
+  openAssistant({ prompt: "", snapshot });
+}
+
 export async function mount(ctx) {
   root = ctx.root;
   panel = root.querySelector("#english-panel");
-  cleanupAI = mountAI(root);
   subCleanup = null;
   subActive = "";
+  const askButton = document.createElement("button");
+  askButton.type = "button";
+  askButton.className = "english-ask-fab";
+  askButton.textContent = "问助手";
+  askButton.title = "带着当前标签 / 选中文字问学习助手";
+  askButton.addEventListener("click", openEnglishAssistant);
+  root.appendChild(askButton);
   reviewKind = ctx.query.get("kind") === "word" ? "word" : "sentence";
   const requested = ctx.query.get("tab");
   const initial = requested && TABS[requested] ? requested : "listening";
@@ -234,10 +261,6 @@ export async function mount(ctx) {
 
 export function unmount() {
   teardown();
-  if (cleanupAI) {
-    try { cleanupAI(); } catch { /* 忽略 */ }
-    cleanupAI = null;
-  }
   active = "";
   root = null;
   panel = null;

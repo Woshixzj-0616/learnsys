@@ -56,6 +56,7 @@ class AskBar(BuildMixin, LayoutMixin, StateMixin, StreamMixin, ActionsMixin,
         self._moved = False
         self._turns: list[tuple[str, str]] = []   # 当前这轮的问答史（旧→新），追问时带给 AI
         self._thread = uuid.uuid4().hex[:12]      # 同一轮对话一个号，方便复盘
+        self._conversation_id = 0                 # conversations.id：重开/接历史用
         self._workers: list[_AskWorker] = []      # 后台问答线程（退出时要 wait，见 shutdown）
         self._usage_worker = None                 # 后台算占用的那个线程
         self._streaming = False
@@ -90,6 +91,8 @@ class AskBar(BuildMixin, LayoutMixin, StateMixin, StreamMixin, ActionsMixin,
         self.history_provider = None         # app 塞的：() -> [(ts, question, answer, kind, image_path, id), ...]
         self.history_days_provider = None    # app 塞的：() -> [(label, db_path, rows), ...] 更早的日子
         self.history_db_path_provider = None  # app 塞的：() -> str，今天那个库的路径（收藏要落对库）
+        self.conversation_provider = None    # app 塞的：() -> [list_conversations 行, ...]
+        self.conversation_loader = None      # app 塞的：(conv_id) -> {id,title,summary,pairs}
         self._state = self._load_state()
         self._answer_shown = False    # 答案面板是否在版面上（只有 set_state 能改）
         self._answer_h = self._load_answer_h()

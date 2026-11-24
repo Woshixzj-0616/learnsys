@@ -114,6 +114,39 @@ def list_conversations(conn: sqlite3.Connection, limit: int = 20,
     ]
 
 
+def conversation_pairs(conn: sqlite3.Connection, conversation_id: int,
+                       turns: int = 0) -> list[tuple[str, str]]:
+    """把落库的消息配成「问/答」对，喂给 Agent 做多轮上下文。
+
+    只收有正文的问答；出错/中断的消息跳过。兼容 v1 的纯字符串 content。
+    `turns=0` 返回全部；网页/快捷栏/试点共用这一份配对逻辑。
+    """
+    pairs: list[tuple[str, str]] = []
+    question = ""
+    for message in conversation_messages(conn, conversation_id):
+        content = message.get("content")
+        if message.get("role") == "user":
+            if isinstance(content, dict):
+                question = str(content.get("text") or "")
+            elif isinstance(content, str):
+                question = content
+        elif message.get("role") == "assistant" and question:
+            broken = False
+            if isinstance(content, dict):
+                answer = str(content.get("text") or "")
+                broken = bool(content.get("error") or content.get("interrupted"))
+            elif isinstance(content, str):
+                answer = content
+            else:
+                answer = ""
+            if answer.strip() and not broken:
+                pairs.append((question, answer))
+            question = ""
+    if turns and turns > 0:
+        return pairs[-turns:]
+    return pairs
+
+
 def conversation_messages(conn: sqlite3.Connection, conversation_id: int) -> list[dict]:
     with _LOCK:
         rows = conn.execute(

@@ -2,6 +2,7 @@
 import { api } from "../../api.js";
 import { toast } from "../../ui.js";
 import { MODE_NAMES, ctxRef, dom, resetState, setCtx, setDom, setSubDefault, state } from "./state.js";
+import { takeStagedSnapshot } from "../../context.js";
 import { renderThread } from "./thread.js";
 import { loadConversations, newConversation, openConversation } from "./conversations.js";
 import { closeMaterialPicker, loadMaterialPicker, onPickerKey, openMaterialPicker } from "./materials.js";
@@ -27,13 +28,24 @@ export async function mount(ctx) {
     thinkingDirty: state.thinkingDirty,
   } : null;
   const lastConv = state.convId;   // 切页期间跑完的会话：回来还停在这里
+  const staged = takeStagedSnapshot(ctx.query?.get("ctx") || "");
+  const discardStaged = Boolean(staged && running);
   resetState();
   setCtx(ctx);
   state.mounted = true;
   if (running) {
     Object.assign(state, running, { streaming: true });
   }
-  state.convId = running?.convId || Number(ctx.params[0]) || lastConv || null;
+  // 从资料/训练场唤起：强制新会话，别把旧 lastConv 接回来。
+  const forceNew = ctx.query?.get("new") === "1"
+    || Boolean(staged && !running);
+  state.convId = forceNew
+    ? null
+    : (running?.convId || Number(ctx.params[0]) || lastConv || null);
+  state.snapshot = discardStaged ? null : staged;
+  if (discardStaged) {
+    toast("上一轮还在写：等它写完再从页面里带上下文问", "err");
+  }
 
   setDom({
     thread: ctx.root.querySelector("#thread"),
@@ -114,6 +126,12 @@ export async function mount(ctx) {
     dom.input.dispatchEvent(new Event("input"));
     dom.input.focus();
     dom.status.textContent = "题目已填好 —— 想改就直接改，按 Enter 发送";
+  }
+  if (state.snapshot) {
+    const head = String(state.snapshot.title
+      || state.snapshot.object_id || "当前页面").trim();
+    dom.status.textContent = [dom.status.textContent, `已带上下文：${head}`]
+      .filter(Boolean).join(" · ");
   }
 }
 
@@ -218,6 +236,7 @@ export function bindEvents() {
       chars: Number(button.dataset.chars || 0),
     };
     state.doc = null;              // 资料库和一次性文档二选一，避免两段正文互相干扰
+    state.snapshot = null;         // 换了一份资料 ⇒ 上一页带来的快照作废
     closeMaterialPicker();
     renderAttachments();
     updateSendButton();

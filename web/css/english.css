@@ -50,4 +50,22 @@
   background: var(--accent-soft);
   color: var(--text);
 }
+/* 英语页不再挂外层 AI 抽屉；只保留一个「问助手」入口，打开全局助手。 */
+.english-ask-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 84px;
+  z-index: 60;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 12%);
+}
+.english-ask-fab:hover { background: var(--accent); color: #fff; }
 

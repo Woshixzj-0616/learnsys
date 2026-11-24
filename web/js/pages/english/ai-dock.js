@@ -1,6 +1,7 @@
 // AI 抽屉外壳：圆圈与划词安装、抽屉开关、上下文行、建议问题、视图切换与事件绑定。
 // 会话数据与 SSE 在 ai-session.js；这里只做 DOM 与交互，并把宿主接口注入会话层。
-import { TAB_NAMES, contextLine, safeProvider } from "./ai-context.js";
+import { buildSnapshot } from "../../context.js";
+import { TAB_NAMES, collectContext, contextLine, safeProvider } from "./ai-context.js";
 import { installFloating } from "./ai-floating.js";
 import {
   FALLBACK_SUGGESTS, SUGGESTS, buildDom, paintBubble, renderSuggest, renderWelcome,
@@ -232,6 +233,22 @@ export function setPage(tab) {
 
 export function openAI(view = "chat") {
   openDock(view);
+}
+
+/** 给全局助手带上下文：复用各 tab 的 provider，不依赖抽屉是否挂载。 */
+export function contextSnapshot(overrides = {}) {
+  const options = Object.assign({
+    activeTab,
+    tabNames: TAB_NAMES,
+    selection: pendingSelection,
+    recentActions: [],
+    provider,
+    surface: config.surface || "cet6",
+    titlePrefix: config.titlePrefix || "六级训练",
+    page: config.page || "cet6",
+    objectType: "cet6_tab",
+  }, overrides || {});
+  return buildSnapshot(collectContext(options));
 }
 
 export function mount(root, options = {}) {

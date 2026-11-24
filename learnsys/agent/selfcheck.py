@@ -23,6 +23,12 @@ ANSWER_STAMP_RE = re.compile(
 CLAIM_RE = re.compile(
     r"(资料|记录|错题本)[^。！？\n]{0,10}(说|提到|显示|写着|有|记载|表明|指出|说法)")
 URL_RE = re.compile(r"https?://[^\s<>\"'（）()【】\[\]，。；、一-鿿]+")
+WEB_CLAIM_RE = re.compile(r"(网上|网页|官网|官方文档|搜索|搜到|查到|链接|来源)")
+
+
+def _urls(text: str) -> set[str]:
+    return {match.group(0).rstrip(".,;:!?'\"。，；：、")
+            for match in URL_RE.finditer(str(text or ""))}
 
 REWRITE_SYSTEM = """你是学习工作台的校对员。用户会给你一份草稿、以及本轮工具实际返回的证据。
 你的任务：只修正草稿里**无法由证据支持**的引用和说法，其余内容、结构、语气尽量保持原样。
@@ -97,8 +103,7 @@ class Evidence:
         """本轮证据里出现过的 http(s) 链接（claims.audit 用同一份台账）。"""
         found: set[str] = set()
         for item in self.results:
-            for match in URL_RE.finditer(str(item.get("content") or "")):
-                found.add(match.group(0).rstrip(".,;:!?'\"。，；：、"))
+            found.update(_urls(item.get("content") or ""))
         return found
 
     def has_tool(self, name: str) -> bool:
@@ -160,6 +165,19 @@ def verify(answer: str, evidence: Evidence) -> list[str]:
         stamp = match.group(1)
         if stamp not in evidence.stamps:
             add(f"引用的记录时间 {stamp} 不在本轮工具结果里")
+
+    # 网页引用：联网工具用过的 URL 必须来自本轮结果；没联网却声称
+    # 「网上/搜索/查到」并贴链接，同样按未核实处理。普通知识题里顺手贴的
+    # 链接不主动判伪造，避免误伤。
+    answer_urls = _urls(text)
+    if answer_urls:
+        known_urls = evidence.urls()
+        web_used = evidence.has_tool("web_search") or evidence.has_tool("fetch_url")
+        claims_web = bool(WEB_CLAIM_RE.search(text))
+        if web_used or claims_web:
+            for url in sorted(answer_urls):
+                if url not in known_urls:
+                    add(f"引用了本轮没读过的网页链接 {url}")
 
     if not evidence.results and CLAIM_RE.search(text):
         add("回答声称来自本地资料/记录，但本轮没有调用任何工具")

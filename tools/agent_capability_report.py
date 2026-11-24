@@ -27,6 +27,7 @@ DOMAINS = {
     "知识点/BKT": ("get_mastery",),
     "复习队列": ("due_reviews",),
     "写作/翻译训练": ("get_train_summary",),
+    "生词本": ("list_vocab",),
     "录像": ("list_recordings",),
     "资料库": ("search_materials", "read_material"),
     "六级精听": ("get_cet6_context",),

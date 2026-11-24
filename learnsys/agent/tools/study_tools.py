@@ -386,3 +386,31 @@ def list_recordings(query: str = "", limit: int = 10,
     lines.append("（打开录像页：`#/recordings?session=<编号>`；"
                  "要正文用 search_records，kinds 选 transcripts。）")
     return "\n".join(lines)
+
+
+def list_vocab(query: str = "", limit: int = 20, *, ctx: ToolContext) -> str:
+    """读生词本里的 active 生词；编号可直接引用。"""
+    query = str(query or "").strip()
+    limit = max(1, min(int(limit or 20), 50))
+    conn = None
+    try:
+        conn = store.connect(ctx.db_path)
+        data = store.list_vocab(conn, query=query, limit=limit, offset=0,
+                                status="active")
+    except Exception as exc:  # noqa: BLE001 —— 库读失败要如实回给模型
+        return f"读生词本失败：{exc}"
+    finally:
+        if conn is not None:
+            conn.close()
+    items = data.get("items") or []
+    total = int(data.get("count") or len(items))
+    if not items:
+        if query:
+            return f"生词本里没有匹配「{query}」的生词。"
+        return "生词本里还没有 active 生词。"
+    lines = [f"生词本里共有 {total} 个 active 生词；下面是最近 {len(items)} 个（编号可直接引用）："]
+    for item in items:
+        meaning = _one_line(item.get("meaning"), 80) or "（无释义）"
+        due = f"；下次复习 {item['next_review']}" if item.get("next_review") else ""
+        lines.append(f"生词 #{item['id']} ｜ {item.get('word') or ''} ｜ {meaning}{due}")
+    return "\n".join(lines)

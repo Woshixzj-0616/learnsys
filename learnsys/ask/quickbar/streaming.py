@@ -127,6 +127,7 @@ class StreamMixin:
         self._drop_running()
         self._turns = []
         self._thread = uuid.uuid4().hex[:12]
+        self._conversation_id = 0
         self._reset_answer()
         self._start_turn("录像完成")
         link = (f"#/recordings?session={int(session_id)}" if session_id
@@ -180,6 +181,8 @@ class StreamMixin:
         self._worker._use_tools = use_tools
         self._worker._deep = bool(deep)
         self._worker._conversation_key = self._thread
+        self._worker._conversation_id = int(getattr(self, "_conversation_id", 0) or 0)
+        self._worker._display_text = str(display_text or send_text)
         self._workers.append(self._worker)       # 留着，退出时要 wait（shutdown）
         self._worker.finished.connect(self._reap_workers)
         if hasattr(self._worker, "activity"):
@@ -426,6 +429,8 @@ class StreamMixin:
         # 后台线程在 done 之前已经把 _run_info 写好；这里先取，再清 _worker。
         info = (getattr(self._worker, "_run_info", {})
                 if self._worker is not None else {})
+        self._conversation_id = int(info.get("conversation_id")
+                                    or getattr(self, "_conversation_id", 0) or 0)
         self._activity = ""
         if self._timer is not None:
             self._timer.stop()
@@ -473,6 +478,7 @@ class StreamMixin:
                 "kind": kind,
                 "image_path": image_path,
                 "thread": self._thread,
+                "conversation_id": int(getattr(self, "_conversation_id", 0) or 0),
             })
         self._scroll_follow()
         self.ask.setFocus(QtCore.Qt.OtherFocusReason)

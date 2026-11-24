@@ -179,5 +179,54 @@ class TestAgentState(unittest.TestCase):
         self.assertTrue(text.endswith("…"))
 
 
+class TestLearningAgentState(unittest.TestCase):
+    """P35.2：学习问答只带学习域，卡点按问题相关度展开。"""
+
+    def setUp(self):
+        self.conn = store.connect(":memory:")
+        self.addCleanup(self.conn.close)
+        self.day = _today()
+        store.add_wrong_item(
+            self.conn, question="which you desirely devote to in the futher", answer="")
+        store.upsert_project(self.conn, name="学习工作台", next_step="P35.2")
+        store.add_life_item(self.conn, title="交房租", due_date=self.day)
+        store.add_breakpoint_events(
+            self.conn, stamp=f"{self.day} 10:00:00", paper_id="paper-1",
+            paper="2025 年 6 月", section="听力", item="长对话",
+            sentences=[{"sentence": 3, "tags": ["连读"], "note": "", "loops": 2}])
+
+    def _state(self, query: str) -> str:
+        return home.agent_state(self.conn, self.day, scope="learning", query=query)
+
+    def test_learning_scope_has_no_project_or_life(self):
+        text = self._state("rsync 怎么定位错误")
+        self.assertIn("学习：今日", text)
+        self.assertIn("复习：到期", text)
+        self.assertNotIn("项目：", text)
+        self.assertNotIn("生活：", text)
+        self.assertNotIn("学习工作台", text)
+        self.assertNotIn("交房租", text)
+
+    def test_unrelated_question_does_not_expand_english_cards(self):
+        text = self._state("rsync 怎么定位错误")
+        self.assertNotIn("desirely", text)
+        self.assertIn("错题：最近 1 条待复习", text)
+
+    def test_related_question_expands_cards(self):
+        text = self._state("这句英文怎么改")
+        self.assertIn("desirely", text)
+        text = self._state("我最近错了哪些题")
+        self.assertIn("desirely", text)
+
+    def test_breakpoint_only_for_cet6_questions(self):
+        self.assertNotIn("六级断点", self._state("rsync 怎么定位错误"))
+        self.assertIn("六级断点", self._state("六级精听这段怎么练"))
+
+    def test_full_scope_remains_three_domains(self):
+        text = home.agent_state(self.conn, self.day)
+        self.assertIn("项目：", text)
+        self.assertIn("生活：", text)
+
+
 if __name__ == "__main__":
     unittest.main()

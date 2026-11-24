@@ -14,7 +14,7 @@ from collections.abc import Generator
 from dataclasses import dataclass, field
 
 from learnsys import config, prompt_budget
-from learnsys.agent import finish_turn, planning, selfcheck, tools
+from learnsys.agent import finish_turn, planning, selfcheck, tool_budget, tools
 from learnsys.agent import usage as agent_usage
 from learnsys.agent.events import AgentEvent
 from learnsys.agent.fallback import stream_with_fallback
@@ -40,7 +40,8 @@ class AgentRequest:
     attachment_text: str = ""
     mode: str = "explain"
     module: str = "ask"
-    surface: str = "ask"            # ask / cet6 / video / quickbar —— 决定工具裁剪
+    surface: str = "ask"            # ask / cet6 / video / quickbar —— 旧入口裁剪
+    profile: str = ""               # assistant / assistant.quick / assistant.app；空 = 旧 surface 逻辑
     system_override: str = ""       # 非导师任务（如电脑助手出 JSON 计划）用
     use_tools: bool = True          # 纯生成任务别让它去查记录
     conversation_id: int | None = None   # 测验自动收题的去重键要用
@@ -70,6 +71,7 @@ class _RunState:
     tool_seen: set[tuple] = field(default_factory=set)      # (工具名, 参数) 去重
     tool_attempts: dict[str, int] = field(default_factory=dict)
     gate_rounds: int = 0                                    # 取证补轮次数（最多 1）
+    convergence_hinted: set = field(default_factory=set)    # 3/6 次工具预算提示已发过
     memory: dict = field(default_factory=dict)              # 本轮注入的记忆审计
     prompt: dict = field(default_factory=dict)              # 本轮提示词预算审计
     tool_tokens: int = 0                                    # 已塞回模型的工具结果 token
@@ -242,6 +244,21 @@ def _handle_tool_call(turn: _Turn, call, tool_results: list[dict], *,
         state.tool_seen.add(signature)
         state.tool_attempts["run_code"] = attempts + 1
 
+    # 只读工具防抖：同名同参第二次调用不会得到新结果；到次数上限就收手。
+    reason = tool_budget.note_readonly(state, call.name, call.input)
+    if reason:
+        state.tool_calls += 1
+        yield AgentEvent("tool_start", data={
+            "name": call.name, "input": call.input,
+            "label": tools.label_for(call.name)})
+        yield AgentEvent("tool_end", data={
+            "name": call.name, "preview": "重复/超限，已跳过", "ok": False})
+        tool_results.append({
+            "type": "tool_result", "tool_use_id": call.id,
+            "content": f'<record source="{call.name}">\n{reason}\n</record>',
+        })
+        return True
+
     step_index = planning.match_step(state.plan, call.name)
     goal = (state.plan[step_index]["title"] if step_index is not None else "")
     if planning.mark_step(state.plan, step_index, "doing"):
@@ -341,7 +358,8 @@ def _handle_tool_call(turn: _Turn, call, tool_results: list[dict], *,
 
 
 def _run_tool_loop(turn: _Turn, *, abort, response_sink, max_steps,
-                   confirm) -> Generator[AgentEvent, None, bool]:
+                   confirm, allow_final: bool = True
+                   ) -> Generator[AgentEvent, None, bool]:
     """模型 ↔ 工具轮次主循环；返回 False 表示本轮已被中止。"""
     state = turn.state
     for step in range(max(1, int(max_steps))):
@@ -374,13 +392,54 @@ def _run_tool_loop(turn: _Turn, *, abort, response_sink, max_steps,
                         turn, call, tool_results,
                         confirm=confirm, abort=abort)):
                     return False
+            hint = tool_budget.budget_hint(turn)
+            if hint:
+                # 同一批 tool_result 后面追加 text 块；Anthropic 允许 user 消息
+                # 里 tool_result 后跟 text，但不能伪造没有 tool_use_id 的 tool_result。
+                tool_results.append({"type": "text", "text": hint})
             turn.messages.append({"role": "user", "content": tool_results})
             continue
         break
 
     if state.stop_reason == "tool_use":
+        if (allow_final
+                and str(getattr(turn.request, "profile", "") or "").startswith("assistant")):
+            yield from _final_answer_without_tools(turn, abort=abort,
+                                                   response_sink=response_sink)
+            return True
         raise AgentError("工具调用次数太多，先停一下 —— 换个更具体的问题试试。")
     return True
+
+
+def _final_answer_without_tools(turn: _Turn, *, abort, response_sink
+                                ) -> Generator[AgentEvent, None, None]:
+    """工具步数用完：不再给工具，要求模型基于已有证据直接作答。
+
+    只用于学习助手；工作台旧入口保持「工具次数太多」的报错口径。
+    """
+    state = turn.state
+    hint = ("【工具预算用完】不要再调用工具。请直接基于上面已经拿到的工具结果"
+            "回答；引用已有的资料 id/页码、错题号或运行输出；"
+            "没有拿到的证据就明说「没查到/资料里没有」，不要编。")
+    last = turn.messages[-1] if turn.messages else None
+    if (isinstance(last, dict) and last.get("role") == "user"
+            and isinstance(last.get("content"), list)):
+        last["content"].append({"type": "text", "text": hint})
+    else:
+        turn.messages.append({"role": "user", "content": [
+            {"type": "text", "text": hint}]})
+    state.steps += 1
+    state.model_calls += 1
+    result = yield from _stream_once(
+        turn.provider, turn.cfg_holder, turn.system, turn.messages, None,
+        abort, response_sink, state, source="final")
+    if result is None:
+        raise AgentError("工具预算用完后模型没有返回结果（连接可能被中断了）。")
+    state.stop_reason = "end_turn"
+    if result.text:
+        state.text = result.text.strip()
+    if not state.text.strip():
+        raise AgentError("工具预算用完后没有拿到回答，请换个更具体的问题试试。")
 
 
 def _retry_thinking_only(turn: _Turn, *, abort,

@@ -1,5 +1,6 @@
 // 资料详情层：正文 / 笔记编辑、资料操作与「生成术语表 / 提纲」弹窗。
 import { api, download, streamChat } from "../api.js";
+import { buildSnapshot, openAssistant } from "../context.js";
 import { renderInto } from "../markdown.js";
 import { escapeHtml, toast } from "../ui.js";
 import { KIND_LABEL } from "./materials-list.js";
@@ -136,8 +137,26 @@ async function exportMaterial(app) {
 }
 
 function askAbout(app) {
-  const prompt = "先讲清这份资料的整体结构，再指出最该记住的 5 个点。";
-  location.hash = `#/ask?material=${app.selected.id}&prompt=${encodeURIComponent(prompt)}`;
+  const item = app.selected;
+  const selection = String(window.getSelection?.()?.toString() || "")
+    .trim().slice(0, 2000);
+  const prompt = selection
+    ? "解释我在这份资料里选中的这段内容，并结合上下文说明。"
+    : "先讲清这份资料的整体结构，再指出最该记住的 5 个点。";
+  const snapshot = buildSnapshot({
+    surface: "materials",
+    object_type: "material",
+    object_id: String(item.id),
+    title: item.title || "",
+    selection,
+    surrounding: {
+      kind: item.kind || "",
+      chars: item.chars || 0,
+      page: item.page || "",
+    },
+    provenance: { app: "materials", page: "materials-detail" },
+  });
+  openAssistant({ prompt, snapshot, materialId: item.id });
 }
 
 function quizFromMaterial(app) {

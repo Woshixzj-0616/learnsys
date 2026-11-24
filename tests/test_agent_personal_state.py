@@ -63,6 +63,8 @@ class TestRequestAndWiring(unittest.TestCase):
         source = (ROOT / "learnsys" / "server" / "routes_agent" / "chat.py") \
             .read_text(encoding="utf-8")
         self.assertIn("home_service.agent_state", source)
+        self.assertIn('scope="learning"', source)
+        self.assertIn("query=req.message", source)
         self.assertIn("personal_state=", source)
 
     def test_state_path_does_not_import_services(self):

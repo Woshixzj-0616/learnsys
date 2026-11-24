@@ -11,5 +11,9 @@
   "home": true,
   "tagline": "课件、笔记、术语表",
   "description": "导入 PDF / Word / PPT / TXT / Markdown，自动抽正文；可检索段落、挂到问一问、生成术语表和提纲。",
-  "script": "js/pages/materials.js"
+  "script": "js/pages/materials.js",
+  "agent_entry": "deep-link",
+  "context_providers": ["materials.current_item"],
+  "read_services": ["materials.search", "materials.read"],
+  "write_services": ["material_note.save"]
 }

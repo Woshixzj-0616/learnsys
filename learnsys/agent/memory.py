@@ -117,10 +117,16 @@ def _suppress(items: list[dict]) -> tuple[list[dict], list[int]]:
 
 def select_for_prompt(data_root, *, query: str = "", context: str = "",
                       scope_hints=(), limit: int = DEFAULT_LIMIT,
-                      max_chars: int = DEFAULT_CHARS) -> dict:
-    """按作用域、词面相关度、置信度和新鲜度挑记忆；返回选中项与审计信息。"""
+                      max_chars: int = DEFAULT_CHARS,
+                      exclude_prefixes=()) -> dict:
+    """按作用域、词面相关度、置信度和新鲜度挑记忆；返回选中项与审计信息。
+
+    `exclude_prefixes`：按 scope 前缀排除（学习助手传 `("project:",)`，
+    避免旅行/工作项目记忆挤进 C++/网络概念题）。
+    """
     empty = {"items": [], "ids": [], "chars": 0, "suppressed": [],
              "scopes": [], "budget": {"items": limit, "chars": max_chars}}
+    prefixes = tuple(str(item) for item in exclude_prefixes if item)
     try:
         conn = store.connect(db_path(data_root))
     except Exception:
@@ -128,7 +134,9 @@ def select_for_prompt(data_root, *, query: str = "", context: str = "",
     try:
         items = [item for item in store.list_memories(
             conn, limit=500, status="active")
-            if item.get("kind") not in PROFILE_KINDS]
+            if item.get("kind") not in PROFILE_KINDS
+            and not any(str(item.get("scope") or "").startswith(prefix)
+                        for prefix in prefixes)]
         hints = {str(item) for item in scope_hints if item}
         search = f"{query}\n{context}"
         # 只有显式钉住的回答铁律才每轮必带；普通 rule 也按相关度竞争，

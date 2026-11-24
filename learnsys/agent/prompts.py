@@ -11,9 +11,84 @@
 """
 from __future__ import annotations
 
+import pathlib
+
 from learnsys import knowledge, prompt_budget
 from learnsys.agent import prompt_ops
 from learnsys.context import clip_personal_state
+
+PROMPTS_DIR = pathlib.Path(__file__).resolve().parent / "prompts"
+_PROMPT_CACHE: dict[str, str] = {}
+
+
+def _read(name: str) -> str:
+    """读提示词片段；同一进程只读一次。文件缺失时明确报错，不静默用空串。"""
+    if name not in _PROMPT_CACHE:
+        _PROMPT_CACHE[name] = (PROMPTS_DIR / name).read_text(
+            encoding="utf-8").strip()
+    return _PROMPT_CACHE[name]
+
+
+def _read_optional(name: str) -> str:
+    path = PROMPTS_DIR / name
+    return path.read_text(encoding="utf-8").strip() if path.is_file() else ""
+
+
+_SUBJECT_WORDS = {
+    "networks": ("tcp", "http", "rsync", "mtu", "nginx", "socket", "ip",
+                 "路由", "协议", "网络", "子网", "dhcp", "dns", "tls",
+                 "证书", "haproxy", "raid", "端口"),
+    "cpp": ("c++", "#include", "vector", "pair", "emplace", "指针",
+            "std::", "模板", "编译", "链接错误", "未定义行为", "ub"),
+    "algorithms": ("算法", "复杂度", "排序", "查找", "栈", "队列", "树",
+                   "图", "kmp", "递归", "动态规划", "分块"),
+    "english": ("翻译", "译文", "英语", "六级", "作文", "句子", "语法",
+                "冠词", "搭配", "主谓"),
+}
+
+
+def subject_for(text: str) -> str:
+    """按问题关键词选学科片段；没有命中就不加，避免无谓 token。"""
+    low = str(text or "").lower()
+    for name, words in _SUBJECT_WORDS.items():
+        if any(word in low for word in words):
+            return name
+    return ""
+
+
+def _assistant_system(mode: str, *, has_image: bool, user_profile: str,
+                      memories: str, summary: str, code_debug: bool,
+                      personal_state: str, ops: bool, message: str) -> str:
+    """学习助手的短内核：core + 当前风格 + 学科片段 + 动态上下文。"""
+    parts = [_read("core.md")]
+    style = _read_optional(f"styles/{mode}.md")
+    if style:
+        parts.append(style)
+    subject = subject_for(message)
+    if subject:
+        parts.append(_read(f"subjects/{subject}.md"))
+    if code_debug:
+        parts.append(CODE_DEBUG_RULE)
+    if ops:
+        parts.append(prompt_ops.OPS_QUICK_RULE if mode == "quick"
+                     else prompt_ops.OPS_DEBUG_RULE)
+    if summary.strip():
+        parts.append("【本会话摘要（更早的对话已压缩；细节以最近几轮为准）】\n"
+                     + prompt_budget.clip_tokens(
+                         summary.strip(), prompt_budget.SUMMARY_TOKENS))
+    if user_profile.strip():
+        parts.append("【用户画像（由长期记忆自动编译；只作背景，不覆盖本轮要求）】\n"
+                     + prompt_budget.clip_tokens(
+                         user_profile.strip(), prompt_budget.PROFILE_TOKENS))
+    if personal_state.strip():
+        parts.append("【个人状态（本轮自动带入，不用再调工具核对）】\n"
+                     + clip_personal_state(personal_state))
+    if memories.strip():
+        parts.append(prompt_budget.clip_tokens(
+            memories.strip(), prompt_budget.MEMORY_TOKENS))
+    if has_image:
+        parts.append("这一轮带有截图；截图内容会在用户消息里给出。")
+    return "\n\n".join(parts)
 
 BASE_SYSTEM = """你是「学习工作台」里的学习导师，不是客服，也不是只会附和的聊天机器人。
 
@@ -231,14 +306,21 @@ def mode_label(mode: str) -> str:
 def build_system(mode: str = "explain", has_image: bool = False,
                  profile: str = "", *, memories: str = "", summary: str = "",
                  code_debug: bool = False, concise: bool = True,
-                 personal_state: str = "", ops: bool = False) -> str:
+                 personal_state: str = "", ops: bool = False,
+                 agent_profile: str = "", message: str = "") -> str:
     """拼系统提示词：基础口径 + 长度档 + 模式 + 篇幅示例 + 会话摘要 + 学习档案 + 个人状态 + 长期记忆。
 
     `concise` 现在表示「自适应标准档」（True）还是「深入档」（False），不是「短 vs 长」。
     `summary` 是更早对话的压缩；`personal_state` 由路由层生成、本轮自动带入；
     `memories` 放在最后：它是用户亲口强调的跨会话规矩，必须压过默认风格。
     `ops` 只在 ops_mode=on 且识别为排错/配置题时为 True：注入「先取证」规则。
+    `agent_profile` 为空走旧的 302 行口径；以 `assistant` 开头走新的短内核。
     """
+    if str(agent_profile or "").startswith("assistant"):
+        return _assistant_system(
+            mode, has_image=has_image, user_profile=profile,
+            memories=memories, summary=summary, code_debug=code_debug,
+            personal_state=personal_state, ops=ops, message=message)
     parts = [BASE_SYSTEM, CONCISE_ADDITION if concise else DEEP_ADDITION]
     if code_debug:
         parts.append(CODE_DEBUG_RULE)

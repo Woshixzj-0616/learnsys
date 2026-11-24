@@ -131,10 +131,6 @@ WRITING_WRITE_SCHEMAS = [
     SAVE_TRAINING_ERROR_SCHEMA,
 ]
 
-# 六级入口：加词、收训练错题、复习评档；删除仍只在工作台。
-CET6_WRITE_SCHEMAS = [ADD_VOCAB_SCHEMA, SAVE_TRAINING_ERROR_SCHEMA,
-                      RATE_REVIEW_SCHEMA]
-
 WRITING_WRITE_TOOLS = {"add_vocab", "delete_vocab", "rate_review",
                        "save_training_error"}
 

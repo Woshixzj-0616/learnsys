@@ -31,7 +31,8 @@ from .schemas import (ART_WORKS_SCHEMA,
                       label_for, schemas_for, write_summary)
 from .study_tools import (due_reviews, forget_memory, get_cet6_context,
                           get_mastery, get_train_summary, list_recordings,
-                          recent_wrong_items, save_memory, save_wrongbook)
+                          list_vocab, recent_wrong_items, save_memory,
+                          save_wrongbook)
 from .system_tools import (browser_history, browser_status, launch_app, open_file,
                            open_url)
 from .travel import travel_trace_summary
@@ -56,7 +57,7 @@ __all__ = [
     "search_materials", "read_material", "save_material_note",
     "save_wrongbook", "get_cet6_context", "save_memory", "forget_memory",
     "recent_wrong_items", "due_reviews", "get_mastery", "get_train_summary",
-    "list_recordings", "write_study_file", "run_code",
+    "list_recordings", "list_vocab", "write_study_file", "run_code",
     "add_vocab", "delete_vocab", "rate_review", "save_training_error",
     "open_file", "launch_app", "open_url", "browser_status", "browser_history",
     "life_cards", "life_items", "art_works",

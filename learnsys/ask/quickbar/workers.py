@@ -7,8 +7,8 @@ import uuid
 
 from PySide6 import QtCore, QtWidgets
 
-from learnsys import agent, diagnostics, store
-from learnsys.agent import answer_audit
+from learnsys import agent, config, diagnostics, store
+from learnsys.agent import answer_audit, correction
 from learnsys.agent import tools as agent_tools
 from learnsys.agent.run_record import trace_event
 from learnsys.ask import usage
@@ -27,30 +27,36 @@ def reset_personal_state_cache() -> None:
         _STATE_CACHE.update(at=None, text="")
 
 
-def _load_personal_state() -> str:
-    """真正查库的动作；放单独函数方便测试替换。"""
+def _load_personal_state(query: str = "") -> str:
+    """真正查库的动作；放单独函数方便测试替换。
+
+    快捷栏也是学习助手：只带学习域状态，并按当轮问题决定卡点要不要展开。
+    """
     from learnsys.services import home
 
     conn = store.connect()
     try:
-        return home.agent_state(conn)
+        return home.agent_state(conn, scope="learning", query=query)
     finally:
         conn.close()
 
 
-def personal_state(now: float | None = None) -> str:
-    """给快捷栏本轮的个人状态；60 秒缓存，失败不缓存、下一轮重试。"""
+def personal_state(now: float | None = None, query: str = "") -> str:
+    """给快捷栏本轮的个人状态；空 query 沿用 60 秒缓存，带问题时不缓存原文。"""
     moment = time.monotonic() if now is None else float(now)
-    with _STATE_LOCK:
-        cached_at = _STATE_CACHE["at"]
-        if cached_at is not None and moment - cached_at < PERSONAL_STATE_TTL:
-            return str(_STATE_CACHE["text"] or "")
+    question = str(query or "").strip()
+    if not question:
+        with _STATE_LOCK:
+            cached_at = _STATE_CACHE["at"]
+            if cached_at is not None and moment - cached_at < PERSONAL_STATE_TTL:
+                return str(_STATE_CACHE["text"] or "")
     try:
-        text = _load_personal_state()
+        text = _load_personal_state(question)
     except Exception:
         return ""
-    with _STATE_LOCK:
-        _STATE_CACHE.update(at=moment, text=text)
+    if not question:
+        with _STATE_LOCK:
+            _STATE_CACHE.update(at=moment, text=text)
     return text
 
 
@@ -64,6 +70,74 @@ class _UsageWorker(QtCore.QThread):
             self.done.emit(usage.summary())
         except Exception as exc:                 # 后台线程里的异常别吞
             self.done.emit(exc)
+
+
+def _conversation_title(question: str) -> str:
+    return " ".join(str(question or "").split())[:30] or "快捷栏问答"
+
+
+def start_conversation(worker) -> tuple[int, list[tuple[str, str]], str]:
+    """建/续快捷栏会话，写 user 消息，返回 (会话 id, 历史问答对, 摘要)。
+
+    任何一步失败都只记诊断并返回 `(0, [], "")`，绝不能影响这一轮回答；
+    测试里 `store.connect` 可能被 mock 成 Mock，`int(Mock)` 会抛 TypeError。
+    """
+    question = str(getattr(worker, "_display_text", "") or worker._question or "")
+    try:
+        conn = store.connect()
+        try:
+            conv_id = int(getattr(worker, "_conversation_id", 0) or 0)
+            summary = ""
+            if conv_id:
+                row = store.get_conversation(conn, conv_id)
+                if row is None:
+                    conv_id = 0
+                else:
+                    summary = str(row[4] or "").strip()
+            if not conv_id:
+                conv_id = int(store.create_conversation(
+                    conn, title=_conversation_title(question),
+                    module="ask", mode=getattr(worker, "_mode", "explain"),
+                    origin="quickbar") or 0)
+            store.add_message(conn, conv_id, "user", {
+                "text": question, "surface": "quickbar"})
+            history = store.conversation_pairs(conn, conv_id)
+            worker._conversation_id = int(conv_id)
+            return conv_id, history, summary
+        finally:
+            conn.close()
+    except Exception as exc:            # noqa: BLE001 —— 会话落库失败不能拖垮回答
+        diagnostics.log_swallow("快捷栏会话落库（开始）", exc)
+        return 0, [], ""
+
+
+def save_assistant_message(worker, text: str, error: str = "") -> bool:
+    """写 assistant 消息；有部分正文的中断轮也写，完全没有正文就不写。"""
+    conv_id = int(getattr(worker, "_conversation_id", 0) or 0)
+    body = str(text or "")
+    if not conv_id or (not body.strip() and not error):
+        return False
+    content = {"text": body}
+    if error:
+        content["error"] = str(error)[:500]
+        if body.strip():
+            content["interrupted"] = True
+    try:
+        conn = store.connect()
+        try:
+            store.add_message(conn, conv_id, "assistant", content)
+        finally:
+            conn.close()
+    except Exception as exc:            # noqa: BLE001
+        diagnostics.log_swallow("快捷栏会话落库（回答）", exc)
+        return False
+    try:
+        from learnsys.agent import post_turn
+        data_root = getattr(load_config(), "data_root", None) or config.DATA_ROOT
+        post_turn.schedule(conv_id, data_root)
+    except Exception as exc:            # noqa: BLE001
+        diagnostics.log_swallow("快捷栏会话摘要排程", exc)
+    return True
 
 
 class _AskWorker(QtCore.QThread):
@@ -88,6 +162,8 @@ class _AskWorker(QtCore.QThread):
         self._use_tools = True
         self._deep = False             # 用户点了「深入讲」：强模型 + 思考
         self._conversation_key = ""    # 同一轮对话的稳定号，测验收错题去重用
+        self._conversation_id = 0      # 会话真相（conversations.id）；0 = 还没建/建失败
+        self._display_text = ""        # 落库/标题用的问题，不含挂载文档正文
         self._run_info: dict = {}      # 给界面落库用的本轮信息（模型/首字/总时长）
         self._cancelled = False
         self._abort = threading.Event()       # 传给 Agent：一置位就收摊
@@ -137,6 +213,7 @@ class _AskWorker(QtCore.QThread):
             "trace": [],
         }
         recorded = [False]
+        saved_assistant = [False]
 
         def build_info() -> dict:
             model = stats["model"]
@@ -156,6 +233,7 @@ class _AskWorker(QtCore.QThread):
                 "tool_count": stats["tool_count"],
                 "stop_reason": stats["stop_reason"],
                 "error": stats["error"],
+                "conversation_id": int(self._conversation_id or 0),
             }
             self._run_info = info       # 界面在 done 槽里读它，必须早于 done.emit
             return info
@@ -171,8 +249,10 @@ class _AskWorker(QtCore.QThread):
                 conn = store.connect()
                 try:
                     store.add_agent_run(
-                        conn, run_id=info["run_id"], conversation_id=0,
-                        question=self._question[:200], model=info["model"],
+                        conn, run_id=info["run_id"],
+                        conversation_id=int(info.get("conversation_id") or 0),
+                        question=(self._display_text or self._question)[:200],
+                        model=info["model"],
                         mode=self._mode, started_at=started_at,
                         finished_at=store.now(), first_ms=info["first_ms"],
                         total_ms=info["total_ms"], steps=info["steps"],
@@ -187,20 +267,33 @@ class _AskWorker(QtCore.QThread):
             except Exception as exc:
                 diagnostics.log_swallow("快捷栏运行流水", exc)
 
+        # 会话真相：非导师任务（复盘/报告/电脑助手）不落学习会话；
+        # 用户已经取消就完全不建会话，避免留下空壳。
+        conv_id, db_history, summary = 0, [], ""
+        if not self._cancelled and not self._system_override.strip():
+            conv_id, db_history, summary = start_conversation(self)
+        self._conversation_id = int(conv_id or 0)
+        history = db_history if conv_id else list(self._history or [])
+        turn_deep = bool(self._deep or (
+            not self._system_override.strip()
+            and correction.detect(self._display_text or self._question)))
         try:
             request = agent.AgentRequest(
                 message=self._question,
-                history=self._history,
+                history=history,
+                history_summary=summary,
                 image_path=self._image_path,
                 extra_images=self._extra_images,
                 context=self._context,
-                personal_state=personal_state(),
+                personal_state=personal_state(query=self._display_text or self._question),
                 mode=self._mode,
                 surface="quickbar",
+                profile="assistant.quick",
                 system_override=self._system_override,
                 use_tools=self._use_tools,
+                conversation_id=conv_id or None,
                 conversation_key=self._conversation_key,
-                deep=self._deep,
+                deep=turn_deep,
             )
             for event in agent.run(request, abort=self._abort, response_sink=self._sink,
                                    confirm=self._confirm_write):
@@ -296,21 +389,34 @@ class _AskWorker(QtCore.QThread):
             if not text:
                 raise agent.AgentError("答案回来了但是空的，再问一次试试。")
             info = build_info()
+            # 先落会话消息和运行流水，再发 done：界面收到 answered 写 asks 时，
+            # conversation 里已经有完整的一问一答。
+            saved_assistant[0] = save_assistant_message(self, text)
+            write_run(info)
             self.done.emit(text)
             if not self._deep:
                 reason = answer_audit.check(text)
                 if reason:
                     self.deep_suggested.emit("audit")
-            write_run(info)
         except agent.AgentError as exc:
             stats["error"] = str(exc)
             stats["error_count"] += 1
+            saved_assistant[0] = save_assistant_message(
+                self, "".join(parts), error=str(exc))
+            write_run(build_info())
             self.failed.emit(str(exc))
         except Exception as exc:                      # 兜底：别让后台异常把界面搞死
             stats["error"] = f"出错了：{exc}"
             stats["error_count"] += 1
+            saved_assistant[0] = save_assistant_message(
+                self, "".join(parts), error=stats["error"])
+            write_run(build_info())
             self.failed.emit(f"出错了：{exc}")
         finally:
+            # 用户点取消时 run() 会提前 return，这里兜住已经流出的半截回答。
+            if not saved_assistant[0]:
+                saved_assistant[0] = save_assistant_message(
+                    self, "".join(parts), error=stats["error"])
             if not recorded[0]:
                 write_run(build_info())
 

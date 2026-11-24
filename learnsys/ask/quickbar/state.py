@@ -83,6 +83,7 @@ class StateMixin:
         """回到「还没问东西」的样子。框选可选，不框也能直接打字问。"""
         self._turns = []
         self._thread = uuid.uuid4().hex[:12]
+        self._conversation_id = 0
         self.drop_image()
         self.clear_doc()
         self._reset_answer()
@@ -141,6 +142,7 @@ class StateMixin:
         self._drop_running()
         self._turns = []
         self._thread = uuid.uuid4().hex[:12]
+        self._conversation_id = 0
         self._reset_answer()
         if self._image_path:
             self.show_message("已开新会话 —— 不带上一题，看的还是这张图。")
@@ -169,6 +171,7 @@ class StateMixin:
         self._image_path = image_path
         self._turns = []
         self._thread = uuid.uuid4().hex[:12]
+        self._conversation_id = 0
         self.clear_doc()               # 换了新截图，挂着的文档先摘掉（两者会互相干扰）
         self.thumb.setPixmap(_thumb(shot, THUMB_W, THUMB_H))
         self.thumb.setVisible(True)

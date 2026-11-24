@@ -172,7 +172,28 @@ class ActionsMixin:
 
     def _show_history(self) -> None:
         rows = self.history_provider() if self.history_provider else None
+        conversations = []
+        if self.conversation_provider is not None:
+            try:
+                conversations = self.conversation_provider() or []
+            except Exception:
+                conversations = []          # 会话列表坏了别拦着问答历史
         menu = QtWidgets.QMenu(self)
+        if conversations:
+            menu.addAction("继续会话（带上下文）").setEnabled(False)
+            for item in conversations[:6]:
+                conv_id = int(item.get("id") or 0)
+                if not conv_id:
+                    continue
+                stamp = str(item.get("updated_at") or "")[11:16]
+                title = str(item.get("title") or f"会话 #{conv_id}")
+                short = title if len(title) <= 22 else title[:22] + "…"
+                action = menu.addAction(
+                    f"{stamp}  会话 {int(item.get('messages') or 0)} 条  {short}")
+                action.setToolTip(str(item.get("summary") or title))
+                action.triggered.connect(
+                    lambda checked=False, cid=conv_id: self._open_conversation(cid))
+            menu.addSeparator()
         menu.addAction("最近的问答（[图]=带截图 · [文]=纯文字 · 点开可收藏）").setEnabled(False)
         menu.addSeparator()
         if not rows:
@@ -196,6 +217,50 @@ class ActionsMixin:
             for label, db_path, day_rows in days:
                 self._add_ask_rows(older.addMenu(label), day_rows, db_path)
         menu.exec(QtGui.QCursor.pos())
+
+    def _open_conversation(self, conversation_id: int) -> None:
+        """把一份历史会话接回来：摘要 + 最近问答，可继续追问。"""
+        payload = None
+        if self.conversation_loader is not None:
+            try:
+                payload = self.conversation_loader(int(conversation_id))
+            except Exception:
+                payload = None
+        if not payload:
+            self.show_message("这个会话读不出来 —— 可能已经被清掉了。")
+            return
+        pairs = list(payload.get("pairs") or [])
+        conv_id = int(payload.get("id") or conversation_id)
+        title = str(payload.get("title") or f"会话 #{conv_id}")
+        summary = str(payload.get("summary") or "").strip()
+        self._drop_running()
+        self._reset_answer()
+        self._conversation_id = conv_id
+        self._thread = str(conv_id)
+        self._turns = list(pairs[-8:])
+        self._start_turn(f"已接回会话 #{conv_id} · {title}"[:80])
+        lines = []
+        if summary:
+            lines += [f"【会话摘要】{summary}", ""]
+        for question, answer in pairs[-3:]:
+            lines += [f"我：{question}", f"答：{answer}", ""]
+        if not lines:
+            lines.append("（这个会话还没有完整问答；可以直接追问。）")
+        body = "\n".join(lines).strip()
+        self._set_answer_markdown(body)
+        self._last_answer = pairs[-1][1] if pairs else ""
+        last_question = pairs[-1][0] if pairs else title
+        self._last_turn = {
+            "send_text": last_question, "display_text": last_question,
+            "context": "", "image_path": "", "extra_images": [],
+        }
+        self._showing_history = False
+        self._starrable = None
+        self.star_btn.setText("收藏")
+        self.set_state(STATE_DONE, status=f"已接回会话 #{conv_id} · 直接追问")
+        self.answer.verticalScrollBar().setValue(
+            self.answer.verticalScrollBar().maximum())
+        self.ask.setFocus()
 
     def _add_ask_rows(self, menu, rows, db_path: str) -> None:
         """往菜单里铺一列问答行；点开 = 塞进答案区看全文（带着收藏信息）。"""
@@ -228,6 +293,7 @@ class ActionsMixin:
         self._drop_running()
         self._turns = []                       # 看历史 ⇒ 后面那问不带旧上下文
         self._thread = uuid.uuid4().hex[:12]
+        self._conversation_id = 0
         self._reset_answer()
         tag = "【图问】" if kind == "image" else "【文问】"
         head = f"{tag}{question}"

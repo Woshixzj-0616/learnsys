@@ -1,7 +1,6 @@
 """对话主体：SSE 流、停止、写操作确认。"""
 from __future__ import annotations
 
-import dataclasses
 import queue
 import threading
 import time
@@ -13,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from learnsys import agent, diagnostics, store
-from learnsys.agent import cost as agent_cost, debug_intent
+from learnsys.agent import correction, cost as agent_cost, debug_intent
 from learnsys.agent.events import AgentEvent
 from learnsys.llm.config import load_config
 from learnsys.context import ContextSnapshot
@@ -61,6 +60,7 @@ class ChatRequest(BaseModel):
     module: str = "ask"          # ask / review / quiz ...（会话分组用，不进入时间线标题）
     internal: bool = False       # 插件内部提示词：保留会话上下文，但不记成一条「问答」
     surface: str = "ask"         # ask / cet6 / materials ...
+    profile: str = ""            # assistant / assistant.quick；空 = 按 surface 推断
     context_snapshot: dict | None = None   # 结构化上下文，<= 20KB
     result_id: int = 0               # 引用已有结果资产（分析/翻译），不复制正文
     deep: bool = False               # 用户点「深入讲」：本轮强模型/思考档
@@ -97,7 +97,9 @@ def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
               else ("cet6" if req.surface == "cet6" else "ask"))
     recording_id = int(req.recording_id or 0)
     context_text = snapshot.render_text() if snapshot else req.context
-    context_title = "当前学习上下文" if req.surface == "cet6" else ""
+    # 有界面快照就统一起个准标题；否则 build_user_text 会把资料/训练场快照
+    # 误标成「课堂转写片段」。
+    context_title = "当前学习上下文（界面快照）" if snapshot else ""
     conn = store.connect()
     try:
         conv_id = req.conversation_id
@@ -166,7 +168,8 @@ def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
 
     # 个人状态：每轮自动带入，不依赖模型主动调工具；agent 包只收这段字符串。
     try:
-        personal_state = home_service.agent_state(conn)
+        personal_state = home_service.agent_state(
+            conn, scope="learning", query=req.message)
     except Exception as exc:
         diagnostics.log_swallow("个人状态注入", exc)
         personal_state = ""
@@ -177,10 +180,6 @@ def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
                          and (intent["code_debug"] or intent["run_requested"]))
 
     cfg = load_config()
-    if req.surface == "cet6":
-        # 六级里的「直接问」是精听现场提问，固定快模型 + 不思考；深度问答仍走主模型。
-        cfg = dataclasses.replace(cfg, model=cfg.fast_model or cfg.model,
-                                  thinking=False, speed="fast")
     started = time.monotonic()
     run_id = uuid.uuid4().hex
     started_at = store.now()
@@ -296,6 +295,9 @@ def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
                 except Exception as exc:
                     diagnostics.log_swallow("会话摘要/记忆排程", exc)
 
+        # 用户纠正轮：本轮自动升强模型 + 思考；六级等旧入口不在这里升级。
+        turn_deep = bool(req.deep or (req.surface == "ask"
+                                      and correction.detect(req.message)))
         try:
             events.put(("start", "", {"conversation_id": conv_id,
                                       "model": cfg.model, "run_id": run_id}))
@@ -313,11 +315,13 @@ def chat(req: ChatRequest, request: Request, _=Depends(require_token)):
                 mode=req.mode,
                 module=module,
                 surface=req.surface,
+                profile=(req.profile or (
+                    "assistant" if req.surface in ("ask", "cet6") else "")),
                 conversation_id=conv_id,
                 conversation_key=str(conv_id),
                 material_id=material_id or 0,
                 auto_run_code=auto_run_code,
-                deep=bool(req.deep),
+                deep=turn_deep,
             )
             for event in agent.run(agent_request, cfg=cfg, abort=abort,
                                    confirm=ask_confirm):

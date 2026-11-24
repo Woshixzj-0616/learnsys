@@ -1,7 +1,7 @@
 // SSE 流式：开始、逐事件渲染、完成/出错/停止。
 import { streamChat, stopChat } from "../../api.js";
 import { state, dom, TOOL_NAMES } from "./state.js";
-import { addSource, addToolRow, attachExperience, attachReplay,
+import { addSource, addToolRow, attachExperience, attachFeedback, attachReplay,
          createAssistantBlock, paintAssistant, renderPlan, scrollBottom,
          setAssistantStatus, showCheck, updateToolPreview } from "./thread.js";
 import { loadConversations } from "./conversations.js";
@@ -200,7 +200,10 @@ export function finishStreaming(block, ok, note = "") {
       state.messages.push({ role: "assistant", content: {
         text: state.text, thinking: state.thinking, run_id: state.runId || undefined } });
     }
-    if (state.runId) attachReplay(block, state.runId);
+    if (state.runId) {
+      attachReplay(block, state.runId);
+      attachFeedback(block, state.runId);
+    }
   } else {
     setAssistantStatus(block, note || "已停止");
     if (state.text) {

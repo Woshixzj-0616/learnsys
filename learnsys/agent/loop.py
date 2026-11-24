@@ -196,15 +196,14 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
             "applied": bool(gate_apply and gate.needed)})
 
     scope_hints: list[str] = []
-    if request.surface == "cet6":
-        scope_hints.append("exam:cet6")
     if request.material_id:
         scope_hints.append(f"course:{request.material_id}")
     context_text = "\n".join(
         text for text in (request.context, request.history_summary) if text)
     selection = memory.select_for_prompt(
         cfg.data_root, query=request.message, context=context_text,
-        scope_hints=scope_hints)
+        scope_hints=scope_hints,
+        exclude_prefixes=("project:",) if request.profile.startswith("assistant") else ())
     profile = memory.render_profile_for_prompt(cfg.data_root)
     memory_text = memory.render_selection(selection) or memory.EMPTY_MEMORY_TEXT
     memory_audit = {
@@ -242,10 +241,14 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
                                       code_debug=code_debug,
                                       concise=concise,
                                       personal_state=request.personal_state,
-                                      ops=ops_active))
-    # 工具清单也要算进输入预算：34 个 schema 是实打实发给模型的 token。
-    tool_schemas = tools.schemas_for(effective_mode, use_tools=request.use_tools,
-                                     surface=request.surface)
+                                      ops=ops_active,
+                                      agent_profile=request.profile,
+                                      message=request.message))
+    # 工具清单也要算进输入预算：schema 是实打实发给模型的 token。
+    tool_schemas = tools.schemas_for(
+        effective_mode, use_tools=request.use_tools, surface=request.surface,
+        profile=request.profile, message=request.message,
+        has_image=bool(image_paths), has_attachment=bool(request.attachment_text))
     if gate_apply:
         # 取证轮只留只读工具；用户已经给了原文时不裁剪（不必强制联网）。
         tool_schemas = evidence_gate.filter_schemas(
@@ -291,6 +294,7 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
         "user": user_audit,
         "history_tokens": history_tokens,
         "history_turns": history_turns,
+        "profile": str(request.profile or ""),
         "current_user_tokens": prompt_budget.estimate_tokens(current_text),
         "image_tokens": prompt_budget.estimate_tokens(image_text),
     }
@@ -343,7 +347,7 @@ def run(request: AgentRequest, *, provider=None, cfg: AgentConfig | None = None,
                 turn.state.text = ""
                 if not (yield from _run_tool_loop(
                         turn, abort=abort, response_sink=response_sink,
-                        max_steps=2, confirm=confirm)):
+                        max_steps=2, confirm=confirm, allow_final=False)):
                     return
                 yield AgentEvent("gate", data={"needed": True,
                                                "kind": "tools_missing",

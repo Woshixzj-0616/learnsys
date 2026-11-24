@@ -43,6 +43,19 @@ export function sendMessage(options = {}) {
   const message = text || (state.image ? "看看这张图"
     : (state.recording ? "看看这段录像"
       : (state.material ? "看看这份资料" : "看看这份文档")));
+  const materialSnapshot = state.material ? buildSnapshot({
+    surface: "ask",
+    object_type: "material",
+    object_id: String(state.material.id),
+    title: state.material.title || "",
+    surrounding: {
+      kind: state.material.kind || "",
+      chars: state.material.chars || 0,
+    },
+    provenance: { page: "ask", via: "material-picker" },
+  }) : null;
+  const snapshot = state.snapshot || materialSnapshot;
+  const selectedText = String(state.snapshot?.selection || "").trim();
   const payload = {
     message,
     conversation_id: state.convId,
@@ -51,20 +64,12 @@ export function sendMessage(options = {}) {
     attachment_name: state.material ? "" : (state.doc?.name || ""),
     attachment_text: state.material ? "" : (state.doc?.text || ""),
     material_id: state.material?.id || null,
+    // 快照里已经有选中段时不再挂全文正文，避免两份同样的内容挤占预算。
+    attach_material: !selectedText,
     recording_id: state.recording?.id || null,
     surface: "ask",
     deep: !!options.deep,
-    context_snapshot: state.material ? buildSnapshot({
-      surface: "ask",
-      object_type: "material",
-      object_id: String(state.material.id),
-      title: state.material.title || "",
-      surrounding: {
-        kind: state.material.kind || "",
-        chars: state.material.chars || 0,
-      },
-      provenance: { page: "ask", via: "material-picker" },
-    }) : null,
+    context_snapshot: snapshot,
   };
 
   if (state.messages.length === 0) dom.inner.innerHTML = "";
@@ -79,6 +84,7 @@ export function sendMessage(options = {}) {
   dom.input.style.height = "auto";
   state.image = null;
   state.doc = null;
+  state.snapshot = null;       // 页面带过来的上下文只作用于这一问
   if (!state.materialPinned) state.material = null;   // 固定后连续几轮都带同一份资料
   renderAttachments();
   dom.status.textContent = "";

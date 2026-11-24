@@ -66,3 +66,19 @@ LIST_RECORDINGS_SCHEMA = {
         },
     },
 }
+
+LIST_VOCAB_SCHEMA = {
+    "name": "list_vocab",
+    "description": (
+        "读生词本里的 active 生词（新→旧），返回编号、单词、释义、加入时间和下次复习。"
+        "用户问「我生词本里有哪些词」「我记过哪些词」时使用；"
+        "引用时写「生词 #编号」，不要编造不存在的词。"
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "按单词或释义筛选，可留空"},
+            "limit": {"type": "integer", "description": "最多返回几个，默认 20，上限 50"},
+        },
+    },
+}

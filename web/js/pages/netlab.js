@@ -1,5 +1,6 @@
 // 网工训练场：按 TCP/IP 分层组织训练卡；开练 = 记一条事件 + 把题目送进问一问。
 import { api } from "../api.js";
+import { buildSnapshot, openAssistant } from "../context.js";
 import { escapeHtml, toast } from "../ui.js";
 
 const TRACKS = [
@@ -218,7 +219,6 @@ function drillCard(card, done) {
 }
 
 function startDrill(card) {
-  const param = encodeURIComponent(card.prompt);
   const firstTime = !doneTitles.has(card.title);
   if (firstTime) {
     // 只记第一次完成；再练可以，但进度不重复 +1。记录失败不拦着练。
@@ -230,5 +230,17 @@ function startDrill(card) {
     doneToday += 1;
     render();
   }
-  location.hash = `#/ask?prompt=${param}`;
+  const snapshot = buildSnapshot({
+    surface: "ask",
+    object_type: "drill_card",
+    object_id: card.id,
+    title: card.title,
+    learning_state: {
+      track: card.track || "",
+      level: card.level || "",
+      points: card.points || [],
+    },
+    provenance: { app: "netlab", page: "netlab", card: card.id },
+  });
+  openAssistant({ prompt: card.prompt, snapshot });
 }
