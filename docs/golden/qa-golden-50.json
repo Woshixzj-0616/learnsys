@@ -8,7 +8,7 @@
     "tools_any": "trace/工具轨迹里出现任一工具即算用对；回溯基线从 agent_runs 取。",
     "citation": "material=需带资料 id/页码；wrong=需带错题 #；conversation=需带问答时间；web=带 URL + 读取日期（日期紧贴链接）；none=不要求。",
     "max_turns": "多轮从第 1 轮开始数，直到事实通过；超过即失败。",
-    "manual": "关键词只做初筛，歧义题必须人工复核。"
+    "manual": "人工复核用例由人给最终判定：`manual_verdict` 存在时直接采用该状态；关键词只做初筛。"
   },
   "cases": [
     {
@@ -380,7 +380,6 @@
         "是有错的块才会定位错误吗",
         "他难道不会识别文件中是哪个地方改动了吗"
       ],
-      "manual_review": true,
       "expected": {
         "fact_groups": [
           [
@@ -407,7 +406,7 @@
         "source": "model",
         "max_turns": 2
       },
-      "notes": "正确口径：滑动窗口定位的是块级差异；rsync 不输出字节/行位置。基线/试点看第几轮才收敛，目标 ≤2。"
+      "notes": "2026-11-24 人工复核转通过：首轮已答到「滑动窗口按块比对、不输出字节/行位置」，与正确口径一致；原会话 6 轮是继续追问，不是绕圈。"
     },
     {
       "id": "multi-rsync-window",
@@ -521,7 +520,8 @@
         "source": "model",
         "max_turns": 2
       },
-      "notes": "核心失败：用户已排除本机文件，仍重复建议 ls/docker/ss；关键词容易误判，必须人工复核。"
+      "notes": "2026-11-24 人工复核转未通过：用户已排除「文件没写/虚拟机不是靶机」后，第 3 轮仍建议 ls /var/www/html 与 Docker 排查；关键词每轮假阳性，真实缺陷是「用户否定前提后没停止原建议」。",
+      "manual_verdict": "未通过"
     },
     {
       "id": "multi-logic-or",
@@ -553,7 +553,8 @@
         "source": "model",
         "max_turns": 3
       },
-      "notes": "核心失败：没有先确认是宏/前缀表达式还是普通运算符，连续要求贴原文。"
+      "notes": "2026-11-24 人工复核转未通过：&(|(f),f) 是前缀写法，| 即逻辑或；5 轮全按 C 的按位或处理并判定非法，未识别前缀表达式。首轮关键词假阳性（含「二元/||」），实际第一句「单目或运算」就是错的。",
+      "manual_verdict": "未通过"
     },
     {
       "id": "multi-block-plus1",
@@ -567,7 +568,6 @@
         "为什么这个分块查找平均查找长度里面还要加1",
         "你还是没回答为什么在快间加一"
       ],
-      "manual_review": true,
       "expected": {
         "fact_groups": [
           [
@@ -586,7 +586,8 @@
         "source": "model",
         "max_turns": 1
       },
-      "notes": "人工复核：269 已提到块间，但用户仍认为没答到；检查是否答到 +1 的来源。"
+      "notes": "原题同 ask 269/270，公式只在截图里；离线 harness 不带图，标 needs_image 跳过。文字版由 fact-algo-block-plus1-text 覆盖。",
+      "needs_image": true
     },
     {
       "id": "multi-curl-missing",

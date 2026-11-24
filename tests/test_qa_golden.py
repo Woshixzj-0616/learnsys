@@ -37,6 +37,14 @@ class QAGoldenTest(unittest.TestCase):
         self.assertTrue({"折半", "判定树", "log"}
                         & set(text_case["expected"]["fact_groups"][1]))
 
+    def test_manual_verdict_cases_are_documented(self):
+        for item in self.cases:
+            if not item.get("manual_verdict"):
+                continue
+            self.assertIn(item["manual_verdict"], ("通过", "未通过"))
+            self.assertTrue(item.get("manual_review"), item["id"])
+            self.assertTrue(item.get("notes"), item["id"])
+
     def test_web_citation_cases_exist(self):
         # 施工单 §12：必须有用例证明「网页类回答带 URL + 日期」。
         web = [item for item in self.cases
@@ -82,6 +90,24 @@ class SkipReasonTest(unittest.TestCase):
         from tools.qa_golden_live import case_skip_reason
         reason = case_skip_reason(None, {"needs_image": True})
         self.assertIn("截图", reason)
+
+
+class ManualVerdictTest(unittest.TestCase):
+    def test_manual_verdict_overrides_keyword_pass(self):
+        from tools.qa_golden_live import score_case
+        case = {
+            "id": "x", "category": "多轮纠错",
+            "manual_review": True, "manual_verdict": "未通过",
+            "expected": {"fact_groups": [], "must_not": [],
+                         "tools_any": ["web_search"], "citation": "web",
+                         "max_turns": 1},
+        }
+        turn = {"answer": "来源：https://a.example/（读取日期：2026-11-24）",
+                "tools": ["web_search"], "model_calls": 1, "cost": 0.0,
+                "fake_urls": [], "fake_dates": []}
+        result = score_case(case, [turn])
+        self.assertEqual(result["status"], "未通过")
+        self.assertEqual(result["manual_verdict"], "未通过")
 
 
 class LiveScoreTest(unittest.TestCase):

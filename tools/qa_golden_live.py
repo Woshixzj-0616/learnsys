@@ -304,6 +304,10 @@ def score_case(case: dict, turns: list[dict]) -> dict:
         status = "未通过"
     if case.get("manual_review") and status == "通过":
         status = "人工复核"
+    # 人工已给最终判定的用例直接采用该状态（关键词只做初筛，容易假阳性）。
+    verdict = str(case.get("manual_verdict") or "").strip()
+    if verdict:
+        status = verdict
     return {
         "status": status,
         "first_pass_turn": first_pass,
@@ -313,6 +317,7 @@ def score_case(case: dict, turns: list[dict]) -> dict:
         "citation_ok": citation_ok,
         "fake_urls": fake_urls,
         "fake_dates": fake_dates,
+        "manual_verdict": verdict,
         "turn_facts": turn_facts,
         "model_calls": sum(turn["model_calls"] for turn in turns),
         "cost": sum(turn["cost"] for turn in turns),

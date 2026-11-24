@@ -214,6 +214,11 @@ def evaluate_case(conn: sqlite3.Connection, case: dict) -> dict:
     if case.get("manual_review") and result["status"] == "通过":
         result["status"] = "人工复核"
 
+    # 人已给最终判定：直接采用，不再让关键词翻案。
+    verdict = str(case.get("manual_verdict") or "").strip()
+    if verdict:
+        result["status"] = verdict
+
     return result
 
 
