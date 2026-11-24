@@ -243,7 +243,8 @@ def _prepare(request: AgentRequest, cfg: AgentConfig, provider, abort):
                                       personal_state=request.personal_state,
                                       ops=ops_active,
                                       agent_profile=request.profile,
-                                      message=request.message))
+                                      message=request.message,
+                                      history=request.history))
     # 工具清单也要算进输入预算：schema 是实打实发给模型的 token。
     tool_schemas = tools.schemas_for(
         effective_mode, use_tools=request.use_tools, surface=request.surface,

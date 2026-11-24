@@ -12,6 +12,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from learnsys.agent.claims import is_citation_url
+
 MATERIAL_RE = re.compile(
     r"【资料\s*(\d+)\s*[：:]([^】]*?)"
     r"(?:\s*·\s*第\s*([0-9、,，和\-–~至\s]+?)\s*页)?】")
@@ -28,7 +30,7 @@ ISO_DATE_RE = re.compile(r"(20\d{2}-\d{2}-\d{2})")
 
 
 def _urls(text: str) -> set[str]:
-    return {match.group(0).rstrip(".,;:!?'\"。，；：、")
+    return {match.group(0).rstrip(".,;:!?'\"`。，；：、")
             for match in URL_RE.finditer(str(text or ""))}
 
 
@@ -196,7 +198,8 @@ def verify(answer: str, evidence: Evidence) -> list[str]:
     # 网页引用：联网工具用过的 URL 必须来自本轮结果；没联网却声称
     # 「网上/搜索/查到」并贴链接，同样按未核实处理。普通知识题里顺手贴的
     # 链接不主动判伪造，避免误伤。
-    answer_urls = _urls(text)
+    # 本机地址与 example.com 这类占位链接是示例，不是引用，不参与核对。
+    answer_urls = {url for url in _urls(text) if is_citation_url(url)}
     if answer_urls:
         known_urls = evidence.urls()
         web_used = evidence.has_tool("web_search") or evidence.has_tool("fetch_url")

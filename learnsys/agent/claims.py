@@ -17,7 +17,7 @@ from dataclasses import dataclass
 
 from learnsys.agent.prompt_ops import REWRITE_SYSTEM, build_rewrite_user
 
-__all__ = ["Issue", "audit", "issue_text", "note_for",
+__all__ = ["Issue", "audit", "issue_text", "note_for", "is_citation_url",
            "REWRITE_SYSTEM", "build_rewrite_user"]
 
 
@@ -53,7 +53,7 @@ _OUTPUT_RE = re.compile(
     r"|结果\s*(?:如下|[:：])")
 _SOFT_OUTPUT_WORDS = ("示例", "例如", "预期", "应该是", "大概")
 _USER_OUTPUT_RE = re.compile(r"(?:输出|报错|结果)\s*(?:如下|是|为|[:：])")
-_TRAILING = ".,;:!?'\"。，；：、"
+_TRAILING = ".,;:!?'\"`。，；：、"
 
 
 def _urls_in(text: str) -> list[str]:
@@ -75,6 +75,11 @@ def _is_placeholder(url: str) -> bool:
     lowered = str(url or "").lower()
     return any(token in lowered for token in
                ("://ip", "://your", "example.com", "example.org", "example.net"))
+
+
+def is_citation_url(url: str) -> bool:
+    """能作为引用核对对象的链接：排除本机地址与占位示例（单一口径，自检和评测都用）。"""
+    return not (_is_local(url) or _is_placeholder(url))
 
 
 def _quote_line(text: str, start: int, limit: int = 60) -> str:

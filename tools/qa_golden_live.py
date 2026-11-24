@@ -29,6 +29,7 @@ if str(ROOT) not in sys.path:
 from learnsys import store
 from learnsys.agent import debug_intent, loop
 from learnsys.agent import tools as agent_tools
+from learnsys.agent.claims import is_citation_url
 from learnsys.agent.selfcheck import Evidence, cited_web_dates, urls_in
 from learnsys.agent.turn import AgentRequest
 from learnsys.llm.config import load_config
@@ -240,8 +241,12 @@ def run_turn(cfg, question: str, history: list[tuple[str, str]],
     for name, args, content in captured:
         evidence.add(name, args, content)
     answer = str(done.get("text") or "")
-    known_urls = evidence.urls() | urls_in(question)
-    fake_urls = sorted(url for url in urls_in(answer) if url not in known_urls)
+    history_text = "\n".join(str(item[0]) for item in (history or []))
+    # 用户原话里的链接、本机地址、example.com 这类示例都不算「伪造引用」。
+    known_urls = (evidence.urls() | urls_in(question)
+                  | urls_in(history_text))
+    fake_urls = sorted(url for url in urls_in(answer)
+                       if is_citation_url(url) and url not in known_urls)
     fake_dates = sorted(date for date in cited_web_dates(answer)
                         if date not in evidence.web_dates)
     return {

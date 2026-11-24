@@ -876,7 +876,8 @@
           ],
           [
             "auspicious",
-            "carry"
+            "carry",
+            "surplus"
           ]
         ],
         "must_not": [],
@@ -884,7 +885,8 @@
         "citation": "none",
         "source": "model",
         "max_turns": 1
-      }
+      },
+      "notes": "2026-11-24 放宽第二组：surplus 也是「年年有余」的常见译法；原口径只认 auspicious/carry，把正确改法误判为未通过。"
     },
     {
       "id": "english-fireworks",

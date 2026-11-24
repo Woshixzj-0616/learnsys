@@ -52,6 +52,21 @@ class VerifyUrlTest(unittest.TestCase):
         self.assertEqual(verify("示例见 https://example.com/", evidence), [])
 
 
+class CitationUrlTest(unittest.TestCase):
+    def test_local_and_placeholder_urls_are_not_citations(self):
+        from learnsys.agent.claims import is_citation_url
+        self.assertFalse(is_citation_url("http://127.0.0.1:8080"))
+        self.assertFalse(is_citation_url("http://localhost:8765/"))
+        self.assertFalse(is_citation_url("https://example.com/a"))
+        self.assertTrue(is_citation_url("https://nginx.org/en/docs/"))
+
+    def test_local_urls_are_not_flagged_even_with_web_tool(self):
+        evidence = Evidence()
+        evidence.add("web_search", {}, "结果：https://nginx.org/en/docs/")
+        text = "验证时访问 http://127.0.0.1:8080，示例见 http://example.com/a"
+        self.assertEqual(verify(text, evidence), [])
+
+
 class VerifyWebDateTest(unittest.TestCase):
     def _evidence(self, date: str = "2026-11-24") -> Evidence:
         evidence = Evidence()
