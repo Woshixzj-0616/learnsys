@@ -1,14 +1,15 @@
 {
   "version": 1,
   "updated_at": "2026-11-24",
-  "note": "P35.0 问答 golden set。题目来自 2026-10-24~2026-11-23 的真实问答；baseline 用历史答案回溯评分，不新调模型。合成题（无 source_ask_ids）留给在线评测。；2026-11-24 补 3 条合成网页题（只考 URL + 读取日期与伪造引用，不锁版本号）。；2026-11-24 补文字版分块查找题；原图主题标 needs_image 跳过。",
+  "note": "P35.0 问答 golden set。题目来自 2026-10-24~2026-11-23 的真实问答；baseline 用历史答案回溯评分，不新调模型。合成题（无 source_ask_ids）留给在线评测。；2026-11-24 补 3 条合成网页题（只考 URL + 读取日期与伪造引用，不锁版本号）。；2026-11-24 补文字版分块查找题；原图主题标 needs_image 跳过。；2026-11-24 负例回归集：multi-siege-admin / multi-logic-or / multi-cpp-emplace 增加 expected.behavior 断言（用户排除过的方向不许再出现），可用 --negative 单独跑。",
   "scoring": {
     "fact_groups": "每组至少命中一个词才算该组通过；所有组通过才算事实通过。",
     "must_not": "答案里出现任一字符串即判失败。",
     "tools_any": "trace/工具轨迹里出现任一工具即算用对；回溯基线从 agent_runs 取。",
     "citation": "material=需带资料 id/页码；wrong=需带错题 #；conversation=需带问答时间；web=带 URL + 读取日期（日期紧贴链接）；none=不要求。",
     "max_turns": "多轮从第 1 轮开始数，直到事实通过；超过即失败。",
-    "manual": "人工复核用例由人给最终判定：`manual_verdict` 存在时直接采用该状态；关键词只做初筛。"
+    "manual": "人工复核用例由人给最终判定：`manual_verdict` 存在时直接采用该状态；关键词只做初筛。",
+    "behavior": "负例硬门（只匹配行为句式，不匹配主题词）：patterns 从 patterns_from_turn（1 起算）起不许命中；literal_patterns 每轮都不许命中且不享受否定豁免。命中点前后 40 字内有否定短语（不要再/不是/走不通…）的排除式提及不算违规。命中即未通过，不让关键词或人工判定翻案。"
   },
   "cases": [
     {
@@ -363,9 +364,15 @@
         "tools_any": [],
         "citation": "none",
         "source": "model",
-        "max_turns": 3
+        "max_turns": 3,
+        "behavior": {
+          "literal_patterns": [
+            "vector[^\\n。]{0,10}没有[^\\n。]{0,8}(?:这个函数|emplace\\s*函数)",
+            "不存在[^\\n。]{0,8}emplace\\s*函数"
+          ]
+        }
       },
-      "notes": "正确事实：vector 有 emplace(pos, args...)，第一个参数是位置迭代器；用户只传了 (char,int)，所以编译失败。前两轮可能说错，第 3 轮 run_code 后应纠正。"
+      "notes": "正确事实：vector 有 emplace(pos, args...)，第一个参数是位置迭代器；用户只传了 (char,int)，所以编译失败。2026-11-24 补负例断言：不得声称 vector 没有这个函数（「没有 emplace(value...) 这种重载」是正确说法，不误伤）。"
     },
     {
       "id": "multi-rsync-locate",
@@ -500,7 +507,6 @@
         "但是我的是虚拟机不是靶机",
         "我都和你说了没有，你听不懂吗"
       ],
-      "manual_review": true,
       "expected": {
         "fact_groups": [
           [
@@ -518,10 +524,20 @@
         "tools_any": [],
         "citation": "none",
         "source": "model",
-        "max_turns": 2
+        "max_turns": 2,
+        "behavior": {
+          "patterns_from_turn": 3,
+          "patterns": [
+            "(?:ls|cat|find|查看|检查|看看|确认)[^\\n。]{0,25}/var/www",
+            "docker\\s*(?:ps|exec|run|images|compose)",
+            "docker[^\\n。]{0,12}(?:容器|靶场)",
+            "(?:部署|搭建|启动)[^\\n。]{0,10}(?:靶场|tomcat|java\\s*容器)",
+            "靶场[^\\n。]{0,10}(?:部署|跑着|环境|里)",
+            "java\\s*容器"
+          ]
+        }
       },
-      "notes": "2026-11-24 人工复核转未通过：用户已排除「文件没写/虚拟机不是靶机」后，第 3 轮仍建议 ls /var/www/html 与 Docker 排查；关键词每轮假阳性，真实缺陷是「用户否定前提后没停止原建议」。",
-      "manual_verdict": "未通过"
+      "notes": "2026-11-24 人工复核确认缺陷：用户已排除「文件没写/虚拟机不是靶机」后，第 3 轮仍建议 ls /var/www/html 与 Docker 排查。改为负例断言：第 2 轮起不得再出现被排除方向（有人工否定词的提及不算违规）。"
     },
     {
       "id": "multi-logic-or",
@@ -535,7 +551,6 @@
         "这是逻辑或，你是不是搞错了",
         "就是一个|，这到底是什么意思"
       ],
-      "manual_review": true,
       "expected": {
         "fact_groups": [
           [
@@ -551,10 +566,19 @@
         "tools_any": [],
         "citation": "none",
         "source": "model",
-        "max_turns": 3
+        "max_turns": 3,
+        "behavior": {
+          "patterns_from_turn": 1,
+          "patterns": [
+            "单目或运算(?!符)",
+            "(?:这是|属于|就是)[^\\n。]{0,4}(?:单目|一元)[^\\n。]{0,4}(?:或|运算)",
+            "(?:允许|可以|能)[^\\n。]{0,10}(?:单参数|一个参数|单个操作数)",
+            "(?:多数|大多数|一般|教材|题目)[^\\n。]{0,12}允许",
+            "(?:那它就是|那就是|应该是|应当是|本质上就是)[^\\n。]{0,4}按位或"
+          ]
+        }
       },
-      "notes": "2026-11-24 人工复核转未通过：&(|(f),f) 是前缀写法，| 即逻辑或；5 轮全按 C 的按位或处理并判定非法，未识别前缀表达式。首轮关键词假阳性（含「二元/||」），实际第一句「单目或运算」就是错的。",
-      "manual_verdict": "未通过"
+      "notes": "2026-11-24 人工复核确认缺陷：&(|(f),f) 是前缀写法，| 即逻辑或；5 轮全按 C 的按位或处理并判非法，第 2 轮被用户一推就编「多数题允许单参数」。改为负例断言：任何时候不得说「单目/按位或」，第 2 轮起不得编无来源规则（有否定词的提及不算违规）。"
     },
     {
       "id": "multi-block-plus1",

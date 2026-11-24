@@ -119,6 +119,86 @@ def check_fact(text: str, groups: list[list[str]], must_not: list[str]) -> tuple
     return ok, bad
 
 
+_SENTENCE_SPLIT = re.compile(r"[。！？!?；;\n]")
+# 匹配点前后窗口里的否定标记：命中则视为「排除式提及」，不算违规。
+# 用短语而不是单字，避免「不同的方案」里的「不」把违规放过。
+_NEGATION_RE = re.compile(
+    r"不(?:要|用|需|必|能|应|再|存在|会|是|适合|支持)|"
+    r"没(?:有|写|用|做|必要)|别(?:再|用|去)?|勿|无(?:需|法|论)?|不必|并非|错误|不存在|不适用|"
+    r"走不通|行不通|不可行|不成立|不对|不算|"
+    r"撤回|收回|已排除|排除|跑偏|错认|认错|推翻|纠正|作废|取消|不再提|"
+    r"划掉|删掉|剔除")
+
+
+def _clean(text: str) -> str:
+    """去掉 Markdown 强调符再比：模型常写「没有 `emplace`」，反引号会隔断匹配。"""
+    return " ".join(re.sub(r"[`*]+", "", str(text or "")).split())
+
+
+def _sentence_around(text: str, start: int, end: int) -> str:
+    """取命中点所在句，用于报告。"""
+    left = max((text.rfind(ch, 0, start) for ch in "。！？!?；;\n"), default=-1) + 1
+    right = len(text)
+    for mark in "。！？!?；;\n":
+        found = text.find(mark, end)
+        if found >= 0:
+            right = min(right, found)
+    return " ".join(text[left:right].split())[:160]
+
+
+def _negated_near(text: str, start: int, end: int) -> bool:
+    """命中点所在分句（逗号也算边界）里是否有否定短语。
+
+    「没有 Admin.jsp，可以去 Docker 里找」里「没有」管的是前一句，
+    不能拿来豁免后一句的 Docker 建议，所以按分句判断而不是固定窗口。
+    """
+    left = max((text.rfind(ch, 0, start) for ch in "。！？!?；;，,\n"), default=-1) + 1
+    right = len(text)
+    for mark in "。！？!?；;，,\n":
+        found = text.find(mark, end)
+        if found >= 0:
+            right = min(right, found)
+    clause = text[left:right]
+    return bool(_NEGATION_RE.search(clause))
+
+
+def check_behavior(answers: list[str], behavior: dict) -> list[dict]:
+    """负例检查：断言「某些行为不许再出现」，空列表即通过。
+
+    - `patterns`：从 `patterns_from_turn`（默认 1，1 起算）起每轮不许命中；
+    - `literal_patterns`：每一轮不许命中，且不享受否定豁免
+      （用于「vector 没有这个函数」这种事实错误断言）。
+
+    模式匹配**行为句式**（如「查看 /var/www」「这是按位或」），而不是主题词：
+    仅仅提到 Docker 或 /var/www 不算违规。
+    命中点所在分句（逗号也算边界）里有否定短语（不要再/不是/走不通…）时，
+    `patterns` 视为排除式提及，不算违规。
+
+    返回 `[{"turn": 轮次, "pattern": 模式, "sentence": 原句}]`。
+    """
+    patterns = [str(item) for item in (behavior.get("patterns") or []) if str(item)]
+    literal = [str(item) for item in (behavior.get("literal_patterns") or []) if str(item)]
+    from_turn = int(behavior.get("patterns_from_turn") or 1)
+    violations: list[dict] = []
+    for index, answer in enumerate(answers, 1):
+        text = _clean(answer)
+        checks = list(literal)
+        if index >= from_turn:
+            checks += patterns
+        for pattern in checks:
+            match = re.search(pattern, text, re.I)
+            if not match:
+                continue
+            if pattern not in literal and _negated_near(text, match.start(), match.end()):
+                continue
+            violations.append({
+                "turn": index,
+                "pattern": pattern,
+                "sentence": _sentence_around(text, match.start(), match.end()),
+            })
+    return violations
+
+
 def check_citation(text: str, kind: str) -> bool:
     text = str(text or "")
     if kind == "material":
@@ -145,6 +225,7 @@ def evaluate_case(conn: sqlite3.Connection, case: dict) -> dict:
     citation = str(expected.get("citation") or "none")
 
     answers = load_answers(conn, case)
+    behavior = expected.get("behavior") or {}
     result = {
         "id": case["id"],
         "category": case["category"],
@@ -156,11 +237,16 @@ def evaluate_case(conn: sqlite3.Connection, case: dict) -> dict:
         "citation_ok": None,
         "tools": [],
         "tools_ok": None,
+        "behavior_violations": [],
         "status": "待在线评测",
         "note": case.get("notes") or "",
     }
     if not answers:
         return result
+
+    if behavior:
+        result["behavior_violations"] = check_behavior(
+            [text for _label, text in answers], behavior)
 
     turn_flags = []
     for label, text in answers:
@@ -210,13 +296,17 @@ def evaluate_case(conn: sqlite3.Connection, case: dict) -> dict:
     else:
         result["status"] = "人工复核"
 
+    # 负例是硬门：命中被排除方向即失败，不让人工判定或关键词翻案。
+    if result["behavior_violations"]:
+        result["status"] = "未通过"
+
     # 人工复核标记：关键词过了，但问题有歧义或用户随后仍纠正
     if case.get("manual_review") and result["status"] == "通过":
         result["status"] = "人工复核"
 
     # 人已给最终判定：直接采用，不再让关键词翻案。
     verdict = str(case.get("manual_verdict") or "").strip()
-    if verdict:
+    if verdict and not result["behavior_violations"]:
         result["status"] = verdict
 
     return result

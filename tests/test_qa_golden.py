@@ -6,7 +6,7 @@ import pathlib
 import unittest
 
 from learnsys.agent import tools
-from tools.qa_golden_report import check_citation
+from tools.qa_golden_report import check_behavior, check_citation
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 GOLDEN = ROOT / "docs" / "golden" / "qa-golden-50.json"
@@ -92,6 +92,90 @@ class SkipReasonTest(unittest.TestCase):
         self.assertIn("截图", reason)
 
 
+class BehaviorTest(unittest.TestCase):
+    """负例回归集：断言「用户排除过的方向不许再出现」。"""
+
+    def test_plain_suggestion_is_violation(self):
+        bad = check_behavior(["先检查 /var/www/html 里的内容。"],
+                             {"patterns": [r"(?:查看|检查|ls)[^\n。]{0,20}/var/www"]})
+        self.assertEqual(len(bad), 1)
+        self.assertEqual(bad[0]["turn"], 1)
+        self.assertIn("/var/www", bad[0]["sentence"])
+
+    def test_topic_mention_alone_is_not_violation(self):
+        # 只说「nginx 的 root 在 /var/www/html」不是建议，不能判违规。
+        behavior = {"patterns": [r"(?:查看|检查|ls)[^\n。]{0,20}/var/www"]}
+        self.assertEqual(check_behavior(["nginx 的 root 在 /var/www/html。"], behavior), [])
+
+    def test_negated_mention_is_not_violation(self):
+        for answer, pattern in (
+                ("不要再检查 Docker 容器了。", r"docker[^\n。]{0,12}容器"),
+                ("这台机器不是靶机，别用 Docker。", r"docker"),
+                ("不存在按位或的问题。", r"按位或"),
+                ("「你需要部署靶场」这条路走不通。", r"(?:部署|搭建)[^\n。]{0,10}靶场")):
+            with self.subTest(answer=answer):
+                self.assertEqual(
+                    check_behavior([answer], {"patterns": [pattern]}), [])
+
+    def test_from_turn_ignores_earlier_turns(self):
+        behavior = {"patterns_from_turn": 2, "patterns": [r"docker"]}
+        self.assertEqual(check_behavior(["先看 Docker", "这台机器不是靶机"], behavior), [])
+        bad = check_behavior(["先看 Docker", "再检查 Docker"], behavior)
+        self.assertEqual([item["turn"] for item in bad], [2])
+
+    def test_markdown_backticks_are_ignored(self):
+        # 模型常写「vector 没有 `emplace` 函数」，反引号不能隔断匹配。
+        bad = check_behavior(
+            ["vector 没有 `emplace` 函数。"],
+            {"literal_patterns": [r"vector[^\n。]{0,10}没有[^\n。]{0,8}emplace\s*函数"]})
+        self.assertEqual(len(bad), 1)
+
+    def test_correct_overload_statement_is_not_violation(self):
+        # 「没有 emplace(value...) 这种重载」是正确说法，不能误伤。
+        behavior = {"literal_patterns": [
+            r"vector[^\n。]{0,10}没有[^\n。]{0,8}(?:这个函数|emplace\s*函数)"]}
+        answer = "std::vector 没有 emplace(value...) 这种只有一个元素参数的重载。"
+        self.assertEqual(check_behavior([answer], behavior), [])
+
+    def test_score_case_behavior_is_a_hard_gate(self):
+        from tools.qa_golden_live import score_case
+        case = {
+            "id": "neg", "category": "多轮纠错",
+            "expected": {
+                "fact_groups": [["没有"], ["老师"]],
+                "behavior": {"patterns_from_turn": 2, "patterns": [r"docker"]},
+                "max_turns": 2,
+            },
+        }
+
+        def turn(answer):
+            return {"answer": answer, "tools": [], "model_calls": 1,
+                    "cost": 0.0, "fake_urls": [], "fake_dates": []}
+
+        ok = score_case(case, [turn("这个文件没有写，问老师要部署包。"),
+                               turn("没有 Admin.jsp，问老师要原命令。")])
+        self.assertEqual(ok["status"], "通过")
+        bad = score_case(case, [turn("这个文件没有写，问老师要部署包。"),
+                                turn("没有 Admin.jsp，可以去 Docker 里找。")])
+        self.assertEqual(bad["status"], "未通过")
+        self.assertEqual(bad["behavior_violations"][0]["turn"], 2)
+
+    def test_negative_cases_are_marked(self):
+        cases = json.loads(GOLDEN.read_text(encoding="utf-8"))["cases"]
+        negative = {item["id"] for item in cases
+                    if (item.get("expected") or {}).get("behavior")}
+        self.assertTrue({"multi-siege-admin", "multi-logic-or",
+                         "multi-cpp-emplace"} <= negative)
+        for item in cases:
+            behavior = (item.get("expected") or {}).get("behavior")
+            if not behavior:
+                continue
+            patterns = ((behavior.get("patterns") or [])
+                        + (behavior.get("literal_patterns") or []))
+            self.assertTrue(patterns, item["id"])
+            self.assertFalse(item.get("manual_verdict"), item["id"])
+
+
 class ManualVerdictTest(unittest.TestCase):
     def test_manual_verdict_overrides_keyword_pass(self):
         from tools.qa_golden_live import score_case
@@ -145,6 +229,16 @@ class LiveScoreTest(unittest.TestCase):
             "来源：https://www.python.org/downloads/")])
         self.assertFalse(result["citation_ok"])
         self.assertEqual(result["status"], "未通过")
+
+    def test_same_host_url_suggestion_is_not_fake(self):
+        from tools.qa_golden_live import fake_urls_in
+        known = {"http://shemp.whoohoo.com/Admin.jsp"}
+        self.assertEqual(
+            fake_urls_in("试试 http://shemp.whoohoo.com:8080/Admin.jsp", known), [])
+        self.assertEqual(
+            fake_urls_in("见 https://fake.example/", known),
+            ["https://fake.example/"])
+        self.assertEqual(fake_urls_in("本机 http://127.0.0.1:8765/", known), [])
 
 
 class CitationTest(unittest.TestCase):

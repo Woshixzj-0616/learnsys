@@ -31,6 +31,19 @@ class AuditGateTest(unittest.TestCase):
         self.assertIn("fake_url", kinds(issues))
 
 
+class CitationUrlTest(unittest.TestCase):
+    def test_local_placeholder_and_shorthand_not_citation(self):
+        for url in ("http://127.0.0.1:8765/api", "http://localhost:8000/",
+                    "https://example.com/x", "http://xxx:8080/Admin.jsp",
+                    "http://…/y"):
+            with self.subTest(url=url):
+                self.assertFalse(claims.is_citation_url(url))
+
+    def test_real_domain_is_citation(self):
+        self.assertTrue(claims.is_citation_url(
+            "https://nginx.org/en/docs/ngx_core_module.html"))
+
+
 class FakeUrlTest(unittest.TestCase):
     def test_unknown_url_flagged(self):
         issues = claims.audit(

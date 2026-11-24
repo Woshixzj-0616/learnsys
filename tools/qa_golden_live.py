@@ -21,6 +21,7 @@ import sqlite3
 import sys
 import tempfile
 import time
+from urllib.parse import urlparse
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -34,7 +35,8 @@ from learnsys.agent.selfcheck import Evidence, cited_web_dates, urls_in
 from learnsys.agent.turn import AgentRequest
 from learnsys.llm.config import load_config
 from learnsys.services import home as home_service
-from tools.qa_golden_report import check_citation, check_fact
+from tools.qa_golden_report import check_behavior, check_citation, check_fact
+from tools.qa_golden_render import render
 
 GOLDEN = ROOT / "docs" / "golden" / "qa-golden-50.json"
 REPORT_DIR = ROOT / "eval" / "qa"
@@ -164,7 +166,7 @@ def skipped_result(case: dict, reason: str) -> dict:
         "score": {
             "status": "跳过", "first_pass_turn": None, "must_not_hit": False,
             "tools": [], "tools_ok": None, "citation_ok": None,
-            "fake_urls": [], "fake_dates": [],
+            "fake_urls": [], "fake_dates": [], "behavior_violations": [],
             "turn_facts": [], "model_calls": 0, "cost": 0.0, "reason": reason,
         },
         "turns": [],
@@ -187,6 +189,20 @@ def case_questions(conn: sqlite3.Connection, case: dict) -> list[str]:
     if turns:
         return [str(item) for item in turns]
     return [str(case.get("question") or "")]
+
+
+def fake_urls_in(answer: str, known_urls) -> list[str]:
+    """答案里未核实过的链接。
+
+    同一主机名的 URL 建议（如把用户给的域名加上 `:8080`）不是「伪造来源」，
+    不能因为它和用户原链接不完全相同就判假；只核对主机名不同的链接。
+    """
+    known = {str(url) for url in (known_urls or ())}
+    known_hosts = {urlparse(url).hostname or "" for url in known}
+    return sorted(
+        url for url in urls_in(answer)
+        if is_citation_url(url) and url not in known
+        and (urlparse(url).hostname or "") not in known_hosts)
 
 
 def run_turn(cfg, question: str, history: list[tuple[str, str]],
@@ -245,8 +261,7 @@ def run_turn(cfg, question: str, history: list[tuple[str, str]],
     # 用户原话里的链接、本机地址、example.com 这类示例都不算「伪造引用」。
     known_urls = (evidence.urls() | urls_in(question)
                   | urls_in(history_text))
-    fake_urls = sorted(url for url in urls_in(answer)
-                       if is_citation_url(url) and url not in known_urls)
+    fake_urls = fake_urls_in(answer, known_urls)
     fake_dates = sorted(date for date in cited_web_dates(answer)
                         if date not in evidence.web_dates)
     return {
@@ -298,8 +313,14 @@ def score_case(case: dict, turns: list[dict]) -> dict:
     fake_urls = sorted({url for turn in turns for url in turn.get("fake_urls") or []})
     fake_dates = sorted({date for turn in turns for date in turn.get("fake_dates") or []})
     citation_clean = not fake_urls and not fake_dates
+    behavior = expected.get("behavior") or {}
+    behavior_violations = check_behavior(
+        [str(turn["answer"]) for turn in turns], behavior) if behavior else []
 
-    if ((groups and first_pass is not None and first_pass <= max_turns and not must_hit)
+    if behavior_violations:
+        # 负例硬门：用户已排除的方向再次出现即失败，关键词通过也不翻案。
+        status = "未通过"
+    elif ((groups and first_pass is not None and first_pass <= max_turns and not must_hit)
             or (tools_any and tools_ok and (citation_ok is not False))) \
             and citation_clean:
         status = "通过"
@@ -311,7 +332,7 @@ def score_case(case: dict, turns: list[dict]) -> dict:
         status = "人工复核"
     # 人工已给最终判定的用例直接采用该状态（关键词只做初筛，容易假阳性）。
     verdict = str(case.get("manual_verdict") or "").strip()
-    if verdict:
+    if verdict and not behavior_violations:
         status = verdict
     return {
         "status": status,
@@ -322,6 +343,7 @@ def score_case(case: dict, turns: list[dict]) -> dict:
         "citation_ok": citation_ok,
         "fake_urls": fake_urls,
         "fake_dates": fake_dates,
+        "behavior_violations": behavior_violations,
         "manual_verdict": verdict,
         "turn_facts": turn_facts,
         "model_calls": sum(turn["model_calls"] for turn in turns),
@@ -359,58 +381,15 @@ def run_case(conn, cfg, case: dict, work_root: pathlib.Path) -> dict:
     }
 
 
-def render(results: list[dict], generated: str, cfg) -> str:
-    lines = [
-        "# P35.2 在线试点（问答 golden set）",
-        "",
-        f"> 生成时间：{generated}",
-        f"> 模型：{cfg.model}（fast={cfg.fast_model}，speed={cfg.speed}，auto_route={cfg.auto_route}）",
-        f"> 临时库每日上限：{cfg.daily_call_limit} 次",
-        "> 多轮用例：有 `conversation_id` 的会先回放第一句受测问题之前的原会话前文，再把 `turns` 作为受测轮次。",
-        "",
-        "| 用例 | 类别 | 结果 | 轮数 | 首次通过 | 工具 | 引用 | 伪造 | 调用 | 花费 |",
-        "|---|---|---|---:|---:|---|---|---|---:|---:|",
-    ]
-    for item in results:
-        score = item["score"]
-        citation = "—" if score["citation_ok"] is None else ("是" if score["citation_ok"] else "否")
-        fake = []
-        if score.get("fake_urls"):
-            fake.append(f"链接 {len(score['fake_urls'])} 个")
-        if score.get("fake_dates"):
-            fake.append(f"日期 {len(score['fake_dates'])} 个")
-        lines.append(
-            f"| {item['id']} | {item['category']} | {score['status']} | "
-            f"{item['turns_run']} | {score['first_pass_turn'] or '—'} | "
-            f"{'、'.join(score['tools']) or '—'} | {citation} | "
-            f"{'、'.join(fake) or '0'} | "
-            f"{score['model_calls']} | {score['cost']:.4f} |")
-    lines += ["", "## 逐条回答（前 400 字）", ""]
-    for item in results:
-        lines.append(f"### {item['id']} · {item['score']['status']}")
-        if item["score"].get("reason"):
-            lines.append(f"- **跳过原因**：{item['score']['reason']}")
-        for url in item["score"].get("fake_urls") or []:
-            lines.append(f"- **伪造链接**：{url}")
-        for date in item["score"].get("fake_dates") or []:
-            lines.append(f"- **伪造日期**：{date}")
-        for turn in item["turns"]:
-            answer = " ".join(str(turn["answer"]).split())[:400]
-            lines.append(f"- **问**：{turn['question']}")
-            lines.append(f"  **答**：{answer}")
-            if turn["tools"]:
-                lines.append(f"  **工具**：{'、'.join(turn['tools'])}")
-            if turn["errors"]:
-                lines.append(f"  **错误**：{'；'.join(turn['errors'])}")
-        lines.append("")
-    return "\n".join(lines)
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="P35.1 问答 golden set 在线试点")
     parser.add_argument("--case", action="append", default=None)
+    parser.add_argument("--negative", action="store_true",
+                        help="只跑负例断言用例（expected.behavior）")
     parser.add_argument("--pilot", action="store_true", help="跑内置 10 条试点")
     parser.add_argument("--all", action="store_true", help="跑全部 50 条")
+    parser.add_argument("--repeat", type=int, default=1,
+                        help="每条用例重复跑几次（模型有随机性，负例回归建议 3）")
     parser.add_argument("--db", type=pathlib.Path,
                         default=pathlib.Path("D:/学习系统/learning.db"))
     parser.add_argument("--call-limit", type=int, default=40,
@@ -422,6 +401,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.case:
         wanted = set(args.case)
         cases = [case for case in cases if case["id"] in wanted]
+    elif args.negative:
+        cases = [case for case in cases
+                 if (case.get("expected") or {}).get("behavior")]
     elif args.pilot:
         wanted = set(PILOT)
         cases = [case for case in cases if case["id"] in wanted]
@@ -442,6 +424,7 @@ def main(argv: list[str] | None = None) -> int:
         conn = store.connect(target_db)
         try:
             results = []
+            repeat = max(1, int(args.repeat or 1))
             for index, case in enumerate(cases, 1):
                 print(f"[{index}/{len(cases)}] {case['id']} ...", flush=True)
                 reason = case_skip_reason(conn, case)
@@ -449,14 +432,21 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  -> 跳过 · {reason}", flush=True)
                     results.append(skipped_result(case, reason))
                     continue
-                result = run_case(conn, cfg, case, root)
-                results.append(result)
-                score = result["score"]
-                print(f"  -> {score['status']} · 轮 {result['turns_run']} · "
-                      f"首次 {score['first_pass_turn']} · 工具 {score['tools']} · "
-                      f"调用 {score['model_calls']} · {score['cost']:.4f}", flush=True)
-                if score["model_calls"] == 0 and any(turn["errors"] for turn in result["turns"]):
-                    print("  -> 这条首轮就报错，继续下一条", flush=True)
+                for run_index in range(1, repeat + 1):
+                    result = run_case(conn, cfg, case, root)
+                    if repeat > 1:
+                        result["run"] = run_index
+                    results.append(result)
+                    score = result["score"]
+                    bad = len(score.get("behavior_violations") or [])
+                    label = f"  第 {run_index}/{repeat} 次" if repeat > 1 else " "
+                    print(f"{label}-> {score['status']} · 轮 {result['turns_run']} · "
+                          f"首次 {score['first_pass_turn']} · 工具 {score['tools']} · "
+                          f"负例 {bad} · 调用 {score['model_calls']} · "
+                          f"{score['cost']:.4f}", flush=True)
+                    if score["model_calls"] == 0 and any(turn["errors"] for turn in result["turns"]):
+                        print("  -> 这条首轮就报错，继续下一条", flush=True)
+                        break
         finally:
             conn.close()
 
@@ -464,7 +454,8 @@ def main(argv: list[str] | None = None) -> int:
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     payload = {"generated_at": generated, "model": cfg.model,
-               "call_limit": cfg.daily_call_limit, "results": results}
+               "call_limit": cfg.daily_call_limit, "repeat": args.repeat,
+               "results": results}
     json_path = REPORT_DIR / f"live-pilot-{stamp}.json"
     json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
                          encoding="utf-8")

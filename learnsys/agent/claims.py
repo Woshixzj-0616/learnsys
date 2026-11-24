@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 from learnsys.agent.prompt_ops import REWRITE_SYSTEM, build_rewrite_user
 
@@ -77,9 +78,15 @@ def _is_placeholder(url: str) -> bool:
                ("://ip", "://your", "example.com", "example.org", "example.net"))
 
 
+def _has_real_host(url: str) -> bool:
+    """主机名带点才算真实域名：`http://xxx:8080`、`http://…` 是示意写法。"""
+    host = urlparse(str(url or "")).hostname or ""
+    return "." in host
+
+
 def is_citation_url(url: str) -> bool:
-    """能作为引用核对对象的链接：排除本机地址与占位示例（单一口径，自检和评测都用）。"""
-    return not (_is_local(url) or _is_placeholder(url))
+    """能作为引用核对对象的链接：排除本机地址、占位示例与无点主机（单一口径，自检和评测都用）。"""
+    return _has_real_host(url) and not (_is_local(url) or _is_placeholder(url))
 
 
 def _quote_line(text: str, start: int, limit: int = 60) -> str:
